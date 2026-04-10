@@ -163,10 +163,10 @@ const api = {
       body: JSON.stringify(body),
     }).then(r => r.json()),
   getApprovedVendors: () => fetch(`${VENDOR_BASE}`).then(r => r.json()),
-  createEntry: (body) =>
+  createEntry: (body, userName) =>
     fetch(`${API_BASE}/entries`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(userName ? { "X-User-Name": userName } : {}) },
       body: JSON.stringify(body),
     }).then(r => r.json()),
   deleteEntry: (id) =>
@@ -642,7 +642,8 @@ export default function PWJTracker() {
       showToast("Please fill all required fields", "error"); return;
     }
     try {
-      const res = await api.createEntry({ ...createForm, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null });
+      const userName = user.fullName || user.username;
+      const res = await api.createEntry({ ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null }, userName);
       if (res.success) { showToast("Entry created!"); setCreateModal(false); fetchEntries(); }
       else showToast(res.message, "error");
     } catch { showToast("Create failed", "error"); }
