@@ -96,10 +96,41 @@ async function ocrExtractBankFields(imageFile, onProgress) {
   return { bankName, accountNumber, ifscCode, bankDetails };
 }
 
+// ── OCR for statutory documents (GST / MSME / TAN / PAN) ───────────
+async function ocrExtractStatutoryField(imageFile, fieldType) {
+  const form = new FormData();
+  form.append("file",       imageFile);
+  form.append("apikey",     "K85821541288957");
+  form.append("language",   "eng");
+  form.append("OCREngine",  "2");
+  form.append("scale",      "true");
+  form.append("detectOrientation", "true");
+  form.append("isOverlayRequired", "false");
+
+  const res  = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: form });
+  const json = await res.json();
+  if (json?.IsErroredOnProcessing) throw new Error(json?.ErrorMessage?.[0] || "OCR error");
+  const t = json?.ParsedResults?.[0]?.ParsedText || "";
+
+  const PATTERNS = {
+    gstNumber:  [/\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]Z[A-Z0-9]\b/i],
+    msmeNumber: [/UDYAM[-\s]?[A-Z]{2}[-\s]?\d{2}[-\s]?\d{7}/i, /\bUDYAM[A-Z0-9\-]{5,14}\b/i],
+    tanNumber:  [/\b[A-Z]{4}[0-9]{5}[A-Z]\b/],
+    panNumber:  [/\b[A-Z]{5}[0-9]{4}[A-Z]\b/],
+  };
+
+  for (const re of (PATTERNS[fieldType] || [])) {
+    const m = t.match(re);
+    if (m?.[0]) return m[0].replace(/\s/g, "").toUpperCase();
+  }
+  return "";
+}
+
 // ─── API CONFIG ────────────────────────────────────────────────────
-const API_BASE     = "http://192.168.1.16:8080/api/v1/pwj";
-const VENDOR_BASE  = "http://192.168.1.16:8080/api/v1/vendors";
-const AUTH_BASE    = "http://192.168.1.16:8080/api/v1/auth";
+const API_BASE      = "http://192.168.1.11:8080/api/v1/pwj";
+const VENDOR_BASE   = "http://192.168.1.11:8080/api/v1/vendors";
+const AUTH_BASE     = "http://192.168.1.11:8080/api/v1/auth";
+const PROJECT_BASE  = "http://192.168.1.11:8080/api/v1/projects";
 
 const api = {
   login: (body) =>
@@ -146,7 +177,7 @@ const api = {
   uploadImage: (file) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch("http://192.168.1.16:8080/api/v1/upload/image", { method: "POST", body: form }).then(r => r.json());
+    return fetch("http://192.168.1.11:8080/api/v1/upload/image", { method: "POST", body: form }).then(r => r.json());
   },
   createVendor: (body) =>
     fetch(VENDOR_BASE, {
@@ -163,7 +194,9 @@ const api = {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }).then(r => r.json()),
   deactivateUser: (id) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}`, { method: "DELETE" }).then(r => r.json()),
+  updateUserPhone: (id, phone) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/phone`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then(r => r.json()),
   getVendorByName: (name) => fetch(`${VENDOR_BASE}/by-name?name=${encodeURIComponent(name)}`).then(r => r.json()),
+  updateEntry: (id, body) => fetch(`${API_BASE}/entries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   submitDoc: (id) => fetch(`${API_BASE}/entries/${id}/submit-doc`, { method: "PATCH" }).then(r => r.json()),
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
@@ -171,15 +204,136 @@ const api = {
   uploadDocument: (file) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch("http://192.168.1.16:8080/api/v1/upload/document", { method: "POST", body: form }).then(r => r.json());
+    return fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: form }).then(r => r.json());
   },
+  processVendorImage: (imageUrl) => fetch(`${VENDOR_BASE}/process-image`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
+  }).then(r => r.json()),
   deliveryUpdate: (id, body) =>
     fetch(`${API_BASE}/entries/${id}/delivery`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(r => r.json()),
+  getManagedProjects: () => fetch(PROJECT_BASE).then(r => r.json()),
+  getActiveProjects: () => fetch(`${PROJECT_BASE}/active`).then(r => r.json()),
+  getProjectClients: () => fetch(`${PROJECT_BASE}/clients`).then(r => r.json()),
+  createProject: (body) => fetch(PROJECT_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  updateProject: (id, body) => fetch(`${PROJECT_BASE}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  deleteProject: (id) => fetch(`${PROJECT_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
 };
+
+// ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
+const HAPPIZO_LOGO_URL = "https://happizo.com/assets/myimages/logo.png";
+
+const COMPANY_INFO = {
+  name: "Happizo Infrastructure and Solutions",
+  addr1: "No.11/ 20, Ground floor, 2nd cross street",
+  addr2: "Indira nagar, Adyar, Chennai 600020.",
+  gst:   "33EKIPS2810E1ZD",
+};
+
+const PO_TERMS = [
+  "Proof of material delivery should be signed and approved by our site engineer along with DC copy for payment process",
+  "Any material, if found unsuitable or bad quality or damaged during supply, shall be re-supplied at no extra cost",
+  "Destination detail, PO reference and all details to be mentioned clearly on the invoice",
+  "Billing will be as per actuals",
+  "Billing qty change: Invoice value cannot exceed PO value. If exceeding, invoice will not be processed. Final value if found exceeding to PO received, invoice it only with another additional PO.",
+  "Transport/ loading/unloading at vendor scope and not included in the above cost",
+  "In case of any delay in supply / work thereby causing delay in work completion, the same will be outsourced and the amount incurred will be debited",
+  "GST: The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
+];
+
+const WO_TERMS = [
+  "Proof of work delivery should be signed and approved by our site engineer along with measurement sheet, for payment process",
+  "Any work, if found unsuitable or bad quality or damaged during supply, shall be re-supplied /re-installed/ redone, at no extra cost",
+  "Destination detail, WO reference and all details to be mentioned clearly on the invoice",
+  "Billing will be as per actuals",
+  "Billing qty change: Invoice value cannot exceed WO value. If exceeding, invoice will not be processed. Final value if found exceeding to WO received, invoice it only with another additional WO.",
+  "Transport/ loading/unloading at vendor scope and not included in the above cost",
+  "In case of any delay in supply / work thereby causing delay in work completion, the same will be outsourced and the amount incurred will be debited",
+  "GST: The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
+];
+
+function parseImageRefs(ref) {
+  if (!ref) return [];
+  try { const p = JSON.parse(ref); return Array.isArray(p) ? p : [ref]; }
+  catch { return [ref]; }
+}
+
+function parseDocData(entry) {
+  const base = {
+    items: [
+      { item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
+      { item: "", unit: "", qty: "", rate: "" },
+      { item: "", unit: "", qty: "", rate: "" },
+      { item: "", unit: "", qty: "", rate: "" },
+    ],
+    amountInWords: "", cgstPct: "9", sgstPct: "9",
+    completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
+    deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
+    stage1: "", stage2: "", stage3: "", stageF: "",
+    vendorInvoices: [], deliveryDocs: [],
+  };
+  if (entry.docData) {
+    try {
+      const parsed = JSON.parse(entry.docData);
+      const mergedItems = [...(parsed.items || [])];
+      while (mergedItems.length < 4) mergedItems.push({ item: "", unit: "", qty: "", rate: "" });
+      return { ...base, ...parsed, items: mergedItems };
+    } catch (_) {}
+  }
+  return base;
+}
+
+function autoDocNumber(entry) {
+  const proj = (entry.projectName || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w[0].toUpperCase())
+    .join("")
+    .slice(0, 5);
+  const year = new Date().getFullYear();
+  const seq  = String(entry.id).padStart(4, "0");
+  return proj ? `${entry.pwjType}-${proj}-${year}-${seq}` : `${entry.pwjType}-${year}-${seq}`;
+}
+
+function amountToWords(amount) {
+  const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
+                 "Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen",
+                 "Seventeen","Eighteen","Nineteen"];
+  const tens = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const twoDigits = n => n < 20 ? ones[n] : tens[Math.floor(n/10)] + (n%10 ? " "+ones[n%10] : "");
+  const threeDigits = n => n >= 100
+    ? ones[Math.floor(n/100)]+" Hundred"+(n%100 ? " and "+twoDigits(n%100) : "")
+    : twoDigits(n);
+  const convert = n => {
+    if (n === 0) return "Zero";
+    let r = "", rem = n;
+    const cr  = Math.floor(rem/10000000); rem %= 10000000;
+    const lk  = Math.floor(rem/100000);   rem %= 100000;
+    const th  = Math.floor(rem/1000);     rem %= 1000;
+    if (cr)  r += twoDigits(cr)  + " Crore ";
+    if (lk)  r += twoDigits(lk)  + " Lakh ";
+    if (th)  r += twoDigits(th)  + " Thousand ";
+    if (rem) r += threeDigits(rem);
+    return r.trim();
+  };
+  const total   = Math.round(amount * 100) / 100;
+  const rupees  = Math.floor(total);
+  const paise   = Math.round((total - rupees) * 100);
+  const rWords  = convert(rupees);
+  return paise
+    ? `Indian Rupees ${rWords} and Paise ${twoDigits(paise)} Only`
+    : `Indian Rupees ${rWords} Only`;
+}
+
+function calcTotals(items, cgstPct, sgstPct) {
+  const subTotal = items.reduce((s, r) => s + (parseFloat(r.qty) || 0) * (parseFloat(r.rate) || 0), 0);
+  const cgst = subTotal * (parseFloat(cgstPct) || 0) / 100;
+  const sgst = subTotal * (parseFloat(sgstPct) || 0) / 100;
+  return { subTotal, cgst, sgst, total: subTotal + cgst + sgst };
+}
 
 // ─── ROLE HELPERS ──────────────────────────────────────────────────
 const ROLE_META = {
@@ -187,6 +341,7 @@ const ROLE_META = {
   ENGINEER:    { label: "Engineer",    color: "#0369a1", bg: "#e0f2fe" },
   PROCUREMENT: { label: "Procurement", color: "#065f46", bg: "#d1fae5" },
   VP:          { label: "VP",          color: "#b45309", bg: "#fef3c7" },
+  OH:          { label: "OH",          color: "#be185d", bg: "#fce7f3" },
 };
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────
@@ -268,6 +423,7 @@ export default function PWJTracker() {
   const isProcurement = user?.role === "PROCUREMENT";
   const isEngineer    = user?.role === "ENGINEER";
   const isVP          = user?.role === "VP";
+  const isOH          = user?.role === "OH";
 
   if (!user) return <LoginPage onLogin={handleLogin} />;
 
@@ -287,8 +443,8 @@ export default function PWJTracker() {
   const [approvalF, setApprovalF]     = useState("ALL");
   const [projectF, setProjectF]       = useState("");
   const [page, setPage]               = useState(0);
-  const [sortBy, setSortBy]           = useState("id");
-  const [sortDir, setSortDir]         = useState("asc");
+  const [sortBy, setSortBy]           = useState("updatedAt");
+  const [sortDir, setSortDir]         = useState("desc");
   const PAGE_SIZE = 15;
 
   const [mainTab, setMainTab] = useState("entries");
@@ -302,7 +458,7 @@ export default function PWJTracker() {
   const [toast, setToast]                 = useState(null);
 
   // Approval form
-  const [approvalForm, setApprovalForm] = useState({ approvalStatus: "PROCEED", comment: "", approvedBy: "" });
+  const [approvalForm, setApprovalForm] = useState({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
   const [approvalLoading, setApprovalLoading] = useState(false);
 
   // Create form
@@ -314,6 +470,8 @@ export default function PWJTracker() {
   const [viewVendor, setViewVendor]             = useState(null);
   const [vpLoading, setVpLoading]               = useState(false);
   const [vendorStatusTab, setVendorStatusTab]   = useState("ALL");
+  const [vendorSearch, setVendorSearch]         = useState("");
+  const [vendorCategoryFilter, setVendorCategoryFilter] = useState("");
 
   // Vendor modal
   const [vendorModal, setVendorModal]     = useState(false);
@@ -338,15 +496,62 @@ export default function PWJTracker() {
   const [userMgmtModal, setUserMgmtModal] = useState(false);
   const [allUsers, setAllUsers]           = useState([]);
   const [userMgmtLoading, setUserMgmtLoading] = useState(false);
-  const [newUserForm, setNewUserForm]     = useState({ username: "", password: "", fullName: "", email: "", role: "ENGINEER" });
+  const [newUserForm, setNewUserForm]     = useState({ username: "", password: "", fullName: "", email: "", phone: "", role: "ENGINEER" });
   const [docModal, setDocModal]           = useState(null);   // { entry, vendor }
   const [docLoading, setDocLoading]       = useState(false);
+  const [docEditMode, setDocEditMode]     = useState(false);
+  const [docEditForm, setDocEditForm]     = useState({});
+  const [docSaving, setDocSaving]         = useState(false);
+  const [selectedIds, setSelectedIds]       = useState(new Set());
+  const [genDocModal, setGenDocModal]       = useState(false);  // vendor+pwjType picker
+  const [genDocVendor, setGenDocVendor]     = useState("");
+  const [genDocPwjType, setGenDocPwjType]   = useState("PO");
+  const [genDocSaving, setGenDocSaving]     = useState(false);
   const [pendingDocs, setPendingDocs]     = useState([]);
   const [pendingDocsModal, setPendingDocsModal] = useState(false);
   const [pendingDocsLoading, setPendingDocsLoading] = useState(false);
   const [vpCommentMap, setVpCommentMap]         = useState({});  // docId → comment text
+  const [managedProjects, setManagedProjects] = useState([]);
+  const [projectMgmtModal, setProjectMgmtModal] = useState(false);
+  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
+  const [projectMgmtForm, setProjectMgmtForm] = useState(BLANK_PROJECT_FORM);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectMgmtLoading, setProjectMgmtLoading] = useState(false);
+  const [projectClients, setProjectClients] = useState([]);
+  const [poWoUploading, setPoWoUploading] = useState(false);
+  const [amendedPoWoUploading, setAmendedPoWoUploading] = useState(false);
+
+  // ── Add Vendor Page ──
+  const [addVendorPage, setAddVendorPage] = useState(false);
+  const [addVendorLoading, setAddVendorLoading] = useState(false);
+  const BLANK_VENDOR_FORM = {
+    name: "", companyType: "", ratings: 0,
+    productServices: [{ category: "", items: [""] }],
+    salutation: "Mr.", contactPerson: "", email: "", phoneNumber: "",
+    spocSameAsCustomer: false, spocName: "", spocEmail: "", spocPhone: "",
+    contacts: [],
+    street: "", city: "", state: "", zipCode: "", country: "India", branch: "",
+    vendorCode: "", empanelDate: "", vendorType: [],
+    portfolioDocUrl: "", portfolioDocUploading: false,
+    website: "", socialMedia: [""], catalogues: [],
+    paymentDetails: "", deliveryTerms: "",
+    gstNumber: "", tanNumber: "", panNumber: "",
+    gstDocUrl: "", msmeDocUrl: "", tanDocUrl: "", panDocUrl: "",
+    gstDocUploading: false, msmeDocUploading: false, tanDocUploading: false, panDocUploading: false,
+    msmeRegistered: null,
+    bankName: "", accountNumber: "", ifscCode: "", bankDetails: "",
+    bankDocUrl: "", bankDocUploading: false, bankOcrLoading: false,
+  };
+  const [addVendorForm, setAddVendorForm] = useState(BLANK_VENDOR_FORM);
+
   const [engDocFile, setEngDocFile]       = useState(null);
   const [engDocUploading, setEngDocUploading] = useState(false);
+  const [engInvoiceFiles, setEngInvoiceFiles]     = useState([]);
+  const [engDeliveryFiles, setEngDeliveryFiles]   = useState([]);
+  const [engInvoiceUploading, setEngInvoiceUploading] = useState(false);
+  const [engDeliveryUploading, setEngDeliveryUploading] = useState(false);
+  const [engDeliveredDate, setEngDeliveredDate]         = useState("");
+  const [engDateSaving, setEngDateSaving]               = useState(false);
 
   // ── Fetch data ──
   const fetchEntries = useCallback(async () => {
@@ -377,8 +582,22 @@ export default function PWJTracker() {
     try { const r = await api.getProjects(); if (r.success) setProjects(r.data); } catch {}
   }, []);
 
+  const fetchManagedProjects = useCallback(async () => {
+    try { const r = await api.getManagedProjects(); if (r.success) setManagedProjects(r.data); } catch {}
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try { const r = await api.getUsers(); if (r.success) setAllUsers(r.data); } catch {}
+  }, []);
+
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
+  // Sync engineer's delivered-date input when the document modal opens on a new entry
+  useEffect(() => {
+    if (docModal?.entry) setEngDeliveredDate(docModal.entry.deliveredDate || "");
+  }, [docModal?.entry?.id]);
+  useEffect(() => { fetchManagedProjects(); }, [fetchManagedProjects]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   // Auto-refresh entries when user returns to this tab (catches VP approval from another session)
   useEffect(() => {
@@ -415,8 +634,11 @@ export default function PWJTracker() {
 
   // ── Create submit ──
   const submitCreate = async () => {
-    if (!createForm.raisedBy || !createForm.projectName || !createForm.materialRequired) {
+    if (!createForm.projectName || !createForm.materialRequired) {
       showToast("Fill required fields", "error"); return;
+    }
+    if (isEngineer && (!createForm.specification || !createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
+      showToast("Please fill all required fields", "error"); return;
     }
     try {
       const res = await api.createEntry({ ...createForm, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null });
@@ -587,14 +809,12 @@ export default function PWJTracker() {
 
   // ── Load vendors for Vendors tab ──
   const loadVendorsTab = async () => {
-    if (allVendorsStatus.length === 0 || mainTab !== "vendors") {
-      setVpLoading(true);
-      try {
-        const r = await api.getAllVendorsWithStatus();
-        if (r.success) setAllVendorsStatus(r.data);
-      } catch {}
-      finally { setVpLoading(false); }
-    }
+    setVpLoading(true);
+    try {
+      const r = await api.getAllVendorsWithStatus();
+      if (r.success) setAllVendorsStatus(r.data);
+    } catch {}
+    finally { setVpLoading(false); }
   };
 
   // ── VP vendor approvals ──
@@ -621,9 +841,9 @@ export default function PWJTracker() {
       });
       if (r.success) {
         const updatedEntry = { ...assignModal, vendor: assignForm.vendor, pwjType: assignForm.pwjType };
-        setEntries(es => es.map(e => e.id === assignModal.id ? updatedEntry : e));
         showToast("Vendor & PWJ Type assigned ✅");
         setAssignModal(null);
+        fetchEntries();
         // Auto-open doc preview if PWJ type is set
         if (assignForm.pwjType) openDocModal(updatedEntry);
       } else showToast(r.message || "Update failed", "error");
@@ -634,6 +854,10 @@ export default function PWJTracker() {
   // ── Document generation ──
   const openDocModal = async (row) => {
     setDocModal({ entry: row, vendor: null });
+    // Ensure users are loaded for contact details lookup
+    if (!allUsers.length) {
+      try { const ur = await api.getUsers(); if (ur.success) setAllUsers(ur.data); } catch {}
+    }
     if (row.vendor) {
       try {
         const r = await api.getVendorByName(row.vendor);
@@ -656,6 +880,75 @@ export default function PWJTracker() {
     finally { setDocLoading(false); }
   };
 
+  const startDocEdit = () => {
+    const e = docModal.entry;
+    const v = docModal.vendor;
+    const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
+    const data = parseDocData(e);
+    const autoDocNum = autoDocNumber(e);
+    const msmeVal = v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || "";
+    const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
+    setDocEditForm({
+      ...JSON.parse(JSON.stringify(data)),
+      docNumber:      e.docNumber || autoDocNum,
+      gstNumber:      data.gstNumber      || v?.gstNumber || "",
+      panNumber:      data.panNumber      || v?.panNumber || "",
+      msme:           data.msme           || msmeVal,
+      kindAttn:       data.kindAttn       || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "",
+      contactDetails: data.contactDetails || raisedByContact,
+    });
+    setDocEditMode(true);
+  };
+
+  const saveDocEdits = async () => {
+    if (!docModal) return;
+    setDocSaving(true);
+    try {
+      const e = docModal.entry;
+      const savedTotals = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct);
+      const docDataStr = JSON.stringify({ ...docEditForm, amountInWords: amountToWords(savedTotals.total) });
+      const body = {
+        raisedBy:         e.raisedBy,
+        projectName:      e.projectName,
+        approvalStatus:   e.approvalStatus,
+        status:           e.status,
+        boqNo:            docEditForm.boqNo             || e.boqNo            || null,
+        materialRequired: docEditForm.items?.[0]?.item  || e.materialRequired,
+        specification:    e.specification               || null,
+        brand:            e.brand                       || null,
+        unit:             docEditForm.items?.[0]?.unit  || e.unit             || null,
+        quantity:         docEditForm.items?.[0]?.qty   ? Number(docEditForm.items[0].qty) : null,
+        remarks:          e.remarks                     || null,
+        dateOfRequirement: docEditForm.completionDate   || e.dateOfRequirement || null,
+        vendor:           e.vendor                      || null,
+        pwjType:          e.pwjType                     || null,
+        pwjIssued:        e.pwjIssued,
+        docData:          docDataStr,
+        docNumber:        docEditForm.docNumber          || null,
+      };
+      const r = await api.updateEntry(e.id, body);
+      if (r.success) {
+        let updated = { ...e, ...r.data };
+        // Auto-resubmit for VP approval if saving after a revision request
+        if (e.docStatus === "REVISION_REQUESTED") {
+          const sr = await api.submitDoc(e.id);
+          if (sr.success) {
+            updated = { ...updated, docStatus: "PENDING_VP_APPROVAL" };
+            showToast("Document revised & resubmitted for VP approval ✅");
+          } else {
+            showToast("Document updated ✅");
+          }
+        } else {
+          showToast("Document updated ✅");
+        }
+        setDocModal(m => ({ ...m, entry: updated }));
+        setDocEditMode(false);
+        fetchEntries();
+      } else showToast(r.message || "Failed to save", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setDocSaving(false); }
+  };
+
   const openPendingDocs = async () => {
     setPendingDocsModal(true);
     setPendingDocsLoading(true);
@@ -672,7 +965,7 @@ export default function PWJTracker() {
     if (r.success) {
       setPendingDocs(d => d.filter(x => x.id !== id));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
-      setEntries(es => es.map(e => e.id === id ? { ...e, docStatus: "VP_APPROVED", docComments: r.data?.docComments } : e));
+      fetchEntries();
       showToast("Document approved ✅");
     } else showToast(r.message || "Failed", "error");
   };
@@ -683,124 +976,205 @@ export default function PWJTracker() {
     if (r.success) {
       setPendingDocs(d => d.filter(x => x.id !== id));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
-      const newStatus = r.data?.docStatus || (comment ? "REVISION_REQUESTED" : "VP_REJECTED");
-      setEntries(es => es.map(e => e.id === id ? { ...e, docStatus: newStatus, docComments: r.data?.docComments } : e));
+      fetchEntries();
       showToast(comment ? "Revision requested — Procurement notified" : "Document rejected");
     } else showToast(r.message || "Failed", "error");
+  };
+
+  // ── Generate Doc from multiple selected entries ───────────────────
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const submitGenDoc = async () => {
+    if (!genDocVendor || !genDocPwjType) { showToast("Pick vendor and doc type", "error"); return; }
+    setGenDocSaving(true);
+    try {
+      const selected = entries.filter(e => selectedIds.has(e.id));
+      const items = selected.map(e => ({
+        item: e.materialRequired || "",
+        unit: e.unit || "",
+        qty: e.quantity != null ? String(e.quantity) : "",
+        rate: "",
+      }));
+      while (items.length < 4) items.push({ item: "", unit: "", qty: "", rate: "" });
+      const primary = selected[0];
+      const existing = parseDocData(primary);
+      const newDocData = JSON.stringify({ ...existing, items });
+      const r = await api.updateEntry(primary.id, { vendor: genDocVendor, pwjType: genDocPwjType, docData: newDocData });
+      if (r.success) {
+        const updated = { ...primary, vendor: genDocVendor, pwjType: genDocPwjType, docData: newDocData };
+        setGenDocModal(false);
+        setSelectedIds(new Set());
+        fetchEntries();
+        openDocModal(updated);
+      } else showToast(r.message || "Failed", "error");
+    } finally { setGenDocSaving(false); }
   };
 
   const downloadDoc = () => {
     if (!docModal) return;
     const e = docModal.entry; const v = docModal.vendor;
-    const typeColor  = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
-    const typeName   = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-    const vendorLabel = e.pwjType === "JO" ? "Service Provider" : "Vendor / Supplier";
-    const itemLabel   = e.pwjType === "PO" ? "Item Details" : e.pwjType === "WO" ? "Scope of Work" : "Job Description";
-    const today      = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-    const docNum     = e.docNumber || `${e.pwjType}-${new Date().getFullYear()}-${String(e.id).padStart(4,"0")}`;
-    const addr       = v ? [v.street, v.city, v.state, v.zipCode].filter(Boolean).join(", ") : "";
+    const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
+    const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
+    const docData = parseDocData(e);
+    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct);
+    const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
+    const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
+    const docNum    = e.docNumber || autoDocNumber(e);
+    const today     = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    const terms     = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+    const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-<title>${docNum}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; padding: 40px; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:20px; border-bottom:2px solid #e2e8f0; margin-bottom:24px; }
-  .doc-type { font-size:28px; font-weight:900; color:${typeColor}; letter-spacing:-1px; }
-  .doc-meta { font-size:13px; color:#64748b; margin-top:5px; line-height:1.7; }
-  .company { text-align:right; font-size:15px; font-weight:800; }
-  .company-sub { font-size:12px; color:#64748b; margin-top:3px; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:22px; }
-  .box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; }
-  .box-title { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-  .box-name { font-size:14px; font-weight:700; color:#0f172a; }
-  .box-detail { font-size:12px; color:#64748b; margin-top:3px; line-height:1.6; }
-  .section-title { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-  table { width:100%; border-collapse:collapse; margin-bottom:22px; }
-  th { background:${typeColor}; color:#fff; padding:9px 12px; text-align:left; font-size:11px; font-weight:700; }
-  td { padding:10px 12px; font-size:13px; border-bottom:1px solid #e2e8f0; }
-  tr:nth-child(even) td { background:#fafbfe; }
-  .terms { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
-  .term-box { border-radius:8px; padding:14px 16px; }
-  .term-box.pay { background:#fff8f0; border:1px solid #fed7aa; }
-  .term-box.del { background:#f0fdf4; border:1px solid #bbf7d0; }
-  .term-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
-  .term-title.pay { color:#c2410c; } .term-title.del { color:#166534; }
-  .term-text { font-size:12px; color:#475569; line-height:1.6; }
-  .remarks { background:#fafbfe; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; font-size:12px; color:#475569; margin-bottom:22px; }
-  .sig { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:32px; padding-top:20px; border-top:2px dashed #e2e8f0; }
-  .sig-label { font-size:10px; color:#94a3b8; margin-bottom:30px; }
-  .sig-line { border-top:1px solid #94a3b8; padding-top:4px; font-size:11px; color:#475569; }
-  .approved-stamp { color:#166534; font-weight:700; }
-  .watermark { text-align:center; margin-top:40px; font-size:10px; color:#cbd5e1; }
-  @media print { body { padding:20px; } @page { margin:1cm; } }
-</style></head><body>
-<div class="header">
-  <div>
-    <div class="doc-type">${typeName}</div>
-    <div class="doc-meta">Document No: <strong style="color:#0f172a">${docNum}</strong><br/>
-    Date: <strong style="color:#0f172a">${today}</strong>${e.boqNo ? `<br/>BOQ Ref: <strong style="color:#0f172a">${e.boqNo}</strong>` : ""}</div>
-  </div>
-  <div class="company">PWJ Construction Pvt Ltd<div class="company-sub">Procurement Department</div></div>
-</div>
-<div class="grid2">
-  <div class="box">
-    <div class="box-title">${vendorLabel}</div>
-    <div class="box-name">${v?.name || e.vendor}</div>
-    ${v?.gstNumber ? `<div class="box-detail">GSTIN: ${v.gstNumber}</div>` : ""}
-    ${v?.contactPerson ? `<div class="box-detail">Contact: ${v.contactPerson}</div>` : ""}
-    ${v?.phoneNumber ? `<div class="box-detail">Phone: ${v.phoneNumber}</div>` : ""}
-    ${v?.email ? `<div class="box-detail">Email: ${v.email}</div>` : ""}
-    ${addr ? `<div class="box-detail">${addr}</div>` : ""}
-  </div>
-  <div class="box">
-    <div class="box-title">Project Details</div>
-    <div class="box-name">${e.projectName}</div>
-    <div class="box-detail">Raised by: ${e.raisedBy}</div>
-    ${e.dateOfRequirement ? `<div class="box-detail">Required by: ${e.dateOfRequirement}</div>` : ""}
-  </div>
-</div>
-<div class="section-title">${itemLabel}</div>
-<table>
-  <thead><tr><th>#</th><th>Description</th><th>Specification</th><th>Brand</th><th>Unit</th><th>Qty</th></tr></thead>
-  <tbody><tr>
-    <td>1</td>
-    <td><strong>${e.materialRequired}</strong></td>
-    <td>${e.specification || "—"}</td>
-    <td>${e.brand || "—"}</td>
-    <td>${e.unit || "—"}</td>
-    <td><strong>${e.quantity ?? "—"}</strong></td>
-  </tr></tbody>
-</table>
-<div class="terms">
-  <div class="term-box pay">
-    <div class="term-title pay">Payment Terms</div>
-    <div class="term-text">${v?.paymentDetails || "As per agreement"}${v?.bankDetails ? `<br/>Bank: ${v.bankDetails}` : ""}</div>
-  </div>
-  <div class="term-box del">
-    <div class="term-title del">Delivery Terms</div>
-    <div class="term-text">${v?.deliveryTerms || "As per standard terms"}</div>
-  </div>
-</div>
-${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>` : ""}
-<div class="sig">
-  <div>
-    <div class="sig-label">Prepared by Procurement</div>
-    <div class="sig-line">Signature &amp; Date</div>
-  </div>
-  <div>
-    <div class="sig-label">VP Approval</div>
-    <div class="sig-line"><span class="approved-stamp">✓ Approved by VP</span></div>
-  </div>
-</div>
-<div class="watermark">Generated by PWJ Tracker · ${docNum} · ${today}</div>
-</body></html>`;
+    const itemRows = docData.items.map((row, i) => {
+      const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
+      return `<tr>
+        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${i+1}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid #ddd;">${row.item || ""}</td>
+        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.unit || ""}</td>
+        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.qty || ""}</td>
+        <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(row.rate)}</td>
+        <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(amt)}</td>
+      </tr>`;
+    }).join("");
 
-    const win = window.open("", "_blank");
+    const termRows = terms.map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
+    const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
+      .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
+    <style>
+      @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; }
+      table { width: 100%; border-collapse: collapse; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 14px; }
+      .logo-box { display: flex; align-items: center; gap: 10px; }
+      .logo-hex { width: 48px; height: 48px; }
+      .doc-title { font-size: 17px; font-weight: 900; color: #111; }
+      .doc-meta { font-size: 11px; line-height: 1.7; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 14px; }
+      .billing-right { border-left: 1px solid #ddd; padding-left: 16px; }
+      th { background: ${typeColor}; color: #fff; font-weight: 700; font-size: 11px; padding: 7px 8px; text-align: left; }
+      .section-title { font-weight: 700; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 14px 0 8px; }
+      .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #ddd; margin: 14px 0; }
+      .info-cell { padding: 10px 12px; }
+      .info-cell + .info-cell { border-left: 1px solid #ddd; }
+      .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; border-top: 1px solid #ddd; padding-top: 6px; }
+      @media print { button { display: none; } }
+    </style></head><body>
+    <div class="header">
+      <div class="logo-box">
+        <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:64px;height:64px;object-fit:contain;" />
+        <div><div style="font-weight:900;font-size:15px;letter-spacing:1.5px;">HAPPIZO</div><div style="font-size:9px;color:#666;">Infrastructure and Solutions</div></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="doc-title">${typeName}</div>
+        <div class="doc-meta">
+          ${e.pwjType} Number : <strong>${docNum}</strong><br/>
+          ${e.pwjType} Date : <strong>${today}</strong><br/>
+          Project Name : <strong>${e.projectName}</strong>
+        </div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div style="font-weight:700;margin-bottom:5px;">TO:</div>
+        <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
+        ${v?.street ? `<div>${v.street}</div>` : ""}
+        ${(v?.city||v?.state) ? `<div>${[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
+        <div style="margin-top:4px;">GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
+        <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
+        <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
+      </div>
+      <div class="billing-right">
+        <div style="font-weight:700;margin-bottom:5px;">Billing Details</div>
+        <div style="font-weight:700;">${COMPANY_INFO.name}</div>
+        <div>${COMPANY_INFO.addr1}</div>
+        <div>${COMPANY_INFO.addr2}</div>
+        <div style="margin-top:4px;">GST: ${COMPANY_INFO.gst}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div>Dear Team,</div>
+      <div>We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
+    </div>
+    <table style="margin-bottom:0;">
+      <thead><tr>
+        <th style="width:36px;text-align:center;">S.No</th>
+        <th style="width:38%;">Item</th>
+        <th style="text-align:center;width:52px;">Unit</th>
+        <th style="text-align:center;width:52px;">Qty</th>
+        <th style="text-align:right;width:80px;">Rate</th>
+        <th style="text-align:right;width:88px;">Amount</th>
+      </tr></thead>
+      <tbody>
+        ${itemRows}
+        <tr>
+          <td colspan="4" rowspan="5" style="border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:8px 10px;vertical-align:top;">
+            <div style="font-weight:700;font-size:11px;">Amount in words</div>
+            <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
+          </td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;font-weight:600;">Sub Total</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.subTotal)}</td>
+        </tr>
+        <tr>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">CGST (${docData.cgstPct}%)</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.cgst)}</td>
+        </tr>
+        <tr>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">SGST (${docData.sgstPct}%)</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.sgst)}</td>
+        </tr>
+        <tr>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">Round off</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;"></td>
+        </tr>
+        <tr>
+          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">Total</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">${fmtCcy(totals.total)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div style="font-weight:700;text-decoration:underline;margin-bottom:4px;">Completion date</div>
+        <div style="margin-bottom:6px;">${docData.completionDate||""}</div>
+      </div>
+      <div class="info-cell">
+        <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
+        <div style="white-space:pre-line;">${docData.deliveryAddress||""}</div>
+      </div>
+      <div class="info-cell">
+        <div style="font-weight:700;margin-bottom:4px;">Contact Details</div>
+        <div style="white-space:pre-line;">${docData.contactDetails||raisedByContact}</div>
+      </div>
+    </div>
+    <div class="section-title">General Terms</div>
+    <table style="margin-bottom:14px;"><tbody>${termRows}</tbody></table>
+    <div class="section-title">Payment Terms</div>
+    ${stageRows}
+    <div style="margin-top:10px;font-size:11px;padding-left:8px;">
+      <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
+      <div style="padding-left:14px;">- site engineer signed copy along with measurement sheet and DC copy</div>
+      <div style="padding-left:14px;">- test / warranty / guarantee certificate, etc</div>
+    </div>
+    <div style="margin-top:20px;">
+      <div>For <strong>${COMPANY_INFO.name}</strong></div>
+      <div class="sig-grid">
+        <div><div style="color:#555;font-size:11px;margin-bottom:28px;">Approved By</div><div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div></div>
+        <div><div style="color:#555;font-size:11px;margin-bottom:28px;">Procurement Executive</div><div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div></div>
+      </div>
+    </div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),400);</script>
+    </body></html>`;
+
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
     win.document.write(html);
     win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
   };
 
   // ── Engineer: upload doc + notify procurement ──
@@ -824,6 +1198,55 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
     finally { setEngDocUploading(false); }
   };
 
+  // ── Engineer: multi-file upload (vendor invoices / delivery docs) ──
+  const uploadEngFiles = async (type, files) => {
+    if (!files.length || !docModal) return;
+    const setLoading = type === "invoice" ? setEngInvoiceUploading : setEngDeliveryUploading;
+    setLoading(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const res = await api.uploadDocument(file);
+        if (res.success) uploaded.push({ url: res.data, name: file.name, uploadedAt: new Date().toISOString().substring(0, 10) });
+        else showToast(`Failed to upload ${file.name}`, "error");
+      }
+      if (uploaded.length) {
+        const e = docModal.entry;
+        const existing = parseDocData(e);
+        const key = type === "invoice" ? "vendorInvoices" : "deliveryDocs";
+        const newDocData = JSON.stringify({ ...existing, [key]: [...(existing[key] || []), ...uploaded] });
+        const r = await api.procurementUpdate(e.id, { docData: newDocData });
+        if (r.success) {
+          const updated = { ...e, docData: newDocData };
+          setDocModal(m => ({ ...m, entry: updated }));
+          setEntries(es => es.map(x => x.id === e.id ? updated : x));
+          type === "invoice" ? setEngInvoiceFiles([]) : setEngDeliveryFiles([]);
+          showToast(`${uploaded.length} file(s) uploaded ✅`);
+        } else showToast(r.message || "Save failed", "error");
+      }
+    } catch { showToast("Network error", "error"); }
+    finally { setLoading(false); }
+  };
+
+  // ── Engineer: save delivered date ──
+  const saveEngDeliveredDate = async () => {
+    if (!docModal || !engDeliveredDate) return;
+    setEngDateSaving(true);
+    try {
+      const r = await api.deliveryUpdate(docModal.entry.id, {
+        deliveredDate: engDeliveredDate,
+        updatedBy: user.fullName || user.username,
+      });
+      if (r.success) {
+        const updated = { ...docModal.entry, deliveredDate: engDeliveredDate };
+        setDocModal(m => ({ ...m, entry: updated }));
+        setEntries(es => es.map(x => x.id === docModal.entry.id ? { ...x, deliveredDate: engDeliveredDate } : x));
+        showToast("Delivered date saved ✅");
+      } else showToast(r.message || "Failed to save", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setEngDateSaving(false); }
+  };
+
   // ── User Management ──
   const openUserMgmt = async () => {
     setUserMgmtModal(true);
@@ -842,7 +1265,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
     const r = await api.createUser(newUserForm);
     if (r.success) {
       setAllUsers(u => [...u, r.data]);
-      setNewUserForm({ username: "", password: "", fullName: "", email: "", role: "ENGINEER" });
+      setNewUserForm({ username: "", password: "", fullName: "", email: "", phone: "", role: "ENGINEER" });
       showToast(`User "${r.data.username}" created ✅`);
     } else {
       showToast(r.message || "Failed to create user", "error");
@@ -949,6 +1372,9 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
         @keyframes slideUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
         * { box-sizing: border-box; }
         body { margin: 0; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
         ::-webkit-scrollbar { width:6px; height:6px; }
         ::-webkit-scrollbar-track { background:#f1f5f9; }
         ::-webkit-scrollbar-thumb { background:#bfdbfe; border-radius:8px; }
@@ -975,17 +1401,17 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             {(isAdmin || isProcurement) && (
               <button style={s.hBtn("rgba(16,185,129,.9)")} onClick={exportCSV}>⬇ Export</button>
             )}
-            {(isAdmin || isProcurement) && (
+            {(isAdmin || isProcurement || isOH || isVP) && (
               <button style={s.hBtn("rgba(251,191,36,.9)")} onClick={openPending}>⏳ Pending</button>
             )}
             {isVP && (
               <button style={s.hBtn("rgba(245,158,11,.9)")} onClick={openPendingDocs}>📄 Doc Approvals</button>
             )}
-            {(isAdmin || isVP) && (
+            {(isAdmin || isVP || isOH) && (
               <button style={s.hBtn("rgba(99,102,241,.9)")} onClick={openUserMgmt}>👥 Manage Users</button>
             )}
             <button style={s.hBtn("rgba(34,197,94,.85)")} onClick={() => {
-              setCreateForm(f => ({ ...f, raisedBy: isEngineer ? user.fullName || user.username : "" }));
+              setCreateForm(f => ({ ...f, raisedBy: user.fullName || user.username }));
               setCreateModal(true);
             }}>+ New Entry</button>
             <button style={s.hBtn("rgba(255,255,255,.2)")} onClick={handleLogout}>↩ Logout</button>
@@ -996,7 +1422,8 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
         <div style={{ display: "flex", gap: 0, padding: "0 36px", background: "#fff", borderBottom: "2px solid #e2eaf5" }}>
           {[
             { key: "entries", label: "📋 PWJ Entries" },
-            ...((isAdmin || isProcurement || isVP) ? [{ key: "vendors", label: "🏭 Vendors" }] : []),
+            ...((isAdmin || isProcurement || isVP || isOH) ? [{ key: "vendors", label: "🏭 Vendors" }] : []),
+            ...((isAdmin || isVP || isOH) ? [{ key: "projects", label: "🏗️ Projects" }] : []),
           ].map(t => {
             const active = mainTab === t.key;
             return (
@@ -1004,6 +1431,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                 onClick={() => {
                   setMainTab(t.key);
                   if (t.key === "vendors") loadVendorsTab();
+                  if (t.key === "projects") fetchManagedProjects();
                 }}
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                   padding: "14px 24px", fontSize: 14, fontWeight: active ? 700 : 500,
@@ -1020,18 +1448,27 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
         {/* ─── STATS ─── */}
         <div style={s.statsRow}>
           {[
-            { label: "Total PRs",   value: stats.total,       accent: "#3b82f6" },
-            { label: "Closed",      value: stats.closed,      accent: "#22c55e" },
-            { label: "Open",        value: stats.open,        accent: "#f59e0b" },
-            { label: "Proceed",     value: stats.proceed,     accent: "#0ea5e9" },
-            { label: "On Hold",     value: stats.hold,        accent: "#f97316" },
-            { label: "Not Approved",value: stats.notApproved, accent: "#ef4444" },
-          ].map(c => (
-            <div key={c.label} style={s.statCard(c.accent)}>
-              <div style={s.statLbl}>{c.label}</div>
-              <div style={s.statVal}>{loading ? "—" : (c.value ?? "—")}</div>
-            </div>
-          ))}
+            { label: "Total PRs",    value: stats.total,       accent: "#3b82f6", statusV: null,     approvalV: null },
+            { label: "Closed",       value: stats.closed,      accent: "#22c55e", statusV: "CLOSED", approvalV: null },
+            { label: "Open",         value: stats.open,        accent: "#f59e0b", statusV: "OPEN",   approvalV: null },
+            { label: "Proceed",      value: stats.proceed,     accent: "#0ea5e9", statusV: null,     approvalV: "PROCEED" },
+            { label: "On Hold",      value: stats.hold,        accent: "#f97316", statusV: null,     approvalV: "HOLD" },
+            { label: "Not Approved", value: stats.notApproved, accent: "#ef4444", statusV: null,     approvalV: "NOT_APPROVED" },
+          ].map(c => {
+            const isActive = (c.statusV ? statusF === c.statusV : c.approvalV ? approvalF === c.approvalV : statusF === "ALL" && approvalF === "ALL");
+            return (
+              <div key={c.label}
+                onClick={() => {
+                  setStatusF(c.statusV || "ALL");
+                  setApprovalF(c.approvalV || "ALL");
+                  setPage(0);
+                }}
+                style={{ ...s.statCard(c.accent), cursor: "pointer", transition: "box-shadow .15s, transform .1s", boxShadow: isActive ? `0 4px 18px ${c.accent}44` : "0 2px 12px rgba(15,76,129,.07)", transform: isActive ? "translateY(-2px)" : "none", background: isActive ? `${c.accent}0d` : "#fff", outline: isActive ? `2px solid ${c.accent}` : "none" }}>
+                <div style={s.statLbl}>{c.label}</div>
+                <div style={{ ...s.statVal, color: isActive ? c.accent : "#1e293b" }}>{loading ? "—" : (c.value ?? "—")}</div>
+              </div>
+            );
+          })}
         </div>
 
         {/* ─── ERROR ─── */}
@@ -1072,12 +1509,18 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             <table style={s.table}>
               <thead>
                 <tr>
+                  <th style={{ ...s.th, width: 36, textAlign: "center" }}>
+                    <input type="checkbox"
+                      checked={entries.length > 0 && entries.every(e => selectedIds.has(e.id))}
+                      onChange={ev => setSelectedIds(ev.target.checked ? new Set(entries.map(e => e.id)) : new Set())}
+                      style={{ cursor: "pointer" }} />
+                  </th>
                   {[
-                    ["#","id"],["Date","timestamp"],["Raised By","raisedBy"],
+                    ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["BOQ","boqNo"],["Material","materialRequired"],
                     ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
-                    ["Image","—"],["Vendor","vendor"],["PWJ","pwjIssued"],["Type","pwjType"],["Approval","approvalStatus"],
-                    ["Status","status"],["Delivered","deliveredDate"],["Action","—"],
+                    ["Image","—"],["Approval","approvalStatus"],["Vendor","vendor"],["PWJ","pwjIssued"],["ACK","ack"],["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
+                    ["Action","—"],
                   ].map(([lbl, field]) => (
                     <th key={lbl} style={s.th}
                       onClick={field !== "—" ? () => handleSort(field) : undefined}>
@@ -1088,14 +1531,18 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={17} style={s.emptyRow}>Loading entries…</td></tr>
+                  <tr><td colSpan={20} style={s.emptyRow}>Loading entries…</td></tr>
                 ) : entries.length === 0 ? (
-                  <tr><td colSpan={17} style={s.emptyRow}>No entries match your filters.</td></tr>
+                  <tr><td colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
                 ) : entries.map((row, idx) => (
-                  <tr key={row.id} style={{ background: idx % 2 === 0 ? "#fff" : "#f8fbff", cursor: "pointer" }}>
+                  <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#eff6ff" : idx % 2 === 0 ? "#fff" : "#f8fbff", cursor: "pointer" }}>
+                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelect(row.id)} style={{ cursor: "pointer" }} />
+                    </td>
                     <td style={{ ...s.td, color: "#94a3b8", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                      {row.timestamp ? row.timestamp.substring(0, 10) : "—"}
+                      {(row.updatedAt || row.timestamp) ? (row.updatedAt || row.timestamp).substring(0, 10) : "—"}
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
@@ -1104,42 +1551,111 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                     <td style={{ ...s.td, fontSize: 12, color: "#64748b" }} onClick={() => setDetailRow(row)}>{row.brand || "—"}</td>
                     <td style={{ ...s.td, fontWeight: 600 }} onClick={() => setDetailRow(row)}>{row.quantity ?? "—"}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{row.dateOfRequirement || "—"}</td>
+                    {/* Image */}
                     <td style={{ ...s.td }} onClick={() => setDetailRow(row)}>
-                      {row.imageReference
-                        ? <img src={"http://192.168.1.16:8080" + row.imageReference} alt="ref" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2eaf5", cursor: "zoom-in" }} onError={e => { e.target.style.display = "none"; }} />
-                        : <span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>}
+                      {(() => {
+                        const imgs = parseImageRefs(row.imageReference);
+                        if (!imgs.length) return <span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>;
+                        return (
+                          <div style={{ position: "relative", display: "inline-block" }}>
+                            <img src={"http://192.168.1.11:8080" + imgs[0]} alt="ref" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2eaf5", cursor: "zoom-in" }} onError={e => { e.target.style.display = "none"; }} />
+                            {imgs.length > 1 && <span style={{ position: "absolute", top: -4, right: -4, background: "#1a6ab1", color: "#fff", borderRadius: 8, fontSize: 9, fontWeight: 700, padding: "1px 4px", lineHeight: 1.4 }}>+{imgs.length - 1}</span>}
+                          </div>
+                        );
+                      })()}
                     </td>
-                    <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span style={{ fontSize: 14, color: row.pwjIssued ? "#16a34a" : "#cbd5e1" }}>{row.pwjIssued ? "✓" : "—"}</span>
-                    </td>
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
-                      {row.pwjType
-                        ? <span style={{ fontSize: 11, fontWeight: 700, background: row.pwjType === "PO" ? "#dbeafe" : row.pwjType === "WO" ? "#fef9c3" : "#dcfce7", color: row.pwjType === "PO" ? "#1d4ed8" : row.pwjType === "WO" ? "#92400e" : "#166534", borderRadius: 5, padding: "2px 7px" }}>{row.pwjType}</span>
-                        : <span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>}
-                    </td>
+                    {/* Approval */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
                         <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
                         {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
                       </span>
                     </td>
+                    {/* Vendor */}
+                    <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                    {/* PWJ toggle */}
+                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                      {(isAdmin || isProcurement || isVP) ? (
+                        <button
+                          title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
+                          onClick={async () => {
+                            const r = await api.procurementUpdate(row.id, { pwjIssued: !row.pwjIssued });
+                            if (r.success) fetchEntries();
+                            else showToast(r.message || "Update failed", "error");
+                          }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
+                          {row.pwjIssued ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 16, color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
+                      )}
+                    </td>
+                    {/* ACK toggle */}
+                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                      {(isAdmin || isProcurement || isVP) ? (
+                        <button
+                          title={row.ack ? "ACK — click to unset" : "Not ACK — click to acknowledge"}
+                          onClick={async () => {
+                            const r = await api.procurementUpdate(row.id, { ack: !row.ack });
+                            if (r.success) fetchEntries();
+                            else showToast(r.message || "Update failed", "error");
+                          }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
+                          {row.ack ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 16, color: row.ack ? "#16a34a" : "#ef4444" }}>{row.ack ? "✓" : "✗"}</span>
+                      )}
+                    </td>
+                    {/* Doc Status */}
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
+                      {row.docStatus === "VP_APPROVED"
+                        ? <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>✅ Approved</span>
+                        : row.docStatus === "PENDING_VP_APPROVAL"
+                          ? <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⏳ Pending</span>
+                          : row.docStatus === "VP_REJECTED"
+                            ? <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>❌ Rejected</span>
+                            : row.docStatus === "REVISION_REQUESTED"
+                              ? <span style={{ background: "#fff7ed", color: "#c2410c", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⚠️ Revision</span>
+                              : <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>}
+                    </td>
+                    {/* Delivered Date */}
+                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap", color: "#64748b" }} onClick={() => setDetailRow(row)}>
+                      {row.deliveredDate || "—"}
+                    </td>
+                    {/* Status */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       <span style={s.badge(STATUS_META[row.status])}>
                         <span style={s.dot(STATUS_META[row.status]?.dot || "#94a3b8")} />
                         {row.status}
                       </span>
                     </td>
-                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap", color: "#64748b" }} onClick={() => setDetailRow(row)}>
-                      {row.deliveredDate || "—"}
+                    {/* Dependency */}
+                    <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
+                      <select value={row.dependency || ""}
+                        onChange={async e => {
+                          const val = e.target.value;
+                          const r = await api.procurementUpdate(row.id, { dependency: val || null });
+                          if (r.success) fetchEntries();
+                          else showToast(r.message || "Update failed", "error");
+                        }}
+                        style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, color: val => val ? "#0f172a" : "#94a3b8", background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
+                        <option value="">— None —</option>
+                        <option value="Site team">Site team</option>
+                        <option value="Procurement">Procurement</option>
+                        <option value="DH Approval">DH Approval</option>
+                        <option value="VP Approval">VP Approval</option>
+                        <option value="Vendor">Vendor</option>
+                        <option value="DIP">DIP</option>
+                      </select>
                     </td>
                     {/* ★ ACTION COLUMN */}
                     <td style={s.td} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        {isAdmin && canApprove(row) && (
+                        {(isOH || isVP) && canApprove(row) && (
                           <button style={s.approveBtn}
                             onClick={() => {
-                              setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "" });
+                              setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
                               setApprovalModal({ entry: row });
                             }}>
                             ✅ Approve
@@ -1156,7 +1672,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                           <button
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => openDocModal(row)}>
-                            📄 {row.docStatus === "VP_APPROVED" ? "Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Rejected" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
+                            📄 {row.docStatus === "VP_APPROVED" ? "Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
                           </button>
                         )}
                         {isEngineer && row.docStatus && (
@@ -1208,27 +1724,34 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             { key: "APPROVED",         label: "Approved" },
             { key: "REJECTED",         label: "Rejected" },
           ];
-          const displayed = vendorStatusTab === "ALL"
-            ? allVendorsStatus
-            : allVendorsStatus.filter(v => v.status === vendorStatusTab);
+          // Derive unique categories for filter dropdown
+          const categories = [...new Set(allVendorsStatus.map(v => v.category).filter(Boolean))].sort();
+          // Apply status tab + search + category filter, sorted latest updated first
+          const q = vendorSearch.toLowerCase().trim();
+          const displayed = [...allVendorsStatus]
+            .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+            .filter(v => vendorStatusTab === "ALL" || v.status === vendorStatusTab)
+            .filter(v => !vendorCategoryFilter || v.category === vendorCategoryFilter)
+            .filter(v => !q || [v.name, v.category, v.contactPerson, v.phoneNumber, v.email, v.gstNumber, v.vendorCode]
+              .some(f => f && f.toLowerCase().includes(q)));
           return (
             <div style={{ padding: "24px 36px" }}>
               {/* Top bar */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
                   Vendor Management
+                  <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
                 {(isAdmin || isProcurement) && (
-                  <button
-                    style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
-                    onClick={() => setVendorModal(true)}>
+                  <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
+                    onClick={() => { setAddVendorForm(BLANK_VENDOR_FORM); setAddVendorPage(true); }}>
                     ➕ Add Vendor
                   </button>
                 )}
               </div>
 
               {/* Status tabs */}
-              <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e2eaf5", marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e2eaf5", marginBottom: 16 }}>
                 {vtabs.map(t => {
                   const count = t.key === "ALL" ? allVendorsStatus.length : allVendorsStatus.filter(v => v.status === t.key).length;
                   const active = vendorStatusTab === t.key;
@@ -1237,8 +1760,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                         padding: "10px 18px", fontSize: 13, fontWeight: active ? 700 : 500,
                         color: active ? "#1a6ab1" : "#64748b",
-                        borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent",
-                        marginBottom: -2 }}>
+                        borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent", marginBottom: -2 }}>
                       {t.label}
                       <span style={{ marginLeft: 6, fontSize: 11, background: active ? "#dbeafe" : "#f1f5f9",
                         color: active ? "#1d4ed8" : "#64748b", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
@@ -1249,49 +1771,460 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                 })}
               </div>
 
-              {/* Vendor cards */}
+              {/* Search + filter bar */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 15, pointerEvents: "none" }}>🔍</span>
+                  <input
+                    type="text" placeholder="Search name, category, contact, GST, email…"
+                    value={vendorSearch} onChange={e => setVendorSearch(e.target.value)}
+                    style={{ width: "100%", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", boxSizing: "border-box" }} />
+                </div>
+                <select value={vendorCategoryFilter} onChange={e => setVendorCategoryFilter(e.target.value)}
+                  style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: vendorCategoryFilter ? "#0f172a" : "#94a3b8", outline: "none", cursor: "pointer", minWidth: 160 }}>
+                  <option value="">All Categories</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {(vendorSearch || vendorCategoryFilter) && (
+                  <button onClick={() => { setVendorSearch(""); setVendorCategoryFilter(""); }}
+                    style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#64748b", cursor: "pointer", fontWeight: 600 }}>
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Vendor list table */}
               {vpLoading ? (
                 <div style={{ textAlign: "center", padding: 60, color: "#64748b" }}>Loading vendors…</div>
               ) : displayed.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 14 }}>No vendors in this category</div>
+                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 14 }}>No vendors found</div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(340px,1fr))", gap: 14 }}>
-                  {displayed.map(v => {
+                <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #e2eaf5", overflow: "hidden" }}>
+                  {/* Table header */}
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1.4fr 1.2fr 1fr 120px", gap: 0, background: "#f8fafc", borderBottom: "1.5px solid #e2eaf5", padding: "10px 20px" }}>
+                    {["Vendor", "Category", "Contact", "GST / Code", "Status", "Actions"].map(h => (
+                      <div key={h} style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  {displayed.map((v, idx) => {
                     const cfg = STATUS_CFG[v.status] || STATUS_CFG.PENDING_APPROVAL;
                     const isPending = v.status === "PENDING_APPROVAL";
                     return (
-                      <div key={v.id} style={{ border: `1.5px solid ${isPending ? "#fde68a" : "#e2eaf5"}`, borderRadius: 14, padding: "16px 18px", background: isPending ? "#fffbeb" : "#f8fbff", display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                          <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", flex: 1, marginRight: 8 }}>{v.name}</div>
-                          <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px", whiteSpace: "nowrap",
-                            background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
+                      <div key={v.id}
+                        style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1.4fr 1.2fr 1fr 120px", gap: 0, padding: "13px 20px", borderBottom: "1px solid #f1f5f9", background: idx % 2 === 0 ? "#fff" : "#fafbfe", alignItems: "center", transition: "background .1s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#f0f7ff"}
+                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafbfe"}>
+                        {/* Name */}
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v.name}</div>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                            Added {v.createdAt ? v.createdAt.substring(0, 10) : "—"}
+                          </div>
+                        </div>
+                        {/* Category */}
+                        <div style={{ fontSize: 12, color: "#475569" }}>{v.category || "—"}</div>
+                        {/* Contact */}
+                        <div>
+                          {v.contactPerson && <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500 }}>{v.contactPerson}</div>}
+                          {v.phoneNumber && <div style={{ fontSize: 11, color: "#64748b" }}>📞 {v.phoneNumber}</div>}
+                          {v.email && <div style={{ fontSize: 11, color: "#64748b" }}>✉️ {v.email}</div>}
+                        </div>
+                        {/* GST / Code */}
+                        <div>
+                          {v.gstNumber && <div style={{ fontSize: 12, color: "#475569" }}>{v.gstNumber}</div>}
+                          {v.vendorCode && <div style={{ fontSize: 11, color: "#94a3b8" }}>#{v.vendorCode}</div>}
+                          {!v.gstNumber && !v.vendorCode && <span style={{ color: "#94a3b8" }}>—</span>}
+                        </div>
+                        {/* Status badge */}
+                        <div>
+                          <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
+                            background: cfg.bg, color: cfg.color, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot }} />
                             {cfg.label}
                           </span>
                         </div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
-                          {v.category && <span style={{ marginRight: 12 }}>📦 {v.category}</span>}
-                          {v.email && <span style={{ marginRight: 12 }}>✉️ {v.email}</span>}
-                          {v.phoneNumber && <span>📞 {v.phoneNumber}</span>}
-                        </div>
-                        {v.gstNumber && <div style={{ fontSize: 12, color: "#475569" }}>GST: {v.gstNumber}</div>}
-                        {v.bankDetails && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>🏦 {v.bankDetails}</div>}
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6, marginBottom: 10 }}>Added: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
-                        <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                        {/* Actions */}
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button onClick={() => setViewVendor(v)}
-                            style={{ flex: 1, background: "#fff", border: "1.5px solid #e2eaf5", borderRadius: 8, padding: "7px", color: "#1a6ab1", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
                             👁 View
                           </button>
                           {isVP && isPending && (<>
-                            <button style={{ flex: 1, background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 8, padding: "7px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅ Approve</button>
-                            <button style={{ flex: 1, background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 8, padding: "7px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌ Reject</button>
+                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
+                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ─── PROJECTS TAB ─── */}
+        {mainTab === "projects" && (() => {
+          const activeProjects   = managedProjects.filter(p => p.active);
+          const inactiveProjects = managedProjects.filter(p => !p.active);
+          const fmtINR = v => v != null ? `₹ ${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—";
+          const statusBadge = (status, type) => {
+            const col = status === "Received" ? "#166534" : status === "Pending" ? "#92400e" : "#475569";
+            const bg  = status === "Received" ? "#dcfce7"  : status === "Pending" ? "#fef3c7"  : "#f1f5f9";
+            return <span style={{ background: bg, color: col, borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{status || "—"}</span>;
+          };
+
+          const openCreateProject = async () => {
+            setEditingProject(null);
+            setProjectMgmtForm(BLANK_PROJECT_FORM);
+            const r = await api.getProjectClients();
+            if (r.success) setProjectClients(r.data);
+            setProjectMgmtModal(true);
+          };
+          const openEditProject = async (p) => {
+            setEditingProject(p);
+            setProjectMgmtForm({
+              name: p.name, location: p.location || "", description: p.description || "",
+              clientName: p.clientName || "", clientGstNo: p.clientGstNo || "",
+              clientAddress: p.clientAddress || "", billingAddress: p.billingAddress || "",
+              billingSameAsClient: (p.billingAddress || "") === (p.clientAddress || ""),
+              projectValue: p.projectValue != null ? String(p.projectValue) : "",
+              gstPct: p.gstPct != null ? String(p.gstPct) : "18",
+              poWoStatus: p.poWoStatus || "Pending", poWoDocUrl: p.poWoDocUrl || "",
+              amendedPoWoStatus: p.amendedPoWoStatus || "N/A", amendedPoWoDocUrl: p.amendedPoWoDocUrl || "",
+            });
+            const r = await api.getProjectClients();
+            if (r.success) setProjectClients(r.data);
+            setProjectMgmtModal(true);
+          };
+
+          const setF = (k, v) => setProjectMgmtForm(f => ({ ...f, [k]: v }));
+
+          const saveProject = async () => {
+            if (!projectMgmtForm.name.trim()) { showToast("Project name is required", "error"); return; }
+            setProjectMgmtLoading(true);
+            try {
+              const body = {
+                ...projectMgmtForm,
+                projectValue: projectMgmtForm.projectValue ? parseFloat(projectMgmtForm.projectValue) : null,
+                gstPct: projectMgmtForm.gstPct ? parseInt(projectMgmtForm.gstPct) : null,
+                billingAddress: projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress,
+              };
+              delete body.billingSameAsClient;
+              const r = editingProject
+                ? await api.updateProject(editingProject.id, body)
+                : await api.createProject(body);
+              if (r.success) {
+                await fetchManagedProjects();
+                showToast(editingProject ? "Project updated ✅" : "Project created ✅");
+                setProjectMgmtModal(false);
+              } else showToast(r.message || "Failed", "error");
+            } catch { showToast("Error saving project", "error"); }
+            finally { setProjectMgmtLoading(false); }
+          };
+
+          const deactivateProject = async (p) => {
+            if (!window.confirm(`Deactivate "${p.name}"?`)) return;
+            const r = await api.deleteProject(p.id);
+            if (r.success) { await fetchManagedProjects(); showToast("Project deactivated"); }
+          };
+          const reactivateProject = async (p) => {
+            const r = await api.updateProject(p.id, { active: true });
+            if (r.success) { await fetchManagedProjects(); showToast("Project reactivated ✅"); }
+          };
+
+          const uploadProjectDoc = async (field, file, setUploading) => {
+            setUploading(true);
+            try {
+              const fd = new FormData(); fd.append("file", file);
+              const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+              if (r.success) setF(field, r.data);
+              else showToast("Upload failed", "error");
+            } catch { showToast("Upload error", "error"); }
+            finally { setUploading(false); }
+          };
+
+          const inpSt = { width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" };
+          const selSt = { ...inpSt, cursor: "pointer" };
+          const lbl   = (txt) => <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{txt}</label>;
+          const sec   = (txt) => <div style={{ fontSize: 11, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: 1, borderBottom: "2px solid #e2e8f0", paddingBottom: 6, marginBottom: 14, marginTop: 6 }}>{txt}</div>;
+
+          // auto-fill client fields when client is selected from datalist
+          const onClientSelect = (name) => {
+            setF("clientName", name);
+            const found = projectClients.find(c => c.clientName === name);
+            if (found) {
+              setF("clientGstNo",   found.clientGstNo);
+              setF("clientAddress", found.clientAddress);
+              if (projectMgmtForm.billingSameAsClient) setF("billingAddress", found.clientAddress);
+            }
+          };
+
+          const grossVal   = parseFloat(projectMgmtForm.projectValue) || 0;
+          const gstAmt     = grossVal * (parseInt(projectMgmtForm.gstPct) || 0) / 100;
+          const totalVal   = grossVal + gstAmt;
+
+          return (
+            <div style={{ padding: "28px 36px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+                <div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Project Management</div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                    {activeProjects.length} active project{activeProjects.length !== 1 ? "s" : ""} · Engineers select from this list when creating entries
+                  </div>
+                </div>
+                <button onClick={openCreateProject}
+                  style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  + Add Project
+                </button>
+              </div>
+
+              {activeProjects.length === 0 && (
+                <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8", fontSize: 15 }}>
+                  No active projects yet. Click <strong>+ Add Project</strong> to get started.
+                </div>
+              )}
+
+              {/* Active project cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 16, marginBottom: 28 }}>
+                {activeProjects.map(p => (
+                  <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+                    {/* Card header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{p.name}</div>
+                        {p.location && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>
+                        <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>
+                      </div>
+                    </div>
+
+                    {/* Client row */}
+                    {p.clientName && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Client</div><div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{p.clientName}</div></div>
+                        {p.clientGstNo && <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 12, color: "#374151" }}>{p.clientGstNo}</div></div>}
+                      </div>
+                    )}
+
+                    {/* Financial row */}
+                    {p.projectValue != null && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 10px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Gross Value</div><div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{fmtINR(p.projectValue)}</div></div>
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 12, color: "#374151" }}>{p.gstPct != null ? `${p.gstPct}%` : "—"}</div></div>
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Total Value</div><div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>{fmtINR(p.totalValue)}</div></div>
+                      </div>
+                    )}
+
+                    {/* PO/WO row */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px" }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {statusBadge(p.poWoStatus)}
+                          {p.poWoDocUrl && <a href={`http://192.168.1.11:8080${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {statusBadge(p.amendedPoWoStatus)}
+                          {p.amendedPoWoDocUrl && <a href={`http://192.168.1.11:8080${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 10 }}>Added {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Inactive projects */}
+              {inactiveProjects.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", marginBottom: 10 }}>INACTIVE PROJECTS ({inactiveProjects.length})</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 10 }}>
+                    {inactiveProjects.map(p => (
+                      <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 18px", opacity: 0.6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#64748b", textDecoration: "line-through" }}>{p.name}</div>
+                          {p.location && <div style={{ fontSize: 11, color: "#94a3b8" }}>📍 {p.location}</div>}
+                        </div>
+                        <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Create / Edit Modal ── */}
+              {projectMgmtModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.6)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setProjectMgmtModal(false)}>
+                  <div style={{ background: "#fff", borderRadius: 18, width: "96%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto", padding: "28px 32px", boxShadow: "0 24px 80px rgba(0,0,0,.22)" }}
+                    onClick={e => e.stopPropagation()}>
+
+                    <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", marginBottom: 22 }}>
+                      {editingProject ? "✏️ Edit Project" : "🏗️ New Project"}
+                    </div>
+
+                    {/* ── Basic Info ── */}
+                    {sec("Project Info")}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        {lbl("Project Name *")}
+                        <input style={inpSt} placeholder="e.g. Adyar Residential Block A"
+                          value={projectMgmtForm.name} onChange={e => setF("name", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Location")}
+                        <input style={inpSt} placeholder="e.g. Chennai, Tamil Nadu"
+                          value={projectMgmtForm.location} onChange={e => setF("location", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Description")}
+                        <input style={inpSt} placeholder="Optional"
+                          value={projectMgmtForm.description} onChange={e => setF("description", e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* ── Client Info ── */}
+                    {sec("Client Details")}
+                    <datalist id="client-names-list">
+                      {projectClients.map(c => <option key={c.clientName} value={c.clientName} />)}
+                    </datalist>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        {lbl("Client Name")}
+                        <input style={inpSt} placeholder="Type or select existing client" list="client-names-list"
+                          value={projectMgmtForm.clientName}
+                          onChange={e => onClientSelect(e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Client GST No.")}
+                        <input style={inpSt} placeholder="e.g. 33AAAAA0000A1Z5"
+                          value={projectMgmtForm.clientGstNo} onChange={e => setF("clientGstNo", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Client Address")}
+                        <textarea rows={3} style={{ ...inpSt, resize: "none" }} placeholder="Full address…"
+                          value={projectMgmtForm.clientAddress}
+                          onChange={e => {
+                            setF("clientAddress", e.target.value);
+                            if (projectMgmtForm.billingSameAsClient) setF("billingAddress", e.target.value);
+                          }} />
+                      </div>
+                      <div>
+                        {lbl("Billing Address")}
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#475569", marginBottom: 5, cursor: "pointer" }}>
+                          <input type="checkbox" checked={projectMgmtForm.billingSameAsClient}
+                            onChange={e => {
+                              setF("billingSameAsClient", e.target.checked);
+                              if (e.target.checked) setF("billingAddress", projectMgmtForm.clientAddress);
+                            }} />
+                          Same as Client Address
+                        </label>
+                        <textarea rows={3} style={{ ...inpSt, resize: "none", opacity: projectMgmtForm.billingSameAsClient ? 0.5 : 1 }}
+                          placeholder="Billing address…" disabled={projectMgmtForm.billingSameAsClient}
+                          value={projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress}
+                          onChange={e => setF("billingAddress", e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* ── Financial ── */}
+                    {sec("Financial")}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                      <div>
+                        {lbl("Project Value (Gross ₹)")}
+                        <input style={inpSt} type="number" placeholder="0.00"
+                          value={projectMgmtForm.projectValue} onChange={e => setF("projectValue", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("GST %")}
+                        <select style={selSt} value={projectMgmtForm.gstPct} onChange={e => setF("gstPct", e.target.value)}>
+                          <option value="">— Select —</option>
+                          <option value="9">9%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Total Value (Gross + GST)")}
+                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
+                          value={grossVal > 0 ? `₹ ${totalVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                    </div>
+
+                    {/* ── PO / WO ── */}
+                    {sec("PO / WO")}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                      <div>
+                        {lbl("Status")}
+                        <select style={selSt} value={projectMgmtForm.poWoStatus} onChange={e => setF("poWoStatus", e.target.value)}>
+                          <option value="Received">Received</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
+                            {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
+                          </label>
+                          {projectMgmtForm.poWoDocUrl && (
+                            <a href={`http://192.168.1.11:8080${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Amended PO / WO ── */}
+                    {sec("Amended PO / WO")}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 24 }}>
+                      <div>
+                        {lbl("Status")}
+                        <select style={selSt} value={projectMgmtForm.amendedPoWoStatus} onChange={e => setF("amendedPoWoStatus", e.target.value)}>
+                          <option value="N/A">N/A</option>
+                          <option value="Received">Received</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("amendedPoWoDocUrl", e.target.files[0], setAmendedPoWoUploading)} />
+                            {amendedPoWoUploading ? "Uploading…" : projectMgmtForm.amendedPoWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
+                          </label>
+                          {projectMgmtForm.amendedPoWoDocUrl && (
+                            <a href={`http://192.168.1.11:8080${projectMgmtForm.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button onClick={saveProject} disabled={projectMgmtLoading}
+                        style={{ flex: 1, background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "12px 0", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                        {projectMgmtLoading ? "Saving…" : editingProject ? "💾 Save Changes" : "✅ Create Project"}
+                      </button>
+                      <button onClick={() => setProjectMgmtModal(false)}
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#64748b", fontFamily: "inherit" }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1324,18 +2257,25 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                   ["Unit", detailRow.unit],
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", detailRow.dateOfRequirement],
+                  ["Dependency", detailRow.dependency],
+                  ["ACK", detailRow.ack ? "✓ Acknowledged" : "✗ Not Acknowledged"],
                 ].map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
                     <div style={s.dVal}>{v || "—"}</div>
                   </div>
                 ))}
-                {detailRow.imageReference && (
+                {parseImageRefs(detailRow.imageReference).length > 0 && (
                   <div style={{ gridColumn: "1/-1" }}>
-                    <div style={s.dLabel}>Image Reference</div>
-                    <img src={"http://192.168.1.16:8080" + detailRow.imageReference} alt="reference"
-                      style={{ marginTop: 6, maxWidth: "100%", maxHeight: 260, borderRadius: 10, border: "1px solid #e2eaf5", objectFit: "contain" }}
-                      onError={e => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: detailRow.imageReference, style: "font-size:12px;color:#64748b;word-break:break-all" })); }} />
+                    <div style={s.dLabel}>Image Reference ({parseImageRefs(detailRow.imageReference).length})</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+                      {parseImageRefs(detailRow.imageReference).map((url, i) => (
+                        <img key={i} src={"http://192.168.1.11:8080" + url} alt={`ref-${i + 1}`}
+                          style={{ maxHeight: 180, maxWidth: "100%", borderRadius: 8, border: "1px solid #e2eaf5", objectFit: "contain", cursor: "pointer" }}
+                          onClick={() => window.open("http://192.168.1.11:8080" + url, "_blank")}
+                          onError={e => { e.target.style.display = "none"; }} />
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div style={s.divider}>🏭 Procurement & Status</div>
@@ -1375,11 +2315,11 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                 </>}
               </div>
               {/* Approve button inside detail modal */}
-              {isAdmin && canApprove(detailRow) && (
+              {(isOH || isVP) && canApprove(detailRow) && (
                 <button style={{ ...s.submitBtn(), marginTop: 20 }}
                   onClick={() => {
                     setDetailRow(null);
-                    setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "" });
+                    setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
                     setApprovalModal({ entry: detailRow });
                   }}>
                   ✅ Take Approval Action
@@ -1474,7 +2414,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                       <button style={s.approveBtn}
                         onClick={() => {
                           setPendingModal(false);
-                          setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "" });
+                          setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
                           setApprovalModal({ entry: row });
                         }}>
                         Approve
@@ -1501,71 +2441,151 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             </div>
             <div style={s.mBody}>
               <div style={s.grid2}>
-                {[
-                  ["Raised By *", "raisedBy", "text"],
-                  ["Project Name *", "projectName", "text"],
-                  ["BOQ No.", "boqNo", "text"],
-                  ["Brand", "brand", "text"],
-                  ["Unit", "unit", "text"],
-                  ["Quantity", "quantity", "number"],
-                  ["Vendor", "vendor", "text"],
-                  ["Date of Requirement", "dateOfRequirement", "date"],
-                ].map(([lbl, key, type]) => (
-                  <div key={key} style={s.formGroup}>
-                    <label style={s.label}>{lbl}</label>
-                    <input style={s.input} type={type} placeholder={lbl.replace(" *","")}
-                      value={createForm[key] || ""}
-                      onChange={e => setCreateForm(f => ({ ...f, [key]: e.target.value }))} />
-                  </div>
-                ))}
+                {/* 1. Project Name */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Image Reference</label>
-                  <input style={s.input} type="file" accept="image/*"
-                    onChange={async e => {
-                      const file = e.target.files[0];
-                      if (!file) return;
-                      showToast("Uploading image…");
-                      const res = await api.uploadImage(file);
-                      if (res.success) {
-                        setCreateForm(f => ({ ...f, imageReference: res.data }));
-                        showToast("Image uploaded");
-                      } else {
-                        showToast(res.message || "Upload failed", "error");
-                      }
-                    }} />
-                  {createForm.imageReference && (
-                    <img src={"http://192.168.1.16:8080" + createForm.imageReference}
-                      alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 8, objectFit: "contain", border: "1px solid #e2eaf5" }} />
+                  <label style={s.label}>Project Name *</label>
+                  {managedProjects.filter(p => p.active).length > 0 ? (
+                    <select style={s.select2} value={createForm.projectName}
+                      onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))}>
+                      <option value="">-- Select Project --</option>
+                      {managedProjects.filter(p => p.active).map(p => (
+                        <option key={p.id} value={p.name}>{p.name}{p.location ? ` · ${p.location}` : ""}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input style={s.input} placeholder="Project Name"
+                      value={createForm.projectName || ""}
+                      onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))} />
+                  )}
+                  {managedProjects.filter(p => p.active).length === 0 && (
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
                   )}
                 </div>
+                {/* 2. BOQ No. */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
+                  <label style={s.label}>BOQ No.</label>
+                  <input style={s.input} type="text" placeholder="BOQ No."
+                    value={createForm.boqNo || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, boqNo: e.target.value }))} />
+                </div>
+                {/* 3. Material Required */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Material Required *</label>
                   <input style={s.input} placeholder="Material Required"
                     value={createForm.materialRequired}
                     onChange={e => setCreateForm(f => ({ ...f, materialRequired: e.target.value }))} />
                 </div>
+                {/* 4. Image Reference */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification</label>
+                  <label style={s.label}>Image Reference</label>
+                  <input style={s.input} type="file" accept="image/*" multiple
+                    onChange={async e => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      showToast(`Uploading ${files.length} image${files.length > 1 ? "s" : ""}…`);
+                      const existing = parseImageRefs(createForm.imageReference);
+                      const urls = [...existing];
+                      for (const file of files) {
+                        const res = await api.uploadImage(file);
+                        if (res.success) urls.push(res.data);
+                        else showToast(`Failed: ${file.name}`, "error");
+                      }
+                      setCreateForm(f => ({ ...f, imageReference: JSON.stringify(urls) }));
+                      showToast(`${urls.length} image${urls.length > 1 ? "s" : ""} uploaded ✅`);
+                      e.target.value = "";
+                    }} />
+                  {parseImageRefs(createForm.imageReference).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {parseImageRefs(createForm.imageReference).map((url, i) => (
+                        <div key={i} style={{ position: "relative" }}>
+                          <img src={"http://192.168.1.11:8080" + url} alt={`preview-${i + 1}`}
+                            style={{ height: 90, width: 90, objectFit: "cover", borderRadius: 8, border: "1px solid #e2eaf5" }} />
+                          <button type="button"
+                            onClick={() => {
+                              const updated = parseImageRefs(createForm.imageReference).filter((_, idx) => idx !== i);
+                              setCreateForm(f => ({ ...f, imageReference: updated.length ? JSON.stringify(updated) : "" }));
+                            }}
+                            style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* 5. Specification */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
+                  <label style={s.label}>Specification{isEngineer && " *"}</label>
                   <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
                 </div>
+                {/* 6. Brand */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Approval Status</label>
-                  <select style={s.select2} value={createForm.approvalStatus}
-                    onChange={e => setCreateForm(f => ({ ...f, approvalStatus: e.target.value }))}>
-                    <option value="PROCEED">Proceed</option>
-                    <option value="HOLD">Hold</option>
-                    <option value="NOT_APPROVED">Not Approved</option>
+                  <label style={s.label}>Brand</label>
+                  <input style={s.input} type="text" placeholder="Brand"
+                    value={createForm.brand || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, brand: e.target.value }))} />
+                </div>
+                {/* 7. Unit */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Unit{isEngineer && " *"}</label>
+                  <select style={s.select2} value={createForm.unit || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}>
+                    <option value="">-- Select Unit --</option>
+                    <optgroup label="Count / Piece">
+                      <option value="Nos">Nos (Numbers)</option>
+                      <option value="Set">Set</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Box">Box</option>
+                      <option value="Bundle">Bundle</option>
+                      <option value="Roll">Roll</option>
+                      <option value="Sheet">Sheet</option>
+                      <option value="Lot">Lot</option>
+                      <option value="Length">Length</option>
+                    </optgroup>
+                    <optgroup label="Area">
+                      <option value="Sqft">Sqft (Square Feet)</option>
+                      <option value="Sqm">Sqm (Square Metres)</option>
+                      <option value="Sqyd">Sqyd (Square Yards)</option>
+                    </optgroup>
+                    <optgroup label="Length / Running">
+                      <option value="Rft">Rft (Running Feet)</option>
+                      <option value="Rm">Rm (Running Metres)</option>
+                      <option value="m">m (Metres)</option>
+                      <option value="ft">ft (Feet)</option>
+                    </optgroup>
+                    <optgroup label="Volume">
+                      <option value="Cum">Cum (Cubic Metres)</option>
+                      <option value="Cft">Cft (Cubic Feet)</option>
+                      <option value="Ltr">Ltr (Litres)</option>
+                    </optgroup>
+                    <optgroup label="Weight">
+                      <option value="Kg">Kg (Kilograms)</option>
+                      <option value="Ton">Ton (Tonnes)</option>
+                      <option value="Quintal">Quintal</option>
+                    </optgroup>
+                    <optgroup label="Masonry / Cement">
+                      <option value="Bag">Bag</option>
+                      <option value="Brick">Brick</option>
+                      <option value="Block">Block</option>
+                    </optgroup>
                   </select>
                 </div>
+                {/* 8. Quantity */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Status</label>
-                  <select style={s.select2} value={createForm.status}
-                    onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="OPEN">Open</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
+                  <label style={s.label}>Quantity{isEngineer && " *"}</label>
+                  <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
+                    value={createForm.quantity || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
+                    onWheel={e => e.target.blur()} />
+                </div>
+                {/* 9. Date of Requirement */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Date of Requirement{isEngineer && " *"}</label>
+                  <input style={s.input} type="date" placeholder="Date of Requirement"
+                    value={createForm.dateOfRequirement || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
                 </div>
               </div>
               <button style={{ ...s.submitBtn(), marginTop: 8 }} onClick={submitCreate}>
@@ -1814,10 +2834,19 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                       <span style={st.headL}>📋 Vendor Policies</span>{minusBtn("policies")}
                     </div>
                     <div style={st.body}>
-                      <div style={grid("1fr 1fr 1fr")}>
+                      <div style={grid("1fr 1fr")}>
                         <div style={fld}><label style={lbl}>Maximum Return Days</label><input style={inp} type="number" placeholder="Enter in Days" value={vf.maximumReturnDays} onChange={e => setF("maximumReturnDays", e.target.value)} /></div>
                         <div style={fld}><label style={lbl}>Return Fees</label><input style={inp} placeholder="Enter in Rupees" value={vf.returnFees} onChange={e => setF("returnFees", e.target.value)} /></div>
-                        <div style={fld}><label style={lbl}>List Vendor Policies</label><input style={inp} placeholder="Describe if any" value={vf.listVendorPolicies} onChange={e => setF("listVendorPolicies", e.target.value)} /></div>
+                      </div>
+                      <div style={fld}>
+                        <label style={lbl}>Vendor Policies</label>
+                        <textarea
+                          rows={5}
+                          placeholder="Enter vendor policies, terms, conditions, notes…"
+                          value={vf.listVendorPolicies}
+                          onChange={e => setF("listVendorPolicies", e.target.value)}
+                          style={{ ...inp, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
+                        />
                       </div>
                       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer", marginTop: 4 }}>
                         <input type="checkbox" checked={vf.vendorPaysReturnShipping} onChange={e => setF("vendorPaysReturnShipping", e.target.checked)} />
@@ -1936,7 +2965,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                                   showToast(`${v.name} rejected`, "error");
                                 } else showToast(r.message || "Failed", "error");
                               }}>
-                              ❌ Reject
+                              ❌ Not Approved
                             </button>
                           </div>
                         )}
@@ -2007,14 +3036,16 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             {/* Header */}
             {(() => {
               const e = docModal.entry; const v = docModal.vendor;
+              const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
+              const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
               const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeBg    = e.pwjType === "PO" ? "#dbeafe" : e.pwjType === "WO" ? "#fef3c7" : "#dcfce7";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
               const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-              const docNum = e.docNumber || `${e.pwjType}-${new Date().getFullYear()}-${String(e.id).padStart(4,"0")}`;
+              const docNum = e.docNumber || autoDocNumber(e);
               const statusColor = e.docStatus === "VP_APPROVED" ? "#166534" : e.docStatus === "PENDING_VP_APPROVAL" ? "#92400e" : e.docStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
               const statusBg    = e.docStatus === "VP_APPROVED" ? "#dcfce7" : e.docStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : e.docStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
-              const statusLabel = e.docStatus === "VP_APPROVED" ? "✅ VP Approved" : e.docStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : e.docStatus === "VP_REJECTED" ? "❌ VP Rejected" : "Draft";
+              const statusLabel = e.docStatus === "VP_APPROVED" ? "✅ VP Approved" : e.docStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : e.docStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
               return (
                 <>
                   {/* Top bar */}
@@ -2024,150 +3055,324 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                       <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{typeName}</span>
                       <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700 }}>{statusLabel}</span>
                     </div>
-                    <button onClick={() => setDocModal(null)} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
-                  </div>
-
-                  {/* Document body */}
-                  <div style={{ overflowY: "auto", flex: 1, padding: "0" }}>
-                    <div style={{ padding: "32px 40px", fontFamily: "'DM Sans', sans-serif" }}>
-
-                      {/* Document header */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, paddingBottom: 20, borderBottom: "2px solid #e2e8f0" }}>
-                        <div>
-                          <div style={{ fontSize: 26, fontWeight: 900, color: typeColor, fontFamily: "'Plus Jakarta Sans',sans-serif", letterSpacing: "-1px" }}>{typeName}</div>
-                          <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Document No: <strong style={{ color: "#0f172a" }}>{docNum}</strong></div>
-                          <div style={{ fontSize: 13, color: "#64748b" }}>Date: <strong style={{ color: "#0f172a" }}>{today}</strong></div>
-                          {e.boqNo && <div style={{ fontSize: 13, color: "#64748b" }}>BOQ Ref: <strong style={{ color: "#0f172a" }}>{e.boqNo}</strong></div>}
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>PWJ Construction Pvt Ltd</div>
-                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Procurement Department</div>
-                        </div>
-                      </div>
-
-                      {/* Vendor / To section */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
-                        <div style={{ background: "#f8fafc", borderRadius: 12, padding: "16px 20px", border: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{e.pwjType === "JO" ? "Service Provider" : "Vendor / Supplier"}</div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v?.name || e.vendor}</div>
-                          {v?.gstNumber && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>GSTIN: {v.gstNumber}</div>}
-                          {v?.contactPerson && <div style={{ fontSize: 12, color: "#64748b" }}>Contact: {v.contactPerson}</div>}
-                          {v?.phoneNumber && <div style={{ fontSize: 12, color: "#64748b" }}>Phone: {v.phoneNumber}</div>}
-                          {v?.email && <div style={{ fontSize: 12, color: "#64748b" }}>Email: {v.email}</div>}
-                          {(v?.city || v?.state) && <div style={{ fontSize: 12, color: "#64748b" }}>{[v.street, v.city, v.state, v.zipCode].filter(Boolean).join(", ")}</div>}
-                        </div>
-                        <div style={{ background: "#f8fafc", borderRadius: 12, padding: "16px 20px", border: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Project Details</div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{e.projectName}</div>
-                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Raised by: {e.raisedBy}</div>
-                          {e.dateOfRequirement && <div style={{ fontSize: 12, color: "#64748b" }}>Required by: {e.dateOfRequirement}</div>}
-                        </div>
-                      </div>
-
-                      {/* Item table */}
-                      <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                          {e.pwjType === "PO" ? "Item Details" : e.pwjType === "WO" ? "Scope of Work" : "Job Description"}
-                        </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                          <thead>
-                            <tr style={{ background: typeColor }}>
-                              {["#","Description","Specification","Brand","Unit","Qty"].map(h => (
-                                <th key={h} style={{ padding: "9px 12px", color: "#fff", fontWeight: 700, textAlign: "left", fontSize: 11 }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr style={{ background: "#fafbfe" }}>
-                              <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 600, borderBottom: "1px solid #e2e8f0" }}>1</td>
-                              <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 600, borderBottom: "1px solid #e2e8f0" }}>{e.materialRequired}</td>
-                              <td style={{ padding: "10px 12px", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>{e.specification || "—"}</td>
-                              <td style={{ padding: "10px 12px", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>{e.brand || "—"}</td>
-                              <td style={{ padding: "10px 12px", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>{e.unit || "—"}</td>
-                              <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 700, borderBottom: "1px solid #e2e8f0" }}>{e.quantity ?? "—"}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Terms */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                        {(v?.paymentDetails || v?.bankDetails) && (
-                          <div style={{ background: "#fff8f0", borderRadius: 10, padding: "14px 16px", border: "1px solid #fed7aa" }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Payment Terms</div>
-                            {v?.paymentDetails && <div style={{ fontSize: 12, color: "#475569", marginBottom: 4 }}>{v.paymentDetails}</div>}
-                            {v?.bankDetails && <div style={{ fontSize: 12, color: "#475569" }}>Bank: {v.bankDetails}</div>}
-                            {(!v?.paymentDetails && !v?.bankDetails) && <div style={{ fontSize: 12, color: "#94a3b8" }}>As per agreement</div>}
-                          </div>
-                        )}
-                        <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "14px 16px", border: "1px solid #bbf7d0" }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Delivery Terms</div>
-                          <div style={{ fontSize: 12, color: "#475569" }}>{v?.deliveryTerms || "As per standard terms"}</div>
-                        </div>
-                      </div>
-
-                      {/* Remarks */}
-                      {e.remarks && (
-                        <div style={{ background: "#fafbfe", borderRadius: 10, padding: "12px 16px", border: "1px solid #e2e8f0", marginBottom: 12, fontSize: 12, color: "#475569" }}>
-                          <strong>Remarks:</strong> {e.remarks}
-                        </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {(isAdmin || isProcurement) && !docEditMode && (
+                        <button onClick={startDocEdit}
+                          style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                          ✏️ Edit
+                        </button>
                       )}
-
-                      {/* VP Comments — shown inline in doc body for Engineer; Procurement gets the footer banner */}
-                      {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED") && (
-                        <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 10, padding: "14px 16px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 20 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: e.docStatus === "REVISION_REQUESTED" ? "#c2410c" : e.docStatus === "VP_REJECTED" ? "#be123c" : "#166534", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
-                            {e.docStatus === "REVISION_REQUESTED" ? "⚠️ VP Revision Request" : e.docStatus === "VP_REJECTED" ? "❌ VP Comments" : "✅ VP Comments"}
-                          </div>
-                          <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.6 }}>{e.docComments}</div>
-                        </div>
-                      )}
-
-                      {/* Signature */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 32, paddingTop: 20, borderTop: "2px dashed #e2e8f0" }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 30 }}>Prepared by Procurement</div>
-                          <div style={{ borderTop: "1px solid #94a3b8", paddingTop: 4, fontSize: 11, color: "#475569" }}>Signature & Date</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 30 }}>VP Approval</div>
-                          <div style={{ borderTop: "1px solid #94a3b8", paddingTop: 4, fontSize: 11, color: "#475569" }}>
-                            {e.docStatus === "VP_APPROVED" ? <span style={{ color: "#166534", fontWeight: 700 }}>✅ Approved by VP</span> : e.docStatus === "VP_REJECTED" ? <span style={{ color: "#991b1b", fontWeight: 700 }}>❌ Rejected by VP</span> : "Signature & Date"}
-                          </div>
-                        </div>
-                      </div>
+                      {docEditMode && (<>
+                        <button onClick={saveDocEdits} disabled={docSaving}
+                          style={{ background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                          {docSaving ? "Saving…" : "💾 Save"}
+                        </button>
+                        <button onClick={() => setDocEditMode(false)}
+                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", color: "#64748b", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                          Cancel
+                        </button>
+                      </>)}
+                      <button onClick={() => { setDocModal(null); setDocEditMode(false); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
                     </div>
                   </div>
+
+                  {/* Document body — Happizo format */}
+                  {(() => {
+                    const docData = docEditMode ? docEditForm : parseDocData(e);
+                    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct);
+                    const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+                    const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
+                    const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
+                    const thSt    = { padding: "8px 10px", color: "#fff", fontWeight: 700, fontSize: 11, textAlign: "left" };
+                    const fmtCcy  = (n) => `₹ ${Number(n || 0).toFixed(2)}`;
+                    const setItem = (i, field, val) => {
+                      const items = docData.items.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
+                      setDocEditForm(f => ({ ...f, items }));
+                    };
+                    const setField = (field, val) => setDocEditForm(f => ({ ...f, [field]: val }));
+                    return (
+                      <div style={{ overflowY: "auto", flex: 1 }}>
+                        <div style={{ padding: "24px 28px", fontFamily: "Arial, sans-serif", fontSize: 12, color: "#111" }}>
+
+                          {/* --- HEADER --- */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 16 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 56, height: 56, objectFit: "contain" }} />
+                              <div>
+                                <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 1.5, color: "#111" }}>HAPPIZO</div>
+                                <div style={{ fontSize: 9, color: "#666", letterSpacing: 0.5 }}>Infrastructure and Solutions</div>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 8px", fontSize: 12 }}>
+                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span>: <strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span>: <strong>{today}</strong></span>
+                                <span style={{ color: "#555" }}>Project Name</span><span>: <strong>{e.projectName}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* --- TO + BILLING DETAILS --- */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
+                            <div>
+                              <div style={{ fontWeight: 700, marginBottom: 5 }}>TO:</div>
+                              <div style={{ fontWeight: 700 }}>{v?.name || e.vendor}</div>
+                              {v?.street && <div>{v.street}</div>}
+                              {(v?.city || v?.state) && <div>{[v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ")}</div>}
+                              {v?.country && <div>{v.country}</div>}
+                              <div style={{ marginTop: 4 }}>
+                                GST: {docEditMode
+                                  ? <input value={docData.gstNumber !== undefined ? docData.gstNumber : (v?.gstNumber || "")} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />
+                                  : (docData.gstNumber || v?.gstNumber || "")}
+                                {docEditMode
+                                  ? <span style={{ marginLeft: 12 }}>PAN: <input value={docData.panNumber || ""} onChange={ev => setField("panNumber", ev.target.value)} style={{ ...inpSt, width: 100, display: "inline" }} placeholder="PAN" /></span>
+                                  : <span style={{ marginLeft: 12 }}>PAN: {docData.panNumber || v?.panNumber || ""}</span>}
+                              </div>
+                              <div>MSME: {docEditMode ? <input value={docData.msme || ""} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" /> : (docData.msme || (v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || ""))}</div>
+                              <div>Kind Attn.: {docEditMode ? <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" /> : (docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "")}</div>
+                            </div>
+                            <div style={{ borderLeft: "1px solid #ddd", paddingLeft: 20 }}>
+                              <div style={{ fontWeight: 700, marginBottom: 5 }}>Billing Details</div>
+                              <div style={{ fontWeight: 700 }}>{COMPANY_INFO.name}</div>
+                              <div>{COMPANY_INFO.addr1}</div>
+                              <div>{COMPANY_INFO.addr2}</div>
+                              <div style={{ marginTop: 4 }}>GST: {COMPANY_INFO.gst}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ marginBottom: 12 }}>
+                            <div>Dear Team,</div>
+                            <div>We are pleased to issue the below {e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
+                          </div>
+
+                          {/* --- ITEM TABLE --- */}
+                          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: typeColor }}>
+                                <th style={{ ...thSt, width: 36, textAlign: "center" }}>S.No</th>
+                                <th style={{ ...thSt, width: "38%" }}>Item</th>
+                                <th style={{ ...thSt, textAlign: "center", width: 50 }}>Unit</th>
+                                <th style={{ ...thSt, textAlign: "center", width: 50 }}>Qty</th>
+                                <th style={{ ...thSt, textAlign: "right", width: 80 }}>Rate</th>
+                                <th style={{ ...thSt, textAlign: "right", width: 90 }}>Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {docData.items.map((row, i) => {
+                                const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
+                                return (
+                                  <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
+                                    <td style={{ ...tdSt, textAlign: "center", fontWeight: 600 }}>{i + 1}</td>
+                                    <td style={tdSt}>
+                                      {docEditMode ? <input value={row.item} onChange={ev => setItem(i, "item", ev.target.value)} style={inpSt} placeholder="Item description" /> : row.item || ""}
+                                    </td>
+                                    <td style={{ ...tdSt, textAlign: "center" }}>
+                                      {docEditMode ? <input value={row.unit} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center" }} placeholder="—" /> : row.unit || ""}
+                                    </td>
+                                    <td style={{ ...tdSt, textAlign: "center" }}>
+                                      {docEditMode ? <input type="number" value={row.qty} onChange={ev => setItem(i, "qty", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0" /> : (row.qty || "")}
+                                    </td>
+                                    <td style={{ ...tdSt, textAlign: "right" }}>
+                                      {docEditMode ? <input type="number" value={row.rate} onChange={ev => setItem(i, "rate", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0.00" /> : fmtCcy(row.rate)}
+                                    </td>
+                                    <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(amt)}</td>
+                                  </tr>
+                                );
+                              })}
+                              {/* Add Row button in edit mode */}
+                              {docEditMode && (
+                                <tr>
+                                  <td colSpan={6} style={{ padding: "4px 10px" }}>
+                                    <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "" }] }))}
+                                      style={{ fontSize: 11, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
+                                  </td>
+                                </tr>
+                              )}
+                              {/* Totals */}
+                              <tr>
+                                <td colSpan={4} rowSpan={5} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
+                                  <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 4 }}>Amount in words</div>
+                                  <div style={{ fontSize: 11, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
+                                </td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
+                                <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...tdSt, textAlign: "right" }}>
+                                  CGST {docEditMode ? <input type="number" value={docData.cgstPct || ""} onChange={ev => setField("cgstPct", ev.target.value)} style={{ width: 32, border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, textAlign: "center", padding: "1px 2px" }} /> : `(${docData.cgstPct}%)`}
+                                </td>
+                                <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.cgst)}</td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...tdSt, textAlign: "right" }}>
+                                  SGST {docEditMode ? <input type="number" value={docData.sgstPct || ""} onChange={ev => setField("sgstPct", ev.target.value)} style={{ width: 32, border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, textAlign: "center", padding: "1px 2px" }} /> : `(${docData.sgstPct}%)`}
+                                </td>
+                                <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.sgst)}</td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...tdSt, textAlign: "right" }}>Round off</td>
+                                <td style={{ ...tdSt, textAlign: "right" }}></td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total</td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtCcy(totals.total)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+
+                          {/* --- COMPLETION / DELIVERY / CONTACT --- */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, border: "1px solid #ddd", marginBottom: 16, marginTop: 0 }}>
+                            <div style={{ padding: "10px 12px" }}>
+                              <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>Completion date</div>
+                              {docEditMode
+                                ? <input type="date" value={docData.completionDate || ""} onChange={ev => setField("completionDate", ev.target.value)} style={{ ...inpSt, marginBottom: 6 }} />
+                                : <div style={{ marginBottom: 6 }}>{docData.completionDate || ""}</div>}
+                            </div>
+                            <div style={{ padding: "10px 12px", borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>
+                              <div style={{ fontWeight: 700, marginBottom: 4 }}>{e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
+                              {docEditMode
+                                ? <textarea rows={4} value={docData.deliveryAddress || ""} onChange={ev => setField("deliveryAddress", ev.target.value)} style={{ ...inpSt, resize: "none" }} placeholder="Delivery / site address…" />
+                                : <div style={{ whiteSpace: "pre-line" }}>{docData.deliveryAddress || ""}</div>}
+                            </div>
+                            <div style={{ padding: "10px 12px" }}>
+                              <div style={{ fontWeight: 700, marginBottom: 4 }}>Contact Details</div>
+                              {docEditMode
+                                ? <textarea rows={4} value={docData.contactDetails || ""} onChange={ev => setField("contactDetails", ev.target.value)} style={{ ...inpSt, resize: "none" }} placeholder="Contact name, phone, email…" />
+                                : <div style={{ whiteSpace: "pre-line" }}>{docData.contactDetails || raisedByContact}</div>}
+                            </div>
+                          </div>
+
+                          {/* --- GENERAL TERMS --- */}
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
+                            {terms.map((t, i) => (
+                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
+                                <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
+                                <span style={{ color: "#333" }}>{t}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* --- PAYMENT TERMS --- */}
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
+                            {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
+                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 11 }}>
+                                <span style={{ fontWeight: 600, minWidth: 70 }}>{lbl} -</span>
+                                {docEditMode
+                                  ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1 }} placeholder={lbl} />
+                                  : <span>{docData[key] || ""}</span>}
+                              </div>
+                            ))}
+                            <div style={{ marginTop: 10, fontSize: 11, paddingLeft: 4 }}>
+                              <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
+                              <div style={{ paddingLeft: 12 }}>- site engineer signed copy along with measurement sheet and DC copy</div>
+                              <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
+                            </div>
+                          </div>
+
+                          {/* VP Comments banner */}
+                          {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
+                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 11 }}>
+                              <div style={{ fontWeight: 700, color: e.docStatus === "REVISION_REQUESTED" ? "#c2410c" : e.docStatus === "VP_REJECTED" ? "#be123c" : "#166534", marginBottom: 4 }}>
+                                {e.docStatus === "REVISION_REQUESTED" ? "⚠️ VP Revision Request" : e.docStatus === "VP_REJECTED" ? "❌ VP Comments" : "✅ VP Comments"}
+                              </div>
+                              <div>{e.docComments}</div>
+                            </div>
+                          )}
+
+                          {/* --- FOOTER / SIGNATURE --- */}
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 24 }}>For <strong>{COMPANY_INFO.name}</strong></div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, paddingTop: 8, borderTop: "1px solid #ddd" }}>
+                              <div>
+                                <div style={{ color: "#555", fontSize: 11, marginBottom: 28 }}>Approved By</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>
+                                  {e.docStatus === "VP_APPROVED"
+                                    ? <span style={{ color: "#166534", fontWeight: 700 }}>✅ Approved by VP</span>
+                                    : e.docStatus === "VP_REJECTED"
+                                      ? <span style={{ color: "#991b1b", fontWeight: 700 }}>❌ Not Approved by VP</span>
+                                      : "Signature & Date"}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ color: "#555", fontSize: 11, marginBottom: 28 }}>Procurement Executive</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Footer actions */}
                   <div style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
 
                     {/* Engineer upload section — shown when doc is VP_APPROVED */}
-                    {isEngineer && e.docStatus === "VP_APPROVED" && (
-                      <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-                          📎 Upload Supporting Document
-                        </div>
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "10px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: engDocFile ? "#0f172a" : "#94a3b8" }}>
-                            <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
-                              onChange={e2 => setEngDocFile(e2.target.files[0] || null)} />
-                            {engDocFile ? `📄 ${engDocFile.name}` : "Choose file (image, PDF, Word)…"}
-                          </label>
-                          <button onClick={uploadAndNotify} disabled={!engDocFile || engDocUploading}
-                            style={{ background: engDocFile ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "10px 20px", color: engDocFile ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDocFile ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                            {engDocUploading ? "Uploading…" : "📤 Upload & Notify"}
-                          </button>
-                        </div>
-                        {e.deliveryDocUrl && (
-                          <div style={{ marginTop: 8, fontSize: 12, color: "#16a34a", display: "flex", alignItems: "center", gap: 6 }}>
-                            ✅ Document already uploaded —
-                            <a href={`http://192.168.1.16:8080${e.deliveryDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ color: "#0369a1", fontWeight: 600 }}>View uploaded doc</a>
+                    {isEngineer && e.docStatus === "VP_APPROVED" && (() => {
+                      const dd = parseDocData(e);
+                      const UploadSection = ({ title, icon, type, files, setFiles, uploading, stored }) => (
+                        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                            {icon} {title}
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {/* Existing uploaded files */}
+                          {stored.length > 0 && (
+                            <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                              {stored.map((f, i) => (
+                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
+                                  <span style={{ fontSize: 16 }}>📄</span>
+                                  <a href={`http://192.168.1.11:8080${f.url}`} target="_blank" rel="noreferrer"
+                                    style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {f.name || `File ${i + 1}`}
+                                  </a>
+                                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* File picker + upload */}
+                          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                            <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
+                              <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
+                                onChange={ev => setFiles(Array.from(ev.target.files))} />
+                              {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
+                            </label>
+                            <button onClick={() => uploadEngFiles(type, files)} disabled={!files.length || uploading}
+                              style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              {uploading ? "Uploading…" : "📤 Upload"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                      return (
+                        <>
+                          {/* Delivered Date — engineer only */}
+                          <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                              📅 Delivered Date
+                            </div>
+                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                              <input type="date" value={engDeliveredDate} onChange={ev => setEngDeliveredDate(ev.target.value)}
+                                style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
+                              <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
+                                style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                {engDateSaving ? "Saving…" : "💾 Save"}
+                              </button>
+                            </div>
+                          </div>
+                          <UploadSection title="Vendor Invoices" icon="🧾" type="invoice"
+                            files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
+                            uploading={engInvoiceUploading} stored={dd.vendorInvoices || []} />
+                          <UploadSection title="Delivery Documents" icon="🚚" type="delivery"
+                            files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
+                            uploading={engDeliveryUploading} stored={dd.deliveryDocs || []} />
+                        </>
+                      );
+                    })()}
 
                     {/* Revision notice + actions for Procurement */}
                     {(isAdmin || isProcurement) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
@@ -2266,7 +3471,7 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                         ✅ Approve
                       </button>
                       <button onClick={() => handleDocReject(doc.id)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                        ❌ Reject
+                        ❌ Not Approved
                       </button>
                     </div>
                   </div>
@@ -2312,15 +3517,22 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                     <option value="PROCUREMENT">Procurement</option>
                     <option value="ADMIN">Admin</option>
                     <option value="VP">VP</option>
+                    <option value="OH">OH</option>
                   </select>
                 </div>
               </div>
-              {/* Row 2: Email (wide) + Add button */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "flex-end" }}>
+              {/* Row 2: Email + Phone + Add button */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Email</div>
                   <input type="email" placeholder="Email address" value={newUserForm.email}
                     onChange={e => setNewUserForm(f => ({ ...f, email: e.target.value }))}
+                    style={{ width: "100%", border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 14px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Phone</div>
+                  <input type="tel" placeholder="Phone number" value={newUserForm.phone}
+                    onChange={e => setNewUserForm(f => ({ ...f, phone: e.target.value }))}
                     style={{ width: "100%", border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 14px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
                 </div>
                 <div>
@@ -2365,13 +3577,31 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                       {initials}
                     </div>
 
-                    {/* Name + username */}
+                    {/* Name + username + inline phone edit */}
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                         <span style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>{u.fullName}</span>
                         {isSelf && <span style={{ fontSize: 10, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "1px 8px" }}>You</span>}
                       </div>
                       <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 1 }}>@{u.username}{u.email ? `  ·  ${u.email}` : ""}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                        <input
+                          type="tel"
+                          defaultValue={u.phone || ""}
+                          placeholder="Add phone…"
+                          onBlur={async e => {
+                            const val = e.target.value.trim();
+                            if (val === (u.phone || "")) return;
+                            const r = await api.updateUserPhone(u.id, val || null);
+                            if (r.success) {
+                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, phone: val || null } : x));
+                              showToast("Phone updated ✅");
+                            } else showToast(r.message || "Failed", "error");
+                          }}
+                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "3px 8px", fontSize: 12, outline: "none", fontFamily: "inherit", color: "#0f172a", background: "#f8fafc", width: 140 }}
+                        />
+                        <span style={{ fontSize: 11, color: "#cbd5e1" }}>📞</span>
+                      </div>
                     </div>
 
                     {/* Role badge */}
@@ -2408,6 +3638,69 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
       )}
 
       {/* ─── VIEW VENDOR MODAL ─── */}
+      {/* ─── MULTI-ENTRY FLOATING BAR ─── */}
+      {selectedIds.size > 0 && (
+        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 500, background: "linear-gradient(135deg,#0f172a,#1e3a5f)", borderRadius: 14, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,.35)" }}>
+          <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
+          {(isAdmin || isProcurement) && (
+            <button onClick={() => { setGenDocVendor(""); setGenDocPwjType("PO"); setGenDocModal(true); }}
+              style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              📄 Generate PO / WO / JO
+            </button>
+          )}
+          <button onClick={() => setSelectedIds(new Set())}
+            style={{ background: "rgba(255,255,255,.12)", border: "none", borderRadius: 8, padding: "7px 12px", color: "#cbd5e1", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* ─── GEN DOC MODAL (vendor + pwjType picker) ─── */}
+      {genDocModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setGenDocModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,.22)", overflow: "hidden" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📄 Generate Document</div>
+              <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <div style={{ padding: "24px" }}>
+              <div style={{ marginBottom: 6, fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+                {selectedIds.size} PWJ {selectedIds.size === 1 ? "entry" : "entries"} will be added as line items.
+                Doc saved to entry #{[...selectedIds][0]}.
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Doc Type</label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {["PO","WO","JO"].map(t => (
+                    <button key={t} onClick={() => setGenDocPwjType(t)}
+                      style={{ flex: 1, padding: "10px 0", border: `2px solid ${genDocPwjType === t ? "#2563eb" : "#e2e8f0"}`, borderRadius: 10, background: genDocPwjType === t ? "#eff6ff" : "#f8fafc", color: genDocPwjType === t ? "#1d4ed8" : "#64748b", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Vendor</label>
+                <select value={genDocVendor} onChange={e => setGenDocVendor(e.target.value)}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", outline: "none" }}>
+                  <option value="">— Select vendor —</option>
+                  {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <button onClick={submitGenDoc} disabled={genDocSaving}
+                  style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", border: "none", borderRadius: 8, padding: "9px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  {genDocSaving ? "Creating…" : "Create & Open Doc"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewVendor && (() => {
         const vv = viewVendor;
         const statusColor = vv.status === "APPROVED" ? "#16a34a" : vv.status === "REJECTED" ? "#dc2626" : "#d97706";
@@ -2418,6 +3711,18 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
             <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
           </div>
         ) : null;
+        const DocLink = ({ label, url }) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+            {url
+              ? <a href={`http://192.168.1.11:8080${url}`} target="_blank" rel="noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: 12, fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
+                  📎 View Document
+                </a>
+              : <span style={{ fontSize: 12, color: "#cbd5e1" }}>Not uploaded</span>
+            }
+          </div>
+        );
         const SectionHead = ({ icon, title }) => (
           <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8, padding: "10px 0 6px", borderBottom: "1.5px solid #e2eaf5", marginTop: 8 }}>
             <span style={{ fontSize: 15 }}>{icon}</span>
@@ -2451,12 +3756,14 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
                   <SectionHead icon="🏢" title="Vendor Details" />
                   <Row label="Vendor Name"    value={vv.name} />
-                  <Row label="GST Number"     value={vv.gstNumber} />
+                  <Row label="Company Type"   value={vv.companyType} />
+                  <Row label="Vendor Type"    value={vv.vendorType} />
                   <Row label="Category"       value={vv.category} />
                   <Row label="Tags"           value={vv.tags} />
                   <Row label="Ratings"        value={vv.ratings ? `${"★".repeat(Math.round(vv.ratings))} (${vv.ratings})` : null} />
+                  <Row label="Empanel Date"   value={vv.empanelDate} />
                   <Row label="Joining Date"   value={vv.joiningDate} />
-                  <Row label="Vendor Doc"     value={vv.vendorDocUrl ? "Uploaded ✓" : null} />
+                  <DocLink label="Vendor Portfolio Doc" url={vv.vendorDocUrl} />
                 </div>
                 {/* Vendor Profile */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
@@ -2490,30 +3797,636 @@ ${e.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${e.remarks}</div>
                     </div>
                   </div>
                 )}
-                {/* Bank Details */}
-                {(vv.bankName || vv.accountNumber || vv.ifscCode || vv.bankDetails) && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
-                    <SectionHead icon="🏦" title="Bank Details" />
-                    <Row label="Bank Name"       value={vv.bankName} />
-                    <Row label="Account Number"  value={vv.accountNumber} />
-                    <Row label="IFSC Code"       value={vv.ifscCode} />
-                    {vv.bankDetails && <div style={{ gridColumn: "1/-1" }}><Row label="Bank Details" value={vv.bankDetails} /></div>}
-                    <Row label="Payment Terms"   value={vv.paymentDetails} />
-                    <Row label="Delivery Terms"  value={vv.deliveryTerms} />
-                  </div>
-                )}
+                {/* Statutory Details — always shown */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
+                  <SectionHead icon="📄" title="Statutory Details" />
+                  <Row label="GST Number"  value={vv.gstNumber} />
+                  <DocLink label="GST Certificate" url={vv.gstDocUrl} />
+                  <Row label="TAN Number"  value={vv.tanNumber} />
+                  <DocLink label="TAN Document" url={vv.tanDocUrl} />
+                  <Row label="PAN Number"  value={vv.panNumber} />
+                  <DocLink label="PAN Document" url={vv.panDocUrl} />
+                  <Row label="MSME Registered" value={vv.msmeNumber === "MSME-REGISTERED" ? "Yes" : vv.msmeNumber ? "Yes" : "No"} />
+                  <DocLink label="MSME Certificate" url={vv.msmeDocUrl} />
+                </div>
+                {/* Bank Details — always shown */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
+                  <SectionHead icon="🏦" title="Bank Details" />
+                  <Row label="Bank Name"       value={vv.bankName} />
+                  <Row label="Account Number"  value={vv.accountNumber} />
+                  <Row label="IFSC Code"       value={vv.ifscCode} />
+                  {vv.bankDetails && <div style={{ gridColumn: "1/-1" }}><Row label="Bank Details" value={vv.bankDetails} /></div>}
+                  <Row label="Payment Terms"   value={vv.paymentDetails} />
+                  <Row label="Delivery Terms"  value={vv.deliveryTerms} />
+                  <DocLink label="Bank Passbook" url={vv.bankDocUrl} />
+                </div>
                 {/* Policies */}
-                {(vv.maximumReturnDays || vv.returnFees || vv.listVendorPolicies) && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
-                    <SectionHead icon="📋" title="Vendor Policies" />
-                    <Row label="Max Return Days"            value={vv.maximumReturnDays != null ? String(vv.maximumReturnDays) : null} />
-                    <Row label="Return Fees"                value={vv.returnFees} />
-                    <Row label="Vendor Pays Return Shipping" value={vv.vendorPaysReturnShipping ? "Yes" : null} />
-                    {vv.listVendorPolicies && <div style={{ gridColumn: "1/-1" }}><Row label="Policies" value={vv.listVendorPolicies} /></div>}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", marginTop: 8 }}>
+                  <SectionHead icon="📋" title="Vendor Policies" />
+                  <Row label="Max Return Days"            value={vv.maximumReturnDays != null ? String(vv.maximumReturnDays) : null} />
+                  <Row label="Return Fees"                value={vv.returnFees} />
+                  <Row label="Vendor Pays Return Shipping" value={vv.vendorPaysReturnShipping ? "Yes" : null} />
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>Vendor Policies</div>
+                    {vv.listVendorPolicies
+                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 13, color: "#1e293b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontFamily: "inherit", lineHeight: 1.7 }}>{vv.listVendorPolicies}</pre>
+                      : <span style={{ fontSize: 13, color: "#cbd5e1" }}>Not specified</span>}
                   </div>
-                )}
+                </div>
               </div>
             </div>
+          </div>
+        );
+      })()}
+
+
+      {/* ─── ADD VENDOR FULL PAGE ─── */}
+      {addVendorPage && (() => {
+        const avf = addVendorForm;
+        const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
+        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
+        const sel = { ...inp };
+        const lbl = { fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4, display: "block" };
+        const fld = { display: "flex", flexDirection: "column" };
+        const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 };
+        const grid3 = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 };
+        const sectionHead = (letter, title, color = "#1a6ab1") => (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, marginTop: 6 }}>
+            <div style={{ width: 4, height: 22, borderRadius: 2, background: color, flexShrink: 0 }} />
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{title}</div>
+          </div>
+        );
+        const subHead = (title) => <div style={{ fontSize: 12.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, marginTop: 18, paddingBottom: 6, borderBottom: "1px solid #e2eaf5" }}>{title}</div>;
+
+        const autoVendorCode = () => "VND-" + Date.now().toString(36).toUpperCase();
+
+        const submitDraft = async () => {
+          if (!avf.name.trim()) { showToast("Company name is required", "error"); return; }
+          setAddVendorLoading(true);
+          try {
+            const body = {
+              name: avf.name, companyType: avf.companyType, ratings: avf.ratings || 0,
+              contactPerson: avf.contactPerson ? `${avf.salutation || ""} ${avf.contactPerson}`.trim() : "",
+              email: avf.email, phoneNumber: avf.phoneNumber,
+              spocName: avf.spocSameAsCustomer ? (avf.contactPerson ? `${avf.salutation || ""} ${avf.contactPerson}`.trim() : "") : avf.spocName,
+              spocEmail: avf.spocSameAsCustomer ? avf.email : avf.spocEmail,
+              spocPhone: avf.spocSameAsCustomer ? avf.phoneNumber : avf.spocPhone,
+              contacts: avf.contacts,
+              street: avf.street, city: avf.city, state: avf.state, zipCode: avf.zipCode, country: avf.country, branch: avf.branch,
+              vendorCode: avf.vendorCode || autoVendorCode(), empanelDate: avf.empanelDate, vendorType: (avf.vendorType || []).join(","),
+              vendorDocUrl: avf.portfolioDocUrl || null,
+              website: avf.website,
+              socialMedia: JSON.stringify(avf.socialMedia.filter(u => u.trim())),
+              productServices: JSON.stringify(avf.productServices),
+              paymentDetails: avf.paymentDetails, deliveryTerms: avf.deliveryTerms,
+              gstNumber: avf.gstNumber, tanNumber: avf.tanNumber, panNumber: avf.panNumber,
+              msmeNumber: avf.msmeRegistered === "Yes" ? "MSME-REGISTERED" : null,
+              gstDocUrl: avf.gstDocUrl || null, msmeDocUrl: avf.msmeDocUrl || null, tanDocUrl: avf.tanDocUrl || null, panDocUrl: avf.panDocUrl || null,
+              bankName: avf.bankName, accountNumber: avf.accountNumber, ifscCode: avf.ifscCode,
+              bankDocUrl: avf.bankDocUrl || null,
+              bankDetails: avf.bankName || avf.accountNumber || avf.ifscCode
+                ? `${avf.bankName || ""}${avf.accountNumber ? " | A/C No: " + avf.accountNumber : ""}${avf.ifscCode ? " | IFSC: " + avf.ifscCode : ""}`
+                : avf.bankDetails,
+              status: "PENDING_APPROVAL",
+            };
+            const r = await api.createVendor(body);
+            if (r.success) {
+              showToast("Vendor saved as draft — pending approval", "success");
+              setAddVendorPage(false);
+              loadVendorsTab();
+            } else showToast(r.message || "Failed to save vendor", "error");
+          } catch { showToast("Network error", "error"); }
+          finally { setAddVendorLoading(false); }
+        };
+
+        const NAV = [
+          { id: "company",   icon: "🏢", label: "Company Details" },
+          { id: "profile",   icon: "🏭", label: "Vendor Profile" },
+          { id: "statutory", icon: "📋", label: "Statutory Details" },
+          { id: "bank",      icon: "🏦", label: "Bank Details" },
+        ];
+        const scrollTo = (id) => document.getElementById("avs-" + id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        const uploadDoc = async (file, loadingKey, urlKey) => {
+          setF(loadingKey, true);
+          const fd = new FormData(); fd.append("file", file);
+          const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+          if (r.success) setF(urlKey, r.data);
+          setF(loadingKey, false);
+        };
+
+        const handleBankPassbook = async (file) => {
+          // Step 1: upload image for display
+          setF("bankDocUploading", true);
+          try {
+            const fd = new FormData(); fd.append("file", file);
+            const up = await fetch("http://192.168.1.11:8080/api/v1/upload/image", { method: "POST", body: fd }).then(x => x.json());
+            if (up.success) setF("bankDocUrl", up.data);
+          } catch { /* ignore — still proceed with OCR */ }
+          setF("bankDocUploading", false);
+
+          // Step 2: run OCR directly on the file
+          setF("bankOcrLoading", true);
+          try {
+            const extracted = await ocrExtractBankFields(file, () => {});
+            setAddVendorForm(f => ({
+              ...f,
+              bankOcrLoading: false,
+              bankName:      extracted.bankName      || f.bankName,
+              accountNumber: extracted.accountNumber || f.accountNumber,
+              ifscCode:      extracted.ifscCode      || f.ifscCode,
+              bankDetails:   extracted.bankDetails   || f.bankDetails,
+            }));
+            if (extracted.bankName || extracted.accountNumber || extracted.ifscCode) {
+              showToast("Bank details extracted successfully", "success");
+            } else {
+              showToast("Could not extract data — please fill manually", "info");
+            }
+          } catch (err) {
+            setF("bankOcrLoading", false);
+            showToast("OCR failed: " + err.message, "error");
+          }
+        };
+
+        const F = { fontFamily: "'Plus Jakarta Sans','Inter',sans-serif" };
+        const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "#0f172a", transition: "border-color .15s" };
+        const lbl2 = { fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
+        const fld2 = { display: "flex", flexDirection: "column" };
+        const card = { background: "#fff", borderRadius: 16, padding: "28px 32px", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04)" };
+        const secTitle = (icon, title, color) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{icon}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", ...F }}>{title}</div>
+          </div>
+        );
+        const divider = (label) => <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginTop: 22, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}><span>{label}</span><div style={{ flex: 1, height: 1, background: "#f1f5f9" }} /></div>;
+        const attachBtn = (uploading, label = "📎 Attach") => ({
+          display: "inline-flex", alignItems: "center", gap: 6, background: uploading ? "#f1f5f9" : "#eff6ff",
+          border: "1.5px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", cursor: uploading ? "default" : "pointer",
+          fontSize: 12, color: "#2563eb", fontWeight: 700, whiteSpace: "nowrap", ...F,
+        });
+
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", flexDirection: "column", background: "#f8fafc", ...F }}>
+
+            {/* ── Top header ── */}
+            <div style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b" }} />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>New Vendor Registration</span>
+                <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>
+              </div>
+              <button onClick={() => setAddVendorPage(false)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ Discard</button>
+            </div>
+
+            {/* ── Body: sidebar + content ── */}
+            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+              {/* Left nav */}
+              <div style={{ width: 220, background: "#fff", borderRight: "1px solid #e2e8f0", flexShrink: 0, padding: "24px 16px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#cbd5e1", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, paddingLeft: 12, ...F }}>Sections</div>
+                {NAV.map(n => (
+                  <button key={n.id} onClick={() => scrollTo(n.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", width: "100%", ...F, fontSize: 13, fontWeight: 600, color: "#475569", transition: "background .15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    <span style={{ fontSize: 16 }}>{n.icon}</span> {n.label}
+                  </button>
+                ))}
+                <div style={{ flex: 1 }} />
+                <div style={{ padding: "16px 14px", background: "#f8fafc", borderRadius: 10, marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: "#94a3b8", ...F, lineHeight: 1.6 }}>Saved as <strong>Draft</strong>. Pending VP approval before vendor is activated.</div>
+                </div>
+              </div>
+
+              {/* Content area */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "28px 36px 120px" }}>
+
+              {/* ═══ SECTION A: COMPANY DETAILS ═══ */}
+              <div id="avs-company" style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,.07)" }}>
+                {sectionHead("A", "Company Details", "#1a6ab1")}
+
+                {/* Company Name + Type + Rating */}
+                <div style={{ ...grid2, gridTemplateColumns: "2fr 1fr", marginBottom: 14 }}>
+                  <div style={fld}>
+                    <label style={lbl}>Company Name *</label>
+                    <input style={inp} placeholder="Enter company name" value={avf.name} onChange={e => setF("name", e.target.value)} />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Company Type</label>
+                    <select style={sel} value={avf.companyType} onChange={e => setF("companyType", e.target.value)}>
+                      <option value="">— Select —</option>
+                      {["Proprietorship","Partnership","LLC","Pvt Ltd","Public Ltd","Individual"].map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Star Rating */}
+                <div style={{ ...fld, marginBottom: 18 }}>
+                  <label style={lbl}>Rating</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[1,2,3,4,5].map(n => (
+                      <span key={n} onClick={() => setF("ratings", n)} style={{ fontSize: 26, cursor: "pointer", color: n <= avf.ratings ? "#f59e0b" : "#d1d5db", transition: "color .15s" }}>★</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Product/Service Details */}
+                {subHead("Product / Service Details")}
+                {avf.productServices.map((ps, pi) => (
+                  <div key={pi} style={{ display: "flex", gap: 12, alignItems: "flex-start", border: "1px solid #e2eaf5", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                    {/* Category + Add Item */}
+                    <div style={{ ...fld, width: 200, flexShrink: 0 }}>
+                      <label style={lbl}>Category</label>
+                      <select style={sel} value={ps.category}
+                        onChange={e => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, category: e.target.value } : x))}>
+                        <option value="">— Select —</option>
+                        {["Civil","Electrical","Plumbing","HVAC","Finishing","Steel & Structural","Painting","Landscaping","Flooring","Roofing","IT/AV","Safety & Security","Furniture","Glass & Glazing","Other"].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    {/* Items */}
+                    <div style={{ ...fld, flex: 1 }}>
+                      <label style={lbl}>Items / Products / Services</label>
+                      {ps.items.map((item, ii) => (
+                        <div key={ii} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                          <input style={{ ...inp, flex: 1 }} placeholder={`Item ${ii + 1}`} value={item}
+                            onChange={e => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.map((it, j) => j === ii ? e.target.value : it) } : x))} />
+                          {ps.items.length > 1 && (
+                            <button type="button" onClick={() => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x))}
+                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 12 }}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Remove row */}
+                    {avf.productServices.length > 1 && (
+                      <button type="button" onClick={() => setF("productServices", avf.productServices.filter((_, i) => i !== pi))}
+                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 12, marginTop: 18, flexShrink: 0 }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setF("productServices", [...avf.productServices, { category: "", items: [""] }])}
+                  style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", color: "#15803d", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", width: "100%" }}>+ Add Category</button>
+
+                {/* Contact Details */}
+                {subHead("Owner Details")}
+                <div style={{ ...grid3, marginBottom: 14 }}>
+                  <div style={fld}>
+                    <label style={lbl}>Name</label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <select value={avf.salutation} onChange={e => setF("salutation", e.target.value)}
+                        style={{ ...inp, width: 80, flexShrink: 0 }}>
+                        {["Mr.", "Mrs.", "Ms."].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input style={inp} value={avf.contactPerson} onChange={e => setF("contactPerson", e.target.value)} placeholder="Contact person name" />
+                    </div>
+                  </div>
+                  <div style={fld}><label style={lbl}>Email</label><input style={inp} type="email" value={avf.email} onChange={e => setF("email", e.target.value)} placeholder="email@company.com" /></div>
+                  <div style={fld}><label style={lbl}>Phone Number</label><input style={inp} value={avf.phoneNumber} onChange={e => setF("phoneNumber", e.target.value)} placeholder="+91 00000 00000" /></div>
+                </div>
+
+                {subHead("b) SPOC Details")}
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", marginBottom: 12, cursor: "pointer" }}>
+                  <input type="checkbox" checked={avf.spocSameAsCustomer}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setAddVendorForm(f => ({
+                        ...f,
+                        spocSameAsCustomer: checked,
+                        spocName:  checked ? f.contactPerson : f.spocName,
+                        spocEmail: checked ? f.email         : f.spocEmail,
+                        spocPhone: checked ? f.phoneNumber   : f.spocPhone,
+                      }));
+                    }} />
+                  Same as Owner Details
+                </label>
+                <div style={{ ...grid3, marginBottom: 14 }}>
+                  <div style={fld}><label style={lbl}>SPOC Name</label><input style={{ ...inp, background: avf.spocSameAsCustomer ? "#f8fafc" : "#fff" }} value={avf.spocSameAsCustomer ? avf.contactPerson : avf.spocName} onChange={e => !avf.spocSameAsCustomer && setF("spocName", e.target.value)} readOnly={avf.spocSameAsCustomer} placeholder="SPOC name" /></div>
+                  <div style={fld}><label style={lbl}>SPOC Email</label><input style={{ ...inp, background: avf.spocSameAsCustomer ? "#f8fafc" : "#fff" }} type="email" value={avf.spocSameAsCustomer ? avf.email : avf.spocEmail} onChange={e => !avf.spocSameAsCustomer && setF("spocEmail", e.target.value)} readOnly={avf.spocSameAsCustomer} placeholder="spoc@company.com" /></div>
+                  <div style={fld}><label style={lbl}>SPOC Phone</label><input style={{ ...inp, background: avf.spocSameAsCustomer ? "#f8fafc" : "#fff" }} value={avf.spocSameAsCustomer ? avf.phoneNumber : avf.spocPhone} onChange={e => !avf.spocSameAsCustomer && setF("spocPhone", e.target.value)} readOnly={avf.spocSameAsCustomer} placeholder="+91 00000 00000" /></div>
+                </div>
+
+                {subHead("c) Additional Contacts")}
+                {avf.contacts.map((c, ci) => (
+                  <div key={ci} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "flex-end" }}>
+                    <div style={fld}><label style={lbl}>Name</label><input style={inp} value={c.personName || ""} onChange={e => setF("contacts", avf.contacts.map((x, i) => i === ci ? { ...x, personName: e.target.value } : x))} placeholder="Name" /></div>
+                    <div style={fld}><label style={lbl}>Email</label><input style={inp} value={c.email || ""} onChange={e => setF("contacts", avf.contacts.map((x, i) => i === ci ? { ...x, email: e.target.value } : x))} placeholder="Email" /></div>
+                    <div style={fld}><label style={lbl}>Phone</label><input style={inp} value={c.contactNumber || ""} onChange={e => setF("contacts", avf.contacts.map((x, i) => i === ci ? { ...x, contactNumber: e.target.value } : x))} placeholder="Phone" /></div>
+                    <button type="button" onClick={() => setF("contacts", avf.contacts.filter((_, i) => i !== ci))}
+                      style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "8px 10px", color: "#dc2626", cursor: "pointer", marginBottom: 0 }}>✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setF("contacts", [...avf.contacts, { personName: "", email: "", contactNumber: "" }])}
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>+ Add Contact</button>
+
+                {subHead("Registered Address")}
+                <div style={{ ...grid2, marginBottom: 10 }}>
+                  <div style={{ ...fld, gridColumn: "1/-1" }}><label style={lbl}>Street / Address</label><input style={inp} value={avf.street} onChange={e => setF("street", e.target.value)} placeholder="Street address" /></div>
+                  <div style={fld}><label style={lbl}>City</label><input style={inp} value={avf.city} onChange={e => setF("city", e.target.value)} /></div>
+                  <div style={fld}><label style={lbl}>State</label><input style={inp} value={avf.state} onChange={e => setF("state", e.target.value)} /></div>
+                  <div style={fld}><label style={lbl}>ZIP Code</label><input style={inp} value={avf.zipCode} onChange={e => setF("zipCode", e.target.value)} /></div>
+                  <div style={fld}><label style={lbl}>Country</label><input style={inp} value={avf.country} onChange={e => setF("country", e.target.value)} /></div>
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Branch (if any)</label>
+                  <input style={inp} value={avf.branch} onChange={e => setF("branch", e.target.value)} placeholder="Branch name or location" />
+                </div>
+              </div>
+
+              {/* ═══ SECTION B: VENDOR PROFILE ═══ */}
+              <div id="avs-profile" style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,.07)" }}>
+                {sectionHead("B", "Vendor Profile", "#7c3aed")}
+
+                <div style={{ ...grid3, marginBottom: 14 }}>
+                  <div style={fld}>
+                    <label style={lbl}>Vendor Code (Auto)</label>
+                    <input style={{ ...inp, background: "#f8fafc" }} value={avf.vendorCode} onChange={e => setF("vendorCode", e.target.value)} placeholder="Auto-generated on save" />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Empanel Date</label>
+                    <input style={inp} type="date" value={avf.empanelDate} onChange={e => setF("empanelDate", e.target.value)} />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Vendor Type</label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
+                      {[
+                        { code: "MS", label: "MS" },
+                        { code: "SC", label: "SC" },
+                        { code: "LC", label: "LC" },
+                      ].map(({ code, label }) => {
+                        const selected = (avf.vendorType || []).includes(code);
+                        return (
+                          <button key={code} type="button"
+                            onClick={() => setF("vendorType", selected
+                              ? avf.vendorType.filter(t => t !== code)
+                              : [...(avf.vendorType || []), code])}
+                            style={{ border: `2px solid ${selected ? "#7c3aed" : "#dbe6f3"}`, borderRadius: 8, padding: "7px 14px", background: selected ? "#f5f3ff" : "#fff", color: selected ? "#7c3aed" : "#64748b", fontWeight: selected ? 700 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            {selected ? "✓ " : ""}{label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {subHead("Vendor Portfolio")}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
+                  <span style={{ ...lbl, marginBottom: 0 }}>Portfolio Document</span>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f5f3ff", border: "1px dashed #a78bfa", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#7c3aed", fontWeight: 600 }}>
+                    {avf.portfolioDocUploading ? "⏳ Uploading…" : "📁 Attach"}
+                    <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
+                      disabled={avf.portfolioDocUploading}
+                      onChange={async e => {
+                        const file = e.target.files[0]; if (!file) return;
+                        setF("portfolioDocUploading", true);
+                        const fd = new FormData(); fd.append("file", file);
+                        const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                        if (r.success) setF("portfolioDocUrl", r.data);
+                        setF("portfolioDocUploading", false);
+                        e.target.value = "";
+                      }} />
+                  </label>
+                  {avf.portfolioDocUrl && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
+                      <a href={"http://192.168.1.11:8080" + avf.portfolioDocUrl} target="_blank" rel="noreferrer"
+                        style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "none" }}>
+                        📄 {avf.portfolioDocUrl.split("/").pop()}
+                      </a>
+                      <button type="button" onClick={() => setF("portfolioDocUrl", "")}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ ...fld, marginBottom: 12 }}>
+                  <label style={lbl}>Website</label>
+                  <input style={inp} value={avf.website} onChange={e => setF("website", e.target.value)} placeholder="https://www.company.com" />
+                </div>
+
+                <label style={lbl}>Social Media Pages</label>
+                {avf.socialMedia.map((url, si) => (
+                  <div key={si} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    <input style={{ ...inp, flex: 1 }} value={url} onChange={e => setF("socialMedia", avf.socialMedia.map((u, i) => i === si ? e.target.value : u))} placeholder="https://linkedin.com/company/..." />
+                    {avf.socialMedia.length > 1 && (
+                      <button type="button" onClick={() => setF("socialMedia", avf.socialMedia.filter((_, i) => i !== si))}
+                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer" }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setF("socialMedia", [...avf.socialMedia, ""])}
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", marginBottom: 16 }}>+ Add Social Media</button>
+
+                <div style={{ ...fld, marginBottom: 6 }}>
+                  <label style={lbl}>Catalogues / Documents</label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, color: "#15803d", fontWeight: 600, alignSelf: "flex-start" }}>
+                    📎 Attach Catalogue
+                    <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
+                      onChange={async e => {
+                        const files = Array.from(e.target.files);
+                        for (const file of files) {
+                          const fd = new FormData(); fd.append("file", file);
+                          const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                          if (r.success) setF("catalogues", [...avf.catalogues, r.data]);
+                        }
+                        e.target.value = "";
+                      }} />
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    {avf.catalogues.map((url, ci) => (
+                      <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 6, padding: "4px 10px", fontSize: 12 }}>
+                        <span>📄 {url.split("/").pop()}</span>
+                        <button type="button" onClick={() => setF("catalogues", avf.catalogues.filter((_, i) => i !== ci))}
+                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {subHead("Payment & Delivery Terms")}
+                <div style={{ ...grid2, marginBottom: 0 }}>
+                  <div style={fld}>
+                    <label style={lbl}>Payment Terms</label>
+                    <textarea style={{ ...inp, minHeight: 80, resize: "vertical" }} value={avf.paymentDetails} onChange={e => setF("paymentDetails", e.target.value)} placeholder="e.g. 30% advance, 70% on delivery" />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Delivery Terms</label>
+                    <textarea style={{ ...inp, minHeight: 80, resize: "vertical" }} value={avf.deliveryTerms} onChange={e => setF("deliveryTerms", e.target.value)} placeholder="e.g. Within 7 working days from PO date" />
+                  </div>
+                </div>
+              </div>
+
+              {/* ═══ SECTION C: STATUTORY DETAILS ═══ */}
+              <div id="avs-statutory" style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,.07)" }}>
+                {sectionHead("C", "Statutory Details", "#0d9488")}
+                {[
+                  { label: "GST Number", key: "gstNumber", docKey: "gstDocUrl", uploadKey: "gstDocUploading", placeholder: "22AAAAA0000A1Z5", maxLen: 15 },
+                  { label: "TAN Number", key: "tanNumber", docKey: "tanDocUrl", uploadKey: "tanDocUploading", placeholder: "AAAA99999A", maxLen: 10 },
+                  { label: "PAN Number", key: "panNumber", docKey: "panDocUrl", uploadKey: "panDocUploading", placeholder: "AAAAA9999A", maxLen: 10 },
+                ].map(({ label, key, docKey, uploadKey, placeholder, maxLen }) => (
+                  <div key={key} style={{ border: "1px solid #e2eaf5", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+                      <div style={{ ...fld, flex: 1, minWidth: 180 }}>
+                        <label style={lbl}>{label}</label>
+                        <input style={inp} value={avf[key]} onChange={e => setF(key, e.target.value.toUpperCase())} placeholder={placeholder} maxLength={maxLen} />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 1 }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 12, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          {avf[uploadKey] ? "🔍 Reading…" : "📎 Attach & Scan"}
+                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
+                            disabled={avf[uploadKey]}
+                            onChange={async e => {
+                              const file = e.target.files[0]; if (!file) return;
+                              setF(uploadKey, true);
+                              try {
+                                // Upload file for storage
+                                const fd = new FormData(); fd.append("file", file);
+                                const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                                if (r.success) setF(docKey, r.data);
+                                // Run OCR to extract number from image
+                                if (file.type.startsWith("image/") || file.type === "application/pdf") {
+                                  const extracted = await ocrExtractStatutoryField(file, key);
+                                  if (extracted) {
+                                    setF(key, extracted);
+                                    showToast(`${label} extracted: ${extracted}`, "success");
+                                  } else {
+                                    showToast(`Could not read ${label} — enter manually`, "info");
+                                  }
+                                }
+                              } catch { showToast("Scan failed — enter manually", "error"); }
+                              finally { setF(uploadKey, false); e.target.value = ""; }
+                            }} />
+                        </label>
+                        {avf[docKey] && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                            <a href={"http://192.168.1.11:8080" + avf[docKey]} target="_blank" rel="noreferrer"
+                              style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf[docKey].split("/").pop()}</a>
+                            <button type="button" onClick={() => setF(docKey, "")}
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* MSME — Yes/No + attachment */}
+                <div style={{ border: "1px solid #e2eaf5", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ ...fld, flex: 1, minWidth: 180 }}>
+                      <label style={lbl}>MSME Registered?</label>
+                      <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+                        {["Yes", "No"].map(opt => (
+                          <button key={opt} type="button"
+                            onClick={() => setF("msmeRegistered", opt)}
+                            style={{ border: `2px solid ${avf.msmeRegistered === opt ? "#0d9488" : "#e2eaf5"}`, borderRadius: 8, padding: "7px 22px", background: avf.msmeRegistered === opt ? "#f0fdfa" : "#fff", color: avf.msmeRegistered === opt ? "#0d9488" : "#64748b", fontWeight: avf.msmeRegistered === opt ? 700 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            {avf.msmeRegistered === opt ? "✓ " : ""}{opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {avf.msmeRegistered === "Yes" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 12, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          {avf.msmeDocUploading ? "⏳ Uploading…" : "📎 Attach Certificate"}
+                          <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
+                            disabled={avf.msmeDocUploading}
+                            onChange={async e => {
+                              const file = e.target.files[0]; if (!file) return;
+                              setF("msmeDocUploading", true);
+                              try {
+                                const fd = new FormData(); fd.append("file", file);
+                                const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                                if (r.success) setF("msmeDocUrl", r.data);
+                              } catch { showToast("Upload failed", "error"); }
+                              finally { setF("msmeDocUploading", false); e.target.value = ""; }
+                            }} />
+                        </label>
+                        {avf.msmeDocUrl && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                            <a href={"http://192.168.1.11:8080" + avf.msmeDocUrl} target="_blank" rel="noreferrer"
+                              style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf.msmeDocUrl.split("/").pop()}</a>
+                            <button type="button" onClick={() => setF("msmeDocUrl", "")}
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ═══ SECTION D: BANK DETAILS ═══ */}
+              <div id="avs-bank" style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,.07)" }}>
+                {sectionHead("D", "Bank Details", "#0d9488")}
+
+                {/* Passbook upload + OCR */}
+                <div style={{ display: "flex", gap: 20, alignItems: "flex-start", marginBottom: 20 }}>
+                  <div style={{ flexShrink: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
+                    <label style={{ display: "block", width: 130, height: 100, border: "2px dashed #93c5fd", borderRadius: 10, cursor: "pointer", overflow: "hidden", background: "#f8fafc", position: "relative" }}>
+                      {avf.bankDocUrl
+                        ? <img src={"http://192.168.1.11:8080" + avf.bankDocUrl} alt="passbook" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4 }}>
+                            <span style={{ fontSize: 24 }}>🏦</span>
+                            <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
+                          </div>
+                      }
+                      {(avf.bankDocUploading || avf.bankOcrLoading) && (
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#1a6ab1", fontWeight: 700 }}>
+                          {avf.bankDocUploading ? "⏳ Uploading…" : "🔍 Reading…"}
+                        </div>
+                      )}
+                      <input type="file" accept="image/*,.pdf" style={{ display: "none" }}
+                        onChange={async e => { const f = e.target.files[0]; if (f) { await handleBankPassbook(f); e.target.value = ""; } }} />
+                    </label>
+                    {avf.bankDocUrl && !avf.bankDocUploading && (
+                      <button type="button" onClick={() => setF("bankDocUrl", "")}
+                        style={{ marginTop: 6, background: "none", border: "none", color: "#dc2626", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕ Remove</button>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      <div style={fld}>
+                        <label style={lbl}>Bank Name</label>
+                        <input style={inp} value={avf.bankName} onChange={e => setF("bankName", e.target.value)} placeholder="Bank Name & Branch" />
+                      </div>
+                      <div style={fld}>
+                        <label style={lbl}>Account Number</label>
+                        <input style={inp} value={avf.accountNumber} onChange={e => setF("accountNumber", e.target.value)} placeholder="Account Number" />
+                      </div>
+                      <div style={fld}>
+                        <label style={lbl}>IFSC Code</label>
+                        <input style={inp} value={avf.ifscCode} onChange={e => setF("ifscCode", e.target.value.toUpperCase())} placeholder="IFSC Code" maxLength={11} />
+                      </div>
+                    </div>
+                    <div style={fld}>
+                      <label style={lbl}>Combined Bank Details (auto-filled)</label>
+                      <textarea style={{ ...inp, minHeight: 70, resize: "vertical", background: "#f8fafc", color: "#64748b" }}
+                        value={avf.bankName || avf.accountNumber || avf.ifscCode
+                          ? `${avf.bankName || ""}${avf.accountNumber ? " | A/C No: " + avf.accountNumber : ""}${avf.ifscCode ? " | IFSC: " + avf.ifscCode : ""}`
+                          : avf.bankDetails}
+                        readOnly placeholder="Bank Name | A/C No: … | IFSC: …" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              </div>{/* end content area */}
+            </div>{/* end body flex */}
+
+            {/* ── Fixed bottom action bar ── */}
+            <div style={{ background: "#fff", borderTop: "1px solid #e2e8f0", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
+              <button onClick={() => setAddVendorPage(false)}
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F }}>
+                Discard
+              </button>
+              <button onClick={submitDraft} disabled={addVendorLoading}
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                {addVendorLoading ? "Saving…" : "💾 Save as Draft"}
+              </button>
+            </div>
+
           </div>
         );
       })()}
