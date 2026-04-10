@@ -127,10 +127,11 @@ async function ocrExtractStatutoryField(imageFile, fieldType) {
 }
 
 // ─── API CONFIG ────────────────────────────────────────────────────
-const API_BASE      = "http://192.168.1.11:8080/api/v1/pwj";
-const VENDOR_BASE   = "http://192.168.1.11:8080/api/v1/vendors";
-const AUTH_BASE     = "http://192.168.1.11:8080/api/v1/auth";
-const PROJECT_BASE  = "http://192.168.1.11:8080/api/v1/projects";
+const BACKEND_BASE  = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const API_BASE      = `${BACKEND_BASE}/api/v1/pwj`;
+const VENDOR_BASE   = `${BACKEND_BASE}/api/v1/vendors`;
+const AUTH_BASE     = `${BACKEND_BASE}/api/v1/auth`;
+const PROJECT_BASE  = `${BACKEND_BASE}/api/v1/projects`;
 
 const api = {
   login: (body) =>
@@ -177,7 +178,7 @@ const api = {
   uploadImage: (file) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch("http://192.168.1.11:8080/api/v1/upload/image", { method: "POST", body: form }).then(r => r.json());
+    return fetch(`${BACKEND_BASE}/api/v1/upload/image`, { method: "POST", body: form }).then(r => r.json());
   },
   createVendor: (body) =>
     fetch(VENDOR_BASE, {
@@ -204,7 +205,7 @@ const api = {
   uploadDocument: (file) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: form }).then(r => r.json());
+    return fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: form }).then(r => r.json());
   },
   processVendorImage: (imageUrl) => fetch(`${VENDOR_BASE}/process-image`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
@@ -1558,7 +1559,7 @@ export default function PWJTracker() {
                         if (!imgs.length) return <span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>;
                         return (
                           <div style={{ position: "relative", display: "inline-block" }}>
-                            <img src={"http://192.168.1.11:8080" + imgs[0]} alt="ref" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2eaf5", cursor: "zoom-in" }} onError={e => { e.target.style.display = "none"; }} />
+                            <img src={BACKEND_BASE + imgs[0]} alt="ref" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2eaf5", cursor: "zoom-in" }} onError={e => { e.target.style.display = "none"; }} />
                             {imgs.length > 1 && <span style={{ position: "absolute", top: -4, right: -4, background: "#1a6ab1", color: "#fff", borderRadius: 8, fontSize: 9, fontWeight: 700, padding: "1px 4px", lineHeight: 1.4 }}>+{imgs.length - 1}</span>}
                           </div>
                         );
@@ -1940,7 +1941,7 @@ export default function PWJTracker() {
             setUploading(true);
             try {
               const fd = new FormData(); fd.append("file", file);
-              const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+              const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
               if (r.success) setF(field, r.data);
               else showToast("Upload failed", "error");
             } catch { showToast("Upload error", "error"); }
@@ -2028,14 +2029,14 @@ export default function PWJTracker() {
                         <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.poWoStatus)}
-                          {p.poWoDocUrl && <a href={`http://192.168.1.11:8080${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.poWoDocUrl && <a href={`${BACKEND_BASE}${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                       <div>
                         <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.amendedPoWoStatus)}
-                          {p.amendedPoWoDocUrl && <a href={`http://192.168.1.11:8080${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.amendedPoWoDocUrl && <a href={`${BACKEND_BASE}${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                     </div>
@@ -2179,7 +2180,7 @@ export default function PWJTracker() {
                             {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.poWoDocUrl && (
-                            <a href={`http://192.168.1.11:8080${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
                               style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
@@ -2206,7 +2207,7 @@ export default function PWJTracker() {
                             {amendedPoWoUploading ? "Uploading…" : projectMgmtForm.amendedPoWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.amendedPoWoDocUrl && (
-                            <a href={`http://192.168.1.11:8080${projectMgmtForm.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer"
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer"
                               style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
@@ -2270,9 +2271,9 @@ export default function PWJTracker() {
                     <div style={s.dLabel}>Image Reference ({parseImageRefs(detailRow.imageReference).length})</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
                       {parseImageRefs(detailRow.imageReference).map((url, i) => (
-                        <img key={i} src={"http://192.168.1.11:8080" + url} alt={`ref-${i + 1}`}
+                        <img key={i} src={BACKEND_BASE + url} alt={`ref-${i + 1}`}
                           style={{ maxHeight: 180, maxWidth: "100%", borderRadius: 8, border: "1px solid #e2eaf5", objectFit: "contain", cursor: "pointer" }}
-                          onClick={() => window.open("http://192.168.1.11:8080" + url, "_blank")}
+                          onClick={() => window.open(BACKEND_BASE + url, "_blank")}
                           onError={e => { e.target.style.display = "none"; }} />
                       ))}
                     </div>
@@ -2498,7 +2499,7 @@ export default function PWJTracker() {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                       {parseImageRefs(createForm.imageReference).map((url, i) => (
                         <div key={i} style={{ position: "relative" }}>
-                          <img src={"http://192.168.1.11:8080" + url} alt={`preview-${i + 1}`}
+                          <img src={BACKEND_BASE + url} alt={`preview-${i + 1}`}
                             style={{ height: 90, width: 90, objectFit: "cover", borderRadius: 8, border: "1px solid #e2eaf5" }} />
                           <button type="button"
                             onClick={() => {
@@ -3325,7 +3326,7 @@ export default function PWJTracker() {
                               {stored.map((f, i) => (
                                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
                                   <span style={{ fontSize: 16 }}>📄</span>
-                                  <a href={`http://192.168.1.11:8080${f.url}`} target="_blank" rel="noreferrer"
+                                  <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
                                     style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {f.name || `File ${i + 1}`}
                                   </a>
@@ -3715,7 +3716,7 @@ export default function PWJTracker() {
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
             {url
-              ? <a href={`http://192.168.1.11:8080${url}`} target="_blank" rel="noreferrer"
+              ? <a href={`${BACKEND_BASE}${url}`} target="_blank" rel="noreferrer"
                   style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: 12, fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
                   📎 View Document
                 </a>
@@ -3910,7 +3911,7 @@ export default function PWJTracker() {
         const uploadDoc = async (file, loadingKey, urlKey) => {
           setF(loadingKey, true);
           const fd = new FormData(); fd.append("file", file);
-          const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+          const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
           if (r.success) setF(urlKey, r.data);
           setF(loadingKey, false);
         };
@@ -3920,7 +3921,7 @@ export default function PWJTracker() {
           setF("bankDocUploading", true);
           try {
             const fd = new FormData(); fd.append("file", file);
-            const up = await fetch("http://192.168.1.11:8080/api/v1/upload/image", { method: "POST", body: fd }).then(x => x.json());
+            const up = await fetch(`${BACKEND_BASE}/api/v1/upload/image`, { method: "POST", body: fd }).then(x => x.json());
             if (up.success) setF("bankDocUrl", up.data);
           } catch { /* ignore — still proceed with OCR */ }
           setF("bankDocUploading", false);
@@ -4180,7 +4181,7 @@ export default function PWJTracker() {
                         const file = e.target.files[0]; if (!file) return;
                         setF("portfolioDocUploading", true);
                         const fd = new FormData(); fd.append("file", file);
-                        const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                        const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
                         if (r.success) setF("portfolioDocUrl", r.data);
                         setF("portfolioDocUploading", false);
                         e.target.value = "";
@@ -4188,7 +4189,7 @@ export default function PWJTracker() {
                   </label>
                   {avf.portfolioDocUrl && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
-                      <a href={"http://192.168.1.11:8080" + avf.portfolioDocUrl} target="_blank" rel="noreferrer"
+                      <a href={BACKEND_BASE + avf.portfolioDocUrl} target="_blank" rel="noreferrer"
                         style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "none" }}>
                         📄 {avf.portfolioDocUrl.split("/").pop()}
                       </a>
@@ -4225,7 +4226,7 @@ export default function PWJTracker() {
                         const files = Array.from(e.target.files);
                         for (const file of files) {
                           const fd = new FormData(); fd.append("file", file);
-                          const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                          const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
                           if (r.success) setF("catalogues", [...avf.catalogues, r.data]);
                         }
                         e.target.value = "";
@@ -4280,7 +4281,7 @@ export default function PWJTracker() {
                               try {
                                 // Upload file for storage
                                 const fd = new FormData(); fd.append("file", file);
-                                const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                                const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
                                 if (r.success) setF(docKey, r.data);
                                 // Run OCR to extract number from image
                                 if (file.type.startsWith("image/") || file.type === "application/pdf") {
@@ -4298,7 +4299,7 @@ export default function PWJTracker() {
                         </label>
                         {avf[docKey] && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
-                            <a href={"http://192.168.1.11:8080" + avf[docKey]} target="_blank" rel="noreferrer"
+                            <a href={BACKEND_BASE + avf[docKey]} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf[docKey].split("/").pop()}</a>
                             <button type="button" onClick={() => setF(docKey, "")}
                               style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
@@ -4335,7 +4336,7 @@ export default function PWJTracker() {
                               setF("msmeDocUploading", true);
                               try {
                                 const fd = new FormData(); fd.append("file", file);
-                                const r = await fetch("http://192.168.1.11:8080/api/v1/upload/document", { method: "POST", body: fd }).then(x => x.json());
+                                const r = await fetch(`${BACKEND_BASE}/api/v1/upload/document`, { method: "POST", body: fd }).then(x => x.json());
                                 if (r.success) setF("msmeDocUrl", r.data);
                               } catch { showToast("Upload failed", "error"); }
                               finally { setF("msmeDocUploading", false); e.target.value = ""; }
@@ -4343,7 +4344,7 @@ export default function PWJTracker() {
                         </label>
                         {avf.msmeDocUrl && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
-                            <a href={"http://192.168.1.11:8080" + avf.msmeDocUrl} target="_blank" rel="noreferrer"
+                            <a href={BACKEND_BASE + avf.msmeDocUrl} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf.msmeDocUrl.split("/").pop()}</a>
                             <button type="button" onClick={() => setF("msmeDocUrl", "")}
                               style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
@@ -4365,7 +4366,7 @@ export default function PWJTracker() {
                     <div style={{ fontSize: 11.5, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
                     <label style={{ display: "block", width: 130, height: 100, border: "2px dashed #93c5fd", borderRadius: 10, cursor: "pointer", overflow: "hidden", background: "#f8fafc", position: "relative" }}>
                       {avf.bankDocUrl
-                        ? <img src={"http://192.168.1.11:8080" + avf.bankDocUrl} alt="passbook" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ? <img src={BACKEND_BASE + avf.bankDocUrl} alt="passbook" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4 }}>
                             <span style={{ fontSize: 24 }}>🏦</span>
                             <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
