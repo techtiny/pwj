@@ -1381,11 +1381,30 @@ export default function PWJTracker() {
         ::-webkit-scrollbar-thumb { background:#bfdbfe; border-radius:8px; }
         tr:hover td { background:#eff6ff !important; }
         input:focus, select:focus, textarea:focus { border-color:#93c5fd !important; }
+        @media (max-width: 768px) {
+          .app-header { padding: 12px 14px !important; flex-wrap: wrap; gap: 8px; }
+          .app-hright { flex-wrap: wrap !important; gap: 6px !important; justify-content: flex-start; }
+          .app-hright button { padding: 7px 10px !important; font-size: 11px !important; }
+          .app-hbadge { display: none !important; }
+          .app-tabs { padding: 0 8px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .app-tabs button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
+          .app-statsrow { padding: 10px 10px 0 !important; gap: 8px !important; }
+          .app-statsrow > div { min-width: 100px !important; padding: 10px 12px !important; flex: 0 0 auto !important; }
+          .app-statsrow .stat-val { font-size: 22px !important; }
+          .app-filterbar { padding: 10px 12px !important; gap: 8px !important; }
+          .app-tablewrap { margin: 0 8px 14px !important; }
+          .app-pagination { padding: 10px 12px 18px !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+          .app-errbanner { margin: 10px 10px !important; }
+        }
+        @media (max-width: 480px) {
+          .app-hright button { padding: 6px 8px !important; font-size: 10px !important; }
+          .app-statsrow > div { min-width: 88px !important; }
+        }
       `}</style>
 
       <div style={s.root}>
         {/* ─── HEADER ─── */}
-        <div style={s.header}>
+        <div style={s.header} className="app-header">
           <div style={s.hLeft}>
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 42, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
             <div>
@@ -1393,9 +1412,9 @@ export default function PWJTracker() {
               <div style={s.hSub}>Purchase Work Journal · Procurement Dashboard</div>
             </div>
           </div>
-          <div style={s.hRight}>
+          <div style={s.hRight} className="app-hright">
             {/* Role badge + user */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.15)", borderRadius: 10, padding: "6px 14px", border: "1px solid rgba(255,255,255,.2)" }}>
+            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.15)", borderRadius: 10, padding: "6px 14px", border: "1px solid rgba(255,255,255,.2)" }}>
               <span style={{ background: roleMeta.bg, color: roleMeta.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{roleMeta.label}</span>
               <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{user.fullName || user.username}</span>
             </div>
@@ -1420,7 +1439,7 @@ export default function PWJTracker() {
         </div>
 
         {/* ─── MAIN TABS ─── */}
-        <div style={{ display: "flex", gap: 0, padding: "0 36px", background: "#fff", borderBottom: "2px solid #e2eaf5" }}>
+        <div className="app-tabs" style={{ display: "flex", gap: 0, padding: "0 36px", background: "#fff", borderBottom: "2px solid #e2eaf5" }}>
           {[
             { key: "entries", label: "📋 PWJ Entries" },
             ...((isAdmin || isProcurement || isVP || isOH) ? [{ key: "vendors", label: "🏭 Vendors" }] : []),
@@ -1447,7 +1466,7 @@ export default function PWJTracker() {
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
-        <div style={s.statsRow}>
+        <div style={s.statsRow} className="app-statsrow">
           {[
             { label: "Total PRs",    value: stats.total,       accent: "#3b82f6", statusV: null,     approvalV: null },
             { label: "Closed",       value: stats.closed,      accent: "#22c55e", statusV: "CLOSED", approvalV: null },
@@ -1466,17 +1485,17 @@ export default function PWJTracker() {
                 }}
                 style={{ ...s.statCard(c.accent), cursor: "pointer", transition: "box-shadow .15s, transform .1s", boxShadow: isActive ? `0 4px 18px ${c.accent}44` : "0 2px 12px rgba(15,76,129,.07)", transform: isActive ? "translateY(-2px)" : "none", background: isActive ? `${c.accent}0d` : "#fff", outline: isActive ? `2px solid ${c.accent}` : "none" }}>
                 <div style={s.statLbl}>{c.label}</div>
-                <div style={{ ...s.statVal, color: isActive ? c.accent : "#1e293b" }}>{loading ? "—" : (c.value ?? "—")}</div>
+                <div className="stat-val" style={{ ...s.statVal, color: isActive ? c.accent : "#1e293b" }}>{loading ? "—" : (c.value ?? "—")}</div>
               </div>
             );
           })}
         </div>
 
         {/* ─── ERROR ─── */}
-        {error && <div style={s.errorBanner}>⚠️ {error}</div>}
+        {error && <div style={s.errorBanner} className="app-errbanner">⚠️ {error}</div>}
 
         {/* ─── FILTER BAR ─── */}
-        <div style={s.filterBar}>
+        <div style={s.filterBar} className="app-filterbar">
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>🔍</span>
             <input style={s.searchInput} placeholder="Search material, project, vendor…"
@@ -1505,7 +1524,7 @@ export default function PWJTracker() {
         </div>
 
         {/* ─── TABLE ─── */}
-        <div style={s.tableWrap}>
+        <div style={s.tableWrap} className="app-tablewrap">
           <div style={{ overflowX: "auto" }}>
             <table style={s.table}>
               <thead>
@@ -1693,7 +1712,7 @@ export default function PWJTracker() {
         </div>
 
         {/* ─── PAGINATION ─── */}
-        <div style={s.paginationRow}>
+        <div style={s.paginationRow} className="app-pagination">
           <div style={s.pageInfo}>
             {totalElements > 0
               ? `Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalElements)} of ${totalElements}`
