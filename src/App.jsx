@@ -347,47 +347,172 @@ const ROLE_META = {
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────
 function LoginPage({ onLogin }) {
-  const [form, setForm]     = useState({ username: "", password: "" });
+  const [form, setForm]       = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState(null);
+  const [error, setError]     = useState(null);
+  const [showPw, setShowPw]   = useState(false);
+  const [focused, setFocused] = useState(null);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.username || !form.password) { setError("Enter username and password"); return; }
+    if (!form.username || !form.password) { setError("Please enter username and password"); return; }
     setLoading(true); setError(null);
     try {
       const res = await api.login(form);
       if (res.success) { onLogin(res.data); }
       else { setError(res.message || "Invalid credentials"); }
-    } catch { setError("Cannot connect to server. Make sure backend is running."); }
+    } catch { setError("Cannot connect to server"); }
     finally { setLoading(false); }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0f4c81,#1a6ab1,#0ea5e9)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
-      <div style={{ background: "#fff", borderRadius: 24, padding: "44px 40px", width: "100%", maxWidth: 400, boxShadow: "0 32px 80px rgba(15,76,129,.3)" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 48, objectFit: "contain", marginBottom: 16 }} />
-          <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 24, fontWeight: 800, color: "#0f172a" }}>PWJ Tracker</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Purchase Work Journal · Sign in to continue</div>
-        </div>
-        <form onSubmit={submit}>
-          {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16 }}>{error}</div>}
-          {[["Username", "username", "text"], ["Password", "password", "password"]].map(([lbl, key, type]) => (
-            <div key={key} style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 6 }}>{lbl}</label>
-              <input type={type} placeholder={lbl} value={form[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+    <>
+      <style>{`
+        @keyframes bgMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        @keyframes cardIn { from{opacity:0;transform:translateY(32px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes pulse { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes orb1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-20px)} 66%{transform:translate(-20px,15px)} }
+        @keyframes orb2 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-25px,20px)} 66%{transform:translate(20px,-15px)} }
+        .lg-input {
+          width:100%; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.15);
+          border-radius:14px; padding:14px 18px 14px 48px; font-size:14.5px; outline:none;
+          font-family:inherit; box-sizing:border-box; color:#fff; transition:all .25s;
+          -webkit-text-fill-color: #fff;
+        }
+        .lg-input::placeholder { color:rgba(255,255,255,.35); }
+        .lg-input:focus { background:rgba(255,255,255,.13); border-color:rgba(99,179,237,.7); box-shadow:0 0 0 4px rgba(99,179,237,.15); }
+        .lg-input:-webkit-autofill,
+        .lg-input:-webkit-autofill:hover,
+        .lg-input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 1000px rgba(15,60,110,.9) inset !important;
+          -webkit-text-fill-color: #fff !important;
+          border-color: rgba(255,255,255,.15) !important;
+        }
+        .lg-btn {
+          width:100%; border:none; border-radius:14px; padding:15px; font-weight:700;
+          font-size:15px; cursor:pointer; font-family:inherit; letter-spacing:.4px;
+          background:linear-gradient(135deg,#38bdf8,#1a6ab1,#0f4c81);
+          background-size:200% 200%; animation:bgMove 4s ease infinite;
+          color:#fff; transition:transform .18s,box-shadow .18s; margin-top:8px;
+          box-shadow:0 4px 20px rgba(56,189,248,.3);
+        }
+        .lg-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 32px rgba(56,189,248,.45); }
+        .lg-btn:active:not(:disabled) { transform:translateY(0); }
+        .lg-btn:disabled { opacity:.6; cursor:not-allowed; animation:none; background:#1a6ab1; }
+        .lg-label { font-size:11px; font-weight:700; color:rgba(255,255,255,.5); letter-spacing:1.2px; text-transform:uppercase; display:block; margin-bottom:8px; }
+        @media(max-width:600px){
+          .lg-card { padding:36px 24px !important; margin:16px !important; }
+          .lg-logo-row { gap:10px !important; }
+        }
+      `}</style>
+
+      {/* ── Background ── */}
+      <div style={{
+        minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+        fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden",
+        background:"linear-gradient(145deg,#050d1a 0%,#071428 30%,#091e3a 60%,#0a2444 100%)"
+      }}>
+        {/* Animated orbs */}
+        <div style={{ position:"absolute", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,.18) 0%,transparent 70%)", top:"-10%", left:"-10%", animation:"orb1 12s ease-in-out infinite", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,.14) 0%,transparent 70%)", bottom:"-10%", right:"-5%", animation:"orb2 15s ease-in-out infinite", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%)", top:"50%", right:"20%", animation:"orb1 10s ease-in-out infinite 2s", pointerEvents:"none" }} />
+
+        {/* Grid pattern */}
+        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none" }} />
+
+        {/* ── Card ── */}
+        <div className="lg-card" style={{
+          width:"100%", maxWidth:440, padding:"48px 44px",
+          background:"rgba(255,255,255,.04)", backdropFilter:"blur(24px)",
+          borderRadius:28, border:"1px solid rgba(255,255,255,.1)",
+          boxShadow:"0 32px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08)",
+          animation:"cardIn .5s cubic-bezier(.22,1,.36,1) both", position:"relative", zIndex:1
+        }}>
+
+          {/* Logo + Brand */}
+          <div className="lg-logo-row" style={{ display:"flex", alignItems:"center", gap:14, marginBottom:36 }}>
+            <div style={{ width:54, height:54, borderRadius:16, background:"linear-gradient(135deg,rgba(14,165,233,.3),rgba(15,76,129,.4))", border:"1.5px solid rgba(255,255,255,.15)", display:"flex", alignItems:"center", justifyContent:"center", padding:8, flexShrink:0 }}>
+              <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ width:"100%", objectFit:"contain", filter:"brightness(0) invert(1)" }} />
             </div>
-          ))}
-          <button type="submit" disabled={loading}
-            style={{ width: "100%", background: "linear-gradient(135deg,#0f4c81,#0ea5e9)", border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", marginTop: 8 }}>
-            {loading ? "Signing in…" : "Sign In"}
-          </button>
-        </form>
+            <div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:18, color:"#fff", letterSpacing:.2 }}>HAPPIZO</div>
+              <div style={{ fontSize:10.5, color:"rgba(255,255,255,.4)", letterSpacing:1.4, textTransform:"uppercase", marginTop:1 }}>Infrastructure & Solutions</div>
+            </div>
+            <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", borderRadius:20, padding:"4px 10px" }}>
+              <span style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e", display:"inline-block", animation:"pulse 2s ease infinite" }} />
+              <span style={{ fontSize:10.5, color:"#4ade80", fontWeight:600 }}>Live</span>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div style={{ marginBottom:32 }}>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#fff", letterSpacing:"-0.8px", lineHeight:1.15 }}>
+              Sign in to<br/>
+              <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>PWJ Tracker</span>
+            </div>
+            <div style={{ color:"rgba(255,255,255,.4)", fontSize:13.5, marginTop:10, lineHeight:1.6 }}>
+              Purchase Work Journal · Procurement Dashboard
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={submit}>
+            <div style={{ marginBottom:18 }}>
+              <label className="lg-label">Username</label>
+              <div style={{ position:"relative" }}>
+                <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18, opacity:.45 }} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input className="lg-input" type="text" placeholder="Enter your username"
+                  value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                  onFocus={() => setFocused("u")} onBlur={() => setFocused(null)} autoComplete="username" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom:28 }}>
+              <label className="lg-label">Password</label>
+              <div style={{ position:"relative" }}>
+                <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18, opacity:.45 }} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input className="lg-input" type={showPw ? "text" : "password"} placeholder="Enter your password"
+                  value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  onFocus={() => setFocused("p")} onBlur={() => setFocused(null)}
+                  autoComplete="current-password" style={{ paddingRight:48 }} />
+                <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"rgba(255,255,255,.4)", display:"flex", alignItems:"center", lineHeight:1 }}>
+                  {showPw
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <button className="lg-btn" type="submit" disabled={loading}>
+              {loading
+                ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" style={{ animation:"spin .8s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    Signing in…
+                  </span>
+                : <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                    Sign In
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </span>
+              }
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div style={{ marginTop:28, paddingTop:20, borderTop:"1px solid rgba(255,255,255,.07)", textAlign:"center", color:"rgba(255,255,255,.25)", fontSize:12 }}>
+            © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
