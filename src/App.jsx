@@ -527,7 +527,7 @@ const STATUS_META = {
   OPEN:   { bg: "#fef9c3", color: "#b45309", dot: "#f59e0b" },
 };
 
-const FONT = `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap');`;
+const FONT = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');`;
 
 // ─── MAIN COMPONENT ────────────────────────────────────────────────
 export default function PWJTracker() {
@@ -1424,57 +1424,70 @@ export default function PWJTracker() {
 
   // ── Styles ──
   const s = {
-    root: { fontFamily: "'DM Sans', sans-serif", background: "linear-gradient(135deg,#f0f7ff,#e8f4fd,#f5f9ff)", minHeight: "100vh" },
-    header: { background: "linear-gradient(120deg,#0f4c81,#1a6ab1,#0ea5e9)", padding: "24px 36px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 24px rgba(15,76,129,.2)" },
-    hLeft: { display: "flex", alignItems: "center", gap: 14 },
-    hLogo: { width: 46, height: 46, borderRadius: 12, background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, border: "1.5px solid rgba(255,255,255,.3)" },
-    hTitle: { fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px", lineHeight: 1.1 },
-    hSub: { fontSize: 11.5, color: "rgba(255,255,255,.7)", marginTop: 2 },
-    hRight: { display: "flex", gap: 10, alignItems: "center" },
-    hBtn: (col) => ({ background: col, border: "none", borderRadius: 10, padding: "9px 18px", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }),
-    statsRow: { display: "flex", gap: 14, padding: "20px 36px 0", overflowX: "auto" },
-    statCard: (accent) => ({ background: "#fff", borderRadius: 14, padding: "16px 22px", minWidth: 140, flex: 1, boxShadow: "0 2px 12px rgba(15,76,129,.07)", borderTop: `3px solid ${accent}` }),
-    statLbl: { fontSize: 10.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: .8 },
-    statVal: { fontSize: 30, fontWeight: 800, color: "#1e293b", fontFamily: "'Plus Jakarta Sans',sans-serif", lineHeight: 1.2, marginTop: 2 },
-    filterBar: { display: "flex", gap: 10, padding: "16px 36px", alignItems: "center", flexWrap: "wrap" },
-    searchWrap: { position: "relative", flex: 1, minWidth: 220, maxWidth: 340 },
-    searchIcon: { position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#93c5fd" },
-    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 13.5, outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
-    sel: { background: "#fff", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 28px 9px 12px", fontSize: 13, outline: "none", cursor: "pointer", fontFamily: "inherit", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2393c5fd' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 9px center" },
-    resultCount: { marginLeft: "auto", background: "linear-gradient(135deg,#0ea5e9,#1a6ab1)", color: "#fff", borderRadius: 20, padding: "5px 16px", fontSize: 12, fontWeight: 600 },
-    tableWrap: { margin: "0 36px 20px", background: "#fff", borderRadius: 16, boxShadow: "0 2px 20px rgba(15,76,129,.08)", overflow: "hidden", border: "1px solid #e8f0f9" },
-    table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
-    th: { background: "linear-gradient(180deg,#f0f7ff,#e8f3fd)", padding: "11px 13px", textAlign: "left", fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 10.5, color: "#4a7aa8", textTransform: "uppercase", letterSpacing: .7, borderBottom: "2px solid #dbeafe", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
-    td: { padding: "10px 13px", color: "#334155", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9" },
-    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 6, padding: "3px 10px", fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap" }),
+    // ── Layout ──
+    root: { fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif", background: "#f1f5f9", minHeight: "100vh" },
+    // ── Header — flat white, sticky ──
+    header: { background: "#ffffff", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", height: 68, position: "sticky", top: 0, zIndex: 100 },
+    hLeft: { display: "flex", alignItems: "center", gap: 12 },
+    hTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px", lineHeight: 1.15 },
+    hSub: { fontSize: 12.5, color: "#94a3b8", marginTop: 2, letterSpacing: 0.1 },
+    hRight: { display: "flex", gap: 7, alignItems: "center" },
+    // ghost = outline; primary = solid navy
+    hBtn: (variant) => ({
+      background: variant === "primary" ? "#1e3a5f" : "#ffffff",
+      border: variant === "primary" ? "none" : "1.5px solid #e2e8f0",
+      borderRadius: 8, padding: "8px 15px",
+      color: variant === "primary" ? "#ffffff" : "#374151",
+      fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+      display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+    }),
+    // ── Stats ──
+    statsRow: { display: "flex", gap: 12, padding: "20px 32px 0", overflowX: "auto" },
+    statCard: (accent) => ({ background: "#ffffff", borderRadius: 12, padding: "18px 22px", minWidth: 136, flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}` }),
+    statLbl: { fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 },
+    statVal: { fontSize: 32, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", lineHeight: 1.2, marginTop: 6 },
+    // ── Filter bar ──
+    filterBar: { display: "flex", gap: 10, padding: "16px 32px", alignItems: "center", flexWrap: "wrap" },
+    searchWrap: { position: "relative", flex: 1, minWidth: 220, maxWidth: 360 },
+    searchIcon: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8" },
+    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px 12px 10px 36px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: "#0f172a" },
+    sel: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px 30px 10px 12px", fontSize: 14, outline: "none", cursor: "pointer", fontFamily: "inherit", color: "#374151", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" },
+    resultCount: { marginLeft: "auto", background: "#f8fafc", color: "#475569", borderRadius: 20, padding: "6px 16px", fontSize: 13, fontWeight: 600, border: "1px solid #e2e8f0" },
+    // ── Table ──
+    tableWrap: { margin: "0 32px 24px", background: "#ffffff", borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" },
+    table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
+    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 11.5, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
+    td: { padding: "12px 14px", color: "#374151", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: 14 },
+    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }),
     dot: (c) => ({ width: 6, height: 6, borderRadius: "50%", background: c, flexShrink: 0 }),
-    approveBtn: { background: "linear-gradient(135deg,#1a6ab1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 12px", color: "#fff", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
-    paginationRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 36px 28px" },
-    pageInfo: { fontSize: 13, color: "#64748b" },
-    pageBtns: { display: "flex", gap: 5 },
-    pageBtn: (active) => ({ width: 32, height: 32, borderRadius: 8, border: active ? "none" : "1.5px solid #e2eaf5", background: active ? "linear-gradient(135deg,#1a6ab1,#0ea5e9)" : "#fff", color: active ? "#fff" : "#334155", cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
-    // Modal
-    overlay: { position: "fixed", inset: 0, background: "rgba(15,30,60,.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
-    modalBox: (w) => ({ background: "#fff", borderRadius: 20, width: "95%", maxWidth: w || 560, maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 64px rgba(15,76,129,.25)", animation: "slideUp .22s ease" }),
-    mHeader: { background: "linear-gradient(120deg,#0f4c81,#1a6ab1)", padding: "20px 26px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-    mTitle: { fontFamily: "'Plus Jakarta Sans',sans-serif", color: "#fff", fontWeight: 800, fontSize: 16 },
-    mSub: { color: "rgba(255,255,255,.7)", fontSize: 11.5, marginTop: 3 },
-    closeBtn: { background: "rgba(255,255,255,.15)", border: "none", color: "#fff", width: 28, height: 28, borderRadius: 7, cursor: "pointer", fontSize: 15 },
-    mBody: { padding: "22px 26px" },
-    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 22px" },
-    dLabel: { fontSize: 10, fontWeight: 700, color: "#93c5fd", textTransform: "uppercase", letterSpacing: .8, marginBottom: 3 },
-    dVal: { fontSize: 13, color: "#1e293b", fontWeight: 500 },
-    divider: { gridColumn: "1/-1", borderTop: "1.5px dashed #dbeafe", paddingTop: 10, fontSize: 10.5, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 1, marginTop: 4 },
-    formGroup: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 },
-    label: { fontSize: 11.5, fontWeight: 600, color: "#64748b" },
-    input: { border: "1.5px solid #e2eaf5", borderRadius: 9, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" },
-    textarea: { border: "1.5px solid #e2eaf5", borderRadius: 9, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", minHeight: 72, resize: "vertical" },
-    select2: { border: "1.5px solid #e2eaf5", borderRadius: 9, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", background: "#fff" },
-    submitBtn: (col) => ({ background: col || "linear-gradient(135deg,#1a6ab1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 28px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", width: "100%" }),
-    toast: (type) => ({ position: "fixed", bottom: 28, right: 28, zIndex: 999, background: type === "error" ? "#ef4444" : "linear-gradient(135deg,#1a6ab1,#0ea5e9)", color: "#fff", borderRadius: 12, padding: "14px 22px", fontWeight: 600, fontSize: 14, boxShadow: "0 8px 32px rgba(0,0,0,.18)", animation: "slideUp .22s ease" }),
-    emptyRow: { textAlign: "center", padding: "52px 20px", color: "#94a3b8", fontSize: 14 },
-    errorBanner: { margin: "16px 36px", padding: "14px 18px", background: "#fef2f2", borderRadius: 12, border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13 },
-    pendingItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #f1f5f9" },
+    approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
+    // ── Pagination ──
+    paginationRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 32px 24px" },
+    pageInfo: { fontSize: 14, color: "#64748b" },
+    pageBtns: { display: "flex", gap: 4 },
+    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "none" : "1.5px solid #e2e8f0", background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151", cursor: "pointer", fontSize: 13.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
+    // ── Modals ──
+    overlay: { position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
+    modalBox: (w) => ({ background: "#fff", borderRadius: 14, width: "95%", maxWidth: w || 580, maxHeight: "88vh", overflow: "auto", boxShadow: "0 20px 56px rgba(0,0,0,.16)", animation: "slideUp .22s ease" }),
+    mHeader: { background: "#0f172a", padding: "20px 26px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+    mTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.2px" },
+    mSub: { color: "rgba(255,255,255,.5)", fontSize: 13, marginTop: 4 },
+    closeBtn: { background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 16 },
+    mBody: { padding: "24px 26px" },
+    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px" },
+    dLabel: { fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 },
+    dVal: { fontSize: 14.5, color: "#0f172a", fontWeight: 500 },
+    divider: { gridColumn: "1/-1", borderTop: "1px solid #f1f5f9", paddingTop: 12, fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 6 },
+    formGroup: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 },
+    label: { fontSize: 13, fontWeight: 600, color: "#475569" },
+    input: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", color: "#0f172a" },
+    textarea: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", minHeight: 78, resize: "vertical", color: "#0f172a" },
+    select2: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", background: "#fff", color: "#0f172a" },
+    submitBtn: (col) => ({ background: col || "#1e3a5f", border: "none", borderRadius: 9, padding: "12px 28px", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", width: "100%" }),
+    toast: (type) => ({ position: "fixed", bottom: 28, right: 28, zIndex: 999, background: type === "error" ? "#dc2626" : "#0f172a", color: "#fff", borderRadius: 10, padding: "14px 22px", fontWeight: 600, fontSize: 14, boxShadow: "0 8px 32px rgba(0,0,0,.2)", animation: "slideUp .22s ease" }),
+    emptyRow: { textAlign: "center", padding: "52px 20px", color: "#94a3b8", fontSize: 15 },
+    errorBanner: { margin: "16px 32px", padding: "13px 18px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", color: "#b91c1c", fontSize: 14 },
+    pendingItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #f1f5f9" },
   };
 
   const SortArrow = ({ field }) => (
@@ -1498,19 +1511,21 @@ export default function PWJTracker() {
       <style>{`
         @keyframes slideUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
         * { box-sizing: border-box; }
-        body { margin: 0; }
+        body { margin: 0; font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        ::-webkit-scrollbar { width:6px; height:6px; }
-        ::-webkit-scrollbar-track { background:#f1f5f9; }
-        ::-webkit-scrollbar-thumb { background:#bfdbfe; border-radius:8px; }
-        tr:hover td { background:#eff6ff !important; }
-        input:focus, select:focus, textarea:focus { border-color:#93c5fd !important; }
+        ::-webkit-scrollbar { width:5px; height:5px; }
+        ::-webkit-scrollbar-track { background:#f8fafc; }
+        ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:8px; }
+        tr:hover td { background:#f8fafc !important; transition: background .1s; }
+        input:focus, select:focus, textarea:focus { border-color:#1e3a5f !important; box-shadow: 0 0 0 3px rgba(30,58,95,.08) !important; }
+        .hbtn-hover:hover { background:#f8fafc !important; border-color:#cbd5e1 !important; }
+        .hbtn-primary-hover:hover { background:#162d4a !important; }
         @media (max-width: 768px) {
-          .app-header { padding: 12px 14px !important; flex-wrap: wrap; gap: 8px; }
-          .app-hright { flex-wrap: wrap !important; gap: 6px !important; justify-content: flex-start; }
-          .app-hright button { padding: 7px 10px !important; font-size: 11px !important; }
+          .app-header { padding: 0 12px !important; height: auto !important; min-height: 56px; flex-wrap: wrap; gap: 8px; padding-top: 8px !important; padding-bottom: 8px !important; }
+          .app-hright { flex-wrap: wrap !important; gap: 5px !important; justify-content: flex-start; }
+          .app-hright button { padding: 6px 10px !important; font-size: 11px !important; }
           .app-hbadge { display: none !important; }
           .app-tabs { padding: 0 8px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
           .app-tabs button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
@@ -1523,7 +1538,7 @@ export default function PWJTracker() {
           .app-errbanner { margin: 10px 10px !important; }
         }
         @media (max-width: 480px) {
-          .app-hright button { padding: 6px 8px !important; font-size: 10px !important; }
+          .app-hright button { padding: 5px 8px !important; font-size: 10px !important; }
           .app-statsrow > div { min-width: 88px !important; }
         }
       `}</style>
@@ -1532,44 +1547,44 @@ export default function PWJTracker() {
         {/* ─── HEADER ─── */}
         <div style={s.header} className="app-header">
           <div style={s.hLeft}>
-            <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 42, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
-            <div>
+            <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
+            <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
               <div style={s.hTitle}>PWJ Tracker</div>
-              <div style={s.hSub}>Purchase Work Journal · Procurement Dashboard</div>
+              <div style={s.hSub}>Purchase Work Journal · Procurement</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
             {/* Role badge + user */}
-            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.15)", borderRadius: 10, padding: "6px 14px", border: "1px solid rgba(255,255,255,.2)" }}>
-              <span style={{ background: roleMeta.bg, color: roleMeta.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{roleMeta.label}</span>
-              <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{user.fullName || user.username}</span>
+            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 8, background: "#f8fafc", borderRadius: 8, padding: "5px 12px", border: "1px solid #e2e8f0" }}>
+              <span style={{ background: roleMeta.bg, color: roleMeta.color, borderRadius: 4, padding: "1px 7px", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3 }}>{roleMeta.label}</span>
+              <span style={{ color: "#0f172a", fontSize: 12.5, fontWeight: 600 }}>{user.fullName || user.username}</span>
             </div>
             {(isAdmin || isProcurement) && (
-              <button style={s.hBtn("rgba(16,185,129,.9)")} onClick={exportCSV}>⬇ Export</button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV}>↓ Export</button>
             )}
             {(isAdmin || isProcurement || isOH || isVP) && (
-              <button style={s.hBtn("rgba(251,191,36,.9)")} onClick={openPending}>⏳ Pending</button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPending}>Pending</button>
             )}
             {isVP && (
-              <button style={s.hBtn("rgba(245,158,11,.9)")} onClick={openPendingDocs}>📄 Doc Approvals</button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPendingDocs}>Doc Approvals</button>
             )}
             {(isAdmin || isVP || isOH) && (
-              <button style={s.hBtn("rgba(99,102,241,.9)")} onClick={openUserMgmt}>👥 Manage Users</button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openUserMgmt}>Manage Users</button>
             )}
-            <button style={s.hBtn("rgba(34,197,94,.85)")} onClick={() => {
+            <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
               setCreateForm(f => ({ ...f, raisedBy: user.fullName || user.username }));
               setCreateModal(true);
             }}>+ New Entry</button>
-            <button style={s.hBtn("rgba(255,255,255,.2)")} onClick={handleLogout}>↩ Logout</button>
+            <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={handleLogout}>Logout</button>
           </div>
         </div>
 
         {/* ─── MAIN TABS ─── */}
-        <div className="app-tabs" style={{ display: "flex", gap: 0, padding: "0 36px", background: "#fff", borderBottom: "2px solid #e2eaf5" }}>
+        <div className="app-tabs" style={{ display: "flex", gap: 0, padding: "0 32px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
           {[
-            { key: "entries", label: "📋 PWJ Entries" },
-            ...((isAdmin || isProcurement || isVP || isOH) ? [{ key: "vendors", label: "🏭 Vendors" }] : []),
-            ...((isAdmin || isVP || isOH) ? [{ key: "projects", label: "🏗️ Projects" }] : []),
+            { key: "entries", label: "PWJ Entries" },
+            ...((isAdmin || isProcurement || isVP || isOH) ? [{ key: "vendors", label: "Vendors" }] : []),
+            ...((isAdmin || isVP || isOH) ? [{ key: "projects", label: "Projects" }] : []),
           ].map(t => {
             const active = mainTab === t.key;
             return (
@@ -1580,10 +1595,10 @@ export default function PWJTracker() {
                   if (t.key === "projects") fetchManagedProjects();
                 }}
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "14px 24px", fontSize: 14, fontWeight: active ? 700 : 500,
-                  color: active ? "#1a6ab1" : "#64748b",
-                  borderBottom: active ? "3px solid #1a6ab1" : "3px solid transparent",
-                  marginBottom: -2 }}>
+                  padding: "14px 22px", fontSize: 13.5, fontWeight: active ? 600 : 500,
+                  color: active ? "#0f172a" : "#94a3b8",
+                  borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
+                  marginBottom: -1, letterSpacing: 0.1 }}>
                 {t.label}
               </button>
             );
@@ -1643,8 +1658,8 @@ export default function PWJTracker() {
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
           <button onClick={fetchEntries} title="Refresh entries"
-            style={{ background: "#fff", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "8px 13px", fontSize: 15, cursor: "pointer", color: "#4a7aa8", lineHeight: 1 }}>
-            🔄
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 13px", fontSize: 14, cursor: "pointer", color: "#64748b", lineHeight: 1 }}>
+            ↺
           </button>
           <div style={s.resultCount}>{totalElements} results</div>
         </div>
@@ -1681,7 +1696,7 @@ export default function PWJTracker() {
                 ) : entries.length === 0 ? (
                   <tr><td colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
                 ) : entries.map((row, idx) => (
-                  <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#eff6ff" : idx % 2 === 0 ? "#fff" : "#f8fbff", cursor: "pointer" }}>
+                  <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#f0f4ff" : idx % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer" }}>
                     <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.has(row.id)}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: "pointer" }} />
@@ -1884,7 +1899,7 @@ export default function PWJTracker() {
             <div style={{ padding: "24px 36px" }}>
               {/* Top bar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 20, fontWeight: 800, color: "#0f172a" }}>
+                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>
                   Vendor Management
                   <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
@@ -2118,7 +2133,7 @@ export default function PWJTracker() {
               {/* Header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Project Management</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>Project Management</div>
                   <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
                     {activeProjects.length} active project{activeProjects.length !== 1 ? "s" : ""} · Engineers select from this list when creating entries
                   </div>
@@ -2538,7 +2553,7 @@ export default function PWJTracker() {
           <div style={s.modalBox(660)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
-                <div style={s.mTitle}>⏳ Pending Approvals</div>
+                <div style={s.mTitle}>Pending Approvals</div>
                 <div style={s.mSub}>{pendingList.length} entries awaiting action</div>
               </div>
               <button style={s.closeBtn} onClick={() => setPendingModal(false)}>✕</button>
@@ -2549,8 +2564,8 @@ export default function PWJTracker() {
                 : pendingList.map(row => (
                   <div key={row.id} style={s.pendingItem}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13.5, color: "#1e293b" }}>{row.materialRequired}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{row.projectName} · {row.raisedBy} · #{row.id}</div>
+                      <div style={{ fontWeight: 600, fontSize: 15, color: "#1e293b" }}>{row.materialRequired}</div>
+                      <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{row.projectName} · {row.raisedBy} · #{row.id}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
@@ -2580,7 +2595,7 @@ export default function PWJTracker() {
           <div style={s.modalBox(620)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
-                <div style={s.mTitle}>➕ New PWJ Entry</div>
+                <div style={s.mTitle}>New PWJ Entry</div>
                 <div style={s.mSub}>Add a new purchase / work journal request</div>
               </div>
               <button style={s.closeBtn} onClick={() => setCreateModal(false)}>✕</button>
@@ -2767,7 +2782,7 @@ export default function PWJTracker() {
             <div style={{ ...s.modalBox(880), maxHeight: "92vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
               <div style={s.mHeader}>
                 <div>
-                  <div style={s.mTitle}>🏭 Add Vendor</div>
+                  <div style={s.mTitle}>Add Vendor</div>
                   <div style={s.mSub}>Add a new vendor — only Company name is required</div>
                 </div>
                 <button style={s.closeBtn} onClick={() => setVendorModal(false)}>✕</button>
@@ -3033,7 +3048,7 @@ export default function PWJTracker() {
             <div style={{ ...s.modalBox(720), maxHeight: "88vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
               <div style={s.mHeader}>
                 <div>
-                  <div style={s.mTitle}>🏛️ Vendor Approvals</div>
+                  <div style={s.mTitle}>Vendor Approvals</div>
                   <div style={s.mSub}>View and manage vendor approval status</div>
                 </div>
                 <button style={s.closeBtn} onClick={() => setVpPendingModal(false)}>✕</button>
@@ -3131,7 +3146,7 @@ export default function PWJTracker() {
           <div style={{ ...s.modalBox(460) }} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
-                <div style={s.mTitle}>✏️ Assign Vendor & PWJ Type</div>
+                <div style={s.mTitle}>Assign Vendor & PWJ Type</div>
                 <div style={s.mSub}>PWJ #{assignModal.id} · {assignModal.projectName}</div>
               </div>
               <button style={s.closeBtn} onClick={() => setAssignModal(null)}>✕</button>
@@ -3570,7 +3585,7 @@ export default function PWJTracker() {
           <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 820, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 28px 18px", borderBottom: "1px solid #f1f5f9" }}>
               <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 18, color: "#0f172a" }}>📄 Document Approvals</div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Document Approvals</div>
                 <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending VP review</div>
               </div>
               <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
@@ -3636,7 +3651,7 @@ export default function PWJTracker() {
             {/* ── Top bar ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 28px 18px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
               <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 18, color: "#0f172a" }}>Manage Users</div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Manage Users</div>
                 <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{allUsers.length} team members</div>
               </div>
               <button onClick={() => setUserMgmtModal(false)}
@@ -4094,7 +4109,7 @@ export default function PWJTracker() {
           }
         };
 
-        const F = { fontFamily: "'Plus Jakarta Sans','Inter',sans-serif" };
+        const F = { fontFamily: "'Inter','Plus Jakarta Sans',sans-serif" };
         const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "#0f172a", transition: "border-color .15s" };
         const lbl2 = { fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
         const fld2 = { display: "flex", flexDirection: "column" };
