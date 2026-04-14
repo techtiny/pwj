@@ -529,6 +529,176 @@ const STATUS_META = {
 
 const FONT = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');`;
 
+// ─── LAUNCH DATE — change this to your actual launch date/time ─────
+const LAUNCH_DATE = new Date("2026-04-14T17:15:00");
+
+// ─── COUNTDOWN PAGE ────────────────────────────────────────────────
+function CountdownPage({ onLaunched }) {
+  const calc = () => {
+    const diff = LAUNCH_DATE - Date.now();
+    if (diff <= 0) return null;
+    return {
+      days:    Math.floor(diff / 86400000),
+      hours:   Math.floor((diff % 86400000) / 3600000),
+      minutes: Math.floor((diff % 3600000)  / 60000),
+      seconds: Math.floor((diff % 60000)    / 1000),
+    };
+  };
+
+  const [time, setTime] = useState(calc);
+
+  useEffect(() => {
+    if (!time) { onLaunched(); return; }
+    const id = setInterval(() => {
+      const t = calc();
+      if (!t) { clearInterval(id); onLaunched(); }
+      else setTime(t);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const unit = (value, label) => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 90 }}>
+      <div style={{
+        fontSize: 64, fontWeight: 800, lineHeight: 1,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        background: "linear-gradient(135deg, #fff 30%, #bae6fd)",
+        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        textShadow: "none", letterSpacing: -2,
+      }}>
+        {pad(value)}
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 3, color: "#94a3b8", textTransform: "uppercase", marginTop: 6 }}>
+        {label}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <style>{`
+        ${FONT}
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #020818; }
+        @keyframes floatOrb {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-40px) scale(1.08); }
+        }
+        @keyframes pulseRing {
+          0% { transform: scale(0.95); opacity: 0.7; }
+          50% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.7; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .cd-card { animation: fadeUp 0.8s ease both; }
+        .cd-sep { width: 4px; height: 64px; background: rgba(255,255,255,0.12); border-radius: 4px; align-self: flex-start; margin-top: 6px; }
+      `}</style>
+
+      {/* background */}
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020818 0%, #0a1628 50%, #050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "'Inter', sans-serif" }}>
+
+        {/* animated orbs */}
+        <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,165,233,0.18) 0%, transparent 70%)", top: "-10%", left: "-10%", animation: "floatOrb 8s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", bottom: "-5%", right: "-5%", animation: "floatOrb 10s ease-in-out infinite reverse" }} />
+        <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,165,233,0.1) 0%, transparent 70%)", bottom: "20%", left: "10%", animation: "floatOrb 12s ease-in-out infinite 2s" }} />
+
+        {/* card */}
+        <div className="cd-card" style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "52px 56px", borderRadius: 28, background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)", maxWidth: 600, width: "90vw" }}>
+
+          {/* partner logos */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 32, marginBottom: 36, flexWrap: "wrap" }}>
+            {/* Happizo logo */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, opacity: 0.9 }}>
+              <svg width="52" height="52" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="18" y="8" width="22" height="84" rx="4" fill="#29b6e8" opacity="0.55"/>
+                <rect x="60" y="8" width="22" height="84" rx="4" fill="#29b6e8" opacity="0.55"/>
+                <polygon points="18,38 82,56 82,66 18,48" fill="#29b6e8"/>
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 3, color: "#29b6e8", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>HAPPIZO<sup style={{fontSize:8}}>®</sup></span>
+            </div>
+
+            <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.1)" }} />
+
+            {/* Techtiny logo */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.9 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#3ab4e8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="30" height="30" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Left hemisphere */}
+                  <path d="M50 18 C47 18 44 19 41 21 C37 23 34 27 33 31 C29 28 24 29 21 33 C17 37 17 44 20 49 C16 51 14 56 15 61 C16 66 20 70 25 70 C26 73 28 77 32 79 L50 79 L50 18 Z" fill="white"/>
+                  {/* Right hemisphere */}
+                  <path d="M50 18 C53 18 56 19 59 21 C63 23 66 27 67 31 C71 28 76 29 79 33 C83 37 83 44 80 49 C84 51 86 56 85 61 C84 66 80 70 75 70 C74 73 72 77 68 79 L50 79 L50 18 Z" fill="white"/>
+                  {/* Center divider */}
+                  <line x1="50" y1="22" x2="50" y2="77" stroke="#3ab4e8" strokeWidth="3"/>
+                  {/* Left fold lines */}
+                  <path d="M34 41 Q41 37 46 42" stroke="#3ab4e8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  <path d="M32 57 Q40 53 45 58" stroke="#3ab4e8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  {/* Right fold lines */}
+                  <path d="M66 41 Q59 37 54 42" stroke="#3ab4e8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                  <path d="M68 57 Q60 53 55 58" stroke="#3ab4e8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ lineHeight: 1 }}>
+                <span style={{ fontSize: 20, fontWeight: 600, color: "#3ab4e8", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Tech</span><span style={{ fontSize: 20, fontWeight: 800, color: "#cbd5e1", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>tiny</span>
+              </div>
+            </div>
+          </div>
+
+          {/* badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 100, padding: "6px 18px", marginBottom: 28 }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#38bdf8", animation: "pulseRing 2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: "#7dd3fc", textTransform: "uppercase" }}>Launching Soon</span>
+          </div>
+
+          {/* logo / title */}
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>PWJ Tracker</div>
+          <h1 style={{
+            fontSize: 38, fontWeight: 800, lineHeight: 1.15,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            background: "linear-gradient(135deg, #f8fafc 0%, #7dd3fc 50%, #818cf8 100%)",
+            backgroundSize: "200% auto",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            animation: "shimmer 4s linear infinite",
+            marginBottom: 12,
+          }}>
+            Procurement Dashboard
+          </h1>
+          <p style={{ fontSize: 15, color: "#64748b", marginBottom: 44, lineHeight: 1.6 }}>
+            A smarter way to track, approve &amp; manage procurement workflows.
+          </p>
+
+          {/* countdown */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 20, marginBottom: 44, flexWrap: "wrap" }}>
+            {unit(time?.days    ?? 0, "Days")}
+            <div className="cd-sep" />
+            {unit(time?.hours   ?? 0, "Hours")}
+            <div className="cd-sep" />
+            {unit(time?.minutes ?? 0, "Minutes")}
+            <div className="cd-sep" />
+            {unit(time?.seconds ?? 0, "Seconds")}
+          </div>
+
+          {/* launch date line */}
+          <div style={{ fontSize: 13, color: "#475569", letterSpacing: 1 }}>
+            🚀 &nbsp;Going live on&nbsp;
+            <span style={{ color: "#7dd3fc", fontWeight: 600 }}>
+              {LAUNCH_DATE.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── MAIN COMPONENT ────────────────────────────────────────────────
 export default function PWJTracker() {
   // ── Session ──
@@ -551,7 +721,12 @@ export default function PWJTracker() {
   const isVP          = user?.role === "VP";
   const isOH          = user?.role === "OH";
 
-  if (!user) return <LoginPage onLogin={handleLogin} />;
+  const [launched, setLaunched] = useState(() => Date.now() >= LAUNCH_DATE.getTime());
+
+  if (!user) {
+    if (!launched) return <CountdownPage onLaunched={() => setLaunched(true)} />;
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
