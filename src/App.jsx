@@ -548,13 +548,26 @@ function CountdownPage({ onLaunched }) {
   const [time, setTime] = useState(calc);
 
   useEffect(() => {
+    // Pre-unlock AudioContext on first user interaction so music auto-plays at launch
+    const unlock = () => getAudioCtx();
+    window.addEventListener("click",      unlock, { once: true });
+    window.addEventListener("touchstart", unlock, { once: true });
+    window.addEventListener("keydown",    unlock, { once: true });
+    window.addEventListener("mousemove",  unlock, { once: true });
+
     if (!time) { onLaunched(); return; }
     const id = setInterval(() => {
       const t = calc();
       if (!t) { clearInterval(id); onLaunched(); }
       else setTime(t);
     }, 1000);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("click",      unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("keydown",    unlock);
+      window.removeEventListener("mousemove",  unlock);
+    };
   }, []);
 
   const pad = (n) => String(n).padStart(2, "0");
@@ -699,6 +712,154 @@ function CountdownPage({ onLaunched }) {
   );
 }
 
+// ─── CELEBRATION PAGE ──────────────────────────────────────────────
+const CONFETTI_COLORS = ["#38bdf8","#818cf8","#f472b6","#34d399","#fbbf24","#f87171","#a78bfa","#fff"];
+const CONFETTI_COUNT  = 60;
+
+// Module-level AudioContext unlocked by any user interaction on CountdownPage
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === "suspended") _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playCelebrationMusic() {
+  const ctx = getAudioCtx();
+  const t   = ctx.currentTime;
+
+  const playNote = (freq, start, dur, vol = 0.28, type = "sine") => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t + start);
+    gain.gain.setValueAtTime(0, t + start);
+    gain.gain.linearRampToValueAtTime(vol, t + start + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + start + dur);
+    osc.start(t + start);
+    osc.stop(t + start + dur + 0.05);
+  };
+
+  // ── Melody (sine) ────────────────────────────────────────────────
+  const melody = [
+    // Fanfare opener — ascending C major
+    [523.25, 0.00, 0.14], [659.25, 0.14, 0.14], [783.99, 0.28, 0.14],
+    [1046.5, 0.42, 0.38],
+    // Quick flourish
+    [880.00, 0.85, 0.10], [783.99, 0.95, 0.10], [659.25, 1.05, 0.10],
+    // Second rise
+    [783.99, 1.20, 0.12], [880.00, 1.32, 0.12], [1046.5, 1.44, 0.12],
+    [1174.7, 1.56, 0.12], [1318.5, 1.68, 0.45],   // E6 climax
+    // Resolution back down
+    [1174.7, 2.18, 0.14], [1046.5, 2.32, 0.14],
+    [880.00, 2.46, 0.14], [783.99, 2.60, 0.14],
+    [659.25, 2.74, 0.14], [523.25, 2.88, 0.55],   // C5 final hold
+    // Celebratory repeat tag
+    [523.25, 3.50, 0.10], [659.25, 3.60, 0.10],
+    [783.99, 3.70, 0.10], [1046.5, 3.80, 0.80],
+  ];
+  melody.forEach(([f, s, d]) => playNote(f, s, d, 0.30, "sine"));
+
+  // ── Harmony a third below (triangle — warmer) ────────────────────
+  const harmony = [
+    [392.00, 0.00, 0.14], [523.25, 0.14, 0.14], [659.25, 0.28, 0.14],
+    [783.99, 0.42, 0.38],
+    [659.25, 1.20, 0.12], [783.99, 1.32, 0.12], [880.00, 1.44, 0.12],
+    [1046.5, 1.68, 0.45],
+    [783.99, 2.88, 0.55],
+    [783.99, 3.80, 0.80],
+  ];
+  harmony.forEach(([f, s, d]) => playNote(f, s, d, 0.14, "triangle"));
+
+  // ── Bass kick (low sine burst) ───────────────────────────────────
+  [[65.41, 0.0], [65.41, 0.42], [65.41, 1.20], [65.41, 1.68], [65.41, 3.50]].forEach(([f, s]) => {
+    playNote(f, s, 0.18, 0.4, "sine");
+  });
+}
+
+function CelebrationPage({ onDone }) {
+  useEffect(() => {
+    playCelebrationMusic();
+    const id = setTimeout(onDone, 10000);
+    return () => clearTimeout(id);
+  }, []);
+
+  const pieces = Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
+    id:    i,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    left:  `${Math.random() * 100}%`,
+    delay: `${(Math.random() * 2).toFixed(2)}s`,
+    dur:   `${(2.5 + Math.random() * 2).toFixed(2)}s`,
+    size:  `${6 + Math.floor(Math.random() * 8)}px`,
+    rot:   `${Math.floor(Math.random() * 360)}deg`,
+    shape: Math.random() > 0.5 ? "50%" : "2px",
+  }));
+
+  return (
+    <>
+      <style>{`
+        ${FONT}
+        @keyframes confettiFall {
+          0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes popIn {
+          0%   { transform: scale(0.4); opacity: 0; }
+          60%  { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+        @keyframes glow {
+          0%, 100% { text-shadow: 0 0 20px rgba(56,189,248,0.6), 0 0 60px rgba(129,140,248,0.4); }
+          50%       { text-shadow: 0 0 40px rgba(56,189,248,0.9), 0 0 100px rgba(129,140,248,0.7); }
+        }
+        @keyframes fadeOut {
+          0%   { opacity: 1; }
+          80%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .cel-wrap  { animation: fadeOut 10s ease forwards; }
+        .cel-card  { animation: popIn 0.7s cubic-bezier(.34,1.56,.64,1) both; }
+        .cel-title { animation: glow 2s ease-in-out infinite; }
+      `}</style>
+
+      <div className="cel-wrap" style={{ minHeight: "100vh", background: "linear-gradient(135deg,#020818 0%,#0a1628 50%,#050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "'Inter',sans-serif" }}>
+
+        {/* confetti */}
+        {pieces.map(p => (
+          <div key={p.id} style={{
+            position: "absolute", top: "-10px", left: p.left,
+            width: p.size, height: p.size, borderRadius: p.shape,
+            background: p.color, transform: `rotate(${p.rot})`,
+            animation: `confettiFall ${p.dur} ${p.delay} ease-in forwards`,
+            pointerEvents: "none",
+          }} />
+        ))}
+
+        {/* card */}
+        <div className="cel-card" style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "56px 64px", borderRadius: 28, background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 80px rgba(0,0,0,0.5)", maxWidth: 540, width: "90vw" }}>
+
+          <div style={{ fontSize: 72, marginBottom: 16, lineHeight: 1 }}>🎉</div>
+
+          <div className="cel-title" style={{ fontSize: 42, fontWeight: 800, fontFamily: "'Plus Jakarta Sans',sans-serif", background: "linear-gradient(135deg,#f8fafc,#7dd3fc,#818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 12 }}>
+            We're Live!
+          </div>
+
+          <div style={{ fontSize: 16, color: "#94a3b8", marginBottom: 32, lineHeight: 1.7 }}>
+            PWJ Tracker is officially launched.<br/>
+            <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — making procurement smarter.
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, color: "#475569" }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 8px #34d399" }} />
+            Taking you to the dashboard…
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── MAIN COMPONENT ────────────────────────────────────────────────
 export default function PWJTracker() {
   // ── Session ──
@@ -721,10 +882,12 @@ export default function PWJTracker() {
   const isVP          = user?.role === "VP";
   const isOH          = user?.role === "OH";
 
-  const [launched, setLaunched] = useState(() => Date.now() >= LAUNCH_DATE.getTime());
+  const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
+  const [celebrating,  setCelebrating]  = useState(false);
 
   if (!user) {
-    if (!launched) return <CountdownPage onLaunched={() => setLaunched(true)} />;
+    if (!launched)    return <CountdownPage    onLaunched={() => { setLaunched(true); setCelebrating(true); }} />;
+    if (celebrating)  return <CelebrationPage  onDone={() => setCelebrating(false)} />;
     return <LoginPage onLogin={handleLogin} />;
   }
 
