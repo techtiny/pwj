@@ -876,13 +876,7 @@ export default function PWJTracker() {
     setUser(null);
   };
 
-  const isAdmin       = user?.role === "ADMIN";
-  const isProcurement = user?.role === "PROCUREMENT";
-  const isEngineer    = user?.role === "ENGINEER";
-  const isVP          = user?.role === "VP";
-  const isOH          = user?.role === "OH";
-
-  const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
+  const [launched,     setLaunched]     = useState(true); // countdown disabled
   const [celebrating,  setCelebrating]  = useState(false);
 
   if (!user) {
@@ -890,6 +884,17 @@ export default function PWJTracker() {
     if (celebrating)  return <CelebrationPage  onDone={() => setCelebrating(false)} />;
     return <LoginPage onLogin={handleLogin} />;
   }
+
+  return <Dashboard user={user} onLogout={handleLogout} />;
+}
+
+// ─── DASHBOARD (always mounted when user is set — no conditional hooks) ───
+function Dashboard({ user, onLogout: handleLogout }) {
+  const isAdmin       = user?.role === "ADMIN";
+  const isProcurement = user?.role === "PROCUREMENT";
+  const isEngineer    = user?.role === "ENGINEER";
+  const isVP          = user?.role === "VP";
+  const isOH          = user?.role === "OH";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
@@ -1091,6 +1096,8 @@ export default function PWJTracker() {
         showToast(`Entry #${approvalModal.entry.id} updated to ${res.data.approvalStatus}`);
         setApprovalModal(null);
         fetchEntries();
+        // Refresh pending list so approved entry disappears immediately
+        api.getPending().then(r => { if (r.success) setPendingList(r.data); });
       } else { showToast(res.message, "error"); }
     } catch { showToast("Failed to update approval", "error"); }
     finally { setApprovalLoading(false); }
@@ -2018,7 +2025,9 @@ export default function PWJTracker() {
                     ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["BOQ","boqNo"],["Material","materialRequired"],
                     ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
-                    ["Image","—"],["Approval","approvalStatus"],["Vendor","vendor"],["PWJ","pwjIssued"],["ACK","ack"],["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
+                    ["Image","—"],["Approval","approvalStatus"],["Vendor","vendor"],
+                    ...((isAdmin || isProcurement) ? [["PWJ","pwjIssued"]] : []),
+                    ["ACK","ack"],["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
                     <th key={lbl} style={s.th}
@@ -2072,9 +2081,9 @@ export default function PWJTracker() {
                     </td>
                     {/* Vendor */}
                     <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
-                    {/* PWJ toggle */}
-                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                      {(isAdmin || isProcurement || isVP) ? (
+                    {/* PWJ toggle — visible & editable only by Admin and Procurement */}
+                    {(isAdmin || isProcurement) && (
+                      <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                         <button
                           title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
                           onClick={async () => {
@@ -2085,10 +2094,8 @@ export default function PWJTracker() {
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
                           {row.pwjIssued ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
                         </button>
-                      ) : (
-                        <span style={{ fontSize: 16, color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
-                      )}
-                    </td>
+                      </td>
+                    )}
                     {/* ACK toggle */}
                     <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                       {(isAdmin || isProcurement || isVP) ? (
