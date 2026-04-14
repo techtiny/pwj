@@ -876,7 +876,7 @@ export default function PWJTracker() {
     setUser(null);
   };
 
-  const [launched,     setLaunched]     = useState(true); // countdown disabled
+  const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
   const [celebrating,  setCelebrating]  = useState(false);
 
   if (!user) {
