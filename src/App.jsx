@@ -2045,10 +2045,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
                     ["Image","—"],
                     ...(!isEngineer ? [["Approval","approvalStatus"]] : []),
-                    ["Vendor","vendor"],
+                    ...(!isEngineer ? [["Vendor","vendor"]] : []),
                     ...((isAdmin || isProcurement) ? [["PWJ","pwjIssued"]] : []),
                     ...(!isEngineer ? [["ACK","ack"]] : []),
-                    ["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
+                    ...(!isEngineer ? [["Doc Status","docStatus"]] : []),
+                    ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
                     <th key={lbl} style={s.th}
@@ -2102,8 +2103,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </span>
                       </td>
                     )}
-                    {/* Vendor */}
-                    <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                    {/* Vendor — hidden for Engineer */}
+                    {!isEngineer && (
+                      <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                    )}
                     {/* PWJ toggle — visible & editable only by Admin and Procurement */}
                     {(isAdmin || isProcurement) && (
                       <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
@@ -2138,18 +2141,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                       </td>
                     )}
-                    {/* Doc Status */}
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                      {row.docStatus === "VP_APPROVED"
-                        ? <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>✅ Approved</span>
-                        : row.docStatus === "PENDING_VP_APPROVAL"
-                          ? <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⏳ Pending</span>
-                          : row.docStatus === "VP_REJECTED"
-                            ? <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>❌ Rejected</span>
-                            : row.docStatus === "REVISION_REQUESTED"
-                              ? <span style={{ background: "#fff7ed", color: "#c2410c", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⚠️ Revision</span>
-                              : <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>}
-                    </td>
+                    {/* Doc Status — hidden for Engineer */}
+                    {!isEngineer && (
+                      <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
+                        {row.docStatus === "VP_APPROVED"
+                          ? <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>✅ Approved</span>
+                          : row.docStatus === "PENDING_VP_APPROVAL"
+                            ? <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⏳ Pending</span>
+                            : row.docStatus === "VP_REJECTED"
+                              ? <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>❌ Rejected</span>
+                              : row.docStatus === "REVISION_REQUESTED"
+                                ? <span style={{ background: "#fff7ed", color: "#c2410c", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⚠️ Revision</span>
+                                : <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>}
+                      </td>
+                    )}
                     {/* Delivered Date */}
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap", color: "#64748b" }} onClick={() => setDetailRow(row)}>
                       {row.deliveredDate || "—"}
@@ -2163,22 +2168,28 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
-                      <select value={row.dependency || ""}
-                        onChange={async e => {
-                          const val = e.target.value;
-                          const r = await api.procurementUpdate(row.id, { dependency: val || null });
-                          if (r.success) fetchEntries();
-                          else showToast(r.message || "Update failed", "error");
-                        }}
-                        style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, color: val => val ? "#0f172a" : "#94a3b8", background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
-                        <option value="">— None —</option>
-                        <option value="Site team">Site team</option>
-                        <option value="Procurement">Procurement</option>
-                        <option value="DH Approval">DH Approval</option>
-                        <option value="VP Approval">VP Approval</option>
-                        <option value="Vendor">Vendor</option>
-                        <option value="DIP">DIP</option>
-                      </select>
+                      {isEngineer ? (
+                        <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
+                          {row.dependency || "—"}
+                        </span>
+                      ) : (
+                        <select value={row.dependency || ""}
+                          onChange={async e => {
+                            const val = e.target.value;
+                            const r = await api.procurementUpdate(row.id, { dependency: val || null });
+                            if (r.success) fetchEntries();
+                            else showToast(r.message || "Update failed", "error");
+                          }}
+                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, color: val => val ? "#0f172a" : "#94a3b8", background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
+                          <option value="">— None —</option>
+                          <option value="Site team">Site team</option>
+                          <option value="Procurement">Procurement</option>
+                          <option value="DH Approval">DH Approval</option>
+                          <option value="VP Approval">VP Approval</option>
+                          <option value="Vendor">Vendor</option>
+                          <option value="DIP">DIP</option>
+                        </select>
+                      )}
                     </td>
                     {/* ★ ACTION COLUMN */}
                     <td style={s.td} onClick={e => e.stopPropagation()}>
