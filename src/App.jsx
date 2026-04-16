@@ -2043,9 +2043,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["BOQ","boqNo"],["Material","materialRequired"],
                     ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
-                    ["Image","—"],["Approval","approvalStatus"],["Vendor","vendor"],
+                    ["Image","—"],
+                    ...(!isEngineer ? [["Approval","approvalStatus"]] : []),
+                    ["Vendor","vendor"],
                     ...((isAdmin || isProcurement) ? [["PWJ","pwjIssued"]] : []),
-                    ["ACK","ack"],["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
+                    ...(!isEngineer ? [["ACK","ack"]] : []),
+                    ["Doc Status","docStatus"],["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
                     <th key={lbl} style={s.th}
@@ -2090,13 +2093,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         );
                       })()}
                     </td>
-                    {/* Approval */}
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
-                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
-                        {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
-                      </span>
-                    </td>
+                    {/* Approval — hidden for Engineer */}
+                    {!isEngineer && (
+                      <td style={s.td} onClick={() => setDetailRow(row)}>
+                        <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                          <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
+                          {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
+                        </span>
+                      </td>
+                    )}
                     {/* Vendor */}
                     <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     {/* PWJ toggle — visible & editable only by Admin and Procurement */}
@@ -2114,23 +2119,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </button>
                       </td>
                     )}
-                    {/* ACK toggle */}
-                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                      {(isAdmin || isProcurement || isVP) ? (
-                        <button
-                          title={row.ack ? "ACK — click to unset" : "Not ACK — click to acknowledge"}
-                          onClick={async () => {
-                            const r = await api.procurementUpdate(row.id, { ack: !row.ack });
-                            if (r.success) fetchEntries();
-                            else showToast(r.message || "Update failed", "error");
-                          }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
-                          {row.ack ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: 16, color: row.ack ? "#16a34a" : "#ef4444" }}>{row.ack ? "✓" : "✗"}</span>
-                      )}
-                    </td>
+                    {/* ACK toggle — hidden for Engineer */}
+                    {!isEngineer && (
+                      <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                        {(isAdmin || isProcurement || isVP) ? (
+                          <button
+                            title={row.ack ? "ACK — click to unset" : "Not ACK — click to acknowledge"}
+                            onClick={async () => {
+                              const r = await api.procurementUpdate(row.id, { ack: !row.ack });
+                              if (r.success) fetchEntries();
+                              else showToast(r.message || "Update failed", "error");
+                            }}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
+                            {row.ack ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 16, color: row.ack ? "#16a34a" : "#ef4444" }}>{row.ack ? "✓" : "✗"}</span>
+                        )}
+                      </td>
+                    )}
                     {/* Doc Status */}
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {row.docStatus === "VP_APPROVED"
