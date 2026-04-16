@@ -196,6 +196,7 @@ const api = {
   }).then(r => r.json()),
   deactivateUser: (id) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}`, { method: "DELETE" }).then(r => r.json()),
   updateUserPhone: (id, phone) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/phone`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then(r => r.json()),
+  changeUserPassword: (id, newPassword) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/password`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword }) }).then(r => r.json()),
   getVendorByName: (name) => fetch(`${VENDOR_BASE}/by-name?name=${encodeURIComponent(name)}`).then(r => r.json()),
   updateEntry: (id, body) => fetch(`${API_BASE}/entries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   submitDoc: (id) => fetch(`${API_BASE}/entries/${id}/submit-doc`, { method: "PATCH" }).then(r => r.json()),
@@ -1750,6 +1751,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
       setAllUsers(u => u.filter(x => x.id !== id));
       showToast(`${username} deactivated`);
     } else showToast(r.message || "Failed", "error");
+  };
+
+  const [pwdModal, setPwdModal]   = useState(null); // { id, username }
+  const [newPwd,   setNewPwd]     = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+
+  const submitChangePassword = async () => {
+    if (!newPwd.trim()) { showToast("Enter a new password", "error"); return; }
+    setPwdLoading(true);
+    try {
+      const r = await api.changeUserPassword(pwdModal.id, newPwd);
+      if (r.success) {
+        showToast(`Password updated for ${pwdModal.username} ✅`);
+        setPwdModal(null); setNewPwd("");
+      } else showToast(r.message || "Failed to update password", "error");
+    } catch { showToast("Error updating password", "error"); }
+    finally { setPwdLoading(false); }
   };
 
   // ── Pending approvals ──
@@ -4124,7 +4142,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
 
                     {/* Action */}
-                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                      {isAdmin && (
+                        <button onClick={() => { setPwdModal({ id: u.id, username: u.username }); setNewPwd(""); }}
+                          style={{ background: "none", border: "1px solid #e2e8f0", color: "#7c3aed", cursor: "pointer", fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: "inherit" }}
+                          title={`Change password for ${u.fullName}`}
+                          onMouseEnter={e => { e.currentTarget.style.background="#ede9fe"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background="none"; }}>
+                          🔑 Password
+                        </button>
+                      )}
                       {canRemove && (
                         <button onClick={() => deactivateUser(u.id, u.username)}
                           style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18, padding: "4px 8px", borderRadius: 8, fontFamily: "inherit", lineHeight: 1 }}
@@ -4138,6 +4165,45 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── CHANGE PASSWORD MODAL (Admin only) ─── */}
+      {pwdModal && (
+        <div style={s.overlay} onClick={() => { setPwdModal(null); setNewPwd(""); }}>
+          <div style={s.modalBox(400)} onClick={e => e.stopPropagation()}>
+            <div style={s.mHeader}>
+              <div>
+                <div style={s.mTitle}>Change Password</div>
+                <div style={s.mSub}>User: <strong>{pwdModal.username}</strong></div>
+              </div>
+              <button style={s.closeBtn} onClick={() => { setPwdModal(null); setNewPwd(""); }}>✕</button>
+            </div>
+            <div style={s.mBody}>
+              <div style={s.formGroup}>
+                <label style={s.label}>New Password</label>
+                <input
+                  type="password"
+                  value={newPwd}
+                  onChange={e => setNewPwd(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submitChangePassword()}
+                  placeholder="Enter new password"
+                  style={s.input}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={() => { setPwdModal(null); setNewPwd(""); }}
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 22px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={submitChangePassword} disabled={pwdLoading}
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 24px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: pwdLoading ? .7 : 1 }}>
+                {pwdLoading ? "Saving…" : "🔑 Update Password"}
+              </button>
             </div>
           </div>
         </div>
