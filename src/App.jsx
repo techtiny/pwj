@@ -2748,7 +2748,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ fontWeight: 600, fontSize: 13, color: "#64748b", textDecoration: "line-through" }}>{p.name}</div>
                           {p.location && <div style={{ fontSize: 11, color: "#94a3b8" }}>📍 {p.location}</div>}
                         </div>
-                        <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>
+                          {(isAdmin || isVP) && (
+                            <button onClick={async () => {
+                              if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
+                              const r = await api.permanentDeleteProject(p.id);
+                              if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
+                              else showToast(r.message || "Delete failed", "error");
+                            }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
