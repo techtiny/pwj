@@ -192,6 +192,7 @@ const api = {
   getAllVendorsWithStatus: () => fetch(`${VENDOR_BASE}/all`).then(r => r.json()),
   approveVendor: (id) => fetch(`${VENDOR_BASE}/${id}/approve`, { method: "PUT" }).then(r => r.json()),
   rejectVendor: (id) => fetch(`${VENDOR_BASE}/${id}/reject`, { method: "PUT" }).then(r => r.json()),
+  deleteVendor: (id) => fetch(`${VENDOR_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
   getUsers: () => fetch(`${AUTH_BASE.replace("/auth", "/users")}`).then(r => r.json()),
   createUser: (body) => fetch(`${AUTH_BASE.replace("/auth", "/users")}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -234,6 +235,7 @@ const api = {
   createProject: (body) => fetch(PROJECT_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   updateProject: (id, body) => fetch(`${PROJECT_BASE}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   deleteProject: (id) => fetch(`${PROJECT_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
+  permanentDeleteProject: (id) => fetch(`${PROJECT_BASE}/${id}/permanent`, { method: "DELETE" }).then(r => r.json()),
 };
 
 // ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
@@ -2527,6 +2529,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
+                          {(isAdmin || isVP) && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`Permanently delete vendor "${v.name}"? This cannot be undone.`)) return;
+                                const r = await api.deleteVendor(v.id);
+                                if (r.success) { setAllVendorsStatus(a => a.filter(x => x.id !== v.id)); showToast("Vendor deleted ✅"); }
+                                else showToast(r.message || "Delete failed", "error");
+                              }}
+                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                              🗑️ Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -2673,6 +2687,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>
                         <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>
+                        {(isAdmin || isVP) && (
+                          <button onClick={async () => {
+                            if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
+                            const r = await api.permanentDeleteProject(p.id);
+                            if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
+                            else showToast(r.message || "Delete failed", "error");
+                          }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                        )}
                       </div>
                     </div>
 
