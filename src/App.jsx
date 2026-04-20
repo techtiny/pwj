@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import html2pdf from "html2pdf.js";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -132,6 +133,7 @@ const API_BASE      = `${BACKEND_BASE}/api/v1/pwj`;
 const VENDOR_BASE   = `${BACKEND_BASE}/api/v1/vendors`;
 const AUTH_BASE     = `${BACKEND_BASE}/api/v1/auth`;
 const PROJECT_BASE  = `${BACKEND_BASE}/api/v1/projects`;
+const REPORT_BASE   = `${BACKEND_BASE}/api/v1/report`;
 
 const api = {
   login: (body) =>
@@ -196,6 +198,8 @@ const api = {
   }).then(r => r.json()),
   deactivateUser: (id) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}`, { method: "DELETE" }).then(r => r.json()),
   updateUserPhone: (id, phone) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/phone`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then(r => r.json()),
+  updateUserName:     (id, fullName) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/name`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName }) }).then(r => r.json()),
+  updateUsername:     (id, username) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/username`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username }) }).then(r => r.json()),
   changeUserPassword: (id, newPassword) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/password`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword }) }).then(r => r.json()),
   getVendorByName: (name) => fetch(`${VENDOR_BASE}/by-name?name=${encodeURIComponent(name)}`).then(r => r.json()),
   updateEntry: (id, body) => fetch(`${API_BASE}/entries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
@@ -203,6 +207,13 @@ const api = {
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`).then(r => r.json()),
+  sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ htmlContent }),
+  }).then(r => r.json()),
+  toggleVendorEmail: (id) => fetch(`${API_BASE}/entries/${id}/toggle-vendor-email`, { method: "PATCH" }).then(r => r.json()),
+  triggerBackup: () => fetch(`${REPORT_BASE}/trigger-backup`, { method: "POST" }).then(r => r.json()),
   uploadDocument: (file) => {
     const form = new FormData();
     form.append("file", file);
@@ -263,6 +274,14 @@ function parseImageRefs(ref) {
   catch { return [ref]; }
 }
 
+function fmtDate(val) {
+  if (!val) return "—";
+  const s = String(val).substring(0, 10); // take YYYY-MM-DD part
+  const [y, m, d] = s.split("-");
+  if (!y || !m || !d) return val;
+  return `${d}/${m}/${y}`;
+}
+
 function parseDocData(entry) {
   const base = {
     items: [
@@ -271,7 +290,7 @@ function parseDocData(entry) {
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
     ],
-    amountInWords: "", cgstPct: "9", sgstPct: "9",
+    amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
     completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
     deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
@@ -330,11 +349,14 @@ function amountToWords(amount) {
     : `Indian Rupees ${rWords} Only`;
 }
 
-function calcTotals(items, cgstPct, sgstPct) {
+function calcTotals(items, cgstPct, sgstPct, igstPct) {
   const subTotal = items.reduce((s, r) => s + (parseFloat(r.qty) || 0) * (parseFloat(r.rate) || 0), 0);
   const cgst = subTotal * (parseFloat(cgstPct) || 0) / 100;
   const sgst = subTotal * (parseFloat(sgstPct) || 0) / 100;
-  return { subTotal, cgst, sgst, total: subTotal + cgst + sgst };
+  const igst = subTotal * (parseFloat(igstPct) || 0) / 100;
+  const rawTotal = subTotal + cgst + sgst + igst;
+  const total = Math.round(rawTotal);
+  return { subTotal, cgst, sgst, igst, total };
 }
 
 // ─── ROLE HELPERS ──────────────────────────────────────────────────
@@ -923,6 +945,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [detailRow, setDetailRow]         = useState(null);
   const [approvalModal, setApprovalModal] = useState(null); // { entry }
   const [createModal, setCreateModal]     = useState(false);
+  const [editingEntry, setEditingEntry]   = useState(null); // holds entry being edited by engineer
   const [pendingModal, setPendingModal]   = useState(false);
   const [pendingList, setPendingList]     = useState([]);
   const [toast, setToast]                 = useState(null);
@@ -1034,7 +1057,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (projectF)            params.projectName = projectF;
 
       const res = isEngineer
-        ? await api.getMyEntries(user.username, { page, size: PAGE_SIZE, sortBy, sortDir })
+        ? await api.getMyEntries(user.fullName || user.username, { page, size: PAGE_SIZE, sortBy, sortDir })
         : await api.getEntries(params);
 
       if (res.success) {
@@ -1104,7 +1127,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     finally { setApprovalLoading(false); }
   };
 
-  // ── Create submit ──
+  // ── Create / Edit submit ──
   const submitCreate = async () => {
     if (!createForm.projectName || !createForm.materialRequired) {
       showToast("Fill required fields", "error"); return;
@@ -1114,10 +1137,51 @@ function Dashboard({ user, onLogout: handleLogout }) {
     }
     try {
       const userName = user.fullName || user.username;
-      const res = await api.createEntry({ ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null }, userName);
-      if (res.success) { showToast("Entry created!"); setCreateModal(false); fetchEntries(); }
-      else showToast(res.message, "error");
-    } catch { showToast("Create failed", "error"); }
+      const body = { ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
+      if (editingEntry) {
+        // Update existing entry
+        const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status });
+        if (res.success) {
+          showToast("Entry updated!");
+          setCreateModal(false);
+          setEditingEntry(null);
+          setEntries(prev => prev.map(e => e.id === editingEntry.id ? res.data : e));
+        } else showToast(res.message, "error");
+      } else {
+        // Create new entry
+        const res = await api.createEntry(body, userName);
+        if (res.success) {
+          showToast("Entry created!");
+          setCreateModal(false);
+          setEntries(prev => [res.data, ...prev]);
+          setTotal(t => t + 1);
+        } else showToast(res.message, "error");
+      }
+    } catch { showToast(editingEntry ? "Update failed" : "Create failed", "error"); }
+  };
+
+  // ── Open edit form for engineer ──
+  const openEditEntry = (row) => {
+    setCreateForm({
+      raisedBy: row.raisedBy || "",
+      projectName: row.projectName || "",
+      boqNo: row.boqNo || "",
+      materialRequired: row.materialRequired || "",
+      specification: row.specification || "",
+      brand: row.brand || "",
+      unit: row.unit || "",
+      quantity: row.quantity != null ? String(row.quantity) : "",
+      dateOfRequirement: row.dateOfRequirement || "",
+      imageReference: row.imageReference || "",
+      dependency: row.dependency || "",
+      remarks: row.remarks || "",
+      vendor: row.vendor || "",
+      pwjType: row.pwjType || "",
+      approvalStatus: row.approvalStatus || "NOT_APPROVED",
+      status: row.status || "OPEN",
+    });
+    setEditingEntry(row);
+    setCreateModal(true);
   };
 
   // ── Export CSV ──
@@ -1139,12 +1203,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const csv = [
         headers.join(","),
         ...rows.map(r => [
-          r.id, r.timestamp?.substring(0,16), r.raisedBy, r.projectName,
+          r.id, fmtDate(r.timestamp), r.raisedBy, r.projectName,
           r.boqNo, r.materialRequired, r.specification, r.brand, r.unit,
-          r.quantity, r.dateOfRequirement, r.vendor,
+          r.quantity, fmtDate(r.dateOfRequirement), r.vendor,
           r.pwjIssued ? "Yes" : "No", r.approvalStatus, r.status,
-          r.deliveredDate, r.remarks, r.approvedBy,
-          r.approvedAt?.substring(0,16), r.approvalComment,
+          fmtDate(r.deliveredDate), r.remarks, r.approvedBy,
+          fmtDate(r.approvedAt), r.approvalComment,
         ].map(escape).join(","))
       ].join("\n");
 
@@ -1345,9 +1409,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const r = await api.submitDoc(docModal.entry.id);
       if (r.success) {
-        setEntries(es => es.map(e => e.id === docModal.entry.id ? { ...e, docStatus: r.data.docStatus, docNumber: r.data.docNumber } : e));
-        setDocModal(m => ({ ...m, entry: { ...m.entry, docStatus: r.data.docStatus, docNumber: r.data.docNumber } }));
+        setEntries(es => es.map(e => e.id === docModal.entry.id ? { ...e, docStatus: r.data.docStatus, docNumber: r.data.docNumber, dependency: r.data.dependency } : e));
         showToast(`${r.data.docNumber} sent for VP approval ✅`);
+        setDocModal(null);
       } else showToast(r.message || "Failed", "error");
     } catch { showToast("Network error", "error"); }
     finally { setDocLoading(false); }
@@ -1378,7 +1442,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     setDocSaving(true);
     try {
       const e = docModal.entry;
-      const savedTotals = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct);
+      const savedTotals = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct, docEditForm.igstPct);
       const docDataStr = JSON.stringify({ ...docEditForm, amountInWords: amountToWords(savedTotals.total) });
       const body = {
         raisedBy:         e.raisedBy,
@@ -1406,7 +1470,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         if (e.docStatus === "REVISION_REQUESTED") {
           const sr = await api.submitDoc(e.id);
           if (sr.success) {
-            updated = { ...updated, docStatus: "PENDING_VP_APPROVAL" };
+            updated = { ...updated, docStatus: "PENDING_VP_APPROVAL", dependency: sr.data.dependency };
             showToast("Document revised & resubmitted for VP approval ✅");
           } else {
             showToast("Document updated ✅");
@@ -1487,19 +1551,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
     } finally { setGenDocSaving(false); }
   };
 
-  const downloadDoc = () => {
-    if (!docModal) return;
-    const e = docModal.entry; const v = docModal.vendor;
+  const buildDocHtml = (e, v) => {
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
     const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
     const docData = parseDocData(e);
-    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct);
+    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
     const docNum    = e.docNumber || autoDocNumber(e);
-    const today     = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    const today     = fmtDate(new Date().toISOString());
     const terms     = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
     const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
+    const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     const itemRows = docData.items.map((row, i) => {
       const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
@@ -1517,76 +1580,84 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
+    const thBase = `background:${typeColor};color:#fff;font-weight:700;font-size:11px;padding:7px 8px;`;
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
     <style>
       @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
       * { box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; }
+      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 0; }
       table { width: 100%; border-collapse: collapse; }
-      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 14px; }
-      .logo-box { display: flex; align-items: center; gap: 10px; }
-      .logo-hex { width: 48px; height: 48px; }
-      .doc-title { font-size: 17px; font-weight: 900; color: #111; }
-      .doc-meta { font-size: 11px; line-height: 1.7; }
-      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 14px; }
-      .billing-right { border-left: 1px solid #ddd; padding-left: 16px; }
-      th { background: ${typeColor}; color: #fff; font-weight: 700; font-size: 11px; padding: 7px 8px; text-align: left; }
-      .section-title { font-weight: 700; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 14px 0 8px; }
-      .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #ddd; margin: 14px 0; }
-      .info-cell { padding: 10px 12px; }
-      .info-cell + .info-cell { border-left: 1px solid #ddd; }
-      .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; border-top: 1px solid #ddd; padding-top: 6px; }
       @media print { button { display: none; } }
     </style></head><body>
-    <div class="header">
-      <div class="logo-box">
-        <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:64px;height:64px;object-fit:contain;" />
-        <div><div style="font-weight:900;font-size:15px;letter-spacing:1.5px;">HAPPIZO</div><div style="font-size:9px;color:#666;">Infrastructure and Solutions</div></div>
-      </div>
-      <div style="text-align:right;">
-        <div class="doc-title">${typeName}</div>
-        <div class="doc-meta">
-          ${e.pwjType} Number : <strong>${docNum}</strong><br/>
-          ${e.pwjType} Date : <strong>${today}</strong><br/>
-          Project Name : <strong>${e.projectName}</strong>
-        </div>
-      </div>
-    </div>
-    <div class="two-col">
-      <div>
-        <div style="font-weight:700;margin-bottom:5px;">TO:</div>
-        <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
-        ${v?.street ? `<div>${v.street}</div>` : ""}
-        ${(v?.city||v?.state) ? `<div>${[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
-        <div style="margin-top:4px;">GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
-        <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
-        <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
-      </div>
-      <div class="billing-right">
-        <div style="font-weight:700;margin-bottom:5px;">Billing Details</div>
-        <div style="font-weight:700;">${COMPANY_INFO.name}</div>
-        <div>${COMPANY_INFO.addr1}</div>
-        <div>${COMPANY_INFO.addr2}</div>
-        <div style="margin-top:4px;">GST: ${COMPANY_INFO.gst}</div>
-      </div>
-    </div>
+
+    <!-- HEADER -->
+    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:14px;">
+      <tr>
+        <td style="vertical-align:top;width:50%;">
+          <table style="border-collapse:collapse;width:auto;">
+            <tr>
+              <td style="vertical-align:middle;padding-right:10px;">
+                <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:64px;height:64px;object-fit:contain;display:block;" />
+              </td>
+              <td style="vertical-align:middle;">
+                <div style="font-weight:900;font-size:15px;letter-spacing:1.5px;">HAPPIZO</div>
+                <div style="font-size:9px;color:#666;">Infrastructure and Solutions</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td style="vertical-align:top;text-align:right;width:50%;">
+          <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px;">${typeName}</div>
+          <table style="font-size:11px;line-height:1.8;border-collapse:collapse;margin-left:auto;">
+            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">${e.pwjType} Number</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">${e.pwjType} Date</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">Project Name</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- VENDOR / BILLING -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr>
+        <td style="vertical-align:top;width:50%;padding-right:16px;">
+          <div style="font-weight:700;margin-bottom:5px;">TO:</div>
+          <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
+          ${v?.street ? `<div>${v.street}</div>` : ""}
+          ${(v?.city||v?.state) ? `<div>${[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
+          <div style="margin-top:4px;">GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
+          <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
+          <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
+        </td>
+        <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #ddd;">
+          <div style="font-weight:700;margin-bottom:5px;">Billing Details</div>
+          <div style="font-weight:700;">${COMPANY_INFO.name}</div>
+          <div>${COMPANY_INFO.addr1}</div>
+          <div>${COMPANY_INFO.addr2}</div>
+          <div style="margin-top:4px;">GST: ${COMPANY_INFO.gst}</div>
+        </td>
+      </tr>
+    </table>
+
     <div style="margin-bottom:12px;">
       <div>Dear Team,</div>
       <div>We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
     </div>
+
+    <!-- ITEMS TABLE -->
     <table style="margin-bottom:0;">
       <thead><tr>
-        <th style="width:36px;text-align:center;">S.No</th>
-        <th style="width:38%;">Item</th>
-        <th style="text-align:center;width:52px;">Unit</th>
-        <th style="text-align:center;width:52px;">Qty</th>
-        <th style="text-align:right;width:80px;">Rate</th>
-        <th style="text-align:right;width:88px;">Amount</th>
+        <th style="${thBase}text-align:center;width:36px;">S.No</th>
+        <th style="${thBase}text-align:left;width:38%;">Item</th>
+        <th style="${thBase}text-align:center;width:52px;">Unit</th>
+        <th style="${thBase}text-align:center;width:52px;">Qty</th>
+        <th style="${thBase}text-align:right;width:80px;">Rate</th>
+        <th style="${thBase}text-align:right;width:88px;">Amount</th>
       </tr></thead>
       <tbody>
         ${itemRows}
         <tr>
-          <td colspan="4" rowspan="5" style="border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:8px 10px;vertical-align:top;">
+          <td colspan="4" rowspan="6" style="border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:8px 10px;vertical-align:top;">
             <div style="font-weight:700;font-size:11px;">Amount in words</div>
             <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
           </td>
@@ -1602,52 +1673,84 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.sgst)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">Round off</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;"></td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">IGST (${docData.igstPct || 0}%)</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.igst)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">Total</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">${fmtCcy(totals.total)}</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
         </tr>
       </tbody>
     </table>
-    <div class="info-grid">
-      <div class="info-cell">
-        <div style="font-weight:700;text-decoration:underline;margin-bottom:4px;">Completion date</div>
-        <div style="margin-bottom:6px;">${docData.completionDate||""}</div>
-      </div>
-      <div class="info-cell">
-        <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
-        <div style="white-space:pre-line;">${docData.deliveryAddress||""}</div>
-      </div>
-      <div class="info-cell">
-        <div style="font-weight:700;margin-bottom:4px;">Contact Details</div>
-        <div style="white-space:pre-line;">${docData.contactDetails||raisedByContact}</div>
-      </div>
-    </div>
-    <div class="section-title">General Terms</div>
+
+    <!-- INFO GRID -->
+    <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;margin:14px 0;">
+      <tr>
+        <td style="width:33.33%;padding:10px 12px;vertical-align:top;">
+          <div style="font-weight:700;text-decoration:underline;margin-bottom:4px;">Completion date</div>
+          <div>${docData.completionDate||""}</div>
+        </td>
+        <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
+          <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
+          <div style="white-space:pre-line;">${docData.deliveryAddress||""}</div>
+        </td>
+        <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
+          <div style="font-weight:700;margin-bottom:4px;">Contact Details</div>
+          <div style="white-space:pre-line;">${docData.contactDetails||raisedByContact}</div>
+        </td>
+      </tr>
+    </table>
+
+    <div style="font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:14px 0 8px;">General Terms</div>
     <table style="margin-bottom:14px;"><tbody>${termRows}</tbody></table>
-    <div class="section-title">Payment Terms</div>
+    <div style="font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:14px 0 8px;">Payment Terms</div>
     ${stageRows}
     <div style="margin-top:10px;font-size:11px;padding-left:8px;">
       <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
       <div style="padding-left:14px;">- site engineer signed copy along with measurement sheet and DC copy</div>
       <div style="padding-left:14px;">- test / warranty / guarantee certificate, etc</div>
     </div>
+
+    <!-- SIGNATURE -->
     <div style="margin-top:20px;">
       <div>For <strong>${COMPANY_INFO.name}</strong></div>
-      <div class="sig-grid">
-        <div><div style="color:#555;font-size:11px;margin-bottom:28px;">Approved By</div><div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div></div>
-        <div><div style="color:#555;font-size:11px;margin-bottom:28px;">Procurement Executive</div><div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div></div>
-      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:24px;border-top:1px solid #ddd;padding-top:6px;">
+        <tr>
+          <td style="width:50%;padding:6px 0 0 0;vertical-align:top;">
+            <div style="color:#555;font-size:11px;margin-bottom:28px;">Approved By</div>
+            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
+          </td>
+          <td style="width:50%;padding:6px 0 0 40px;vertical-align:top;">
+            <div style="color:#555;font-size:11px;margin-bottom:28px;">Procurement Executive</div>
+            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
+          </td>
+        </tr>
+      </table>
     </div>
-    <script>window.onload=()=>setTimeout(()=>window.print(),400);</script>
     </body></html>`;
+  };
 
+  const downloadDoc = () => {
+    if (!docModal) return;
+    const html = buildDocHtml(docModal.entry, docModal.vendor);
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
-    win.document.write(html);
+    win.document.write(html + `<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>`);
     win.document.close();
+  };
+
+  const sendDocToVendor = async () => {
+    if (!docModal) return;
+    const e = docModal.entry; const v = docModal.vendor;
+    showToast("Sending document to vendor…", "info");
+    try {
+      const html = buildDocHtml(e, v);
+      const r = await api.sendVendorDoc(e.id, html);
+      if (r.success) { showToast("Document sent to vendor ✅"); setDocModal(null); }
+      else showToast(r.message || "Failed to send", "error");
+    } catch (err) {
+      showToast("Failed to send document", "error");
+    }
   };
 
   // ── Engineer: upload doc + notify procurement ──
@@ -1860,7 +1963,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   );
 
   const canApprove = (row) =>
-    row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED";
+    row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED" ||
+    (isOH && row.approvalStatus === "PROCEED");
 
   const pageNumbers = useMemo(() => {
     const nums = [];
@@ -1934,8 +2038,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {(isAdmin || isVP || isOH) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openUserMgmt}>Manage Users</button>
             )}
+            {(isAdmin || isVP) && (
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={async () => {
+                showToast("Sending backup…", "info");
+                try {
+                  const r = await api.triggerBackup();
+                  if (r.success) showToast("Backup sent to admin ✅");
+                  else showToast(r.message || "Backup failed", "error");
+                } catch { showToast("Backup failed", "error"); }
+              }}>💾 Backup Now</button>
+            )}
             <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
-              setCreateForm(f => ({ ...f, raisedBy: user.fullName || user.username }));
+              setEditingEntry(null);
+              setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
               setCreateModal(true);
             }}>+ New Entry</button>
             <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={handleLogout}>Logout</button>
@@ -2044,11 +2159,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Project","projectName"],["BOQ","boqNo"],["Material","materialRequired"],
                     ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
                     ["Image","—"],
-                    ...(!isEngineer ? [["Approval","approvalStatus"]] : []),
+                    ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
-                    ...((isAdmin || isProcurement) ? [["PWJ","pwjIssued"]] : []),
+                    ...((isAdmin || isProcurement || isVP || isOH) ? [["PWJ","pwjIssued"]] : []),
                     ...(!isEngineer ? [["ACK","ack"]] : []),
-                    ...(!isEngineer ? [["Doc Status","docStatus"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
@@ -2072,7 +2186,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     <td style={{ ...s.td, color: "#94a3b8", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                      {(row.updatedAt || row.timestamp) ? (row.updatedAt || row.timestamp).substring(0, 10) : "—"}
+                      {fmtDate(row.updatedAt || row.timestamp)}
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
@@ -2080,7 +2194,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>{row.materialRequired}</td>
                     <td style={{ ...s.td, fontSize: 12, color: "#64748b" }} onClick={() => setDetailRow(row)}>{row.brand || "—"}</td>
                     <td style={{ ...s.td, fontWeight: 600 }} onClick={() => setDetailRow(row)}>{row.quantity ?? "—"}</td>
-                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{row.dateOfRequirement || "—"}</td>
+                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Image */}
                     <td style={{ ...s.td }} onClick={() => setDetailRow(row)}>
                       {(() => {
@@ -2094,32 +2208,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         );
                       })()}
                     </td>
-                    {/* Approval — hidden for Engineer */}
-                    {!isEngineer && (
-                      <td style={s.td} onClick={() => setDetailRow(row)}>
-                        <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
-                          <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
-                          {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
-                        </span>
-                      </td>
-                    )}
+                    {/* Approval — visible for all roles */}
+                    <td style={s.td} onClick={() => setDetailRow(row)}>
+                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
+                        {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
+                      </span>
+                    </td>
                     {/* Vendor — hidden for Engineer */}
                     {!isEngineer && (
                       <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
-                    {/* PWJ toggle — visible & editable only by Admin and Procurement */}
-                    {(isAdmin || isProcurement) && (
+                    {/* PWJ — visible to Admin, Procurement, VP, OH; editable only by Admin/Procurement */}
+                    {(isAdmin || isProcurement || isVP || isOH) && (
                       <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                        <button
-                          title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
-                          onClick={async () => {
-                            const r = await api.procurementUpdate(row.id, { pwjIssued: !row.pwjIssued });
-                            if (r.success) fetchEntries();
-                            else showToast(r.message || "Update failed", "error");
-                          }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
-                          {row.pwjIssued ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
-                        </button>
+                        {(isAdmin || isProcurement) ? (
+                          <button
+                            title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
+                            onClick={async () => {
+                              const r = await api.procurementUpdate(row.id, { pwjIssued: !row.pwjIssued });
+                              if (r.success) fetchEntries();
+                              else showToast(r.message || "Update failed", "error");
+                            }}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
+                            {row.pwjIssued ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 16, color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
+                        )}
                       </td>
                     )}
                     {/* ACK toggle — hidden for Engineer */}
@@ -2141,23 +2257,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                       </td>
                     )}
-                    {/* Doc Status — hidden for Engineer */}
-                    {!isEngineer && (
-                      <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                        {row.docStatus === "VP_APPROVED"
-                          ? <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>✅ Approved</span>
-                          : row.docStatus === "PENDING_VP_APPROVAL"
-                            ? <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⏳ Pending</span>
-                            : row.docStatus === "VP_REJECTED"
-                              ? <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>❌ Rejected</span>
-                              : row.docStatus === "REVISION_REQUESTED"
-                                ? <span style={{ background: "#fff7ed", color: "#c2410c", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>⚠️ Revision</span>
-                                : <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>}
-                      </td>
-                    )}
                     {/* Delivered Date */}
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap", color: "#64748b" }} onClick={() => setDetailRow(row)}>
-                      {row.deliveredDate || "—"}
+                      {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
@@ -2168,11 +2270,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
-                      {isEngineer ? (
-                        <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
-                          {row.dependency || "—"}
-                        </span>
-                      ) : (
+                      {isProcurement ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
                             const val = e.target.value;
@@ -2180,20 +2278,42 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) fetchEntries();
                             else showToast(r.message || "Update failed", "error");
                           }}
-                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, color: val => val ? "#0f172a" : "#94a3b8", background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
+                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
                           <option value="">— None —</option>
-                          <option value="Site team">Site team</option>
+                          <option value="OH Approval">OH Approval</option>
                           <option value="Procurement">Procurement</option>
-                          <option value="DH Approval">DH Approval</option>
                           <option value="VP Approval">VP Approval</option>
+                          <option value="Site team">Site team</option>
+                          <option value="DH Approval">DH Approval</option>
                           <option value="Vendor">Vendor</option>
                           <option value="DIP">DIP</option>
                         </select>
+                      ) : (
+                        <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
+                          {row.dependency || "—"}
+                        </span>
                       )}
                     </td>
                     {/* ★ ACTION COLUMN */}
                     <td style={s.td} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {/* Engineer edit button — own entries only, locked once OH approves (PROCEED) */}
+                        {isEngineer && row.raisedBy === (user?.fullName || user?.username) && (
+                          row.approvalStatus === "PROCEED" ? (
+                            <button
+                              disabled
+                              title="Editing locked — entry has been OH approved"
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              🔒 Locked
+                            </button>
+                          ) : (
+                            <button
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => openEditEntry(row)}>
+                              ✏️ Edit
+                            </button>
+                          )
+                        )}
                         {(isOH || isVP) && canApprove(row) && (
                           <button style={s.approveBtn}
                             onClick={() => {
@@ -2204,11 +2324,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </button>
                         )}
                         {(isAdmin || isProcurement) && (
-                          <button
-                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                            onClick={() => openAssign(row)}>
-                            ✏️ Assign
-                          </button>
+                          isProcurement && row.pwjIssued ? (
+                            <button
+                              disabled
+                              title="PWJ issued — editing locked. Contact VP/Admin to make changes."
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              🔒 Locked
+                            </button>
+                          ) : (
+                            <button
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => openAssign(row)}>
+                              ✏️ Assign
+                            </button>
+                          )
                         )}
                         {(isAdmin || isProcurement) && row.vendor && row.pwjType && (
                           <button
@@ -2217,7 +2346,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             📄 {row.docStatus === "VP_APPROVED" ? "Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
                           </button>
                         )}
-                        {isEngineer && row.docStatus && (
+                        {(isEngineer || isVP || isOH) && row.docStatus && (
                           <button
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => { setEngDocFile(null); openDocModal(row); }}>
@@ -2361,7 +2490,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v.name}</div>
                           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-                            Added {v.createdAt ? v.createdAt.substring(0, 10) : "—"}
+                            Added {fmtDate(v.createdAt)}
                           </div>
                         </div>
                         {/* Category */}
@@ -2581,7 +2710,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                       </div>
                     </div>
-                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 10 }}>Added {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
                   </div>
                 ))}
               </div>
@@ -2789,7 +2918,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={s.grid2}>
                 <div style={s.divider}>📋 Request Details</div>
                 {[
-                  ["Timestamp", detailRow.timestamp?.substring(0,16)],
+                  ["Timestamp", fmtDate(detailRow.timestamp)],
                   ["Raised By", detailRow.raisedBy],
                   ["Project", detailRow.projectName],
                   ["BOQ No.", detailRow.boqNo],
@@ -2798,7 +2927,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Brand", detailRow.brand],
                   ["Unit", detailRow.unit],
                   ["Quantity", detailRow.quantity],
-                  ["Date of Requirement", detailRow.dateOfRequirement],
+                  ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
                   ["Dependency", detailRow.dependency],
                   ["ACK", detailRow.ack ? "✓ Acknowledged" : "✗ Not Acknowledged"],
                 ].map(([l, v]) => (
@@ -2824,7 +2953,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {[
                   ["Vendor", detailRow.vendor],
                   ["PWJ Issued", detailRow.pwjIssued ? "Yes" : "No"],
-                  ["Delivered Date", detailRow.deliveredDate],
+                  ["Delivered Date", fmtDate(detailRow.deliveredDate)],
                 ].map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
@@ -2848,7 +2977,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {detailRow.approvedBy && <>
                   <div style={s.divider}>✅ Approval History</div>
                   <div><div style={s.dLabel}>Approved By</div><div style={s.dVal}>{detailRow.approvedBy}</div></div>
-                  <div><div style={s.dLabel}>Approved At</div><div style={s.dVal}>{detailRow.approvedAt?.substring(0,16)}</div></div>
+                  <div><div style={s.dLabel}>Approved At</div><div style={s.dVal}>{fmtDate(detailRow.approvedAt)}</div></div>
                   <div style={{ gridColumn: "1/-1" }}><div style={s.dLabel}>Approval Comment</div><div style={s.dVal}>{detailRow.approvalComment || "—"}</div></div>
                 </>}
                 {detailRow.remarks && <>
@@ -2856,6 +2985,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <div style={{ gridColumn: "1/-1" }}><div style={s.dVal}>{detailRow.remarks}</div></div>
                 </>}
               </div>
+              {/* Edit button inside detail modal for engineer (locked when PROCEED) */}
+              {isEngineer && detailRow.raisedBy === (user?.fullName || user?.username) && (
+                detailRow.approvalStatus === "PROCEED" ? (
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+                    🔒 This entry has been OH approved and can no longer be edited.
+                  </div>
+                ) : (
+                  <button style={{ ...s.submitBtn("linear-gradient(135deg,#0369a1,#0ea5e9)"), marginTop: 16 }}
+                    onClick={() => { setDetailRow(null); openEditEntry(detailRow); }}>
+                    ✏️ Edit Entry
+                  </button>
+                )
+              )}
               {/* Approve button inside detail modal */}
               {(isOH || isVP) && canApprove(detailRow) && (
                 <button style={{ ...s.submitBtn(), marginTop: 20 }}
@@ -2900,7 +3042,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   onChange={e => setApprovalForm(f => ({ ...f, approvalStatus: e.target.value }))}>
                   <option value="PROCEED">✅ Proceed (Approve)</option>
                   <option value="HOLD">⏳ Hold</option>
-                  <option value="NOT_APPROVED">❌ Not Approved</option>
+                  {(!isOH || approvalModal?.entry?.approvalStatus === "HOLD") && (
+                    <option value="NOT_APPROVED">❌ Not Approved</option>
+                  )}
                 </select>
               </div>
               <div style={s.formGroup}>
@@ -2953,14 +3097,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot)} />
                         {APPROVAL_META[row.approvalStatus]?.label}
                       </span>
-                      <button style={s.approveBtn}
-                        onClick={() => {
-                          setPendingModal(false);
-                          setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
-                          setApprovalModal({ entry: row });
-                        }}>
-                        Approve
-                      </button>
+                      {canApprove(row) && (
+                        <button style={s.approveBtn}
+                          onClick={() => {
+                            setPendingModal(false);
+                            setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+                            setApprovalModal({ entry: row });
+                          }}>
+                          Approve
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -2972,14 +3118,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── CREATE ENTRY MODAL ─── */}
       {createModal && (
-        <div style={s.overlay} onClick={() => setCreateModal(false)}>
+        <div style={s.overlay} onClick={() => { setCreateModal(false); setEditingEntry(null); }}>
           <div style={s.modalBox(620)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
-                <div style={s.mTitle}>New PWJ Entry</div>
-                <div style={s.mSub}>Add a new purchase / work journal request</div>
+                <div style={s.mTitle}>{editingEntry ? "Edit PWJ Entry" : "New PWJ Entry"}</div>
+                <div style={s.mSub}>{editingEntry ? `Editing entry #${editingEntry.id} · ${editingEntry.materialRequired}` : "Add a new purchase / work journal request"}</div>
               </div>
-              <button style={s.closeBtn} onClick={() => setCreateModal(false)}>✕</button>
+              <button style={s.closeBtn} onClick={() => { setCreateModal(false); setEditingEntry(null); }}>✕</button>
             </div>
             <div style={s.mBody}>
               <div style={s.grid2}>
@@ -3131,7 +3277,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
               </div>
               <button style={{ ...s.submitBtn(), marginTop: 8 }} onClick={submitCreate}>
-                ✅ Create Entry
+                {editingEntry ? "💾 Save Changes" : "✅ Create Entry"}
               </button>
             </div>
           </div>
@@ -3583,7 +3729,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeBg    = e.pwjType === "PO" ? "#dbeafe" : e.pwjType === "WO" ? "#fef3c7" : "#dcfce7";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-              const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+              const today = fmtDate(new Date().toISOString());
               const docNum = e.docNumber || autoDocNumber(e);
               const statusColor = e.docStatus === "VP_APPROVED" ? "#166534" : e.docStatus === "PENDING_VP_APPROVAL" ? "#92400e" : e.docStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
               const statusBg    = e.docStatus === "VP_APPROVED" ? "#dcfce7" : e.docStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : e.docStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
@@ -3599,10 +3745,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       {(isAdmin || isProcurement) && !docEditMode && (
-                        <button onClick={startDocEdit}
-                          style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                          ✏️ Edit
-                        </button>
+                        isProcurement && e.pwjIssued ? (
+                          <button
+                            disabled
+                            title="PWJ issued — editing locked. Contact VP/Admin to make changes."
+                            style={{ background: "#e2e8f0", border: "none", borderRadius: 8, padding: "6px 14px", color: "#94a3b8", fontWeight: 700, fontSize: 12, cursor: "not-allowed", fontFamily: "inherit" }}>
+                            🔒 Locked
+                          </button>
+                        ) : (
+                          <button onClick={startDocEdit}
+                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            ✏️ Edit
+                          </button>
+                        )
                       )}
                       {docEditMode && (<>
                         <button onClick={saveDocEdits} disabled={docSaving}
@@ -3621,12 +3776,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   {/* Document body — Happizo format */}
                   {(() => {
                     const docData = docEditMode ? docEditForm : parseDocData(e);
-                    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct);
+                    const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
                     const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
                     const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
                     const thSt    = { padding: "8px 10px", color: "#fff", fontWeight: 700, fontSize: 11, textAlign: "left" };
                     const fmtCcy  = (n) => `₹ ${Number(n || 0).toFixed(2)}`;
+                    const fmtTotal = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const setItem = (i, field, val) => {
                       const items = docData.items.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
                       setDocEditForm(f => ({ ...f, items }));
@@ -3733,32 +3889,31 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               )}
                               {/* Totals */}
                               <tr>
-                                <td colSpan={4} rowSpan={5} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
+                                <td colSpan={4} rowSpan={6} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
                                   <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 4 }}>Amount in words</div>
                                   <div style={{ fontSize: 11, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
                                 </td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
                                 <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
                               </tr>
+                              {[["CGST","cgstPct",totals.cgst],["SGST","sgstPct",totals.sgst],["IGST","igstPct",totals.igst]].map(([label, field, val]) => (
+                                <tr key={label}>
+                                  <td style={{ ...tdSt }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                                      <span>{label}</span>
+                                      {docEditMode
+                                        ? <select value={docData[field] || "0"} onChange={ev => setField(field, ev.target.value)} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, padding: "1px 4px" }}>
+                                            {["0","7","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
+                                          </select>
+                                        : <span style={{ color: "#555" }}>({docData[field] || 0}%)</span>}
+                                    </div>
+                                  </td>
+                                  <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(val)}</td>
+                                </tr>
+                              ))}
                               <tr>
-                                <td style={{ ...tdSt, textAlign: "right" }}>
-                                  CGST {docEditMode ? <input type="number" value={docData.cgstPct || ""} onChange={ev => setField("cgstPct", ev.target.value)} style={{ width: 32, border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, textAlign: "center", padding: "1px 2px" }} /> : `(${docData.cgstPct}%)`}
-                                </td>
-                                <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.cgst)}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ ...tdSt, textAlign: "right" }}>
-                                  SGST {docEditMode ? <input type="number" value={docData.sgstPct || ""} onChange={ev => setField("sgstPct", ev.target.value)} style={{ width: 32, border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, textAlign: "center", padding: "1px 2px" }} /> : `(${docData.sgstPct}%)`}
-                                </td>
-                                <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.sgst)}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ ...tdSt, textAlign: "right" }}>Round off</td>
-                                <td style={{ ...tdSt, textAlign: "right" }}></td>
-                              </tr>
-                              <tr>
-                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total</td>
-                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtCcy(totals.total)}</td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 9 }}>(Rounded off)</span></td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtTotal(totals.total)}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -3939,6 +4094,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <button onClick={downloadDoc}
                           style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           ⬇ Download PDF
+                        </button>
+                      )}
+                      {e.docStatus === "VP_APPROVED" && (isVP || isAdmin) && (
+                        <button onClick={async () => {
+                          const r = await api.toggleVendorEmail(e.id);
+                          if (r.success) {
+                            setEntries(es => es.map(x => x.id === e.id ? { ...x, vendorEmailEnabled: r.data.vendorEmailEnabled } : x));
+                            setDocModal(m => ({ ...m, entry: { ...m.entry, vendorEmailEnabled: r.data.vendorEmailEnabled } }));
+                            showToast(r.data.vendorEmailEnabled ? "Vendor email enabled ✅" : "Vendor email disabled ❌");
+                          }
+                        }}
+                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#166534,#16a34a)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
+                        </button>
+                      )}
+                      {e.docStatus === "VP_APPROVED" && isProcurement && (
+                        <button onClick={sendDocToVendor} disabled={!e.vendorEmailEnabled}
+                          title={!e.vendorEmailEnabled ? "Email not enabled by VP/Admin" : "Send document to vendor"}
+                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          📧 Send to Vendor
                         </button>
                       )}
                       {(isAdmin || isProcurement) && e.docStatus !== "PENDING_VP_APPROVAL" && e.docStatus !== "VP_APPROVED" && (
@@ -4122,10 +4297,45 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Name + username + inline phone edit */}
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>{u.fullName}</span>
+                        <input
+                          type="text"
+                          defaultValue={u.fullName || ""}
+                          placeholder="Full name…"
+                          onBlur={async e => {
+                            const val = e.target.value.trim();
+                            if (!val || val === (u.fullName || "")) return;
+                            const r = await api.updateUserName(u.id, val);
+                            if (r.success) {
+                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, fullName: val } : x));
+                              showToast("Name updated ✅");
+                            } else showToast(r.message || "Failed", "error");
+                          }}
+                          style={{ fontWeight: 600, fontSize: 14, color: "#0f172a", border: "1px solid transparent", borderRadius: 6, padding: "2px 6px", background: "transparent", outline: "none", fontFamily: "inherit", width: 180 }}
+                          onFocus={e => { e.currentTarget.style.border = "1px solid #bae6fd"; e.currentTarget.style.background = "#f0f9ff"; }}
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }}
+                        />
                         {isSelf && <span style={{ fontSize: 10, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "1px 8px" }}>You</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 1 }}>@{u.username}{u.email ? `  ·  ${u.email}` : ""}</div>
+                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>
+                        @<input
+                          type="text"
+                          defaultValue={u.username || ""}
+                          placeholder="username"
+                          onBlur={async e => {
+                            const val = e.target.value.trim();
+                            if (!val || val === (u.username || "")) return;
+                            const r = await api.updateUsername(u.id, val);
+                            if (r.success) {
+                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, username: val } : x));
+                              showToast("Username updated ✅");
+                            } else { showToast(r.message || "Failed", "error"); e.target.value = u.username || ""; }
+                          }}
+                          style={{ fontSize: 12, color: "#94a3b8", border: "1px solid transparent", borderRadius: 4, padding: "1px 4px", background: "transparent", outline: "none", fontFamily: "inherit", width: 130 }}
+                          onFocus={e => { e.currentTarget.style.border = "1px solid #bae6fd"; e.currentTarget.style.background = "#f0f9ff"; e.currentTarget.style.color = "#0f172a"; }}
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }}
+                        />
+                        {u.email ? `· ${u.email}` : ""}
+                      </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                         <input
                           type="tel"
@@ -4156,7 +4366,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                     {/* Joined */}
                     <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "—"}
+                      {fmtDate(u.createdAt)}
                     </div>
 
                     {/* Action */}
