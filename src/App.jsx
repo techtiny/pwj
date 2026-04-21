@@ -241,6 +241,9 @@ const api = {
 // ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
 const HAPPIZO_LOGO_URL = "https://happizo.com/assets/myimages/logo.png";
 
+// Procurement Executive signature image — upload signature via the app and paste the returned URL here
+const PROCUREMENT_SIGNATURE_URL = "/procurement-signature.png";
+
 const COMPANY_INFO = {
   name: "Happizo Infrastructure and Solutions",
   addr1: "No.11/ 20, Ground floor, 2nd cross street",
@@ -297,6 +300,7 @@ function parseDocData(entry) {
     deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
     vendorInvoices: [], deliveryDocs: [],
+    signatureEnabled: false,
   };
   if (entry.docData) {
     try {
@@ -1723,7 +1727,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
           </td>
           <td style="width:50%;padding:6px 0 0 40px;vertical-align:top;">
-            <div style="color:#555;font-size:11px;margin-bottom:28px;">Procurement Executive</div>
+            <div style="color:#555;font-size:11px;margin-bottom:4px;">Procurement Executive</div>
+            ${docData.signatureEnabled && PROCUREMENT_SIGNATURE_URL ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:36px;"></div>`}
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
           </td>
         </tr>
@@ -4026,7 +4031,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 </div>
                               </div>
                               <div>
-                                <div style={{ color: "#555", fontSize: 11, marginBottom: 28 }}>Procurement Executive</div>
+                                <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Procurement Executive</div>
+                                {parseDocData(e).signatureEnabled && PROCUREMENT_SIGNATURE_URL ? (
+                                  <img src={PROCUREMENT_SIGNATURE_URL} alt="Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} />
+                                ) : (
+                                  <div style={{ height: 36 }} />
+                                )}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
                               </div>
                             </div>
@@ -4150,6 +4160,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           📧 Send to Vendor
                         </button>
                       )}
+                      {(isAdmin || isProcurement) && e.docStatus && (() => {
+                        const sigEnabled = parseDocData(e).signatureEnabled;
+                        return (
+                          <button onClick={async () => {
+                            const existing = parseDocData(e);
+                            const newDocData = JSON.stringify({ ...existing, signatureEnabled: !sigEnabled });
+                            const r = await api.procurementUpdate(e.id, { docData: newDocData });
+                            if (r.success) {
+                              const updated = { ...e, docData: newDocData };
+                              setDocModal(m => ({ ...m, entry: updated }));
+                              setEntries(es => es.map(x => x.id === e.id ? updated : x));
+                              showToast(sigEnabled ? "Signature removed" : "Signature added ✅");
+                            }
+                          }}
+                            title={sigEnabled ? "Remove procurement signature" : "Add procurement signature to document"}
+                            style={{ flex: 1, background: sigEnabled ? "linear-gradient(135deg,#0f766e,#14b8a6)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, whiteSpace: "nowrap" }}>
+                            ✍️ {sigEnabled ? "Sig ON" : "Sig OFF"}
+                          </button>
+                        );
+                      })()}
                       {(isAdmin || isProcurement) && e.docStatus !== "PENDING_VP_APPROVAL" && e.docStatus !== "VP_APPROVED" && (
                         <button onClick={sendDocForApproval} disabled={docLoading}
                           style={{ flex: 1, background: e.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
