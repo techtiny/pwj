@@ -4121,6 +4121,55 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                     )}
 
+                    {/* Uploaded vendor invoices & delivery docs — visible to all roles */}
+                    {(() => {
+                      const dd = parseDocData(e);
+                      const invoices = dd.vendorInvoices || [];
+                      const deliveries = dd.deliveryDocs || [];
+                      if (!invoices.length && !deliveries.length) return null;
+                      return (
+                        <div style={{ padding: "16px 24px", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                            📎 Uploaded Documents
+                          </div>
+                          {invoices.length > 0 && (
+                            <div style={{ marginBottom: deliveries.length ? 10 : 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#0369a1", marginBottom: 6 }}>🧾 Vendor Invoices</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {invoices.map((f, i) => (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0f9ff", borderRadius: 8, padding: "6px 12px" }}>
+                                    <span style={{ fontSize: 15 }}>📄</span>
+                                    <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
+                                      style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {f.name || `Invoice ${i + 1}`}
+                                    </a>
+                                    <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {deliveries.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#166534", marginBottom: 6 }}>🚚 Delivery Documents</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {deliveries.map((f, i) => (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
+                                    <span style={{ fontSize: 15 }}>📄</span>
+                                    <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
+                                      style={{ flex: 1, fontSize: 12, color: "#166534", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {f.name || `Delivery Doc ${i + 1}`}
+                                    </a>
+                                    <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     <div style={{ padding: "14px 24px", display: "flex", gap: 10 }}>
                       {e.docStatus === "VP_APPROVED" && !isEngineer && (
                         <button onClick={downloadDoc}
