@@ -375,6 +375,44 @@ const ROLE_META = {
   OH:          { label: "OH",          color: "#be185d", bg: "#fce7f3" },
 };
 
+// ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
+function EngUploadSection({ title, icon, type, files, setFiles, uploading, stored, onUpload, canUpload }) {
+  return (
+    <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+        {icon} {title}
+      </div>
+      {stored.length > 0 && (
+        <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+          {stored.map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
+              <span style={{ fontSize: 16 }}>📄</span>
+              <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
+                style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {f.name || `File ${i + 1}`}
+              </a>
+              <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {canUpload && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
+            <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
+              onChange={ev => setFiles(Array.from(ev.target.files))} />
+            {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
+          </label>
+          <button onClick={() => onUpload(type, files)} disabled={!files.length || uploading}
+            style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            {uploading ? "Uploading…" : "📤 Upload"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── LOGIN PAGE ────────────────────────────────────────────────────
 function LoginPage({ onLogin }) {
   const [form, setForm]       = useState({ username: "", password: "" });
@@ -2320,10 +2358,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </button>
                         )}
                         {(isAdmin || isProcurement) && (
-                          isProcurement && row.pwjIssued ? (
+                          (isProcurement && row.pwjIssued) || (isProcurement && row.docStatus === "VP_APPROVED") ? (
                             <button
                               disabled
-                              title="PWJ issued — editing locked. Contact VP/Admin to make changes."
+                              title={row.docStatus === "VP_APPROVED" ? "VP approved — vendor cannot be changed" : "PWJ issued — editing locked. Contact VP/Admin to make changes."}
                               style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               🔒 Locked
                             </button>
@@ -4039,45 +4077,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   {/* Footer actions */}
                   <div style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
 
-                    {/* Upload section — shown for all roles when doc is VP_APPROVED */}
+                    {/* Upload section — shown when VP_APPROVED; engineers upload, others view only */}
                     {e.docStatus === "VP_APPROVED" && (() => {
                       const dd = parseDocData(e);
-                      const UploadSection = ({ title, icon, type, files, setFiles, uploading, stored }) => (
-                        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-                            {icon} {title}
-                          </div>
-                          {/* Existing uploaded files */}
-                          {stored.length > 0 && (
-                            <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                              {stored.map((f, i) => (
-                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
-                                  <span style={{ fontSize: 16 }}>📄</span>
-                                  <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
-                                    style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {f.name || `File ${i + 1}`}
-                                  </a>
-                                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* File picker + upload — Engineer only */}
-                          {isEngineer && (
-                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                              <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
-                                <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
-                                  onChange={ev => setFiles(Array.from(ev.target.files))} />
-                                {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
-                              </label>
-                              <button onClick={() => uploadEngFiles(type, files)} disabled={!files.length || uploading}
-                                style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                                {uploading ? "Uploading…" : "📤 Upload"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
                       return (
                         <>
                           {/* Delivered Date — engineer only */}
@@ -4097,14 +4099,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </div>
                           )}
                           {(isEngineer || (dd.vendorInvoices || []).length > 0) && (
-                            <UploadSection title="Vendor Invoices" icon="🧾" type="invoice"
+                            <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
                               files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
-                              uploading={engInvoiceUploading} stored={dd.vendorInvoices || []} />
+                              uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
+                              canUpload={isEngineer} onUpload={uploadEngFiles} />
                           )}
                           {(isEngineer || (dd.deliveryDocs || []).length > 0) && (
-                            <UploadSection title="Delivery Documents" icon="🚚" type="delivery"
+                            <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
                               files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
-                              uploading={engDeliveryUploading} stored={dd.deliveryDocs || []} />
+                              uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
+                              canUpload={isEngineer} onUpload={uploadEngFiles} />
                           )}
                         </>
                       );
