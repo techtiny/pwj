@@ -4098,18 +4098,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </div>
                             </div>
                           )}
-                          {(isEngineer || (dd.vendorInvoices || []).length > 0) && (
-                            <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
-                              files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
-                              uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
-                              canUpload={isEngineer} onUpload={uploadEngFiles} />
-                          )}
-                          {(isEngineer || (dd.deliveryDocs || []).length > 0) && (
-                            <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
-                              files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
-                              uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
-                              canUpload={isEngineer} onUpload={uploadEngFiles} />
-                          )}
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            {(isEngineer || (dd.vendorInvoices || []).length > 0) && (
+                              <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
+                                files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
+                                uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
+                                canUpload={isEngineer} onUpload={uploadEngFiles} />
+                            )}
+                            {(isEngineer || (dd.deliveryDocs || []).length > 0) && (
+                              <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
+                                files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
+                                uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
+                                canUpload={isEngineer} onUpload={uploadEngFiles} />
+                            )}
+                          </div>
                         </>
                       );
                     })()}
