@@ -241,8 +241,8 @@ const api = {
 // ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
 const HAPPIZO_LOGO_URL = "https://happizo.com/assets/myimages/logo.png";
 
-// Procurement Executive signature image — upload signature via the app and paste the returned URL here
 const PROCUREMENT_SIGNATURE_URL = "/procurement-signature.png";
+const VP_SIGNATURE_URL = "/vp-signature.png";
 
 const COMPANY_INFO = {
   name: "Happizo Infrastructure and Solutions",
@@ -259,18 +259,18 @@ const PO_TERMS = [
   "Billing qty change: Invoice value cannot exceed PO value. If exceeding, invoice will not be processed. Final value if found exceeding to PO received, invoice it only with another additional PO.",
   "Transport/ loading/unloading at vendor scope and not included in the above cost",
   "In case of any delay in supply / work thereby causing delay in work completion, the same will be outsourced and the amount incurred will be debited",
-  "GST: The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
+  "GST : The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
 ];
 
 const WO_TERMS = [
   "Proof of work delivery should be signed and approved by our site engineer along with measurement sheet, for payment process",
   "Any work, if found unsuitable or bad quality or damaged during supply, shall be re-supplied /re-installed/ redone, at no extra cost",
-  "Destination detail, WO reference and all details to be mentioned clearly on the invoice",
+  "Destination detail, PO reference and all details to be mentioned clearly on the invoice",
   "Billing will be as per actuals",
-  "Billing qty change: Invoice value cannot exceed WO value. If exceeding, invoice will not be processed. Final value if found exceeding to WO received, invoice it only with another additional WO.",
+  "Billing qty change: Invoice value cannot exceed PO value. If exceeding, invoice will not be processed. Final value if found exceeding to PO received, invoice it only with another additional PO.",
   "Transport/ loading/unloading at vendor scope and not included in the above cost",
   "In case of any delay in supply / work thereby causing delay in work completion, the same will be outsourced and the amount incurred will be debited",
-  "GST: The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
+  "GST : The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
 ];
 
 function parseImageRefs(ref) {
@@ -298,9 +298,10 @@ function parseDocData(entry) {
     amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
     completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
     deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
+    vendorAddress1: "", vendorAddress2: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
     vendorInvoices: [], deliveryDocs: [],
-    signatureEnabled: false,
+    signatureEnabled: false, signatureUrl: "",
   };
   if (entry.docData) {
     try {
@@ -1431,14 +1432,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const autoDocNum = autoDocNumber(e);
     const msmeVal = v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || "";
     const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
+    const autoAddr1 = v?.street || "";
+    const autoAddr2 = [v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ");
     setDocEditForm({
       ...JSON.parse(JSON.stringify(data)),
-      docNumber:      e.docNumber || autoDocNum,
-      gstNumber:      data.gstNumber      || v?.gstNumber || "",
-      panNumber:      data.panNumber      || v?.panNumber || "",
-      msme:           data.msme           || msmeVal,
-      kindAttn:       data.kindAttn       || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "",
-      contactDetails: data.contactDetails || raisedByContact,
+      docNumber:       e.docNumber || autoDocNum,
+      gstNumber:       data.gstNumber       || v?.gstNumber || "",
+      panNumber:       data.panNumber       || v?.panNumber || "",
+      msme:            data.msme            || msmeVal,
+      kindAttn:        data.kindAttn        || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "",
+      contactDetails:  data.contactDetails  || raisedByContact,
+      vendorAddress1:  data.vendorAddress1  || autoAddr1,
+      vendorAddress2:  data.vendorAddress2  || autoAddr2,
     });
     setDocEditMode(true);
   };
@@ -1615,9 +1620,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <td style="vertical-align:top;text-align:right;width:50%;">
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px;">${typeName}</div>
           <table style="font-size:11px;line-height:1.8;border-collapse:collapse;margin-left:auto;">
-            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">${e.pwjType} Number</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">${e.pwjType} Date</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:6px;text-align:left;">Project Name</td><td style="padding-right:4px;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">Project Name</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
           </table>
         </td>
       </tr>
@@ -1629,8 +1634,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <td style="vertical-align:top;width:50%;padding-right:16px;">
           <div style="font-weight:700;margin-bottom:5px;">TO:</div>
           <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
-          ${v?.street ? `<div>${v.street}</div>` : ""}
-          ${(v?.city||v?.state) ? `<div>${[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
+          ${(docData.vendorAddress1||v?.street) ? `<div>${docData.vendorAddress1||v.street}</div>` : ""}
+          ${(docData.vendorAddress2||(v?.city||v?.state)) ? `<div>${docData.vendorAddress2||[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
           <div style="margin-top:4px;">GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
           <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
           <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
@@ -1723,12 +1728,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
       <table style="width:100%;border-collapse:collapse;margin-top:24px;border-top:1px solid #ddd;padding-top:6px;">
         <tr>
           <td style="width:50%;padding:6px 0 0 0;vertical-align:top;">
-            <div style="color:#555;font-size:11px;margin-bottom:28px;">Approved By</div>
+            <div style="color:#555;font-size:11px;margin-bottom:4px;">Approved By</div>
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
           </td>
           <td style="width:50%;padding:6px 0 0 40px;vertical-align:top;">
             <div style="color:#555;font-size:11px;margin-bottom:4px;">Procurement Executive</div>
-            ${docData.signatureEnabled && PROCUREMENT_SIGNATURE_URL ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:36px;"></div>`}
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Procurement Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
           </td>
         </tr>
@@ -1970,8 +1976,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   );
 
   const canApprove = (row) =>
-    row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED" ||
-    (isOH && row.approvalStatus === "PROCEED");
+    (row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED") ||
+    (!isOH && row.approvalStatus === "PROCEED");
 
   const pageNumbers = useMemo(() => {
     const nums = [];
@@ -2163,9 +2169,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </th>
                   {[
                     ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
-                    ["Project","projectName"],["BOQ","boqNo"],["Material","materialRequired"],
-                    ["Brand","brand"],["Qty","quantity"],["Req Date","dateOfRequirement"],
-                    ["Image","—"],
+                    ["Project","projectName"],["Material","materialRequired"],
+                    ["Req Date","dateOfRequirement"],
                     ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
                     ...((isAdmin || isProcurement || isVP || isOH) ? [["PWJ","pwjIssued"]] : []),
@@ -2197,24 +2202,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
-                    <td style={{ ...s.td, fontSize: 12, color: "#64748b" }} onClick={() => setDetailRow(row)}>{row.boqNo || "—"}</td>
                     <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>{row.materialRequired}</td>
-                    <td style={{ ...s.td, fontSize: 12, color: "#64748b" }} onClick={() => setDetailRow(row)}>{row.brand || "—"}</td>
-                    <td style={{ ...s.td, fontWeight: 600 }} onClick={() => setDetailRow(row)}>{row.quantity ?? "—"}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
-                    {/* Image */}
-                    <td style={{ ...s.td }} onClick={() => setDetailRow(row)}>
-                      {(() => {
-                        const imgs = parseImageRefs(row.imageReference);
-                        if (!imgs.length) return <span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>;
-                        return (
-                          <div style={{ position: "relative", display: "inline-block" }}>
-                            <img src={BACKEND_BASE + imgs[0]} alt="ref" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2eaf5", cursor: "zoom-in" }} onError={e => { e.target.style.display = "none"; }} />
-                            {imgs.length > 1 && <span style={{ position: "absolute", top: -4, right: -4, background: "#1a6ab1", color: "#fff", borderRadius: 8, fontSize: 9, fontWeight: 700, padding: "1px 4px", lineHeight: 1.4 }}>+{imgs.length - 1}</span>}
-                          </div>
-                        );
-                      })()}
-                    </td>
                     {/* Approval — visible for all roles */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
@@ -2358,6 +2347,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => { setEngDocFile(null); openDocModal(row); }}>
                             📄 {row.docStatus === "VP_APPROVED" ? "Doc Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc"}
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            onClick={async () => {
+                              if (!window.confirm(`Delete entry #${row.id} (${row.materialRequired || "this entry"})? This cannot be undone.`)) return;
+                              const r = await api.deleteEntry(row.id);
+                              if (r.success) {
+                                setEntries(es => es.filter(x => x.id !== row.id));
+                                showToast("Entry deleted ✅");
+                              } else {
+                                showToast(r.message || "Delete failed", "error");
+                              }
+                            }}>
+                            🗑️ Delete
                           </button>
                         )}
                       </div>
@@ -3781,31 +3786,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700 }}>{statusLabel}</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      {(isAdmin || isProcurement) && !docEditMode && (
-                        isProcurement && e.pwjIssued ? (
-                          <button
-                            disabled
-                            title="PWJ issued — editing locked. Contact VP/Admin to make changes."
-                            style={{ background: "#e2e8f0", border: "none", borderRadius: 8, padding: "6px 14px", color: "#94a3b8", fontWeight: 700, fontSize: 12, cursor: "not-allowed", fontFamily: "inherit" }}>
-                            🔒 Locked
-                          </button>
-                        ) : (
-                          <button onClick={startDocEdit}
-                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                            ✏️ Edit
-                          </button>
-                        )
-                      )}
-                      {docEditMode && (<>
-                        <button onClick={saveDocEdits} disabled={docSaving}
-                          style={{ background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "6px 14px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                          {docSaving ? "Saving…" : "💾 Save"}
-                        </button>
-                        <button onClick={() => setDocEditMode(false)}
-                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", color: "#64748b", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                          Cancel
-                        </button>
-                      </>)}
                       <button onClick={() => { setDocModal(null); setDocEditMode(false); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
                     </div>
                   </div>
@@ -3840,10 +3820,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
-                              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 8px", fontSize: 12 }}>
-                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span>: <strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
-                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span>: <strong>{today}</strong></span>
-                                <span style={{ color: "#555" }}>Project Name</span><span>: <strong>{e.projectName}</strong></span>
+                              <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 12, alignItems: "center" }}>
+                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span><strong>{today}</strong></span>
+                                <span style={{ color: "#555" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span><strong>{e.projectName}</strong></span>
                               </div>
                             </div>
                           </div>
@@ -3853,9 +3833,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div>
                               <div style={{ fontWeight: 700, marginBottom: 5 }}>TO:</div>
                               <div style={{ fontWeight: 700 }}>{v?.name || e.vendor}</div>
-                              {v?.street && <div>{v.street}</div>}
-                              {(v?.city || v?.state) && <div>{[v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ")}</div>}
-                              {v?.country && <div>{v.country}</div>}
+                              {docEditMode
+                                ? <input value={docData.vendorAddress1 || ""} onChange={ev => setField("vendorAddress1", ev.target.value)} style={{ ...inpSt, width: "100%", marginBottom: 3 }} placeholder="Address line 1 (street)" />
+                                : (docData.vendorAddress1 || v?.street) ? <div>{docData.vendorAddress1 || v.street}</div> : null}
+                              {docEditMode
+                                ? <input value={docData.vendorAddress2 || ""} onChange={ev => setField("vendorAddress2", ev.target.value)} style={{ ...inpSt, width: "100%", marginBottom: 3 }} placeholder="Address line 2 (city, state, zip)" />
+                                : (docData.vendorAddress2 || (v?.city || v?.state)) ? <div>{docData.vendorAddress2 || [v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ")}</div> : null}
                               <div style={{ marginTop: 4 }}>
                                 GST: {docEditMode
                                   ? <input value={docData.gstNumber !== undefined ? docData.gstNumber : (v?.gstNumber || "")} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />
@@ -3891,6 +3874,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <th style={{ ...thSt, textAlign: "center", width: 50 }}>Qty</th>
                                 <th style={{ ...thSt, textAlign: "right", width: 80 }}>Rate</th>
                                 <th style={{ ...thSt, textAlign: "right", width: 90 }}>Amount</th>
+                                {docEditMode && <th style={{ ...thSt, width: 28 }}></th>}
                               </tr>
                             </thead>
                             <tbody>
@@ -3912,13 +3896,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                       {docEditMode ? <input type="number" value={row.rate} onChange={ev => setItem(i, "rate", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0.00" /> : fmtCcy(row.rate)}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(amt)}</td>
+                                    {docEditMode && (
+                                      <td style={{ ...tdSt, textAlign: "center", padding: "4px 2px" }}>
+                                        <button
+                                          onClick={() => setDocEditForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
+                                          title="Remove row"
+                                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 4px", borderRadius: 4 }}>
+                                          ×
+                                        </button>
+                                      </td>
+                                    )}
                                   </tr>
                                 );
                               })}
                               {/* Add Row button in edit mode */}
                               {docEditMode && (
                                 <tr>
-                                  <td colSpan={6} style={{ padding: "4px 10px" }}>
+                                  <td colSpan={7} style={{ padding: "4px 10px" }}>
                                     <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "" }] }))}
                                       style={{ fontSize: 11, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
@@ -3940,7 +3934,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                       <span>{label}</span>
                                       {docEditMode
                                         ? <select value={docData[field] || "0"} onChange={ev => setField(field, ev.target.value)} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, padding: "1px 4px" }}>
-                                            {["0","7","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
+                                            {["0","2.5","5","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
                                         : <span style={{ color: "#555" }}>({docData[field] || 0}%)</span>}
                                     </div>
@@ -4021,22 +4015,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ fontWeight: 600, marginBottom: 24 }}>For <strong>{COMPANY_INFO.name}</strong></div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
-                                <div style={{ color: "#555", fontSize: 11, marginBottom: 28 }}>Approved By</div>
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>
-                                  {e.docStatus === "VP_APPROVED"
-                                    ? <span style={{ color: "#166534", fontWeight: 700 }}>✅ Approved by VP</span>
-                                    : e.docStatus === "VP_REJECTED"
-                                      ? <span style={{ color: "#991b1b", fontWeight: 700 }}>❌ Not Approved by VP</span>
-                                      : "Signature & Date"}
-                                </div>
+                                <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Approved By</div>
+                                {e.docStatus === "VP_APPROVED"
+                                  ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
+                                  : <div style={{ height: 48 }} />}
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
                               </div>
                               <div>
                                 <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Procurement Executive</div>
-                                {parseDocData(e).signatureEnabled && PROCUREMENT_SIGNATURE_URL ? (
-                                  <img src={PROCUREMENT_SIGNATURE_URL} alt="Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} />
-                                ) : (
-                                  <div style={{ height: 36 }} />
-                                )}
+                                {e.docStatus === "VP_APPROVED"
+                                  ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
+                                  : <div style={{ height: 48 }} />}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
                               </div>
                             </div>
@@ -4073,18 +4062,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               ))}
                             </div>
                           )}
-                          {/* File picker + upload */}
-                          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                            <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
-                              <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
-                                onChange={ev => setFiles(Array.from(ev.target.files))} />
-                              {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
-                            </label>
-                            <button onClick={() => uploadEngFiles(type, files)} disabled={!files.length || uploading}
-                              style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                              {uploading ? "Uploading…" : "📤 Upload"}
-                            </button>
-                          </div>
+                          {/* File picker + upload — Engineer only */}
+                          {isEngineer && (
+                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
+                                <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
+                                  onChange={ev => setFiles(Array.from(ev.target.files))} />
+                                {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
+                              </label>
+                              <button onClick={() => uploadEngFiles(type, files)} disabled={!files.length || uploading}
+                                style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                {uploading ? "Uploading…" : "📤 Upload"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                       return (
@@ -4105,12 +4096,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </div>
                             </div>
                           )}
-                          <UploadSection title="Vendor Invoices" icon="🧾" type="invoice"
-                            files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
-                            uploading={engInvoiceUploading} stored={dd.vendorInvoices || []} />
-                          <UploadSection title="Delivery Documents" icon="🚚" type="delivery"
-                            files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
-                            uploading={engDeliveryUploading} stored={dd.deliveryDocs || []} />
+                          {(isEngineer || (dd.vendorInvoices || []).length > 0) && (
+                            <UploadSection title="Vendor Invoices" icon="🧾" type="invoice"
+                              files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
+                              uploading={engInvoiceUploading} stored={dd.vendorInvoices || []} />
+                          )}
+                          {(isEngineer || (dd.deliveryDocs || []).length > 0) && (
+                            <UploadSection title="Delivery Documents" icon="🚚" type="delivery"
+                              files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
+                              uploading={engDeliveryUploading} stored={dd.deliveryDocs || []} />
+                          )}
                         </>
                       );
                     })()}
@@ -4133,7 +4128,37 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                     )}
 
-                    <div style={{ padding: "14px 24px", display: "flex", gap: 10 }}>
+                    <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {/* Edit → Save → Send for VP Approval in order */}
+                      {(isAdmin || isProcurement) && e.docStatus !== "VP_APPROVED" && !docEditMode && (
+                        isProcurement && e.pwjIssued ? (
+                          <button disabled title="PWJ issued — editing locked"
+                            style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#94a3b8", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
+                            🔒 Locked
+                          </button>
+                        ) : (
+                          <button onClick={startDocEdit}
+                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                            ✏️ Edit
+                          </button>
+                        )
+                      )}
+                      {docEditMode && (<>
+                        <button onClick={saveDocEdits} disabled={docSaving}
+                          style={{ background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          {docSaving ? "Saving…" : "💾 Save"}
+                        </button>
+                        <button onClick={() => setDocEditMode(false)}
+                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "#64748b", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          Cancel
+                        </button>
+                      </>)}
+                      {(isAdmin || isProcurement) && !docEditMode && e.docStatus !== "PENDING_VP_APPROVAL" && e.docStatus !== "VP_APPROVED" && (
+                        <button onClick={sendDocForApproval} disabled={docLoading}
+                          style={{ background: e.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          {docLoading ? "Sending…" : e.docStatus === "REVISION_REQUESTED" ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
+                        </button>
+                      )}
                       {e.docStatus === "VP_APPROVED" && !isEngineer && (
                         <button onClick={downloadDoc}
                           style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -4158,32 +4183,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           title={!e.vendorEmailEnabled ? "Email not enabled by VP/Admin" : "Send document to vendor"}
                           style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           📧 Send to Vendor
-                        </button>
-                      )}
-                      {(isAdmin || isProcurement) && e.docStatus && (() => {
-                        const sigEnabled = parseDocData(e).signatureEnabled;
-                        return (
-                          <button onClick={async () => {
-                            const existing = parseDocData(e);
-                            const newDocData = JSON.stringify({ ...existing, signatureEnabled: !sigEnabled });
-                            const r = await api.procurementUpdate(e.id, { docData: newDocData });
-                            if (r.success) {
-                              const updated = { ...e, docData: newDocData };
-                              setDocModal(m => ({ ...m, entry: updated }));
-                              setEntries(es => es.map(x => x.id === e.id ? updated : x));
-                              showToast(sigEnabled ? "Signature removed" : "Signature added ✅");
-                            }
-                          }}
-                            title={sigEnabled ? "Remove procurement signature" : "Add procurement signature to document"}
-                            style={{ flex: 1, background: sigEnabled ? "linear-gradient(135deg,#0f766e,#14b8a6)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, whiteSpace: "nowrap" }}>
-                            ✍️ {sigEnabled ? "Sig ON" : "Sig OFF"}
-                          </button>
-                        );
-                      })()}
-                      {(isAdmin || isProcurement) && e.docStatus !== "PENDING_VP_APPROVAL" && e.docStatus !== "VP_APPROVED" && (
-                        <button onClick={sendDocForApproval} disabled={docLoading}
-                          style={{ flex: 1, background: e.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                          {docLoading ? "Sending…" : e.docStatus === "REVISION_REQUESTED" ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
                         </button>
                       )}
                       <button onClick={() => { setDocModal(null); setEngDocFile(null); }}
