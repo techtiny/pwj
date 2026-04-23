@@ -295,7 +295,7 @@ function parseDocData(entry) {
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
     ],
-    amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
+    amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "18",
     completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
     deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
     vendorAddress1: "", vendorAddress2: "",
