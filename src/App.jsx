@@ -4173,12 +4173,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       )}
                       {e.docStatus === "VP_APPROVED" && (isVP || isAdmin) && (
                         <button onClick={async () => {
-                          const r = await api.toggleVendorEmail(e.id);
-                          if (r.success) {
-                            setEntries(es => es.map(x => x.id === e.id ? { ...x, vendorEmailEnabled: r.data.vendorEmailEnabled } : x));
-                            setDocModal(m => ({ ...m, entry: { ...m.entry, vendorEmailEnabled: r.data.vendorEmailEnabled } }));
-                            showToast(r.data.vendorEmailEnabled ? "Vendor email enabled ✅" : "Vendor email disabled ❌");
-                          }
+                          try {
+                            const r = await api.toggleVendorEmail(e.id);
+                            if (r.success) {
+                              setEntries(es => es.map(x => x.id === e.id ? { ...x, vendorEmailEnabled: r.data.vendorEmailEnabled } : x));
+                              setDocModal(m => ({ ...m, entry: { ...m.entry, vendorEmailEnabled: r.data.vendorEmailEnabled } }));
+                              showToast(r.data.vendorEmailEnabled ? "Vendor email enabled ✅" : "Vendor email disabled");
+                            } else {
+                              showToast(r.message || "Failed to toggle email", "error");
+                            }
+                          } catch { showToast("Network error", "error"); }
                         }}
                           style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#166534,#16a34a)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
