@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import html2pdf from "html2pdf.js";
+import AccountSection from "./account/AccountSection";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot } from "lucide-react";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -373,6 +375,7 @@ const ROLE_META = {
   PROCUREMENT: { label: "Procurement", color: "#065f46", bg: "#d1fae5" },
   VP:          { label: "VP",          color: "#b45309", bg: "#fef3c7" },
   OH:          { label: "OH",          color: "#be185d", bg: "#fce7f3" },
+  CEO:         { label: "CEO",         color: "#dc2626", bg: "#fee2e2" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -517,7 +520,7 @@ function LoginPage({ onLogin }) {
           <div style={{ marginBottom:32 }}>
             <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#fff", letterSpacing:"-0.8px", lineHeight:1.15 }}>
               Sign in to<br/>
-              <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>PWJ Tracker</span>
+              <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Happizo CloudDesk</span>
             </div>
             <div style={{ color:"rgba(255,255,255,.4)", fontSize:13.5, marginTop:10, lineHeight:1.6 }}>
               Purchase Work Journal · Procurement Dashboard
@@ -740,7 +743,7 @@ function CountdownPage({ onLaunched }) {
           </div>
 
           {/* logo / title */}
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>PWJ Tracker</div>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>Procurement Tracker</div>
           <h1 style={{
             fontSize: 38, fontWeight: 800, lineHeight: 1.15,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -914,7 +917,7 @@ function CelebrationPage({ onDone }) {
           </div>
 
           <div style={{ fontSize: 16, color: "#94a3b8", marginBottom: 32, lineHeight: 1.7 }}>
-            PWJ Tracker is officially launched.<br/>
+            Procurement Tracker is officially launched.<br/>
             <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — making procurement smarter.
           </div>
 
@@ -932,15 +935,21 @@ function CelebrationPage({ onDone }) {
 export default function PWJTracker() {
   // ── Session ──
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pwj_user")); } catch { return null; }
+    try {
+      const u = JSON.parse(localStorage.getItem("pwj_user"));
+      if (u) document.title = "Happizo CloudDesk";
+      return u;
+    } catch { return null; }
   });
 
   const handleLogin = (userData) => {
     localStorage.setItem("pwj_user", JSON.stringify(userData));
+    document.title = "Happizo CloudDesk";
     setUser(userData);
   };
   const handleLogout = () => {
     localStorage.removeItem("pwj_user");
+    document.title = "Happizo CloudDesk — Login";
     setUser(null);
   };
 
@@ -956,6 +965,133 @@ export default function PWJTracker() {
   return <Dashboard user={user} onLogout={handleLogout} />;
 }
 
+// ─── HOME DASHBOARD ───
+function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, onNavigate, onManageUsers }) {
+  const modules = [
+    {
+      key: "entries",
+      label: "Procurement Entries",
+      desc: "Track purchase requests, work orders & job orders",
+      icon: FileText,
+      gradient: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
+      shadow: "rgba(37,99,235,0.35)",
+      visible: true,
+    },
+    {
+      key: "vendors",
+      label: "Vendors",
+      desc: "Manage vendor profiles, bank details & approvals",
+      icon: Building2,
+      gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
+      shadow: "rgba(16,185,129,0.35)",
+      visible: isAdmin || isProcurement || isVP || isOH || isCeo,
+    },
+    {
+      key: "projects",
+      label: "Projects",
+      desc: "Monitor active projects, BOQ & payment milestones",
+      icon: FolderKanban,
+      gradient: "linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)",
+      shadow: "rgba(139,92,246,0.35)",
+      visible: isAdmin || isVP || isOH || isCeo,
+    },
+    {
+      key: "account",
+      label: "Account",
+      desc: "Financial dashboard, expenses & fund transfers",
+      icon: BarChart2,
+      gradient: "linear-gradient(135deg, #92400e 0%, #f59e0b 100%)",
+      shadow: "rgba(245,158,11,0.35)",
+      visible: isAdmin || isVP || isOH || isCeo,
+    },
+    {
+      key: "hr",
+      label: "HR",
+      desc: "Human resources, attendance, payroll & team management",
+      icon: UserCog,
+      gradient: "linear-gradient(135deg, #be185d 0%, #ec4899 100%)",
+      shadow: "rgba(236,72,153,0.35)",
+      visible: true,
+    },
+    {
+      key: "operations",
+      label: "Operations",
+      desc: "Operational workflows, scheduling & process management",
+      icon: Settings2,
+      gradient: "linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)",
+      shadow: "rgba(20,184,166,0.35)",
+      visible: true,
+    },
+    {
+      key: "chatbot",
+      label: "Happizo Chat Bot",
+      desc: "AI-powered assistant for instant answers & support",
+      icon: Bot,
+      gradient: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+      shadow: "rgba(124,58,237,0.35)",
+      visible: true,
+    },
+    {
+      key: "users",
+      label: "Manage Users",
+      desc: "Create users, assign roles & manage access",
+      icon: Users,
+      gradient: "linear-gradient(135deg, #0f4c81 0%, #0ea5e9 100%)",
+      shadow: "rgba(14,165,233,0.35)",
+      visible: isAdmin || isVP || isOH,
+      action: onManageUsers,
+    },
+  ].filter(m => m.visible);
+
+  return (
+    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+      <div style={{ marginBottom: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
+        <div style={{ fontSize: 15, color: "#64748b", marginTop: 8 }}>Select a module to get started</div>
+      </div>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${Math.min(modules.length, 4)}, 1fr)`,
+        gap: 24,
+        width: "100%",
+        maxWidth: 960,
+      }}>
+        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action }) => (
+          <button key={key} onClick={() => action ? action() : onNavigate(key)}
+            style={{
+              background: "#fff",
+              border: "1.5px solid #e2e8f0",
+              borderRadius: 20,
+              padding: "32px 24px",
+              cursor: "pointer",
+              textAlign: "center",
+              fontFamily: "inherit",
+              transition: "transform .18s, box-shadow .18s",
+              boxShadow: "0 2px 12px rgba(15,23,42,.07)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${shadow}`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; }}
+          >
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
+              <Icon size={32} color="#fff" strokeWidth={1.8} />
+            </div>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{desc}</div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", marginTop: 4 }}>Open →</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── DASHBOARD (always mounted when user is set — no conditional hooks) ───
 function Dashboard({ user, onLogout: handleLogout }) {
   const isAdmin       = user?.role === "ADMIN";
@@ -963,6 +1099,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const isEngineer    = user?.role === "ENGINEER";
   const isVP          = user?.role === "VP";
   const isOH          = user?.role === "OH";
+  const isCeo         = user?.role === "CEO";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
@@ -984,7 +1121,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [sortDir, setSortDir]         = useState("desc");
   const PAGE_SIZE = 15;
 
-  const [mainTab, setMainTab] = useState("entries");
+  const [mainTab, setMainTab] = useState("home");
 
   // Modals
   const [detailRow, setDetailRow]         = useState(null);
@@ -2067,7 +2204,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={s.hLeft}>
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
-              <div style={s.hTitle}>PWJ Tracker</div>
+              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : "Procurement Tracker"}</div>
               <div style={s.hSub}>Purchase Work Journal · Procurement</div>
             </div>
           </div>
@@ -2080,7 +2217,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {(isAdmin || isProcurement) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV}>↓ Export</button>
             )}
-            {(isAdmin || isProcurement || isOH || isVP) && (
+            {(isAdmin || isProcurement || isOH || isVP || isCeo) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPending}>Pending</button>
             )}
             {isVP && (
@@ -2099,11 +2236,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 } catch { showToast("Backup failed", "error"); }
               }}>💾 Backup Now</button>
             )}
-            <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
-              setEditingEntry(null);
-              setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
-              setCreateModal(true);
-            }}>+ New Entry</button>
+            {!isCeo && (
+              <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
+                setEditingEntry(null);
+                setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
+                setCreateModal(true);
+              }}>+ New Entry</button>
+            )}
             <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={handleLogout}>Logout</button>
           </div>
         </div>
@@ -2111,9 +2250,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {/* ─── MAIN TABS ─── */}
         <div className="app-tabs" style={{ display: "flex", gap: 0, padding: "0 32px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
           {[
-            { key: "entries", label: "PWJ Entries" },
-            ...((isAdmin || isProcurement || isVP || isOH) ? [{ key: "vendors", label: "Vendors" }] : []),
-            ...((isAdmin || isVP || isOH) ? [{ key: "projects", label: "Projects" }] : []),
+            { key: "home",    label: null,          icon: Home },
+            { key: "entries", label: "Procurement Entries", icon: null },
+            { key: "hr",         label: "HR",         icon: null },
+            { key: "operations", label: "Operations",       icon: null },
+            { key: "chatbot",    label: "Happizo Chat Bot", icon: null },
+            ...((isAdmin || isProcurement || isVP || isOH || isCeo) ? [{ key: "vendors",  label: "Vendors",  icon: null }] : []),
+            ...((isAdmin || isVP || isOH || isCeo)                 ? [{ key: "projects", label: "Projects", icon: null }] : []),
+            ...((isAdmin || isVP || isOH || isCeo)                 ? [{ key: "account",  label: "Account",  icon: null }] : []),
           ].map(t => {
             const active = mainTab === t.key;
             return (
@@ -2123,16 +2267,67 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   if (t.key === "vendors") loadVendorsTab();
                   if (t.key === "projects") fetchManagedProjects();
                 }}
+                title={t.key === "home" ? "Home" : undefined}
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                   padding: "14px 22px", fontSize: 13.5, fontWeight: active ? 600 : 500,
                   color: active ? "#0f172a" : "#94a3b8",
                   borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
-                  marginBottom: -1, letterSpacing: 0.1 }}>
-                {t.label}
+                  marginBottom: -1, letterSpacing: 0.1,
+                  display: "flex", alignItems: "center", gap: 6 }}>
+                {t.icon ? <t.icon size={17} strokeWidth={active ? 2.2 : 1.8} /> : t.label}
               </button>
             );
           })}
         </div>
+
+        {mainTab === "home" && (
+          <HomeDashboard
+            isAdmin={isAdmin} isProcurement={isProcurement}
+            isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo}
+            onNavigate={key => {
+              setMainTab(key);
+              if (key === "vendors") loadVendorsTab();
+              if (key === "projects") fetchManagedProjects();
+            }}
+            onManageUsers={openUserMgmt}
+          />
+        )}
+
+        {mainTab === "chatbot" && (
+          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#4f46e5,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(124,58,237,0.35)" }}>
+              <Bot size={32} color="#fff" strokeWidth={1.8} />
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Happizo Chat Bot</div>
+              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — AI-powered assistant for instant answers & support</div>
+            </div>
+          </div>
+        )}
+
+        {mainTab === "operations" && (
+          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#0d9488,#14b8a6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(20,184,166,0.35)" }}>
+              <Settings2 size={32} color="#fff" strokeWidth={1.8} />
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Operations Module</div>
+              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — Operational workflows & process management</div>
+            </div>
+          </div>
+        )}
+
+        {mainTab === "hr" && (
+          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#be185d,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(236,72,153,0.35)" }}>
+              <UserCog size={32} color="#fff" strokeWidth={1.8} />
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>HR Module</div>
+              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — Human Resources management</div>
+            </div>
+          </div>
+        )}
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
@@ -2211,7 +2406,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Req Date","dateOfRequirement"],
                     ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
-                    ...((isAdmin || isProcurement || isVP || isOH) ? [["PWJ","pwjIssued"]] : []),
+                    ...((isAdmin || isProcurement || isVP || isOH || isCeo) ? [["PWJ","pwjIssued"]] : []),
                     ...(!isEngineer ? [["ACK","ack"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
@@ -2253,8 +2448,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {!isEngineer && (
                       <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
-                    {/* PWJ — visible to Admin, Procurement, VP, OH; editable only by Admin/Procurement */}
-                    {(isAdmin || isProcurement || isVP || isOH) && (
+                    {/* PWJ — visible to Admin, Procurement, VP, OH, CEO; editable only by Admin/Procurement */}
+                    {(isAdmin || isProcurement || isVP || isOH || isCeo) && (
                       <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                         {(isAdmin || isProcurement) ? (
                           <button
@@ -2380,7 +2575,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             📄 {row.docStatus === "VP_APPROVED" ? "Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
                           </button>
                         )}
-                        {(isEngineer || isVP || isOH) && row.docStatus && (
+                        {(isEngineer || isVP || isOH || isCeo) && row.docStatus && (
                           <button
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => { setEngDocFile(null); openDocModal(row); }}>
@@ -2710,10 +2905,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {activeProjects.length} active project{activeProjects.length !== 1 ? "s" : ""} · Engineers select from this list when creating entries
                   </div>
                 </div>
-                <button onClick={openCreateProject}
-                  style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                  + Add Project
-                </button>
+                {!isCeo && (
+                  <button onClick={openCreateProject}
+                    style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                    + Add Project
+                  </button>
+                )}
               </div>
 
               {activeProjects.length === 0 && (
@@ -2733,8 +2930,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {p.location && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>
-                        <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>
+                        {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
+                        {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
                         {(isAdmin || isVP) && (
                           <button onClick={async () => {
                             if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
@@ -2797,7 +2994,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {p.location && <div style={{ fontSize: 11, color: "#94a3b8" }}>📍 {p.location}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>
+                          {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
                           {(isAdmin || isVP) && (
                             <button onClick={async () => {
                               if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
@@ -2981,6 +3178,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
           );
         })()}
+
+        {/* ─── ACCOUNT MODULE ─── */}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} />}
+
       </div>
 
       {/* ─── DETAIL MODAL ─── */}
@@ -4274,199 +4475,176 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── MANAGE USERS MODAL ─── */}
       {userMgmtModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={() => setUserMgmtModal(false)}>
-          <div style={{ background: "#fff", borderRadius: 28, width: "96%", maxWidth: 860, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={() => setUserMgmtModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 20, width: "96%", maxWidth: 900, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 32px 80px rgba(0,0,0,.25)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
 
-            {/* ── Top bar ── */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 28px 18px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
+            {/* ── Header ── */}
+            <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)", padding: "24px 32px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Manage Users</div>
-                <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{allUsers.length} team members</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Manage Users</div>
+                <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{allUsers.length} team member{allUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
               </div>
               <button onClick={() => setUserMgmtModal(false)}
-                style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 36, height: 36, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>×</button>
             </div>
 
-            {/* ── Add user row ── */}
-            <div style={{ padding: "16px 28px", borderBottom: "1px solid #f1f5f9", background: "#fafbfe", flexShrink: 0 }}>
-              {/* Row 1: Full Name, Username, Password, Role */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 10 }}>
-                {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"]].map(([ph, key, type]) => (
+            {/* ── Add user form ── */}
+            <div style={{ padding: "20px 32px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+                {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"],["Email","email","email"],["Phone","phone","tel"]].map(([label, key, type]) => (
                   <div key={key}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>{ph}</div>
-                    <input type={type} placeholder={ph} value={newUserForm[key]}
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>{label}</div>
+                    <input type={type} placeholder={label} value={newUserForm[key]}
                       onChange={e => setNewUserForm(f => ({ ...f, [key]: e.target.value }))}
-                      style={{ width: "100%", border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
+                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
                   </div>
                 ))}
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Role</div>
                   <select value={newUserForm.role} onChange={e => setNewUserForm(f => ({ ...f, role: e.target.value }))}
-                    style={{ border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", cursor: "pointer" }}>
+                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", cursor: "pointer" }}>
                     <option value="ENGINEER">Engineer</option>
                     <option value="PROCUREMENT">Procurement</option>
                     <option value="ADMIN">Admin</option>
                     <option value="VP">VP</option>
                     <option value="OH">OH</option>
+                    <option value="CEO">CEO</option>
                   </select>
                 </div>
-              </div>
-              {/* Row 2: Email + Phone + Add button */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Email</div>
-                  <input type="email" placeholder="Email address" value={newUserForm.email}
-                    onChange={e => setNewUserForm(f => ({ ...f, email: e.target.value }))}
-                    style={{ width: "100%", border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 14px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Phone</div>
-                  <input type="tel" placeholder="Phone number" value={newUserForm.phone}
-                    onChange={e => setNewUserForm(f => ({ ...f, phone: e.target.value }))}
-                    style={{ width: "100%", border: "1.5px solid #e8ecf2", borderRadius: 10, padding: "9px 14px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>&nbsp;</div>
+                <div style={{ paddingTop: 16 }}>
                   <button onClick={submitNewUser}
-                    style={{ background: "#0f172a", border: "none", borderRadius: 10, padding: "9px 24px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                    + Add Member
+                    style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "8px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", height: 36 }}>
+                    + Add
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* ── Users table ── */}
-            <div style={{ overflowY: "auto", flex: 1 }}>
-              {/* Table header */}
-              <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 160px 120px 90px", gap: 0, padding: "10px 28px", borderBottom: "1px solid #f1f5f9" }}>
-                {["","Member","Role","Joined",""].map((h, i) => (
-                  <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: .8 }}>{h}</div>
-                ))}
-              </div>
+            {/* ── Table header ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 1.2fr 100px 120px", gap: 0, padding: "10px 32px", background: "#f8fafc", borderBottom: "1.5px solid #e2e8f0", flexShrink: 0 }}>
+              {["", "Member", "Role", "Contact", "Joined", "Actions"].map((h, i) => (
+                <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</div>
+              ))}
+            </div>
 
+            {/* ── Users list ── */}
+            <div style={{ overflowY: "auto", flex: 1 }}>
               {userMgmtLoading ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Loading…</div>
-              ) : allUsers.map((u, idx) => {
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "#94a3b8", gap: 10 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e2e8f0", borderTopColor: "#6366f1", animation: "acct-spin 0.7s linear infinite" }} />
+                  Loading members…
+                </div>
+              ) : allUsers.map((u) => {
                 const AVATAR_GRAD = {
                   VP:          "linear-gradient(135deg,#f59e0b,#d97706)",
                   ADMIN:       "linear-gradient(135deg,#8b5cf6,#7c3aed)",
                   PROCUREMENT: "linear-gradient(135deg,#10b981,#059669)",
                   ENGINEER:    "linear-gradient(135deg,#3b82f6,#2563eb)",
+                  CEO:         "linear-gradient(135deg,#ef4444,#dc2626)",
+                  OH:          "linear-gradient(135deg,#ec4899,#be185d)",
                 };
                 const rm = ROLE_META[u.role] || { label: u.role, color: "#475569", bg: "#f1f5f9" };
                 const isSelf = u.id === user.id;
                 const canRemove = !isSelf && (isVP || u.role !== "VP");
-                const initials = (u.fullName || u.username).split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                const initials = (u.fullName || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+                const inp = { border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text" };
                 return (
-                  <div key={u.id} style={{ display: "grid", gridTemplateColumns: "52px 1fr 160px 120px 90px", gap: 0, alignItems: "center", padding: "13px 28px", borderBottom: "1px solid #f8fafc", background: idx % 2 === 0 ? "#fff" : "#fafbfe", transition: "background .12s" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#f0f7ff"}
-                    onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafbfe"}>
+                  <div key={u.id}
+                    style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 1.2fr 100px 120px", gap: 0, alignItems: "center", padding: "14px 32px", borderBottom: "1px solid #f1f5f9", transition: "background .12s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f8faff"}
+                    onMouseLeave={e => e.currentTarget.style.background = ""}>
 
                     {/* Avatar */}
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: "'Plus Jakarta Sans',sans-serif", flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>
                       {initials}
                     </div>
 
-                    {/* Name + username + inline phone edit */}
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                        <input
-                          type="text"
-                          defaultValue={u.fullName || ""}
-                          placeholder="Full name…"
+                    {/* Name + username */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input type="text" defaultValue={u.fullName || ""} placeholder="Full name"
                           onBlur={async e => {
                             const val = e.target.value.trim();
                             if (!val || val === (u.fullName || "")) return;
                             const r = await api.updateUserName(u.id, val);
-                            if (r.success) {
-                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, fullName: val } : x));
-                              showToast("Name updated ✅");
-                            } else showToast(r.message || "Failed", "error");
+                            if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, fullName: val } : x)); showToast("Name updated ✅"); }
+                            else showToast(r.message || "Failed", "error");
                           }}
-                          style={{ fontWeight: 600, fontSize: 14, color: "#0f172a", border: "1px solid transparent", borderRadius: 6, padding: "2px 6px", background: "transparent", outline: "none", fontFamily: "inherit", width: 180 }}
-                          onFocus={e => { e.currentTarget.style.border = "1px solid #bae6fd"; e.currentTarget.style.background = "#f0f9ff"; }}
-                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }}
-                        />
-                        {isSelf && <span style={{ fontSize: 10, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "1px 8px" }}>You</span>}
+                          style={{ ...inp, fontWeight: 600, fontSize: 14, color: "#0f172a", width: "auto", maxWidth: 180 }}
+                          onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
+                        {isSelf && <span style={{ fontSize: 10, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>You</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>
-                        @<input
-                          type="text"
-                          defaultValue={u.username || ""}
-                          placeholder="username"
+                      <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2 }}>
+                        <span style={{ fontSize: 12, color: "#cbd5e1" }}>@</span>
+                        <input type="text" defaultValue={u.username || ""} placeholder="username"
                           onBlur={async e => {
                             const val = e.target.value.trim();
                             if (!val || val === (u.username || "")) return;
                             const r = await api.updateUsername(u.id, val);
-                            if (r.success) {
-                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, username: val } : x));
-                              showToast("Username updated ✅");
-                            } else { showToast(r.message || "Failed", "error"); e.target.value = u.username || ""; }
+                            if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, username: val } : x)); showToast("Username updated ✅"); }
+                            else { showToast(r.message || "Failed", "error"); e.target.value = u.username || ""; }
                           }}
-                          style={{ fontSize: 12, color: "#94a3b8", border: "1px solid transparent", borderRadius: 4, padding: "1px 4px", background: "transparent", outline: "none", fontFamily: "inherit", width: 130 }}
-                          onFocus={e => { e.currentTarget.style.border = "1px solid #bae6fd"; e.currentTarget.style.background = "#f0f9ff"; e.currentTarget.style.color = "#0f172a"; }}
-                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }}
-                        />
-                        {u.email ? `· ${u.email}` : ""}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                        <input
-                          type="tel"
-                          defaultValue={u.phone || ""}
-                          placeholder="Add phone…"
-                          onBlur={async e => {
-                            const val = e.target.value.trim();
-                            if (val === (u.phone || "")) return;
-                            const r = await api.updateUserPhone(u.id, val || null);
-                            if (r.success) {
-                              setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, phone: val || null } : x));
-                              showToast("Phone updated ✅");
-                            } else showToast(r.message || "Failed", "error");
-                          }}
-                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "3px 8px", fontSize: 12, outline: "none", fontFamily: "inherit", color: "#0f172a", background: "#f8fafc", width: 140 }}
-                        />
-                        <span style={{ fontSize: 11, color: "#cbd5e1" }}>📞</span>
+                          style={{ ...inp, fontSize: 12, color: "#94a3b8", width: 120 }}
+                          onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }} />
                       </div>
                     </div>
 
-                    {/* Role badge */}
+                    {/* Role */}
                     <div>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color, opacity: .7 }} />
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color }} />
                         {rm.label}
                       </span>
                     </div>
 
-                    {/* Joined */}
-                    <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                      {fmtDate(u.createdAt)}
+                    {/* Contact */}
+                    <div style={{ minWidth: 0 }}>
+                      {u.email && <div style={{ fontSize: 12, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>}
+                      <input type="tel" defaultValue={u.phone || ""} placeholder="Add phone"
+                        onBlur={async e => {
+                          const val = e.target.value.trim();
+                          if (val === (u.phone || "")) return;
+                          const r = await api.updateUserPhone(u.id, val || null);
+                          if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, phone: val || null } : x)); showToast("Phone updated ✅"); }
+                          else showToast(r.message || "Failed", "error");
+                        }}
+                        style={{ ...inp, fontSize: 12, color: u.phone ? "#475569" : "#cbd5e1", marginTop: 2, width: "100%", maxWidth: 140 }}
+                        onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
+                        onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = u.phone ? "#475569" : "#cbd5e1"; }} />
                     </div>
 
-                    {/* Action */}
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                    {/* Joined */}
+                    <div style={{ fontSize: 12, color: "#94a3b8" }}>{fmtDate(u.createdAt)}</div>
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
                       {isAdmin && (
                         <button onClick={() => { setPwdModal({ id: u.id, username: u.username }); setNewPwd(""); }}
-                          style={{ background: "none", border: "1px solid #e2e8f0", color: "#7c3aed", cursor: "pointer", fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: "inherit" }}
-                          title={`Change password for ${u.fullName}`}
-                          onMouseEnter={e => { e.currentTarget.style.background="#ede9fe"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background="none"; }}>
-                          🔑 Password
+                          style={{ background: "#f5f3ff", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#ede9fe"}
+                          onMouseLeave={e => e.currentTarget.style.background = "#f5f3ff"}>
+                          🔑 Pwd
                         </button>
                       )}
                       {canRemove && (
                         <button onClick={() => deactivateUser(u.id, u.username)}
-                          style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18, padding: "4px 8px", borderRadius: 8, fontFamily: "inherit", lineHeight: 1 }}
+                          style={{ background: "#fff1f2", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
                           title={`Remove ${u.fullName}`}
-                          onMouseEnter={e => { e.currentTarget.style.color="#dc2626"; e.currentTarget.style.background="#fee2e2"; }}
-                          onMouseLeave={e => { e.currentTarget.style.color="#94a3b8"; e.currentTarget.style.background="none"; }}>
-                          ✕
+                          onMouseEnter={e => e.currentTarget.style.background = "#ffe4e6"}
+                          onMouseLeave={e => e.currentTarget.style.background = "#fff1f2"}>
+                          Remove
                         </button>
                       )}
                     </div>
+
                   </div>
                 );
               })}
             </div>
+
           </div>
         </div>
       )}
