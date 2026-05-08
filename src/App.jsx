@@ -1769,65 +1769,69 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
-    const thBase = `background:${typeColor};color:#fff;font-weight:700;font-size:11px;padding:7px 8px;`;
+    const thBase = `background:${typeColor};color:#fff;font-weight:700;font-size:11px;padding:7px 10px;`;
+    const tdBase = `padding:7px 10px;border-bottom:1px solid #ddd;`;
+    const SEC   = `margin-bottom:12px;`;
+    const STITLE = `font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:12px 0 6px;`;
     const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
     <style>
       @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
       * { box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0; padding: 0; line-height: 1.5; }
       table { width: 100%; border-collapse: collapse; }
       tr { page-break-inside: avoid; }
-      .no-break { page-break-inside: avoid; }
+      .sec { margin-bottom: 12px; }
+      .stitle { font-weight:700; border-bottom:1px solid #111; padding-bottom:4px; margin:12px 0 6px; }
       @media print { button { display: none; } }
     </style></head><body>
 
     <!-- HEADER -->
-    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;">
+    <table class="sec" style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;">
       <tr>
         <td style="vertical-align:middle;width:40%;">
           <img src="${logoAbsUrl}" alt="Happizo" style="width:110px;height:auto;display:block;" />
         </td>
         <td style="vertical-align:top;text-align:right;width:60%;">
-          <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px;">${typeName}</div>
+          <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:6px;">${typeName}</div>
           <table style="font-size:11px;line-height:1.7;border-collapse:collapse;margin-left:auto;">
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Number</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Date</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">Project Name</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;">:</td><td><strong>${docNum}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;">:</td><td><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">Project Name</td><td style="padding:0 6px;">:</td><td><strong>${e.projectName}</strong></td></tr>
           </table>
         </td>
       </tr>
     </table>
 
     <!-- VENDOR / BILLING -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+    <table class="sec">
       <tr>
         <td style="vertical-align:top;width:50%;padding-right:16px;">
-          <div style="font-weight:700;margin-bottom:5px;">TO:</div>
+          <div style="font-weight:700;margin-bottom:4px;">TO:</div>
           <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
           ${(docData.vendorAddress1||v?.street) ? `<div>${docData.vendorAddress1||v.street}</div>` : ""}
           ${(docData.vendorAddress2||(v?.city||v?.state)) ? `<div>${docData.vendorAddress2||[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
-          <div style="margin-top:4px;">GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
+          <div>GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
           <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
           <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
         </td>
         <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #ddd;">
-          <div style="font-weight:700;margin-bottom:5px;">Billing Details</div>
+          <div style="font-weight:700;margin-bottom:4px;">Billing Details</div>
           <div style="font-weight:700;">${COMPANY_INFO.name}</div>
           <div>${COMPANY_INFO.addr1}</div>
           <div>${COMPANY_INFO.addr2}</div>
-          <div style="margin-top:4px;">GST: ${COMPANY_INFO.gst}</div>
+          <div>GST: ${COMPANY_INFO.gst}</div>
         </td>
       </tr>
     </table>
 
-    <div style="margin-bottom:12px;">
+    <div class="sec">
       <div>Dear Team,</div>
       <div>We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
     </div>
 
     <!-- ITEMS TABLE -->
-    <table style="margin-bottom:0;">
+    <table class="sec">
       <thead><tr>
         <th style="${thBase}text-align:center;width:36px;">S.No</th>
         <th style="${thBase}text-align:left;width:38%;">Item</th>
@@ -1839,37 +1843,37 @@ function Dashboard({ user, onLogout: handleLogout }) {
       <tbody>
         ${itemRows}
         <tr>
-          <td colspan="4" rowspan="6" style="border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:8px 10px;vertical-align:top;">
+          <td colspan="4" rowspan="5" style="${tdBase}border-right:1px solid #ddd;vertical-align:top;">
             <div style="font-weight:700;font-size:11px;">Amount in words</div>
             <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
           </td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;font-weight:600;">Sub Total</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.subTotal)}</td>
+          <td style="${tdBase}text-align:right;font-weight:600;">Sub Total</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.subTotal)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">CGST (${docData.cgstPct}%)</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.cgst)}</td>
+          <td style="${tdBase}text-align:right;">CGST (${docData.cgstPct}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.cgst)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">SGST (${docData.sgstPct}%)</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.sgst)}</td>
+          <td style="${tdBase}text-align:right;">SGST (${docData.sgstPct}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.sgst)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">IGST (${docData.igstPct || 0}%)</td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(totals.igst)}</td>
+          <td style="${tdBase}text-align:right;">IGST (${docData.igstPct || 0}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.igst)}</td>
         </tr>
         <tr>
-          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
-          <td style="text-align:right;padding:7px 8px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- INFO GRID -->
-    <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;margin:14px 0;">
+    <table class="sec" style="border:1px solid #ddd;">
       <tr>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;">
-          <div style="font-weight:700;text-decoration:underline;margin-bottom:4px;">Completion date</div>
+          <div style="font-weight:700;margin-bottom:4px;">Completion date</div>
           <div>${docData.completionDate||""}</div>
         </td>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
@@ -1883,27 +1887,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
       </tr>
     </table>
 
-    <div style="font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:14px 0 8px;">General Terms</div>
-    <table style="margin-bottom:14px;"><tbody>${termRows}</tbody></table>
-    <div style="font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:14px 0 8px;">Payment Terms</div>
-    ${stageRows}
-    <div style="margin-top:10px;font-size:11px;padding-left:8px;">
+    <div class="stitle">General Terms</div>
+    <table class="sec"><tbody>${termRows}</tbody></table>
+
+    <div class="stitle">Payment Terms</div>
+    <div class="sec">${stageRows}</div>
+
+    <div class="sec" style="font-size:11px;padding-left:8px;">
       <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
-      <div style="padding-left:14px;">- site engineer signed copy along with measurement sheet and DC copy</div>
-      <div style="padding-left:14px;">- test / warranty / guarantee certificate, etc</div>
+      <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
+      <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
     </div>
 
     <!-- SIGNATURE -->
-    <div style="margin-top:24px;page-break-inside:avoid;">
-      <div style="font-size:11.5px;">For <strong>${COMPANY_INFO.name}</strong></div>
-      <table style="width:100%;border-collapse:collapse;margin-top:20px;">
+    <div class="sec" style="page-break-inside:avoid;margin-top:16px;">
+      <div>For <strong>${COMPANY_INFO.name}</strong></div>
+      <table style="margin-top:16px;">
         <tr>
           <td style="width:50%;padding:0;vertical-align:top;">
-            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:52px;"></div>`}
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;color:#555;">Authorised Signatory &amp; Date</div>
           </td>
-          <td style="width:50%;padding:0 0 0 40px;vertical-align:top;">
-            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Procurement Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:52px;"></div>`}
+          <td style="width:50%;padding:0 0 0 32px;vertical-align:top;">
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Procurement Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
             <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;color:#555;">Procurement Executive &amp; Date</div>
           </td>
         </tr>
