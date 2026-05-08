@@ -1786,7 +1786,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;">
       <tr>
         <td style="vertical-align:middle;width:40%;">
-          <img src="${logoAbsUrl}" alt="Happizo" style="width:110px;height:auto;display:block;" />
+          <img src="${logoAbsUrl}" alt="Happizo" style="width:110px;height:auto;display:block;mix-blend-mode:multiply;" />
         </td>
         <td style="vertical-align:top;text-align:right;width:60%;">
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px;">${typeName}</div>
@@ -4198,7 +4198,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {/* --- HEADER --- */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 16 }}>
                             <div style={{ display: "flex", alignItems: "center" }}>
-                              <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 120, height: "auto", objectFit: "contain", display: "block" }} />
+                              <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 120, height: "auto", display: "block", mixBlendMode: "multiply" }} />
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
