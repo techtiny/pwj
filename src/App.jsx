@@ -1770,33 +1770,30 @@ function Dashboard({ user, onLogout: handleLogout }) {
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
     const thBase = `background:${typeColor};color:#fff;font-weight:700;font-size:11px;padding:7px 8px;`;
+    const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
     <style>
-      @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
+      @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
       * { box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0; padding: 0; }
       table { width: 100%; border-collapse: collapse; }
+      tr { page-break-inside: avoid; }
+      .no-break { page-break-inside: avoid; }
       @media print { button { display: none; } }
     </style></head><body>
 
     <!-- HEADER -->
-    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:14px;">
+    <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:12px;">
       <tr>
-        <td style="vertical-align:top;width:50%;">
-          <table style="border-collapse:collapse;width:auto;">
-            <tr>
-              <td style="vertical-align:middle;">
-                <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:120px;height:auto;object-fit:contain;display:block;" />
-              </td>
-            </tr>
-          </table>
+        <td style="vertical-align:middle;width:40%;">
+          <img src="${logoAbsUrl}" alt="Happizo" style="width:110px;height:auto;display:block;" />
         </td>
-        <td style="vertical-align:top;text-align:right;width:50%;">
+        <td style="vertical-align:top;text-align:right;width:60%;">
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:4px;">${typeName}</div>
-          <table style="font-size:11px;line-height:1.8;border-collapse:collapse;margin-left:auto;">
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">Project Name</td><td style="padding:0 6px;text-align:center;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
+          <table style="font-size:11px;line-height:1.7;border-collapse:collapse;margin-left:auto;">
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Number</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">${e.pwjType} Date</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:4px;text-align:left;color:#555;">Project Name</td><td style="padding:0 5px;text-align:center;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
           </table>
         </td>
       </tr>
@@ -1897,19 +1894,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
     </div>
 
     <!-- SIGNATURE -->
-    <div style="margin-top:20px;">
-      <div>For <strong>${COMPANY_INFO.name}</strong></div>
-      <table style="width:100%;border-collapse:collapse;margin-top:24px;border-top:1px solid #ddd;padding-top:6px;">
+    <div style="margin-top:24px;page-break-inside:avoid;">
+      <div style="font-size:11.5px;">For <strong>${COMPANY_INFO.name}</strong></div>
+      <table style="width:100%;border-collapse:collapse;margin-top:20px;">
         <tr>
-          <td style="width:50%;padding:6px 0 0 0;vertical-align:top;">
-            <div style="color:#555;font-size:11px;margin-bottom:4px;">Approved By</div>
-            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
-            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
+          <td style="width:50%;padding:0;vertical-align:top;">
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:52px;"></div>`}
+            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;color:#555;">Authorised Signatory &amp; Date</div>
           </td>
-          <td style="width:50%;padding:6px 0 0 40px;vertical-align:top;">
-            <div style="color:#555;font-size:11px;margin-bottom:4px;">Procurement Executive</div>
-            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Procurement Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
-            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;">Signature &amp; Date</div>
+          <td style="width:50%;padding:0 0 0 40px;vertical-align:top;">
+            ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${PROCUREMENT_SIGNATURE_URL}" alt="Procurement Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:52px;"></div>`}
+            <div style="border-top:1px solid #888;padding-top:4px;font-size:11px;color:#555;">Procurement Executive &amp; Date</div>
           </td>
         </tr>
       </table>
