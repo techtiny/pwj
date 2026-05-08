@@ -1890,14 +1890,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
     <div class="stitle">General Terms</div>
     <table class="sec"><tbody>${termRows}</tbody></table>
 
-    <div class="stitle">Payment Terms</div>
-    <div class="sec">${stageRows}</div>
+    <!-- PAGE 2 START -->
+    <div style="page-break-before:always;padding-top:12px;">
+      <div class="stitle" style="margin-top:0;">Payment Terms</div>
+      <div class="sec">${stageRows}</div>
 
-    <div class="sec" style="font-size:11px;padding-left:8px;">
-      <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
-      <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
-      <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
-    </div>
+      <div class="sec" style="font-size:11px;padding-left:8px;">
+        <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
+        <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
+        <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
+      </div>
 
     <!-- SIGNATURE -->
     <div class="sec" style="page-break-inside:avoid;margin-top:16px;">
@@ -1914,6 +1916,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </td>
         </tr>
       </table>
+    </div>
     </div>
     </body></html>`;
   };
