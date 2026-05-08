@@ -1188,13 +1188,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [vpCommentMap, setVpCommentMap]         = useState({});  // docId → comment text
   const [managedProjects, setManagedProjects] = useState([]);
   const [projectMgmtModal, setProjectMgmtModal] = useState(false);
-  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
+  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", quoteValue: "", quoteGstPct: "18", quoteDocUrl: "", additionalWoValue: "", additionalWoGstPct: "18", additionalWoDocUrl: "", additionalQuoteValue: "", additionalQuoteGstPct: "18", additionalQuoteDocUrl: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
   const [projectMgmtForm, setProjectMgmtForm] = useState(BLANK_PROJECT_FORM);
   const [editingProject, setEditingProject] = useState(null);
   const [projectMgmtLoading, setProjectMgmtLoading] = useState(false);
   const [projectClients, setProjectClients] = useState([]);
   const [poWoUploading, setPoWoUploading] = useState(false);
   const [amendedPoWoUploading, setAmendedPoWoUploading] = useState(false);
+  const [quoteDocUploading, setQuoteDocUploading] = useState(false);
+  const [addWoDocUploading, setAddWoDocUploading] = useState(false);
+  const [addQuoteDocUploading, setAddQuoteDocUploading] = useState(false);
 
   // ── Add Vendor Page ──
   const [addVendorPage, setAddVendorPage] = useState(false);
@@ -1322,7 +1325,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const body = { ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
       if (editingEntry) {
         // Update existing entry
-        const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status });
+        const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status, pwjIssued: editingEntry.pwjIssued });
         if (res.success) {
           showToast("Entry updated!");
           setCreateModal(false);
@@ -2560,6 +2563,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               🔒 Locked
                             </button>
+                          ) : isProcurement && row.approvalStatus !== "PROCEED" ? (
+                            <button
+                              disabled
+                              title="OH approval pending — vendor can be assigned only after OH approves"
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              ⏳ Pending OH
+                            </button>
                           ) : (
                             <button
                               style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -2820,6 +2830,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
               clientAddress: p.clientAddress || "", billingAddress: p.billingAddress || "",
               billingSameAsClient: (p.billingAddress || "") === (p.clientAddress || ""),
               projectValue: p.projectValue != null ? String(p.projectValue) : "",
+              quoteValue: p.quoteValue != null ? String(p.quoteValue) : "",
+              quoteGstPct: p.quoteGstPct != null ? String(p.quoteGstPct) : "18",
+              quoteDocUrl: p.quoteDocUrl || "",
+              additionalWoValue: p.additionalWoValue != null ? String(p.additionalWoValue) : "",
+              additionalWoGstPct: p.additionalWoGstPct != null ? String(p.additionalWoGstPct) : "18",
+              additionalWoDocUrl: p.additionalWoDocUrl || "",
+              additionalQuoteValue: p.additionalQuoteValue != null ? String(p.additionalQuoteValue) : "",
+              additionalQuoteGstPct: p.additionalQuoteGstPct != null ? String(p.additionalQuoteGstPct) : "18",
+              additionalQuoteDocUrl: p.additionalQuoteDocUrl || "",
               gstPct: p.gstPct != null ? String(p.gstPct) : "18",
               poWoStatus: p.poWoStatus || "Pending", poWoDocUrl: p.poWoDocUrl || "",
               amendedPoWoStatus: p.amendedPoWoStatus || "N/A", amendedPoWoDocUrl: p.amendedPoWoDocUrl || "",
@@ -2838,6 +2857,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const body = {
                 ...projectMgmtForm,
                 projectValue: projectMgmtForm.projectValue ? parseFloat(projectMgmtForm.projectValue) : null,
+                quoteValue: projectMgmtForm.quoteValue ? parseFloat(projectMgmtForm.quoteValue) : null,
+                quoteGstPct: projectMgmtForm.quoteGstPct ? parseInt(projectMgmtForm.quoteGstPct) : null,
+                additionalWoValue: projectMgmtForm.additionalWoValue ? parseFloat(projectMgmtForm.additionalWoValue) : null,
+                additionalWoGstPct: projectMgmtForm.additionalWoGstPct ? parseInt(projectMgmtForm.additionalWoGstPct) : null,
+                additionalWoDocUrl: projectMgmtForm.additionalWoDocUrl || null,
+                additionalQuoteValue: projectMgmtForm.additionalQuoteValue ? parseFloat(projectMgmtForm.additionalQuoteValue) : null,
+                additionalQuoteGstPct: projectMgmtForm.additionalQuoteGstPct ? parseInt(projectMgmtForm.additionalQuoteGstPct) : null,
+                additionalQuoteDocUrl: projectMgmtForm.additionalQuoteDocUrl || null,
                 gstPct: projectMgmtForm.gstPct ? parseInt(projectMgmtForm.gstPct) : null,
                 billingAddress: projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress,
               };
@@ -2891,9 +2918,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
             }
           };
 
-          const grossVal   = parseFloat(projectMgmtForm.projectValue) || 0;
-          const gstAmt     = grossVal * (parseInt(projectMgmtForm.gstPct) || 0) / 100;
-          const totalVal   = grossVal + gstAmt;
+          const grossVal     = parseFloat(projectMgmtForm.projectValue) || 0;
+          const gstAmt       = grossVal * (parseInt(projectMgmtForm.gstPct) || 0) / 100;
+          const totalVal     = grossVal + gstAmt;
+          const quoteVal      = parseFloat(projectMgmtForm.quoteValue) || 0;
+          const quoteGstAmt   = quoteVal * (parseInt(projectMgmtForm.quoteGstPct) || 0) / 100;
+          const quoteTotalVal  = quoteVal + quoteGstAmt;
+          const addWoVal       = parseFloat(projectMgmtForm.additionalWoValue) || 0;
+          const addWoGstAmt    = addWoVal * (parseInt(projectMgmtForm.additionalWoGstPct) || 0) / 100;
+          const addWoTotal     = addWoVal + addWoGstAmt;
+          const addQuoteVal    = parseFloat(projectMgmtForm.additionalQuoteValue) || 0;
+          const addQuoteGstAmt = addQuoteVal * (parseInt(projectMgmtForm.additionalQuoteGstPct) || 0) / 100;
+          const addQuoteTotal  = addQuoteVal + addQuoteGstAmt;
 
           return (
             <div style={{ padding: "28px 36px" }}>
@@ -3014,7 +3050,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {projectMgmtModal && (
                 <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.6)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center" }}
                   onClick={() => setProjectMgmtModal(false)}>
-                  <div style={{ background: "#fff", borderRadius: 18, width: "96%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto", padding: "28px 32px", boxShadow: "0 24px 80px rgba(0,0,0,.22)" }}
+                  <div style={{ background: "#fff", borderRadius: 18, width: "96%", maxWidth: 1000, maxHeight: "92vh", overflowY: "auto", padding: "28px 32px", boxShadow: "0 24px 80px rgba(0,0,0,.22)" }}
                     onClick={e => e.stopPropagation()}>
 
                     <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", marginBottom: 22 }}>
@@ -3023,8 +3059,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                     {/* ── Basic Info ── */}
                     {sec("Project Info")}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-                      <div style={{ gridColumn: "1/-1" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                      <div>
                         {lbl("Project Name *")}
                         <input style={inpSt} placeholder="e.g. Adyar Residential Block A"
                           value={projectMgmtForm.name} onChange={e => setF("name", e.target.value)} />
@@ -3047,7 +3083,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       {projectClients.map(c => <option key={c.clientName} value={c.clientName} />)}
                     </datalist>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-                      <div style={{ gridColumn: "1/-1" }}>
+                      <div>
                         {lbl("Client Name")}
                         <input style={inpSt} placeholder="Type or select existing client" list="client-names-list"
                           value={projectMgmtForm.clientName}
@@ -3069,7 +3105,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                       <div>
                         {lbl("Billing Address")}
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#475569", marginBottom: 5, cursor: "pointer" }}>
+                        <textarea rows={3} style={{ ...inpSt, resize: "none", opacity: projectMgmtForm.billingSameAsClient ? 0.5 : 1 }}
+                          placeholder="Billing address…" disabled={projectMgmtForm.billingSameAsClient}
+                          value={projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress}
+                          onChange={e => setF("billingAddress", e.target.value)} />
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#475569", marginTop: 5, cursor: "pointer" }}>
                           <input type="checkbox" checked={projectMgmtForm.billingSameAsClient}
                             onChange={e => {
                               setF("billingSameAsClient", e.target.checked);
@@ -3077,39 +3117,155 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }} />
                           Same as Client Address
                         </label>
-                        <textarea rows={3} style={{ ...inpSt, resize: "none", opacity: projectMgmtForm.billingSameAsClient ? 0.5 : 1 }}
-                          placeholder="Billing address…" disabled={projectMgmtForm.billingSameAsClient}
-                          value={projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress}
-                          onChange={e => setF("billingAddress", e.target.value)} />
                       </div>
                     </div>
 
                     {/* ── Financial ── */}
                     {sec("Financial")}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 10 }}>
                       <div>
-                        {lbl("Project Value (Gross ₹)")}
+                        {lbl("Quote Value (₹)")}
+                        <input style={inpSt} type="number" placeholder="0.00"
+                          value={projectMgmtForm.quoteValue} onChange={e => setF("quoteValue", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Quote GST %")}
+                        <select style={selSt} value={projectMgmtForm.quoteGstPct} onChange={e => setF("quoteGstPct", e.target.value)}>
+                          <option value="">— %</option>
+                          <option value="9">9%</option>
+                          <option value="18">18%</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Quote Total (₹)")}
+                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
+                          value={quoteVal > 0 ? `₹ ${quoteTotalVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                      <div>
+                        {lbl("Quote Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("quoteDocUrl", e.target.files[0], setQuoteDocUploading)} />
+                            {quoteDocUploading ? "Uploading…" : projectMgmtForm.quoteDocUrl ? "📎 Replace" : "📎 Attach"}
+                          </label>
+                          {projectMgmtForm.quoteDocUrl && (
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.quoteDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 20 }}>
+                      <div>
+                        {lbl("Work Order Value (₹)")}
                         <input style={inpSt} type="number" placeholder="0.00"
                           value={projectMgmtForm.projectValue} onChange={e => setF("projectValue", e.target.value)} />
                       </div>
                       <div>
                         {lbl("GST %")}
                         <select style={selSt} value={projectMgmtForm.gstPct} onChange={e => setF("gstPct", e.target.value)}>
-                          <option value="">— Select —</option>
+                          <option value="">— %</option>
                           <option value="9">9%</option>
                           <option value="18">18%</option>
                           <option value="28">28%</option>
                         </select>
                       </div>
                       <div>
-                        {lbl("Total Value (Gross + GST)")}
+                        {lbl("Total Value (₹)")}
                         <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
                           value={grossVal > 0 ? `₹ ${totalVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                      <div>
+                        {lbl("Work Order Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
+                            {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace" : "📎 Attach"}
+                          </label>
+                          {projectMgmtForm.poWoDocUrl && (
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Work Order row */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 10 }}>
+                      <div>
+                        {lbl("Additional Work Order Value (₹)")}
+                        <input style={inpSt} type="number" placeholder="0.00"
+                          value={projectMgmtForm.additionalWoValue} onChange={e => setF("additionalWoValue", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("GST %")}
+                        <select style={selSt} value={projectMgmtForm.additionalWoGstPct} onChange={e => setF("additionalWoGstPct", e.target.value)}>
+                          <option value="">— %</option>
+                          <option value="9">9%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Total (₹)")}
+                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
+                          value={addWoVal > 0 ? `₹ ${addWoTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                      <div>
+                        {lbl("Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("additionalWoDocUrl", e.target.files[0], setAddWoDocUploading)} />
+                            {addWoDocUploading ? "Uploading…" : projectMgmtForm.additionalWoDocUrl ? "📎 Replace" : "📎 Attach"}
+                          </label>
+                          {projectMgmtForm.additionalWoDocUrl && (
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.additionalWoDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Quote row */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 20 }}>
+                      <div>
+                        {lbl("Additional Quote Value (₹)")}
+                        <input style={inpSt} type="number" placeholder="0.00"
+                          value={projectMgmtForm.additionalQuoteValue} onChange={e => setF("additionalQuoteValue", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("GST %")}
+                        <select style={selSt} value={projectMgmtForm.additionalQuoteGstPct} onChange={e => setF("additionalQuoteGstPct", e.target.value)}>
+                          <option value="">— %</option>
+                          <option value="9">9%</option>
+                          <option value="18">18%</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Total (₹)")}
+                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
+                          value={addQuoteVal > 0 ? `₹ ${addQuoteTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                      <div>
+                        {lbl("Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("additionalQuoteDocUrl", e.target.files[0], setAddQuoteDocUploading)} />
+                            {addQuoteDocUploading ? "Uploading…" : projectMgmtForm.additionalQuoteDocUrl ? "📎 Replace" : "📎 Attach"}
+                          </label>
+                          {projectMgmtForm.additionalQuoteDocUrl && (
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.additionalQuoteDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* ── PO / WO ── */}
-                    {sec("PO / WO")}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
                       <div>
                         {lbl("Status")}
