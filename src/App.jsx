@@ -1298,6 +1298,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Approval submit ──
   const submitApproval = async () => {
     if (!approvalForm.approvedBy.trim()) { showToast("Please enter approver name", "error"); return; }
+    if (isOH && approvalForm.approvalStatus !== "PROCEED" && !approvalForm.comment.trim()) {
+      showToast("Remarks are mandatory when not approving", "error"); return;
+    }
     setApprovalLoading(true);
     try {
       const res = await api.updateApproval(approvalModal.entry.id, approvalForm);
@@ -2442,9 +2445,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Approval — visible for all roles */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                      <span
+                        style={s.badge(APPROVAL_META[row.approvalStatus])}
+                        title={row.approvalComment ? `OH Remark: ${row.approvalComment}` : undefined}
+                      >
                         <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
                         {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
+                        {row.approvalComment ? " 💬" : ""}
                       </span>
                     </td>
                     {/* Vendor — hidden for Engineer */}
@@ -3490,8 +3497,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   onChange={e => setApprovalForm(f => ({ ...f, approvedBy: e.target.value }))} />
               </div>
               <div style={s.formGroup}>
-                <label style={s.label}>Comment / Reason</label>
-                <textarea style={s.textarea} placeholder="Add a comment or reason…" value={approvalForm.comment}
+                <label style={s.label}>
+                  Remarks / Reason
+                  {isOH && approvalForm.approvalStatus !== "PROCEED" && <span style={{ color: "#ef4444" }}> *</span>}
+                </label>
+                <textarea style={{ ...s.textarea, borderColor: isOH && approvalForm.approvalStatus !== "PROCEED" && !approvalForm.comment.trim() ? "#fca5a5" : undefined }}
+                  placeholder={isOH && approvalForm.approvalStatus !== "PROCEED" ? "Remarks required when not approving…" : "Add a comment or reason…"}
+                  value={approvalForm.comment}
                   onChange={e => setApprovalForm(f => ({ ...f, comment: e.target.value }))} />
               </div>
               <button style={s.submitBtn(
