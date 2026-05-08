@@ -158,6 +158,8 @@ export default function ProjectsPage({ isCeo = false }) {
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState({});
   const [blockMsg, setBlockMsg] = useState('');
+  const [pwjProjects, setPwjProjects] = useState([]);
+  const [selectedPwjId, setSelectedPwjId] = useState('');
   const [summaryProject, setSummaryProject] = useState(null); // project for summary modal
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -178,15 +180,20 @@ export default function ProjectsPage({ isCeo = false }) {
   function openEdit(project) {
     setEditing(project.id);
     setCollectionProjectId(project.id);
+    setSelectedPwjId('');
+    fetch('/api/v1/projects')
+      .then(r => r.json())
+      .then(r => setPwjProjects(r.data || []))
+      .catch(() => setPwjProjects([]));
     setForm({
-      name: project.name,
-      client: project.client,
-      fy: project.fy,
-      quoteGross: project.quoteGross,
-      collectionReceived: project.collectionReceived,
-      expenses: { ...project.expenses },
-      status: project.status,
+      name: project.name, client: project.client, fy: project.fy,
+      quoteGross: project.quoteGross, collectionReceived: project.collectionReceived,
+      expenses: { ...project.expenses }, status: project.status,
       businessType: project.businessType || '',
+      location: project.location || '', description: project.description || '',
+      clientGstNo: project.clientGstNo || '', clientAddress: project.clientAddress || '',
+      billingAddress: project.billingAddress || '', poWoStatus: project.poWoStatus || '',
+      gstPct: project.gstPct ?? null, quoteGstPct: project.quoteGstPct ?? null, quoteValue: project.quoteValue ?? null, totalValue: project.totalValue ?? null,
     });
     setErrors({});
     setBlockMsg('');
@@ -205,14 +212,12 @@ export default function ProjectsPage({ isCeo = false }) {
   function openAdd() {
     setEditing('new');
     setForm({
-      name: '',
-      client: '',
-      fy: '2025-2026',
-      quoteGross: 0,
-      collectionReceived: 0,
-      expenses: { ...EMPTY_EXPENSES },
-      status: 'pending',
-      businessType: '',
+      name: '', client: '', fy: '2025-2026', quoteGross: 0,
+      collectionReceived: 0, expenses: { ...EMPTY_EXPENSES },
+      status: 'pending', businessType: '',
+      location: '', description: '', clientGstNo: '',
+      clientAddress: '', billingAddress: '', poWoStatus: '',
+      gstPct: null, quoteGstPct: null, quoteValue: null, totalValue: null,
     });
     setErrors({});
     setBlockMsg('');
@@ -644,13 +649,13 @@ export default function ProjectsPage({ isCeo = false }) {
           padding: 24,
         }}>
           <div style={{
-            background: 'white', borderRadius: 16, width: '100%', maxWidth: isNew ? 780 : 1200,
+            background: 'white', borderRadius: 16, width: '100%', maxWidth: isNew ? 860 : 1440,
             maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
           }}>
             {/* Modal header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>{isNew ? 'Add New Project' : 'Edit Project'}</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>{isNew ? 'Add New Project' : 'Project Info'}</div>
                 {!isNew && <div style={{ fontSize: 12, color: '#64748b' }}>{projects.find(p => p.id === editing)?.name}</div>}
               </div>
               <button onClick={closeEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
@@ -669,12 +674,13 @@ export default function ProjectsPage({ isCeo = false }) {
 
               {/* Project Info */}
               <SectionLabel>Project Information</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-                <div style={{ gridColumn: '1/-1' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+                {/* Row 1 */}
+                <div style={{ gridColumn: 'span 2' }}>
                   <label className="form-label">Project Name *</label>
                   <input className={`form-control${errors.name ? ' error' : ''}`} value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-                  {errors.name && <div style={{ fontSize: 12, color: '#ef4444', marginTop: 4 }}>{errors.name}</div>}
+                  {errors.name && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3 }}>{errors.name}</div>}
                 </div>
                 <div>
                   <label className="form-label">Client Name</label>
@@ -682,22 +688,63 @@ export default function ProjectsPage({ isCeo = false }) {
                     onChange={e => setForm(f => ({ ...f, client: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">Financial Year</label>
-                  <input className="form-control" value={form.fy}
-                    onChange={e => setForm(f => ({ ...f, fy: e.target.value }))} />
+                  <label className="form-label">Client GST No</label>
+                  <input className="form-control" value={form.clientGstNo || ''}
+                    onChange={e => setForm(f => ({ ...f, clientGstNo: e.target.value }))} />
+                </div>
+                {/* Row 2 — Financial: Work Order */}
+                <div>
+                  <label className="form-label">Work Order Value (₹)</label>
+                  <input type="number" min="0" className="form-control" value={form.quoteGross}
+                    onChange={e => { setForm(f => ({ ...f, quoteGross: parseFloat(e.target.value) || 0 })); setBlockMsg(''); }} />
                 </div>
                 <div>
-                  <label className="form-label">Quote Value (Gross ₹)</label>
-                  <input type="number" min="0" className="form-control" value={form.quoteGross}
-                    onChange={e => {
-                      setForm(f => ({ ...f, quoteGross: parseFloat(e.target.value) || 0 }));
-                      setBlockMsg('');
-                    }} />
+                  <label className="form-label">GST %</label>
+                  <select className="form-control" value={form.gstPct ?? ''}
+                    onChange={e => setForm(f => ({ ...f, gstPct: e.target.value ? parseInt(e.target.value) : null, totalValue: e.target.value ? ((f.quoteGross || 0) * (1 + parseInt(e.target.value) / 100)) : null }))}>
+                    <option value="">— %</option>
+                    <option value="9">9%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Total Value (₹)</label>
+                  <input className="form-control" readOnly
+                    style={{ background: '#f8fafc', color: '#166534', fontWeight: 700 }}
+                    value={form.quoteGross && form.gstPct ? `₹ ${(form.quoteGross * (1 + form.gstPct / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''} />
+                </div>
+                {/* Quote */}
+                <div>
+                  <label className="form-label">Quote Value (₹)</label>
+                  <input type="number" min="0" className="form-control" value={form.quoteValue ?? ''}
+                    onChange={e => setForm(f => ({ ...f, quoteValue: e.target.value ? parseFloat(e.target.value) : null }))} />
+                </div>
+                <div>
+                  <label className="form-label">Quote GST %</label>
+                  <select className="form-control" value={form.quoteGstPct ?? ''}
+                    onChange={e => setForm(f => ({ ...f, quoteGstPct: e.target.value ? parseInt(e.target.value) : null }))}>
+                    <option value="">— %</option>
+                    <option value="9">9%</option>
+                    <option value="18">18%</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Quote Total (₹)</label>
+                  <input className="form-control" readOnly
+                    style={{ background: '#f8fafc', color: '#166534', fontWeight: 700 }}
+                    value={form.quoteValue && form.quoteGstPct ? `₹ ${(form.quoteValue * (1 + form.quoteGstPct / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''} />
                 </div>
                 <div>
                   <label className="form-label">Collection Received (₹)</label>
                   <input type="number" min="0" className="form-control" value={form.collectionReceived}
                     onChange={e => setForm(f => ({ ...f, collectionReceived: parseFloat(e.target.value) || 0 }))} />
+                </div>
+                {/* Row 3 */}
+                <div>
+                  <label className="form-label">Financial Year</label>
+                  <input className="form-control" value={form.fy}
+                    onChange={e => setForm(f => ({ ...f, fy: e.target.value }))} />
                 </div>
                 <div>
                   <label className="form-label">Status</label>
@@ -718,7 +765,44 @@ export default function ProjectsPage({ isCeo = false }) {
                     <option value="B2C">B2C</option>
                   </select>
                 </div>
+                <div>
+                  <label className="form-label">PO / WO Status</label>
+                  <input className="form-control" value={form.poWoStatus || ''}
+                    onChange={e => setForm(f => ({ ...f, poWoStatus: e.target.value }))} />
+                </div>
+                {/* Row 4 */}
+                <div>
+                  <label className="form-label">Location</label>
+                  <input className="form-control" value={form.location || ''}
+                    onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
+                </div>
+                <div style={{ gridColumn: 'span 3' }}>
+                  <label className="form-label">Description</label>
+                  <input className="form-control" value={form.description || ''}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+                {/* Row 5 — addresses */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Client Address</label>
+                  <input className="form-control" value={form.clientAddress || ''}
+                    onChange={e => setForm(f => ({ ...f, clientAddress: e.target.value }))} />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Site Address</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, color: '#6366f1', cursor: 'pointer', fontSize: 11 }}>
+                      <input type="checkbox"
+                        checked={form.billingAddress === form.clientAddress && !!form.clientAddress}
+                        onChange={e => setForm(f => ({ ...f, billingAddress: e.target.checked ? f.clientAddress : '' }))}
+                        style={{ cursor: 'pointer' }} />
+                      Same as Client Address
+                    </label>
+                  </label>
+                  <input className="form-control" value={form.billingAddress || ''}
+                    onChange={e => setForm(f => ({ ...f, billingAddress: e.target.value }))} />
+                </div>
               </div>
+
 
               {/* Budget display */}
               {form.quoteGross > 0 && (() => {

@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const ACCOUNT_BASE = import.meta.env.VITE_ACCOUNT_API_BASE_URL
+  ? `${import.meta.env.VITE_ACCOUNT_API_BASE_URL}/api`
+  : '/account-api';
+
 const api = axios.create({
-  baseURL: '/account-api',
+  baseURL: ACCOUNT_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
