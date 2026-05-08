@@ -241,7 +241,7 @@ const api = {
 };
 
 // ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
-const HAPPIZO_LOGO_URL = "https://happizo.com/assets/myimages/logo.png";
+const HAPPIZO_LOGO_URL = "/happizo-logo.png";
 
 const PROCUREMENT_SIGNATURE_URL = "/procurement-signature.png";
 const VP_SIGNATURE_URL = "/vp-signature.png";
@@ -1785,12 +1785,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <td style="vertical-align:top;width:50%;">
           <table style="border-collapse:collapse;width:auto;">
             <tr>
-              <td style="vertical-align:middle;padding-right:10px;">
-                <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:64px;height:64px;object-fit:contain;display:block;" />
-              </td>
               <td style="vertical-align:middle;">
-                <div style="font-weight:900;font-size:15px;letter-spacing:1.5px;">HAPPIZO</div>
-                <div style="font-size:9px;color:#666;">Infrastructure and Solutions</div>
+                <img src="${HAPPIZO_LOGO_URL}" alt="Happizo" style="width:120px;height:auto;object-fit:contain;display:block;" />
               </td>
             </tr>
           </table>
@@ -3192,8 +3188,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                     </div>
 
-                    {/* Additional Work Order row */}
+                    {/* Additional Quote row (row 3) */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 10 }}>
+                      <div>
+                        {lbl("Additional Quote Value (₹)")}
+                        <input style={inpSt} type="number" placeholder="0.00"
+                          value={projectMgmtForm.additionalQuoteValue} onChange={e => setF("additionalQuoteValue", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("GST %")}
+                        <select style={selSt} value={projectMgmtForm.additionalQuoteGstPct} onChange={e => setF("additionalQuoteGstPct", e.target.value)}>
+                          <option value="">— %</option>
+                          <option value="9">9%</option>
+                          <option value="18">18%</option>
+                        </select>
+                      </div>
+                      <div>
+                        {lbl("Total (₹)")}
+                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
+                          value={addQuoteVal > 0 ? `₹ ${addQuoteTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
+                      </div>
+                      <div>
+                        {lbl("Document")}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
+                              onChange={e => e.target.files[0] && uploadProjectDoc("additionalQuoteDocUrl", e.target.files[0], setAddQuoteDocUploading)} />
+                            {addQuoteDocUploading ? "Uploading…" : projectMgmtForm.additionalQuoteDocUrl ? "📎 Replace" : "📎 Attach"}
+                          </label>
+                          {projectMgmtForm.additionalQuoteDocUrl && (
+                            <a href={`${BACKEND_BASE}${projectMgmtForm.additionalQuoteDocUrl}`} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Work Order row (row 4) */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 20 }}>
                       <div>
                         {lbl("Additional Work Order Value (₹)")}
                         <input style={inpSt} type="number" placeholder="0.00"
@@ -3223,42 +3255,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </label>
                           {projectMgmtForm.additionalWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.additionalWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Additional Quote row */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px 16px", marginBottom: 20 }}>
-                      <div>
-                        {lbl("Additional Quote Value (₹)")}
-                        <input style={inpSt} type="number" placeholder="0.00"
-                          value={projectMgmtForm.additionalQuoteValue} onChange={e => setF("additionalQuoteValue", e.target.value)} />
-                      </div>
-                      <div>
-                        {lbl("GST %")}
-                        <select style={selSt} value={projectMgmtForm.additionalQuoteGstPct} onChange={e => setF("additionalQuoteGstPct", e.target.value)}>
-                          <option value="">— %</option>
-                          <option value="9">9%</option>
-                          <option value="18">18%</option>
-                        </select>
-                      </div>
-                      <div>
-                        {lbl("Total (₹)")}
-                        <input style={{ ...inpSt, background: "#f8fafc", color: "#166534", fontWeight: 700 }} readOnly
-                          value={addQuoteVal > 0 ? `₹ ${addQuoteTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : ""} />
-                      </div>
-                      <div>
-                        {lbl("Document")}
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
-                            <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
-                              onChange={e => e.target.files[0] && uploadProjectDoc("additionalQuoteDocUrl", e.target.files[0], setAddQuoteDocUploading)} />
-                            {addQuoteDocUploading ? "Uploading…" : projectMgmtForm.additionalQuoteDocUrl ? "📎 Replace" : "📎 Attach"}
-                          </label>
-                          {projectMgmtForm.additionalQuoteDocUrl && (
-                            <a href={`${BACKEND_BASE}${projectMgmtForm.additionalQuoteDocUrl}`} target="_blank" rel="noreferrer"
                               style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
                           )}
                         </div>
@@ -4117,16 +4113,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={s.mBody}>
               <div style={s.formGroup}>
-                <label style={s.label}>Vendor</label>
-                <select style={s.select2} value={assignForm.vendor}
-                  onChange={e => setAssignForm(f => ({ ...f, vendor: e.target.value }))}>
-                  <option value="">-- Select Vendor --</option>
-                  {approvedVendors.map(v => (
-                    <option key={v.id} value={v.name}>{v.name}{v.category ? ` · ${v.category}` : ""}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={s.formGroup}>
                 <label style={s.label}>PWJ Type</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[["PO","Purchase Order","#dbeafe","#1d4ed8"],["WO","Work Order","#fef9c3","#92400e"],["JO","Job Order","#dcfce7","#166534"]].map(([val, desc, bg, col]) => (
@@ -4138,6 +4124,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Vendor</label>
+                <select style={s.select2} value={assignForm.vendor}
+                  onChange={e => setAssignForm(f => ({ ...f, vendor: e.target.value }))}>
+                  <option value="">-- Select Vendor --</option>
+                  {approvedVendors.map(v => (
+                    <option key={v.id} value={v.name}>{v.name}{v.category ? ` · ${v.category}` : ""}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
                 <button style={{ ...s.submitBtn(), flex: 1 }} onClick={submitAssign} disabled={assignLoading}>
@@ -4206,12 +4202,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                           {/* --- HEADER --- */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 16 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                              <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 56, height: 56, objectFit: "contain" }} />
-                              <div>
-                                <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 1.5, color: "#111" }}>HAPPIZO</div>
-                                <div style={{ fontSize: 9, color: "#666", letterSpacing: 0.5 }}>Infrastructure and Solutions</div>
-                              </div>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 120, height: "auto", objectFit: "contain", display: "block" }} />
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
