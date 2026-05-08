@@ -1769,7 +1769,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
-    const thBase = `background:#4b5563;color:#fff;font-weight:700;font-size:11px;padding:7px 10px;`;
+    const thBase = `background:#ededeb;color:#111;font-weight:700;font-size:11px;padding:7px 10px;`;
     const tdBase = `padding:7px 10px;border-bottom:1px solid #ddd;`;
     const SEC   = `margin-bottom:12px;`;
     const STITLE = `font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:12px 0 6px;`;
@@ -4192,7 +4192,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
                     const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
-                    const thSt    = { padding: "8px 10px", color: "#fff", fontWeight: 700, fontSize: 11, textAlign: "left" };
+                    const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 11, textAlign: "left" };
                     const fmtCcy  = (n) => `₹ ${Number(n || 0).toFixed(2)}`;
                     const fmtTotal = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const setItem = (i, field, val) => {
@@ -4258,7 +4258,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {/* --- ITEM TABLE --- */}
                           <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: 12 }}>
                             <thead>
-                              <tr style={{ background: "#4b5563" }}>
+                              <tr style={{ background: "#ededeb" }}>
                                 <th style={{ ...thSt, width: 36, textAlign: "center" }}>S.No</th>
                                 <th style={{ ...thSt, width: "38%" }}>Item</th>
                                 <th style={{ ...thSt, textAlign: "center", width: 50 }}>Unit</th>
