@@ -436,10 +436,23 @@ function LoginPage({ onLogin }) {
   const [focused, setFocused] = useState(null);
   const [alreadyActive, setAlreadyActive] = useState(false);
 
+  const [tabConflict, setTabConflict] = useState(() => {
+    try { return !!JSON.parse(localStorage.getItem("pwj_user")); } catch { return false; }
+  });
+
   const submit = async (e, force = false) => {
     if (e) e.preventDefault();
     if (!form.username || !form.password) { setError("Please enter username and password"); return; }
-    setLoading(true); setError(null); setAlreadyActive(false);
+    // Check if another user is already logged in this browser (another tab)
+    if (!force) {
+      try {
+        const existing = JSON.parse(localStorage.getItem("pwj_user"));
+        if (existing && existing.username !== form.username) {
+          setTabConflict(true); return;
+        }
+      } catch {}
+    }
+    setLoading(true); setError(null); setAlreadyActive(false); setTabConflict(false);
     try {
       const res = await api.login({ ...form, force });
       if (res.success) { onLogin(res.data); }
@@ -546,6 +559,28 @@ function LoginPage({ onLogin }) {
               <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
             </div>
           )}
+
+          {/* Another user already logged in this browser */}
+          {tabConflict && !alreadyActive && (() => {
+            let existingName = "";
+            try { existingName = JSON.parse(localStorage.getItem("pwj_user"))?.fullName || JSON.parse(localStorage.getItem("pwj_user"))?.username || "another user"; } catch {}
+            return (
+              <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.35)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
+                <div style={{ color:"#fca5a5", fontWeight:700, fontSize:13, marginBottom:6 }}>🚫 Another User is Active</div>
+                <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}><b>{existingName}</b> is currently logged in on another tab in this browser. Please sign out that user first, or click below to take over.</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button type="button" onClick={() => submit(null, true)}
+                    style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                    Sign In & Log Out Other User
+                  </button>
+                  <button type="button" onClick={() => setTabConflict(false)}
+                    style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Already active session warning */}
           {alreadyActive && (
@@ -986,6 +1021,23 @@ export default function PWJTracker() {
     if (reason) alert(reason);
   };
 
+  // Cross-tab logout: if another tab changes pwj_user in localStorage, log this tab out
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key !== "pwj_user") return;
+      const newVal = e.newValue ? JSON.parse(e.newValue) : null;
+      // Another tab logged in as a different user → force logout here
+      if (!newVal || (user && newVal.username !== user.username)) {
+        localStorage.removeItem("pwj_user");
+        document.title = "Happizo CloudDesk — Login";
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [user]);
+
+  // Same-device different-device session validation via backend token
   useEffect(() => {
     if (!user) return;
     const check = async () => {
@@ -994,9 +1046,7 @@ export default function PWJTracker() {
         if (!res.success) handleLogout("This account was logged in from another device. You have been signed out.");
       } catch {}
     };
-    // Poll every 30s (background tabs may throttle this)
     const interval = setInterval(check, 30000);
-    // Also check immediately when the tab becomes visible or regains focus
     const onVisible = () => { if (document.visibilityState === "visible") check(); };
     const onFocus = () => check();
     document.addEventListener("visibilitychange", onVisible);
