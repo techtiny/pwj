@@ -2513,9 +2513,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <select value={row.dependency || ""}
                           onChange={async e => {
                             const val = e.target.value;
-                            const r = await api.procurementUpdate(row.id, { dependency: val || null });
-                            if (r.success) fetchEntries();
-                            else showToast(r.message || "Update failed", "error");
+                            try {
+                              const r = await api.procurementUpdate(row.id, { dependency: val || null });
+                              if (r.success) fetchEntries();
+                              else showToast(r.message || "Update failed", "error");
+                            } catch {
+                              showToast("Network error — could not update dependency", "error");
+                            }
                           }}
                           style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
                           <option value="">— None —</option>
