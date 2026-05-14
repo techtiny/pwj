@@ -434,14 +434,16 @@ function LoginPage({ onLogin }) {
   const [error, setError]     = useState(null);
   const [showPw, setShowPw]   = useState(false);
   const [focused, setFocused] = useState(null);
+  const [alreadyActive, setAlreadyActive] = useState(false);
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const submit = async (e, force = false) => {
+    if (e) e.preventDefault();
     if (!form.username || !form.password) { setError("Please enter username and password"); return; }
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setAlreadyActive(false);
     try {
-      const res = await api.login(form);
+      const res = await api.login({ ...form, force });
       if (res.success) { onLogin(res.data); }
+      else if (res.message === "ALREADY_LOGGED_IN") { setAlreadyActive(true); }
       else { setError(res.message || "Invalid credentials"); }
     } catch { setError("Cannot connect to server"); }
     finally { setLoading(false); }
@@ -542,6 +544,24 @@ function LoginPage({ onLogin }) {
           {error && (
             <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
               <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
+            </div>
+          )}
+
+          {/* Already active session warning */}
+          {alreadyActive && (
+            <div style={{ background:"rgba(251,191,36,.12)", border:"1px solid rgba(251,191,36,.4)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
+              <div style={{ color:"#fde68a", fontWeight:700, fontSize:13, marginBottom:6 }}>⚠️ Already Logged In</div>
+              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>This account is currently active on another device or browser. Signing in here will end that session.</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button type="button" onClick={() => submit(null, true)}
+                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  Sign In & End Other Session
+                </button>
+                <button type="button" onClick={() => setAlreadyActive(false)}
+                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
