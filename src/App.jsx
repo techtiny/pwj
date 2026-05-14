@@ -2157,8 +2157,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   );
 
   const canApprove = (row) =>
-    (row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED") ||
-    (!isOH && row.approvalStatus === "PROCEED");
+    row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED" || row.approvalStatus === "PROCEED";
 
   const pageNumbers = useMemo(() => {
     const nums = [];
@@ -2557,7 +2556,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )
                         )}
-                        {(isOH || isVP) && canApprove(row) && (
+                        {isOH && canApprove(row) && (
                           <button style={s.approveBtn}
                             onClick={() => {
                               setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
@@ -3447,7 +3446,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 )
               )}
               {/* Approve button inside detail modal */}
-              {(isOH || isVP) && canApprove(detailRow) && (
+              {isOH && canApprove(detailRow) && (
                 <button style={{ ...s.submitBtn(), marginTop: 20 }}
                   onClick={() => {
                     setDetailRow(null);
