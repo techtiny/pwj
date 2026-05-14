@@ -137,12 +137,25 @@ const AUTH_BASE     = `${BACKEND_BASE}/api/v1/auth`;
 const PROJECT_BASE  = `${BACKEND_BASE}/api/v1/projects`;
 const REPORT_BASE   = `${BACKEND_BASE}/api/v1/report`;
 
+const getSessionToken = () => {
+  try { return JSON.parse(localStorage.getItem("pwj_user"))?.token || ""; } catch { return ""; }
+};
+
 const api = {
   login: (body) =>
     fetch(`${AUTH_BASE}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+    }).then(r => r.json()),
+  logout: () =>
+    fetch(`${AUTH_BASE}/logout`, {
+      method: "POST",
+      headers: { "X-Session-Token": getSessionToken() },
+    }).then(r => r.json()).catch(() => {}),
+  validateSession: () =>
+    fetch(`${AUTH_BASE}/validate`, {
+      headers: { "X-Session-Token": getSessionToken() },
     }).then(r => r.json()),
   getEntries: (params) => {
     const q = new URLSearchParams(params).toString();
@@ -945,11 +958,25 @@ export default function PWJTracker() {
     document.title = "Happizo CloudDesk";
     setUser(userData);
   };
-  const handleLogout = () => {
+  const handleLogout = async (reason) => {
+    await api.logout();
     localStorage.removeItem("pwj_user");
     document.title = "Happizo CloudDesk — Login";
     setUser(null);
+    if (reason) alert(reason);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    const check = async () => {
+      try {
+        const res = await api.validateSession();
+        if (!res.success) handleLogout("Your session has ended because the same account logged in from another device or tab.");
+      } catch {}
+    };
+    const interval = setInterval(check, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
   const [celebrating,  setCelebrating]  = useState(false);
@@ -2155,7 +2182,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   );
 
   const canApprove = (row) =>
-    row.approvalStatus === "HOLD" || row.approvalStatus === "NOT_APPROVED" || row.approvalStatus === "PROCEED";
+    row.approvalStatus === "HOLD";
 
   const pageNumbers = useMemo(() => {
     const nums = [];
@@ -2438,7 +2465,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
-                    <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>{row.materialRequired}</td>
+                    <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
+                      {row.materialRequired}
+                      {parseImageRefs(row.imageReference).length > 0 && (
+                        <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 13, cursor: "pointer" }}>🖼️</span>
+                      )}
+                    </td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Approval — visible for all roles */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
@@ -4129,6 +4161,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <button style={s.closeBtn} onClick={() => setAssignModal(null)}>✕</button>
             </div>
             <div style={s.mBody}>
+              {/* Engineer's reference info for procurement */}
+              {(assignModal.specification || assignModal.brand || parseImageRefs(assignModal.imageReference).length > 0) && (
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                  {(assignModal.specification || assignModal.brand) && (
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: parseImageRefs(assignModal.imageReference).length > 0 ? 10 : 0 }}>
+                      {assignModal.specification && (
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Specification</div><div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{assignModal.specification}</div></div>
+                      )}
+                      {assignModal.brand && (
+                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Brand</div><div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{assignModal.brand}</div></div>
+                      )}
+                    </div>
+                  )}
+                  {parseImageRefs(assignModal.imageReference).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Reference Images ({parseImageRefs(assignModal.imageReference).length})</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {parseImageRefs(assignModal.imageReference).map((url, i) => (
+                          <img key={i} src={BACKEND_BASE + url} alt={`ref-${i + 1}`}
+                            style={{ height: 90, maxWidth: "48%", borderRadius: 8, border: "1px solid #e2eaf5", objectFit: "contain", cursor: "pointer", background: "#fff" }}
+                            onClick={() => window.open(BACKEND_BASE + url, "_blank")}
+                            onError={e => { e.target.style.display = "none"; }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={s.formGroup}>
                 <label style={s.label}>PWJ Type</label>
                 <div style={{ display: "flex", gap: 8 }}>
