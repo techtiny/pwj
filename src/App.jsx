@@ -2586,14 +2586,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )
                         )}
-                        {isOH && canApprove(row) && (
-                          <button style={s.approveBtn}
-                            onClick={() => {
-                              setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
-                              setApprovalModal({ entry: row });
-                            }}>
-                            ✅ Approve
-                          </button>
+                        {isOH && (
+                          row.approvalStatus === "PROCEED"
+                            ? <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
+                            : canApprove(row) && (
+                              <button style={s.approveBtn}
+                                onClick={() => {
+                                  setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+                                  setApprovalModal({ entry: row });
+                                }}>
+                                ✅ Approve
+                              </button>
+                            )
                         )}
                         {(isAdmin || isProcurement) && (
                           (isProcurement && row.pwjIssued) || (isProcurement && row.docStatus === "VP_APPROVED") ? (
@@ -3476,15 +3480,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 )
               )}
               {/* Approve button inside detail modal */}
-              {isOH && canApprove(detailRow) && (
-                <button style={{ ...s.submitBtn(), marginTop: 20 }}
-                  onClick={() => {
-                    setDetailRow(null);
-                    setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
-                    setApprovalModal({ entry: detailRow });
-                  }}>
-                  ✅ Take Approval Action
-                </button>
+              {isOH && (
+                detailRow.approvalStatus === "PROCEED"
+                  ? <div style={{ marginTop: 16, padding: "10px 14px", background: "#dcfce7", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>✅ This entry has been approved. No further action required.</div>
+                  : canApprove(detailRow) && (
+                    <button style={{ ...s.submitBtn(), marginTop: 20 }}
+                      onClick={() => {
+                        setDetailRow(null);
+                        setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+                        setApprovalModal({ entry: detailRow });
+                      }}>
+                      ✅ Take Approval Action
+                    </button>
+                  )
               )}
             </div>
           </div>
@@ -3503,6 +3511,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <button style={s.closeBtn} onClick={() => setApprovalModal(null)}>✕</button>
             </div>
             <div style={s.mBody}>
+              {approvalModal.entry.approvalStatus === "PROCEED" ? (
+                <div style={{ textAlign: "center", padding: "32px 0" }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#166534" }}>Already Approved</div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>This entry has been approved and cannot be changed.</div>
+                  <button style={{ marginTop: 20, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#475569" }} onClick={() => setApprovalModal(null)}>Close</button>
+                </div>
+              ) : (<>
               {/* Current status */}
               <div style={{ background: "#f8fbff", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", gap: 12, alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "#64748b" }}>Current:</span>
@@ -3549,6 +3565,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 onClick={submitApproval} disabled={approvalLoading}>
                 {approvalLoading ? "Saving…" : `Confirm ${APPROVAL_META[approvalForm.approvalStatus]?.label}`}
               </button>
+              </>)}
             </div>
           </div>
         </div>
