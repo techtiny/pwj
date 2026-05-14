@@ -971,11 +971,21 @@ export default function PWJTracker() {
     const check = async () => {
       try {
         const res = await api.validateSession();
-        if (!res.success) handleLogout("Your session has ended because the same account logged in from another device or tab.");
+        if (!res.success) handleLogout("This account was logged in from another device. You have been signed out.");
       } catch {}
     };
+    // Poll every 30s (background tabs may throttle this)
     const interval = setInterval(check, 30000);
-    return () => clearInterval(interval);
+    // Also check immediately when the tab becomes visible or regains focus
+    const onVisible = () => { if (document.visibilityState === "visible") check(); };
+    const onFocus = () => check();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [user]);
 
   const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
