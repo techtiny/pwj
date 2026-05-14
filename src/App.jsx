@@ -292,7 +292,7 @@ function fmtDate(val) {
 function parseDocData(entry) {
   const base = {
     items: [
-      { item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
+      { item: "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
@@ -1721,7 +1721,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const selected = entries.filter(e => selectedIds.has(e.id));
       const items = selected.map(e => ({
-        item: e.materialRequired || "",
+        item: "",
         unit: e.unit || "",
         qty: e.quantity != null ? String(e.quantity) : "",
         rate: "",
