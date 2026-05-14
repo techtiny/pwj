@@ -1341,7 +1341,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         if (res.success) {
           showToast("Entry created!");
           setCreateModal(false);
-          setEntries(prev => [res.data, ...prev]);
+          setEntries(prev => [{ ...res.data, dependency: res.data.dependency || "OH Approval" }, ...prev]);
           setTotal(t => t + 1);
         } else showToast(res.message, "error");
       }
