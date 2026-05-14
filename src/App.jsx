@@ -323,9 +323,13 @@ function autoDocNumber(entry) {
     .map(w => w[0].toUpperCase())
     .join("")
     .slice(0, 5);
-  const year = new Date().getFullYear();
+  const now = new Date();
+  const m = now.getMonth() + 1; // 1-12
+  const y = now.getFullYear();
+  const fyStart = m >= 4 ? y : y - 1;
+  const fy = String(fyStart % 100).padStart(2, "0") + String((fyStart + 1) % 100).padStart(2, "0");
   const seq  = String(entry.id).padStart(4, "0");
-  return proj ? `${entry.pwjType}-${proj}-${year}-${seq}` : `${entry.pwjType}-${year}-${seq}`;
+  return proj ? `${entry.pwjType}-${proj}-${fy}-${seq}` : `${entry.pwjType}-${fy}-${seq}`;
 }
 
 function amountToWords(amount) {
