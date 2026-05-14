@@ -317,19 +317,13 @@ function parseDocData(entry) {
 }
 
 function autoDocNumber(entry) {
-  const proj = (entry.projectName || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(w => w[0].toUpperCase())
-    .join("")
-    .slice(0, 5);
   const now = new Date();
-  const m = now.getMonth() + 1; // 1-12
+  const m = now.getMonth() + 1;
   const y = now.getFullYear();
   const fyStart = m >= 4 ? y : y - 1;
   const fy = String(fyStart % 100).padStart(2, "0") + String((fyStart + 1) % 100).padStart(2, "0");
-  const seq  = String(entry.id).padStart(4, "0");
-  return proj ? `${entry.pwjType}-${proj}-${fy}-${seq}` : `${entry.pwjType}-${fy}-${seq}`;
+  const seq = String(entry.id).padStart(4, "0");
+  return `${entry.pwjType}-${fy}-${seq}`;
 }
 
 function amountToWords(amount) {
