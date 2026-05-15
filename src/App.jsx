@@ -1349,6 +1349,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [vendorLoading, setVendorLoading] = useState(false);
   const [assignModal, setAssignModal]     = useState(null);  // holds the PWJ row being edited
   const [assignForm, setAssignForm]       = useState({ vendor: "", pwjType: "" });
+  const [assignVendorSearch, setAssignVendorSearch] = useState("");
+  const [showAssignVendorDrop, setShowAssignVendorDrop] = useState(false);
   const [approvedVendors, setApprovedVendors] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [userMgmtModal, setUserMgmtModal] = useState(false);
@@ -1730,6 +1732,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Assign Vendor / PWJ Type ──
   const openAssign = async (row) => {
     setAssignForm({ vendor: row.vendor || "", pwjType: row.pwjType || "" });
+    setAssignVendorSearch(row.vendor || "");
+    setShowAssignVendorDrop(false);
     setAssignModal(row);
     if (approvedVendors.length === 0) {
       try {
@@ -4374,15 +4378,50 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ))}
                 </div>
               </div>
-              <div style={s.formGroup}>
+              <div style={{ ...s.formGroup, position: "relative" }}>
                 <label style={s.label}>Vendor</label>
-                <select style={s.select2} value={assignForm.vendor}
-                  onChange={e => setAssignForm(f => ({ ...f, vendor: e.target.value }))}>
-                  <option value="">-- Select Vendor --</option>
-                  {approvedVendors.map(v => (
-                    <option key={v.id} value={v.name}>{v.name}{v.category ? ` · ${v.category}` : ""}</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  style={{ ...s.select2, cursor: "text" }}
+                  placeholder="Search vendor…"
+                  value={assignVendorSearch}
+                  autoComplete="off"
+                  onChange={e => {
+                    setAssignVendorSearch(e.target.value);
+                    setAssignForm(f => ({ ...f, vendor: "" }));
+                    setShowAssignVendorDrop(true);
+                  }}
+                  onFocus={() => setShowAssignVendorDrop(true)}
+                  onBlur={() => setTimeout(() => setShowAssignVendorDrop(false), 150)}
+                />
+                {showAssignVendorDrop && (() => {
+                  const q = assignVendorSearch.trim().toLowerCase();
+                  const filtered = approvedVendors.filter(v =>
+                    !q || v.name.toLowerCase().includes(q) || (v.category || "").toLowerCase().includes(q)
+                  );
+                  return filtered.length > 0 ? (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
+                      {filtered.map(v => (
+                        <div key={v.id}
+                          onMouseDown={() => {
+                            setAssignForm(f => ({ ...f, vendor: v.name }));
+                            setAssignVendorSearch(v.name);
+                            setShowAssignVendorDrop(false);
+                          }}
+                          style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                          onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                        >
+                          <span style={{ fontWeight: 600, color: "#0f172a" }}>{v.name}</span>
+                          {v.category && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 8 }}>{v.category}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+                {assignForm.vendor && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 600 }}>✓ {assignForm.vendor}</div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
                 <button style={{ ...s.submitBtn(), flex: 1 }} onClick={submitAssign} disabled={assignLoading}>
