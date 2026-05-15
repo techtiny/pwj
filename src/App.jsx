@@ -1940,7 +1940,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     const itemRows = docData.items
-      .filter(row => row.item || row.qty || row.rate) // skip rows with no data
+      .filter(row => row.item?.trim() || (parseFloat(row.qty) || 0) !== 0 || (parseFloat(row.rate) || 0) !== 0)
       .map((row, i) => {
         const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
         return `<tr>
@@ -4514,7 +4514,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </tr>
                             </thead>
                             <tbody>
-                              {(docEditMode ? docData.items : docData.items.filter(row => row.item || row.qty || row.rate)).map((row, i) => {
+                              {(docEditMode ? docData.items : docData.items.filter(row => row.item?.trim() || (parseFloat(row.qty) || 0) !== 0 || (parseFloat(row.rate) || 0) !== 0)).map((row, i) => {
                                 const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
                                 return (
                                   <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
