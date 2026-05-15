@@ -345,8 +345,8 @@ function parseDocData(entry) {
   if (entry.docData) {
     try {
       const parsed = JSON.parse(entry.docData);
-      const mergedItems = [...(parsed.items || [])];
-      while (mergedItems.length < 4) mergedItems.push({ item: "", unit: "", qty: "", rate: "" });
+      // Keep only the saved items — don't pad with empty rows
+      const mergedItems = (parsed.items || []).length > 0 ? parsed.items : base.items;
       return { ...base, ...parsed, items: mergedItems };
     } catch (_) {}
   }
@@ -1939,17 +1939,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
     const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    const itemRows = docData.items.map((row, i) => {
-      const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
-      return `<tr>
-        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${i+1}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid #ddd;">${row.item || ""}</td>
-        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.unit || ""}</td>
-        <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.qty || ""}</td>
-        <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(row.rate)}</td>
-        <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(amt)}</td>
-      </tr>`;
-    }).join("");
+    const itemRows = docData.items
+      .filter(row => row.item || row.qty || row.rate) // skip rows with no data
+      .map((row, i) => {
+        const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
+        return `<tr>
+          <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${i+1}</td>
+          <td style="padding:7px 8px;border-bottom:1px solid #ddd;">${row.item || ""}</td>
+          <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.unit || ""}</td>
+          <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.qty || ""}</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(row.rate)}</td>
+          <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(amt)}</td>
+        </tr>`;
+      }).join("");
 
     const termRows = terms.map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
@@ -4512,7 +4514,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </tr>
                             </thead>
                             <tbody>
-                              {docData.items.map((row, i) => {
+                              {(docEditMode ? docData.items : docData.items.filter(row => row.item || row.qty || row.rate)).map((row, i) => {
                                 const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
                                 return (
                                   <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
