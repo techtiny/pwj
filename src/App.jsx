@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
 import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot } from "lucide-react";
@@ -428,7 +428,7 @@ function EngUploadSection({ title, icon, type, files, setFiles, uploading, store
 }
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, logoutMessage }) {
   const [form, setForm]       = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -557,6 +557,13 @@ function LoginPage({ onLogin }) {
           {error && (
             <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
               <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
+            </div>
+          )}
+
+          {/* Signed out by session conflict — shown instead of alert() */}
+          {logoutMessage && (
+            <div style={{ background:"rgba(59,130,246,.12)", border:"1px solid rgba(59,130,246,.35)", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8, color:"#93c5fd" }}>
+              <span style={{ fontSize:15, flexShrink:0 }}>ℹ</span> {logoutMessage}
             </div>
           )}
 
@@ -1007,48 +1014,69 @@ export default function PWJTracker() {
       return u;
     } catch { return null; }
   });
+  const [logoutMessage, setLogoutMessage] = useState(null);
+
+  // Guards to prevent duplicate logout calls and throttle validate checks
+  const loggingOutRef = useRef(false);
+  const lastCheckRef  = useRef(0);
 
   const handleLogin = (userData) => {
     localStorage.setItem("pwj_user", JSON.stringify(userData));
     document.title = "Happizo CloudDesk";
+    loggingOutRef.current = false;
+    lastCheckRef.current  = 0;
+    setLogoutMessage(null);
     setUser(userData);
   };
-  const handleLogout = async (reason) => {
+
+  const handleLogout = useCallback(async (reason) => {
+    if (loggingOutRef.current) return; // already logging out — ignore duplicate calls
+    loggingOutRef.current = true;
     await api.logout();
     localStorage.removeItem("pwj_user");
     document.title = "Happizo CloudDesk — Login";
+    if (reason) setLogoutMessage(reason); // show as banner, NOT alert (alert blocks JS and re-triggers focus)
     setUser(null);
-    if (reason) alert(reason);
-  };
+  }, []);
 
-  // Cross-tab logout: if another tab changes pwj_user in localStorage, log this tab out
+  // Cross-tab: if another tab logs in as a DIFFERENT user, force-logout this tab silently
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key !== "pwj_user") return;
-      const newVal = e.newValue ? JSON.parse(e.newValue) : null;
-      // Another tab logged in as a different user → force logout here
-      if (!newVal || (user && newVal.username !== user.username)) {
-        localStorage.removeItem("pwj_user");
-        document.title = "Happizo CloudDesk — Login";
-        setUser(null);
-      }
+      if (!e.newValue) return; // another tab logged OUT — ignore, don't cascade
+      try {
+        const newVal = JSON.parse(e.newValue);
+        if (newVal && user && newVal.username !== user.username && !loggingOutRef.current) {
+          loggingOutRef.current = true;
+          document.title = "Happizo CloudDesk — Login";
+          setLogoutMessage("Another user logged in on this browser. You have been signed out.");
+          setUser(null);
+          // Don't remove localStorage — it belongs to the new session in the other tab
+        }
+      } catch {}
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [user]);
 
-  // Same-device different-device session validation via backend token
+  // Backend session validation — polls every 30s, also on tab focus/visibility
   useEffect(() => {
     if (!user) return;
     const check = async () => {
+      if (loggingOutRef.current) return; // already leaving — skip
+      const now = Date.now();
+      if (now - lastCheckRef.current < 10_000) return; // throttle: max once per 10s
+      lastCheckRef.current = now;
       try {
         const res = await api.validateSession();
-        if (!res.success) handleLogout("This account was logged in from another device. You have been signed out.");
+        if (!res.success) {
+          handleLogout("This account was logged in from another device. You have been signed out.");
+        }
       } catch {}
     };
-    const interval = setInterval(check, 30000);
+    const interval  = setInterval(check, 30_000);
     const onVisible = () => { if (document.visibilityState === "visible") check(); };
-    const onFocus = () => check();
+    const onFocus   = () => check();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
     return () => {
@@ -1056,7 +1084,7 @@ export default function PWJTracker() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [user]);
+  }, [user, handleLogout]);
 
   const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
   const [celebrating,  setCelebrating]  = useState(false);
@@ -1064,7 +1092,7 @@ export default function PWJTracker() {
   if (!user) {
     if (!launched)    return <CountdownPage    onLaunched={() => { setLaunched(true); setCelebrating(true); }} />;
     if (celebrating)  return <CelebrationPage  onDone={() => setCelebrating(false)} />;
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} logoutMessage={logoutMessage} />;
   }
 
   return <Dashboard user={user} onLogout={handleLogout} />;
