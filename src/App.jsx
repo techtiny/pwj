@@ -148,10 +148,10 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(r => r.json()),
-  logout: () =>
+  logout: (token) =>
     fetch(`${AUTH_BASE}/logout`, {
       method: "POST",
-      headers: { "X-Session-Token": getSessionToken() },
+      headers: { "X-Session-Token": token ?? getSessionToken() },
     }).then(r => r.json()).catch(() => {}),
   validateSession: () =>
     fetch(`${AUTH_BASE}/validate`, {
@@ -429,38 +429,52 @@ function EngUploadSection({ title, icon, type, files, setFiles, uploading, store
 
 // ─── LOGIN PAGE ────────────────────────────────────────────────────
 function LoginPage({ onLogin, logoutMessage }) {
-  const [form, setForm]       = useState({ username: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-  const [showPw, setShowPw]   = useState(false);
-  const [focused, setFocused] = useState(null);
-  const [alreadyActive, setAlreadyActive] = useState(false);
+  const [form, setForm]               = useState({ username: "", password: "" });
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
+  const [showPw, setShowPw]           = useState(false);
+  const [focused, setFocused]         = useState(null);
+  // browserConflict = different user already logged in this browser (localStorage)
+  const [browserConflict, setBrowserConflict] = useState(null); // {username, fullName}
+  // deviceConflict = same user already logged in on another device (backend ALREADY_LOGGED_IN)
+  const [deviceConflict,  setDeviceConflict]  = useState(false);
 
-  const [tabConflict, setTabConflict] = useState(() => {
-    try { return !!JSON.parse(localStorage.getItem("pwj_user")); } catch { return false; }
-  });
+  const getLocalSession = () => { try { return JSON.parse(localStorage.getItem("pwj_user")); } catch { return null; } };
 
-  const submit = async (e, force = false) => {
-    if (e) e.preventDefault();
-    if (!form.username || !form.password) { setError("Please enter username and password"); return; }
-    // Check if another user is already logged in this browser (another tab)
-    if (!force) {
-      try {
-        const existing = JSON.parse(localStorage.getItem("pwj_user"));
-        if (existing && existing.username !== form.username) {
-          setTabConflict(true); return;
-        }
-      } catch {}
-    }
-    setLoading(true); setError(null); setAlreadyActive(false); setTabConflict(false);
+  // Core login call — force=true overrides backend active-session block (same user, different device)
+  const doLogin = async (force) => {
+    setLoading(true); setError(null); setBrowserConflict(null); setDeviceConflict(false);
     try {
       const res = await api.login({ ...form, force });
       if (res.success) { onLogin(res.data); }
-      else if (res.message === "ALREADY_LOGGED_IN") { setAlreadyActive(true); }
+      else if (res.message === "ALREADY_LOGGED_IN") { setDeviceConflict(true); }
       else { setError(res.message || "Invalid credentials"); }
     } catch { setError("Cannot connect to server"); }
     finally { setLoading(false); }
   };
+
+  // Normal submit — checks browser conflict first
+  const submit = async (e) => {
+    if (e) e.preventDefault();
+    if (!form.username || !form.password) { setError("Please enter username and password"); return; }
+    const local = getLocalSession();
+    if (local && local.username !== form.username) {
+      setBrowserConflict({ username: local.username, fullName: local.fullName || local.username });
+      return;
+    }
+    await doLogin(false);
+  };
+
+  // Force-replace another browser user: cleanly log them out first, then log this user in
+  const forceBrowserLogin = async () => {
+    const local = getLocalSession();
+    if (local?.token) await api.logout(local.token); // cleanly end their backend session
+    localStorage.removeItem("pwj_user");             // clear before new login (storage event → other tabs ignore !newValue)
+    await doLogin(false);
+  };
+
+  // Force-kick same user from another device
+  const forceDeviceLogin = async () => { await doLogin(true); };
 
   return (
     <>
@@ -567,39 +581,39 @@ function LoginPage({ onLogin, logoutMessage }) {
             </div>
           )}
 
-          {/* Another user already logged in this browser */}
-          {tabConflict && !alreadyActive && (() => {
-            let existingName = "";
-            try { existingName = JSON.parse(localStorage.getItem("pwj_user"))?.fullName || JSON.parse(localStorage.getItem("pwj_user"))?.username || "another user"; } catch {}
-            return (
-              <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.35)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-                <div style={{ color:"#fca5a5", fontWeight:700, fontSize:13, marginBottom:6 }}>🚫 Another User is Active</div>
-                <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}><b>{existingName}</b> is currently logged in on another tab in this browser. Please sign out that user first, or click below to take over.</div>
-                <div style={{ display:"flex", gap:8 }}>
-                  <button type="button" onClick={() => submit(null, true)}
-                    style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                    Sign In & Log Out Other User
-                  </button>
-                  <button type="button" onClick={() => setTabConflict(false)}
-                    style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                    Cancel
-                  </button>
-                </div>
+          {/* Different user already logged in this browser (same localStorage) */}
+          {browserConflict && (
+            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.35)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
+              <div style={{ color:"#fca5a5", fontWeight:700, fontSize:13, marginBottom:6 }}>Another User is Active on this Browser</div>
+              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>
+                <b>{browserConflict.fullName}</b> is currently logged in on this browser. Only one user can be active at a time. Sign in to take over and end their session.
               </div>
-            );
-          })()}
-
-          {/* Already active session warning */}
-          {alreadyActive && (
-            <div style={{ background:"rgba(251,191,36,.12)", border:"1px solid rgba(251,191,36,.4)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-              <div style={{ color:"#fde68a", fontWeight:700, fontSize:13, marginBottom:6 }}>⚠️ Already Logged In</div>
-              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>This account is currently active on another device or browser. Signing in here will end that session.</div>
               <div style={{ display:"flex", gap:8 }}>
-                <button type="button" onClick={() => submit(null, true)}
-                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                  Sign In & End Other Session
+                <button type="button" onClick={forceBrowserLogin} disabled={loading}
+                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                  {loading ? "Signing in…" : "Sign In & End Their Session"}
                 </button>
-                <button type="button" onClick={() => setAlreadyActive(false)}
+                <button type="button" onClick={() => setBrowserConflict(null)} disabled={loading}
+                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Same user already logged in on another device (backend ALREADY_LOGGED_IN) */}
+          {deviceConflict && (
+            <div style={{ background:"rgba(251,191,36,.12)", border:"1px solid rgba(251,191,36,.4)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
+              <div style={{ color:"#fde68a", fontWeight:700, fontSize:13, marginBottom:6 }}>Already Signed In on Another Device</div>
+              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>
+                Your account is currently active on another device or browser tab. Signing in here will end that session immediately.
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button type="button" onClick={forceDeviceLogin} disabled={loading}
+                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                  {loading ? "Signing in…" : "Sign In & End Other Session"}
+                </button>
+                <button type="button" onClick={() => setDeviceConflict(false)} disabled={loading}
                   style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                   Cancel
                 </button>
@@ -1006,7 +1020,6 @@ function CelebrationPage({ onDone }) {
 
 // ─── MAIN COMPONENT ────────────────────────────────────────────────
 export default function PWJTracker() {
-  // ── Session ──
   const [user, setUser] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem("pwj_user"));
@@ -1016,86 +1029,99 @@ export default function PWJTracker() {
   });
   const [logoutMessage, setLogoutMessage] = useState(null);
 
-  // Guards to prevent duplicate logout calls and throttle validate checks
-  const loggingOutRef = useRef(false);
-  const lastCheckRef  = useRef(0);
+  // userRef — always has the latest user value, usable inside stable callbacks
+  const userRef       = useRef(user);
+  const loggingOutRef = useRef(false); // idempotency: prevents duplicate logout calls
+  const lastCheckRef  = useRef(0);     // throttle: timestamp of last validate call
 
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // ── doLogout: stable callback (no deps), reads user via ref ──────
+  const doLogout = useCallback(async (msg) => {
+    if (loggingOutRef.current) return;
+    loggingOutRef.current = true;
+    const token = userRef.current?.token; // read token from ref BEFORE clearing localStorage
+    await api.logout(token);             // explicit token — localStorage may already be overwritten
+    localStorage.removeItem("pwj_user");
+    document.title = "Happizo CloudDesk — Login";
+    if (msg) setLogoutMessage(msg);
+    setUser(null);
+  }, []); // intentionally empty deps — stable for life of component
+
+  // ── handleLogin ──────────────────────────────────────────────────
   const handleLogin = (userData) => {
-    localStorage.setItem("pwj_user", JSON.stringify(userData));
-    document.title = "Happizo CloudDesk";
     loggingOutRef.current = false;
     lastCheckRef.current  = 0;
     setLogoutMessage(null);
+    localStorage.setItem("pwj_user", JSON.stringify(userData));
+    document.title = "Happizo CloudDesk";
     setUser(userData);
   };
 
-  const handleLogout = useCallback(async (reason) => {
-    if (loggingOutRef.current) return; // already logging out — ignore duplicate calls
-    loggingOutRef.current = true;
-    await api.logout();
-    localStorage.removeItem("pwj_user");
-    document.title = "Happizo CloudDesk — Login";
-    if (reason) setLogoutMessage(reason); // show as banner, NOT alert (alert blocks JS and re-triggers focus)
-    setUser(null);
-  }, []);
-
-  // Cross-tab: if another tab logs in as a DIFFERENT user, force-logout this tab silently
+  // ── Cross-tab detection: different user logs in on same browser ──
+  // Registered once. Uses userRef so it's always reading the latest user
+  // without needing the effect to re-run (which would cause listener churn).
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key !== "pwj_user") return;
-      if (!e.newValue) return; // another tab logged OUT — ignore, don't cascade
+      if (!e.newValue) return;       // other tab logged OUT — ignore; do NOT cascade logouts
+      if (!userRef.current) return;  // this tab is already on login page
       try {
-        const newVal = JSON.parse(e.newValue);
-        if (newVal && user && newVal.username !== user.username && !loggingOutRef.current) {
+        const newSession = JSON.parse(e.newValue);
+        if (newSession?.username && newSession.username !== userRef.current.username) {
+          // A different user took over this browser — silently kick current user.
+          // forceBrowserLogin in LoginPage already called api.logout with the current token,
+          // so we don't need to call it again here.
           loggingOutRef.current = true;
           document.title = "Happizo CloudDesk — Login";
-          setLogoutMessage("Another user logged in on this browser. You have been signed out.");
+          setLogoutMessage("Another user signed in on this browser. You have been signed out.");
           setUser(null);
-          // Don't remove localStorage — it belongs to the new session in the other tab
+          // Do NOT remove localStorage — it belongs to the new user who just logged in.
         }
       } catch {}
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [user]);
+  }, []); // runs once — stable via userRef
 
-  // Backend session validation — polls every 30s, also on tab focus/visibility
+  // ── Backend session validation ────────────────────────────────────
+  // Kicks this tab if the same account signs in elsewhere (different device/browser).
   useEffect(() => {
-    if (!user) return;
+    if (!user) return; // stop polling when logged out
     const check = async () => {
-      if (loggingOutRef.current) return; // already leaving — skip
+      if (loggingOutRef.current) return;
       const now = Date.now();
-      if (now - lastCheckRef.current < 10_000) return; // throttle: max once per 10s
+      if (now - lastCheckRef.current < 10_000) return; // throttle: once per 10s max
       lastCheckRef.current = now;
       try {
         const res = await api.validateSession();
         if (!res.success) {
-          handleLogout("This account was logged in from another device. You have been signed out.");
+          doLogout("This account was signed in from another device. You have been signed out.");
         }
-      } catch {}
+      } catch {} // network errors don't log out
     };
     const interval  = setInterval(check, 30_000);
-    const onVisible = () => { if (document.visibilityState === "visible") check(); };
     const onFocus   = () => check();
-    document.addEventListener("visibilitychange", onVisible);
+    const onVisible = () => { if (document.visibilityState === "visible") check(); };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user, handleLogout]);
+  }, [user, doLogout]); // restarts when user changes (login/logout)
 
-  const [launched,     setLaunched]     = useState(() => Date.now() >= LAUNCH_DATE.getTime());
-  const [celebrating,  setCelebrating]  = useState(false);
+  const [launched,    setLaunched]    = useState(() => Date.now() >= LAUNCH_DATE.getTime());
+  const [celebrating, setCelebrating] = useState(false);
 
   if (!user) {
-    if (!launched)    return <CountdownPage    onLaunched={() => { setLaunched(true); setCelebrating(true); }} />;
-    if (celebrating)  return <CelebrationPage  onDone={() => setCelebrating(false)} />;
+    if (!launched)    return <CountdownPage   onLaunched={() => { setLaunched(true); setCelebrating(true); }} />;
+    if (celebrating)  return <CelebrationPage onDone={() => setCelebrating(false)} />;
     return <LoginPage onLogin={handleLogin} logoutMessage={logoutMessage} />;
   }
 
-  return <Dashboard user={user} onLogout={handleLogout} />;
+  return <Dashboard user={user} onLogout={() => doLogout(null)} />;
 }
 
 // ─── HOME DASHBOARD ───
