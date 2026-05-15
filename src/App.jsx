@@ -294,6 +294,30 @@ function parseImageRefs(ref) {
   catch { return [ref]; }
 }
 
+// Shows image thumbnail; falls back to a clickable "View Image" link if the image fails to load.
+// This handles Railway's ephemeral storage (files wiped on redeploy) and any network issue.
+function ImageOrLink({ src, label, thumbStyle = {} }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <a href={src} target="_blank" rel="noreferrer"
+        style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"9px 14px",
+          background:"#f1f5f9", borderRadius:8, color:"#1d4ed8", fontSize:12,
+          fontWeight:600, textDecoration:"none", border:"1px solid #dbeafe",
+          whiteSpace:"nowrap", cursor:"pointer" }}>
+        📎 {label}
+      </a>
+    );
+  }
+  return (
+    <img src={src} alt={label}
+      style={{ maxHeight:180, maxWidth:"100%", borderRadius:8,
+        border:"1px solid #e2eaf5", objectFit:"contain", cursor:"pointer", ...thumbStyle }}
+      onClick={() => window.open(src, "_blank")}
+      onError={() => setFailed(true)} />
+  );
+}
+
 function fmtDate(val) {
   if (!val) return "—";
   const s = String(val).substring(0, 10); // take YYYY-MM-DD part
@@ -3556,10 +3580,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={s.dLabel}>Image Reference ({parseImageRefs(detailRow.imageReference).length})</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
                       {parseImageRefs(detailRow.imageReference).map((url, i) => (
-                        <img key={i} src={BACKEND_BASE + url} alt={`ref-${i + 1}`}
-                          style={{ maxHeight: 180, maxWidth: "100%", borderRadius: 8, border: "1px solid #e2eaf5", objectFit: "contain", cursor: "pointer" }}
-                          onClick={() => window.open(BACKEND_BASE + url, "_blank")}
-                          onError={e => { e.target.style.display = "none"; }} />
+                        <ImageOrLink key={i} src={BACKEND_BASE + url} label={`Image ${i + 1}`} />
                       ))}
                     </div>
                   </div>
@@ -4330,10 +4351,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Reference Images ({parseImageRefs(assignModal.imageReference).length})</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {parseImageRefs(assignModal.imageReference).map((url, i) => (
-                          <img key={i} src={BACKEND_BASE + url} alt={`ref-${i + 1}`}
-                            style={{ height: 90, maxWidth: "48%", borderRadius: 8, border: "1px solid #e2eaf5", objectFit: "contain", cursor: "pointer", background: "#fff" }}
-                            onClick={() => window.open(BACKEND_BASE + url, "_blank")}
-                            onError={e => { e.target.style.display = "none"; }} />
+                          <ImageOrLink key={i} src={BACKEND_BASE + url} label={`Image ${i + 1}`}
+                            thumbStyle={{ height: 90, maxWidth: "48%", background: "#fff" }} />
                         ))}
                       </div>
                     </div>
