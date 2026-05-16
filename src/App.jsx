@@ -1310,6 +1310,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [detailRow, setDetailRow]         = useState(null);
   const [approvalModal, setApprovalModal] = useState(null); // { entry }
   const [createModal, setCreateModal]     = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [editingEntry, setEditingEntry]   = useState(null); // holds entry being edited by engineer
   const [pendingModal, setPendingModal]   = useState(false);
   const [pendingList, setPendingList]     = useState([]);
@@ -1508,6 +1509,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (isEngineer && (!createForm.specification || !createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
       showToast("Please fill all required fields", "error"); return;
     }
+    setCreateLoading(true);
     try {
       const userName = user.fullName || user.username;
       const body = { ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
@@ -1531,6 +1533,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         } else showToast(res.message, "error");
       }
     } catch { showToast(editingEntry ? "Update failed" : "Create failed", "error"); }
+    finally { setCreateLoading(false); }
   };
 
   // ── Open edit form for engineer ──
@@ -3779,7 +3782,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {/* ─── CREATE ENTRY MODAL ─── */}
       {createModal && (
         <div style={s.overlay} onClick={() => { setCreateModal(false); setEditingEntry(null); }}>
-          <div style={{ ...s.modalBox(1020), maxHeight: "none", overflow: "visible" }} onClick={e => e.stopPropagation()}>
+          <div style={s.modalBox(620)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
                 <div style={s.mTitle}>{editingEntry ? "Edit PWJ Entry" : "New PWJ Entry"}</div>
@@ -3788,9 +3791,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <button style={s.closeBtn} onClick={() => { setCreateModal(false); setEditingEntry(null); }}>✕</button>
             </div>
             <div style={s.mBody}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-                {/* Row 1: Project Name (full) | BOQ No */}
-                <div style={{ gridColumn: "1/3", ...s.formGroup }}>
+              <div style={s.grid2}>
+                {/* 1. Project Name */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Project Name *</label>
                   {managedProjects.filter(p => p.active).length > 0 ? (
                     <select style={s.select2} value={createForm.projectName}
@@ -3806,81 +3809,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))} />
                   )}
                   {managedProjects.filter(p => p.active).length === 0 && (
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>No projects configured — contact Administrator.</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
                   )}
                 </div>
-                <div style={s.formGroup}>
+                {/* 2. BOQ No. */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>BOQ No.</label>
                   <input style={s.input} type="text" placeholder="BOQ No."
                     value={createForm.boqNo || ""}
                     onChange={e => setCreateForm(f => ({ ...f, boqNo: e.target.value }))} />
                 </div>
-
-                {/* Row 2: Material Required (full width) */}
+                {/* 3. Material Required */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Material Required *</label>
                   <input style={s.input} placeholder="Material Required"
                     value={createForm.materialRequired}
                     onChange={e => setCreateForm(f => ({ ...f, materialRequired: e.target.value }))} />
                 </div>
-
-                {/* Row 3: Brand | Unit | Quantity */}
-                <div style={s.formGroup}>
-                  <label style={s.label}>Brand</label>
-                  <input style={s.input} type="text" placeholder="Brand"
-                    value={createForm.brand || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, brand: e.target.value }))} />
-                </div>
-                <div style={s.formGroup}>
-                  <label style={s.label}>Unit{isEngineer && " *"}</label>
-                  <select style={s.select2} value={createForm.unit || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}>
-                    <option value="">-- Select Unit --</option>
-                    <optgroup label="Count / Piece">
-                      <option value="Nos">Nos (Numbers)</option>
-                      <option value="Set">Set</option><option value="Pair">Pair</option>
-                      <option value="Box">Box</option><option value="Bundle">Bundle</option>
-                      <option value="Roll">Roll</option><option value="Sheet">Sheet</option>
-                      <option value="Lot">Lot</option><option value="Length">Length</option>
-                    </optgroup>
-                    <optgroup label="Area">
-                      <option value="Sqft">Sqft (Square Feet)</option>
-                      <option value="Sqm">Sqm (Square Metres)</option>
-                      <option value="Sqyd">Sqyd (Square Yards)</option>
-                    </optgroup>
-                    <optgroup label="Length / Running">
-                      <option value="Rft">Rft (Running Feet)</option><option value="Rm">Rm (Running Metres)</option>
-                      <option value="m">m (Metres)</option><option value="ft">ft (Feet)</option>
-                    </optgroup>
-                    <optgroup label="Volume">
-                      <option value="Cum">Cum (Cubic Metres)</option>
-                      <option value="Cft">Cft (Cubic Feet)</option><option value="Ltr">Ltr (Litres)</option>
-                    </optgroup>
-                    <optgroup label="Weight">
-                      <option value="Kg">Kg (Kilograms)</option>
-                      <option value="Ton">Ton (Tonnes)</option><option value="Quintal">Quintal</option>
-                    </optgroup>
-                    <optgroup label="Masonry / Cement">
-                      <option value="Bag">Bag</option><option value="Brick">Brick</option><option value="Block">Block</option>
-                    </optgroup>
-                  </select>
-                </div>
-                <div style={s.formGroup}>
-                  <label style={s.label}>Quantity{isEngineer && " *"}</label>
-                  <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
-                    value={createForm.quantity || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
-                    onWheel={e => e.target.blur()} />
-                </div>
-
-                {/* Row 4: Date of Requirement | Image Reference */}
-                <div style={s.formGroup}>
-                  <label style={s.label}>Date of Requirement{isEngineer && " *"}</label>
-                  <input style={s.input} type="date"
-                    value={createForm.dateOfRequirement || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
-                </div>
-                <div style={{ gridColumn: "2/4", ...s.formGroup }}>
+                {/* 4. Image Reference */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Image Reference</label>
                   <input style={s.input} type="file" accept="image/*" multiple
                     onChange={async e => {
@@ -3917,17 +3864,83 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                   )}
                 </div>
-
-                {/* Row 5: Specification (full width) */}
+                {/* 5. Specification */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Specification{isEngineer && " *"}</label>
-                  <textarea style={{ ...s.textarea, minHeight: 70 }} placeholder="Specification details…"
+                  <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
                 </div>
+                {/* 6. Brand */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Brand</label>
+                  <input style={s.input} type="text" placeholder="Brand"
+                    value={createForm.brand || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, brand: e.target.value }))} />
+                </div>
+                {/* 7. Unit */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Unit{isEngineer && " *"}</label>
+                  <select style={s.select2} value={createForm.unit || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}>
+                    <option value="">-- Select Unit --</option>
+                    <optgroup label="Count / Piece">
+                      <option value="Nos">Nos (Numbers)</option>
+                      <option value="Set">Set</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Box">Box</option>
+                      <option value="Bundle">Bundle</option>
+                      <option value="Roll">Roll</option>
+                      <option value="Sheet">Sheet</option>
+                      <option value="Lot">Lot</option>
+                      <option value="Length">Length</option>
+                    </optgroup>
+                    <optgroup label="Area">
+                      <option value="Sqft">Sqft (Square Feet)</option>
+                      <option value="Sqm">Sqm (Square Metres)</option>
+                      <option value="Sqyd">Sqyd (Square Yards)</option>
+                    </optgroup>
+                    <optgroup label="Length / Running">
+                      <option value="Rft">Rft (Running Feet)</option>
+                      <option value="Rm">Rm (Running Metres)</option>
+                      <option value="m">m (Metres)</option>
+                      <option value="ft">ft (Feet)</option>
+                    </optgroup>
+                    <optgroup label="Volume">
+                      <option value="Cum">Cum (Cubic Metres)</option>
+                      <option value="Cft">Cft (Cubic Feet)</option>
+                      <option value="Ltr">Ltr (Litres)</option>
+                    </optgroup>
+                    <optgroup label="Weight">
+                      <option value="Kg">Kg (Kilograms)</option>
+                      <option value="Ton">Ton (Tonnes)</option>
+                      <option value="Quintal">Quintal</option>
+                    </optgroup>
+                    <optgroup label="Masonry / Cement">
+                      <option value="Bag">Bag</option>
+                      <option value="Brick">Brick</option>
+                      <option value="Block">Block</option>
+                    </optgroup>
+                  </select>
+                </div>
+                {/* 8. Quantity */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Quantity{isEngineer && " *"}</label>
+                  <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
+                    value={createForm.quantity || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
+                    onWheel={e => e.target.blur()} />
+                </div>
+                {/* 9. Date of Requirement */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Date of Requirement{isEngineer && " *"}</label>
+                  <input style={s.input} type="date" placeholder="Date of Requirement"
+                    value={createForm.dateOfRequirement || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
+                </div>
               </div>
-              <button style={{ ...s.submitBtn(), marginTop: 8 }} onClick={submitCreate}>
-                {editingEntry ? "💾 Save Changes" : "✅ Create Entry"}
+              <button style={{ ...s.submitBtn(), marginTop: 8, opacity: createLoading ? 0.7 : 1, cursor: createLoading ? "not-allowed" : "pointer" }} onClick={submitCreate} disabled={createLoading}>
+                {createLoading ? "⏳ Saving…" : editingEntry ? "💾 Save Changes" : "✅ Create Entry"}
               </button>
             </div>
           </div>
