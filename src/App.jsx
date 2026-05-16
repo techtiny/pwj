@@ -4347,16 +4347,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={s.mBody}>
               {/* Engineer's reference info for procurement */}
-              {(assignModal.specification || assignModal.brand || parseImageRefs(assignModal.imageReference).length > 0) && (
+              {(assignModal.materialRequired || parseImageRefs(assignModal.imageReference).length > 0) && (
                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                  {(assignModal.specification || assignModal.brand) && (
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: parseImageRefs(assignModal.imageReference).length > 0 ? 10 : 0 }}>
-                      {assignModal.specification && (
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Specification</div><div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{assignModal.specification}</div></div>
-                      )}
-                      {assignModal.brand && (
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Brand</div><div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{assignModal.brand}</div></div>
-                      )}
+                  {assignModal.materialRequired && (
+                    <div style={{ marginBottom: parseImageRefs(assignModal.imageReference).length > 0 ? 10 : 0 }}>
+                      <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
+                      <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
                     </div>
                   )}
                   {parseImageRefs(assignModal.imageReference).length > 0 && (
