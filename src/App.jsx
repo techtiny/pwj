@@ -3868,21 +3868,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                   )}
                 </div>
-                {/* 5. Specification */}
-                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification{isEngineer && " *"}</label>
-                  <textarea style={s.textarea} placeholder="Specification details…"
-                    value={createForm.specification || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
-                </div>
-                {/* 6. Brand */}
-                <div style={s.formGroup}>
-                  <label style={s.label}>Brand</label>
-                  <input style={s.input} type="text" placeholder="Brand"
-                    value={createForm.brand || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, brand: e.target.value }))} />
-                </div>
-                {/* 7. Unit */}
+                {/* 6. Unit */}
                 <div style={s.formGroup}>
                   <label style={s.label}>Unit{isEngineer && " *"}</label>
                   <select style={s.select2} value={createForm.unit || ""}
@@ -3927,7 +3913,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </optgroup>
                   </select>
                 </div>
-                {/* 8. Quantity */}
+                {/* 7. Quantity */}
                 <div style={s.formGroup}>
                   <label style={s.label}>Quantity{isEngineer && " *"}</label>
                   <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
@@ -3935,7 +3921,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
                     onWheel={e => e.target.blur()} />
                 </div>
-                {/* 9. Date of Requirement */}
+                {/* 8. Date of Requirement */}
                 <div style={s.formGroup}>
                   <label style={s.label}>Date of Requirement{isEngineer && " *"}</label>
                   <input style={s.input} type="date" placeholder="Date of Requirement"
@@ -4454,8 +4440,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const e = docModal.entry; const v = docModal.vendor;
               const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
               const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
-              const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
-              const typeBg    = e.pwjType === "PO" ? "#dbeafe" : e.pwjType === "WO" ? "#fef3c7" : "#dcfce7";
+              const typeColor = "#fff";
+              const typeBg    = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
               const today = fmtDate(new Date().toISOString());
               const docNum = e.docNumber || autoDocNumber(e);
@@ -4870,8 +4856,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
               ) : pendingDocs.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 15 }}>No documents pending approval</div>
               ) : pendingDocs.map(doc => {
-                const typeColor = doc.pwjType === "PO" ? "#1d4ed8" : doc.pwjType === "WO" ? "#92400e" : "#166534";
-                const typeBg    = doc.pwjType === "PO" ? "#dbeafe" : doc.pwjType === "WO" ? "#fef3c7" : "#dcfce7";
+                const typeColor = "#fff";
+                const typeBg    = doc.pwjType === "PO" ? "#1d4ed8" : doc.pwjType === "WO" ? "#92400e" : "#166534";
                 const typeName  = doc.pwjType === "PO" ? "Purchase Order" : doc.pwjType === "WO" ? "Work Order" : "Job Order";
                 return (
                   <div key={doc.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, padding: "18px 22px", marginBottom: 14 }}>
