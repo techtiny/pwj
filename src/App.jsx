@@ -4612,7 +4612,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
                                       <span>{label}</span>
                                       {docEditMode
-                                        ? <select value={docData[field] || "0"} onChange={ev => setField(field, ev.target.value)} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, padding: "1px 4px" }}>
+                                        ? <select value={docData[field] || "0"} onChange={ev => {
+                                            setField(field, ev.target.value);
+                                            if (field === "cgstPct") setField("sgstPct", ev.target.value);
+                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, padding: "1px 4px" }}>
                                             {["0","2.5","5","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
                                         : <span style={{ color: "#555" }}>({docData[field] || 0}%)</span>}
