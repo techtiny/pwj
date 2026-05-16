@@ -1799,6 +1799,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const e = docModal.entry;
     const v = docModal.vendor;
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
+    const proj = managedProjects.find(p => p.name === e.projectName) || null;
     const data = parseDocData(e);
     const autoDocNum = autoDocNumber(e);
     const msmeVal = v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || "";
@@ -1815,6 +1816,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       contactDetails:  data.contactDetails  || raisedByContact,
       vendorAddress1:  data.vendorAddress1  || autoAddr1,
       vendorAddress2:  data.vendorAddress2  || autoAddr2,
+      deliveryAddress: data.deliveryAddress || proj?.clientAddress || "",
     });
     setDocEditMode(true);
   };
@@ -1936,7 +1938,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const buildDocHtml = (e, v) => {
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
     const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
+    const proj = managedProjects.find(p => p.name === e.projectName) || null;
     const docData = parseDocData(e);
+    if (!docData.deliveryAddress && proj?.clientAddress) docData.deliveryAddress = proj.clientAddress;
     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
@@ -4474,7 +4478,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                   {/* Document body — Happizo format */}
                   {(() => {
-                    const docData = docEditMode ? docEditForm : parseDocData(e);
+                    const proj_   = managedProjects.find(p => p.name === e.projectName) || null;
+                    const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(e); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
                     const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
