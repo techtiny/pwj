@@ -2711,7 +2711,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
-                      {isProcurement ? (
+                      {row.status === "CLOSED" ? (
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                      ) : isProcurement ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
                             const val = e.target.value;
