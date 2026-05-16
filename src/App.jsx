@@ -3868,7 +3868,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                   )}
                 </div>
-                {/* 6. Unit */}
+                {/* 5. Specification */}
+                <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
+                  <label style={s.label}>Specification{isEngineer && " *"}</label>
+                  <textarea style={s.textarea} placeholder="Specification details…"
+                    value={createForm.specification || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
+                </div>
+                {/* 6. Brand */}
+                <div style={s.formGroup}>
+                  <label style={s.label}>Brand</label>
+                  <input style={s.input} type="text" placeholder="Brand"
+                    value={createForm.brand || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, brand: e.target.value }))} />
+                </div>
+                {/* 7. Unit */}
                 <div style={s.formGroup}>
                   <label style={s.label}>Unit{isEngineer && " *"}</label>
                   <select style={s.select2} value={createForm.unit || ""}
