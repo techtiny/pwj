@@ -4484,13 +4484,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 : (docData.vendorAddress2 || (v?.city || v?.state)) ? <div>{docData.vendorAddress2 || [v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ")}</div> : null}
                               <div style={{ marginTop: 4 }}>
                                 GST: {docEditMode
-                                  ? <input value={docData.gstNumber !== undefined ? docData.gstNumber : (v?.gstNumber || "")} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />
+                                  ? <><input value={docData.gstNumber !== undefined ? docData.gstNumber : (v?.gstNumber || "")} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />{(docData.gstNumber || v?.gstNumber) && <button type="button" onClick={() => setField("gstNumber", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</>
                                   : (docData.gstNumber || v?.gstNumber || "")}
                                 {docEditMode
-                                  ? <span style={{ marginLeft: 12 }}>PAN: <input value={docData.panNumber || ""} onChange={ev => setField("panNumber", ev.target.value)} style={{ ...inpSt, width: 100, display: "inline" }} placeholder="PAN" /></span>
+                                  ? <span style={{ marginLeft: 12 }}>PAN: <input value={docData.panNumber || ""} onChange={ev => setField("panNumber", ev.target.value)} style={{ ...inpSt, width: 100, display: "inline" }} placeholder="PAN" />{docData.panNumber && <button type="button" onClick={() => setField("panNumber", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</span>
                                   : <span style={{ marginLeft: 12 }}>PAN: {docData.panNumber || v?.panNumber || ""}</span>}
                               </div>
-                              <div>MSME: {docEditMode ? <input value={docData.msme || ""} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" /> : (docData.msme || (v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || ""))}</div>
+                              <div>MSME: {docEditMode
+                                ? <><input value={docData.msme || ""} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" />{docData.msme && <button type="button" onClick={() => setField("msme", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</>
+                                : (docData.msme || (v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || ""))}</div>
                               <div>Kind Attn.: {docEditMode ? <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" /> : (docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "")}</div>
                             </div>
                             <div style={{ borderLeft: "1px solid #ddd", paddingLeft: 20 }}>
