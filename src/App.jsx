@@ -326,6 +326,8 @@ function fmtDate(val) {
   return `${d}/${m}/${y}`;
 }
 
+const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"];
+
 function parseDocData(entry) {
   const base = {
     items: [
@@ -3885,11 +3887,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {/* 7. Unit */}
                 <div style={s.formGroup}>
                   <label style={s.label}>Unit{isEngineer && " *"}</label>
-                  <select style={s.select2} value={createForm.unit || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}>
-                    <option value="">-- Select Unit --</option>
-                    {["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  <input style={s.select2} list="unit-list" value={createForm.unit || ""}
+                    onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                    placeholder="Type or select unit…" autoComplete="off" />
                 </div>
                 {/* 7. Quantity */}
                 <div style={s.formGroup}>
@@ -4530,7 +4530,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                       {docEditMode ? <input value={row.item} onChange={ev => setItem(i, "item", ev.target.value)} style={inpSt} placeholder="Item description" /> : row.item || ""}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
-                                      {docEditMode ? <select value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", cursor: "pointer" }}><option value="">—</option>{["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"].map(u => <option key={u} value={u}>{u}</option>)}</select> : row.unit || ""}
+                                      {docEditMode ? <input list="unit-list" value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", width: 70 }} placeholder="—" autoComplete="off" /> : row.unit || ""}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
                                       {docEditMode ? <input type="number" value={row.qty} onChange={ev => setItem(i, "qty", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0" /> : (row.qty || "")}
@@ -5888,6 +5888,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </div>
         );
       })()}
+
+      {/* ─── SHARED UNIT DATALIST ─── */}
+      <datalist id="unit-list">
+        {UNITS.map(u => <option key={u} value={u} />)}
+      </datalist>
 
       {/* ─── TOAST ─── */}
       {toast && <div style={s.toast(toast.type)}>{toast.msg}</div>}
