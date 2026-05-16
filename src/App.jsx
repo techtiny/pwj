@@ -1994,9 +1994,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <td style="vertical-align:top;text-align:right;width:60%;">
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:6px;">${typeName}</div>
           <table style="font-size:11px;line-height:1.7;border-collapse:collapse;margin-left:auto;">
-            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;">:</td><td><strong>${docNum}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;">:</td><td><strong>${today}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">Project Name</td><td style="padding:0 6px;">:</td><td><strong>${e.projectName}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">Project Name</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
           </table>
         </td>
       </tr>
@@ -4500,9 +4500,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
                               <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 12, alignItems: "center" }}>
-                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
-                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span><strong>{today}</strong></span>
-                                <span style={{ color: "#555" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span><strong>{e.projectName}</strong></span>
+                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{today}</strong></span>
+                                <span style={{ color: "#555" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{e.projectName}</strong></span>
                               </div>
                             </div>
                           </div>
