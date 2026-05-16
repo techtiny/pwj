@@ -3888,43 +3888,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <select style={s.select2} value={createForm.unit || ""}
                     onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}>
                     <option value="">-- Select Unit --</option>
-                    <optgroup label="Count / Piece">
-                      <option value="Nos">Nos (Numbers)</option>
-                      <option value="Set">Set</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Box">Box</option>
-                      <option value="Bundle">Bundle</option>
-                      <option value="Roll">Roll</option>
-                      <option value="Sheet">Sheet</option>
-                      <option value="Lot">Lot</option>
-                      <option value="Length">Length</option>
-                    </optgroup>
-                    <optgroup label="Area">
-                      <option value="Sqft">Sqft (Square Feet)</option>
-                      <option value="Sqm">Sqm (Square Metres)</option>
-                      <option value="Sqyd">Sqyd (Square Yards)</option>
-                    </optgroup>
-                    <optgroup label="Length / Running">
-                      <option value="Rft">Rft (Running Feet)</option>
-                      <option value="Rm">Rm (Running Metres)</option>
-                      <option value="m">m (Metres)</option>
-                      <option value="ft">ft (Feet)</option>
-                    </optgroup>
-                    <optgroup label="Volume">
-                      <option value="Cum">Cum (Cubic Metres)</option>
-                      <option value="Cft">Cft (Cubic Feet)</option>
-                      <option value="Ltr">Ltr (Litres)</option>
-                    </optgroup>
-                    <optgroup label="Weight">
-                      <option value="Kg">Kg (Kilograms)</option>
-                      <option value="Ton">Ton (Tonnes)</option>
-                      <option value="Quintal">Quintal</option>
-                    </optgroup>
-                    <optgroup label="Masonry / Cement">
-                      <option value="Bag">Bag</option>
-                      <option value="Brick">Brick</option>
-                      <option value="Block">Block</option>
-                    </optgroup>
+                    {["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre"].map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
                 {/* 7. Quantity */}
@@ -4566,7 +4530,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                       {docEditMode ? <input value={row.item} onChange={ev => setItem(i, "item", ev.target.value)} style={inpSt} placeholder="Item description" /> : row.item || ""}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
-                                      {docEditMode ? <input value={row.unit} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center" }} placeholder="—" /> : row.unit || ""}
+                                      {docEditMode ? <select value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", cursor: "pointer" }}><option value="">—</option>{["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre"].map(u => <option key={u} value={u}>{u}</option>)}</select> : row.unit || ""}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
                                       {docEditMode ? <input type="number" value={row.qty} onChange={ev => setItem(i, "qty", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0" /> : (row.qty || "")}
