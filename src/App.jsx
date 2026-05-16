@@ -4351,7 +4351,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                   {assignModal.materialRequired && (
                     <div style={{ marginBottom: parseImageRefs(assignModal.imageReference).length > 0 ? 10 : 0 }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
+                      <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
                       <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
                     </div>
                   )}
@@ -4371,12 +4371,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={s.formGroup}>
                 <label style={s.label}>PWJ Type</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {[["PO","Purchase Order","#dbeafe","#1d4ed8"],["WO","Work Order","#fef9c3","#92400e"],["JO","Job Order","#dcfce7","#166534"]].map(([val, desc, bg, col]) => (
+                  {[["PO","Purchase Order","#1d4ed8"],["WO","Work Order","#92400e"],["JO","Job Order","#166534"]].map(([val, desc, col]) => (
                     <button key={val} type="button"
                       onClick={() => setAssignForm(f => ({ ...f, pwjType: f.pwjType === val ? "" : val }))}
-                      style={{ flex: 1, border: assignForm.pwjType === val ? `2px solid ${col}` : "2px solid #e2e8f0", borderRadius: 10, padding: "10px 6px", cursor: "pointer", background: assignForm.pwjType === val ? bg : "#fff", transition: "all .15s", textAlign: "center" }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: assignForm.pwjType === val ? col : "#64748b" }}>{val}</div>
-                      <div style={{ fontSize: 10, color: assignForm.pwjType === val ? val === "PO" ? "#1d4ed8" : val === "WO" ? "#92400e" : "#166534" : "#94a3b8", marginTop: 2 }}>{desc}</div>
+                      style={{ flex: 1, border: `2px solid ${assignForm.pwjType === val ? col : "#e2e8f0"}`, borderRadius: 10, padding: "10px 6px", cursor: "pointer", background: assignForm.pwjType === val ? col : "#fff", transition: "all .15s", textAlign: "center" }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: assignForm.pwjType === val ? "#fff" : "#1e293b" }}>{val}</div>
+                      <div style={{ fontSize: 10, color: assignForm.pwjType === val ? "rgba(255,255,255,0.85)" : "#475569", marginTop: 2 }}>{desc}</div>
                     </button>
                   ))}
                 </div>
