@@ -2012,8 +2012,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
           ${(docData.vendorAddress1||v?.street) ? `<div>${docData.vendorAddress1||v.street}</div>` : ""}
           ${(docData.vendorAddress2||(v?.city||v?.state)) ? `<div>${docData.vendorAddress2||[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
-          <div>GST: ${docData.gstNumber||v?.gstNumber||""}&nbsp;&nbsp;&nbsp;PAN: ${docData.panNumber||v?.panNumber||""}</div>
-          <div>MSME: ${docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||"")}</div>
+          ${(()=>{ const g=docData.gstNumber!==null?(docData.gstNumber??v?.gstNumber??""):""; const p=docData.panNumber!==null?(docData.panNumber??v?.panNumber??""):""; return (g||p)?`<div>${g?"GST: "+g:""}${g&&p?"&nbsp;&nbsp;&nbsp;":""}${p?"PAN: "+p:""}</div>`:""; })()}
+          ${(()=>{ const msmeV=v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||""; const m=docData.msme!==null?(docData.msme??msmeV):""; return m?`<div>MSME: ${m}</div>`:""; })()}
           <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
         </td>
         <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #ddd;">
@@ -4483,16 +4483,37 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 ? <input value={docData.vendorAddress2 || ""} onChange={ev => setField("vendorAddress2", ev.target.value)} style={{ ...inpSt, width: "100%", marginBottom: 3 }} placeholder="Address line 2 (city, state, zip)" />
                                 : (docData.vendorAddress2 || (v?.city || v?.state)) ? <div>{docData.vendorAddress2 || [v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ")}</div> : null}
                               <div style={{ marginTop: 4 }}>
-                                GST: {docEditMode
-                                  ? <><input value={docData.gstNumber !== undefined ? docData.gstNumber : (v?.gstNumber || "")} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />{(docData.gstNumber || v?.gstNumber) && <button type="button" onClick={() => setField("gstNumber", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</>
-                                  : (docData.gstNumber || v?.gstNumber || "")}
-                                {docEditMode
-                                  ? <span style={{ marginLeft: 12 }}>PAN: <input value={docData.panNumber || ""} onChange={ev => setField("panNumber", ev.target.value)} style={{ ...inpSt, width: 100, display: "inline" }} placeholder="PAN" />{docData.panNumber && <button type="button" onClick={() => setField("panNumber", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</span>
-                                  : <span style={{ marginLeft: 12 }}>PAN: {docData.panNumber || v?.panNumber || ""}</span>}
+                                {(() => {
+                                  const gst  = docData.gstNumber  !== null ? (docData.gstNumber  ?? v?.gstNumber  ?? "") : "";
+                                  const pan  = docData.panNumber  !== null ? (docData.panNumber  ?? v?.panNumber  ?? "") : "";
+                                  const clrBtn = (field) => (
+                                    <button type="button" onClick={() => setField(field, null)}
+                                      style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>
+                                  );
+                                  return docEditMode ? (
+                                    <>
+                                      GST: <input value={gst} onChange={ev => setField("gstNumber", ev.target.value)} style={{ ...inpSt, width: 140, display: "inline" }} placeholder="GST Number" />
+                                      {docData.gstNumber !== null && clrBtn("gstNumber")}
+                                      <span style={{ marginLeft: 12 }}>PAN: <input value={pan} onChange={ev => setField("panNumber", ev.target.value)} style={{ ...inpSt, width: 100, display: "inline" }} placeholder="PAN" />
+                                      {docData.panNumber !== null && clrBtn("panNumber")}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      {gst && `GST: ${gst}`}
+                                      {gst && pan && <span style={{ marginLeft: 12 }} />}
+                                      {pan && `PAN: ${pan}`}
+                                    </>
+                                  );
+                                })()}
                               </div>
-                              <div>MSME: {docEditMode
-                                ? <><input value={docData.msme || ""} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" />{docData.msme && <button type="button" onClick={() => setField("msme", "")} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</>
-                                : (docData.msme || (v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || ""))}</div>
+                              <div>{(() => {
+                                const msmeVendor = v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || "";
+                                const msme = docData.msme !== null ? (docData.msme ?? msmeVendor) : "";
+                                return docEditMode ? (
+                                  <>MSME: <input value={msme} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" />
+                                  {docData.msme !== null && <button type="button" onClick={() => setField("msme", null)} style={{ marginLeft: 3, background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 11, fontWeight: 700, lineHeight: 1, padding: "1px 3px" }}>✕</button>}</>
+                                ) : (msme ? `MSME: ${msme}` : "");
+                              })()}</div>
                               <div>Kind Attn.: {docEditMode ? <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" /> : (docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "")}</div>
                             </div>
                             <div style={{ borderLeft: "1px solid #ddd", paddingLeft: 20 }}>
