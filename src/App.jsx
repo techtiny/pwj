@@ -2017,7 +2017,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
         </td>
         <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #ddd;">
-          <div style="font-weight:700;margin-bottom:4px;">Billing Details</div>
+          <div style="font-weight:700;margin-bottom:4px;">BILL TO:</div>
           <div style="font-weight:700;">${COMPANY_INFO.name}</div>
           <div>${COMPANY_INFO.addr1}</div>
           <div>${COMPANY_INFO.addr2}</div>
@@ -4509,7 +4509,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div>Kind Attn.: {docEditMode ? <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" /> : (docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "")}</div>
                             </div>
                             <div style={{ borderLeft: "1px solid #ddd", paddingLeft: 20 }}>
-                              <div style={{ fontWeight: 700, marginBottom: 5 }}>Billing Details</div>
+                              <div style={{ fontWeight: 700, marginBottom: 5 }}>BILL TO:</div>
                               <div style={{ fontWeight: 700 }}>{COMPANY_INFO.name}</div>
                               <div>{COMPANY_INFO.addr1}</div>
                               <div>{COMPANY_INFO.addr2}</div>
