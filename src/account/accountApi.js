@@ -4,6 +4,14 @@ const ACCOUNT_BASE = import.meta.env.VITE_ACCOUNT_API_BASE_URL
   ? `${import.meta.env.VITE_ACCOUNT_API_BASE_URL}/api`
   : '/account-api';
 
+const PWJ_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/pwj`
+  : '/api/v1/pwj';
+
+export const pwjDocsApi = {
+  getDocs: () => axios.get(`${PWJ_BASE}/entries/docs`),
+};
+
 const api = axios.create({
   baseURL: ACCOUNT_BASE,
   headers: { 'Content-Type': 'application/json' },
