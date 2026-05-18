@@ -208,6 +208,12 @@ const api = {
   approveVendor: (id) => fetch(`${VENDOR_BASE}/${id}/approve`, { method: "PUT" }).then(r => r.json()),
   rejectVendor: (id) => fetch(`${VENDOR_BASE}/${id}/reject`, { method: "PUT" }).then(r => r.json()),
   deleteVendor: (id) => fetch(`${VENDOR_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
+  updateVendor: (id, body) =>
+    fetch(`${VENDOR_BASE}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(r => r.json()),
   getUsers: () => fetch(`${AUTH_BASE.replace("/auth", "/users")}`).then(r => r.json()),
   createUser: (body) => fetch(`${AUTH_BASE.replace("/auth", "/users")}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -1390,6 +1396,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Add Vendor Page ──
   const [addVendorPage, setAddVendorPage] = useState(false);
   const [addVendorLoading, setAddVendorLoading] = useState(false);
+  const [editVendorId, setEditVendorId] = useState(null);
   const BLANK_VENDOR_FORM = {
     name: "", companyType: "", ratings: 0,
     productServices: [{ category: "", items: [""] }],
@@ -1409,6 +1416,55 @@ function Dashboard({ user, onLogout: handleLogout }) {
     bankDocUrl: "", bankDocUploading: false, bankOcrLoading: false,
   };
   const [addVendorForm, setAddVendorForm] = useState(BLANK_VENDOR_FORM);
+
+  const openEditVendor = (v) => {
+    const safeJson = (s, fallback) => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
+    setAddVendorForm({
+      ...BLANK_VENDOR_FORM,
+      name: v.name || "",
+      companyType: v.companyType || "",
+      ratings: v.ratings || 0,
+      contactPerson: v.contactPerson || "",
+      salutation: "",
+      email: v.email || "",
+      phoneNumber: v.phoneNumber || "",
+      spocName: v.spocName || "",
+      spocEmail: v.spocEmail || "",
+      spocPhone: v.spocPhone || "",
+      spocSameAsCustomer: false,
+      contacts: safeJson(v.contacts, []),
+      street: v.street || "",
+      city: v.city || "",
+      state: v.state || "",
+      zipCode: v.zipCode || "",
+      country: v.country || "India",
+      branch: v.branch || "",
+      vendorCode: v.vendorCode || "",
+      empanelDate: v.empanelDate || "",
+      vendorType: v.vendorType ? v.vendorType.split(",").map(s => s.trim()).filter(Boolean) : [],
+      portfolioDocUrl: v.vendorDocUrl || "",
+      website: v.website || "",
+      socialMedia: safeJson(v.socialMedia, [""]),
+      productServices: safeJson(v.productServices, [{ category: "", items: [""] }]),
+      paymentDetails: v.paymentDetails || "",
+      deliveryTerms: v.deliveryTerms || "",
+      gstNumber: v.gstNumber || "",
+      tanNumber: v.tanNumber || "",
+      panNumber: v.panNumber || "",
+      gstDocUrl: v.gstDocUrl || "",
+      msmeDocUrl: v.msmeDocUrl || "",
+      tanDocUrl: v.tanDocUrl || "",
+      panDocUrl: v.panDocUrl || "",
+      msmeRegistered: v.msmeNumber ? "Yes" : null,
+      bankName: v.bankName || "",
+      accountNumber: v.accountNumber || "",
+      ifscCode: v.ifscCode || "",
+      bankDetails: v.bankDetails || "",
+      bankDocUrl: v.bankDocUrl || "",
+    });
+    setEditVendorId(v.id);
+    setAddVendorPage(true);
+  };
 
   const [engDocFile, setEngDocFile]       = useState(null);
   const [engDocUploading, setEngDocUploading] = useState(false);
@@ -3001,6 +3057,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
+                          {(isAdmin || isVP) && (
+                            <button onClick={() => openEditVendor(v)}
+                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                              ✏️ Edit
+                            </button>
+                          )}
                           {(isAdmin || isVP) && (
                             <button
                               onClick={async () => {
@@ -5364,12 +5426,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 : avf.bankDetails,
               status: "PENDING_APPROVAL",
             };
-            const r = await api.createVendor(body);
-            if (r.success) {
-              showToast("Vendor saved as draft — pending approval", "success");
-              setAddVendorPage(false);
-              loadVendorsTab();
-            } else showToast(r.message || "Failed to save vendor", "error");
+            if (editVendorId) {
+              const r = await api.updateVendor(editVendorId, body);
+              if (r.success) {
+                showToast("Vendor updated successfully ✅", "success");
+                setAllVendorsStatus(a => a.map(x => x.id === editVendorId ? { ...x, ...r.data } : x));
+                setAddVendorPage(false);
+                setEditVendorId(null);
+              } else showToast(r.message || "Failed to update vendor", "error");
+            } else {
+              const r = await api.createVendor(body);
+              if (r.success) {
+                showToast("Vendor saved as draft — pending approval", "success");
+                setAddVendorPage(false);
+                loadVendorsTab();
+              } else showToast(r.message || "Failed to save vendor", "error");
+            }
           } catch { showToast("Network error", "error"); }
           finally { setAddVendorLoading(false); }
         };
@@ -5447,11 +5519,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Top header ── */}
             <div style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b" }} />
-                <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>New Vendor Registration</span>
-                <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: editVendorId ? "#3b82f6" : "#f59e0b" }} />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>{editVendorId ? "Edit Vendor" : "New Vendor Registration"}</span>
+                {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
               </div>
-              <button onClick={() => setAddVendorPage(false)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ Discard</button>
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
             </div>
 
             {/* ── Body: sidebar + content ── */}
@@ -5470,7 +5542,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ))}
                 <div style={{ flex: 1 }} />
                 <div style={{ padding: "16px 14px", background: "#f8fafc", borderRadius: 10, marginTop: 8 }}>
-                  <div style={{ fontSize: 11, color: "#94a3b8", ...F, lineHeight: 1.6 }}>Saved as <strong>Draft</strong>. Pending VP approval before vendor is activated.</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", ...F, lineHeight: 1.6 }}>
+                    {editVendorId ? "Changes will update the vendor record immediately." : <>Saved as <strong>Draft</strong>. Pending VP approval before vendor is activated.</>}
+                  </div>
                 </div>
               </div>
 
@@ -5892,13 +5966,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
             {/* ── Fixed bottom action bar ── */}
             <div style={{ background: "#fff", borderTop: "1px solid #e2e8f0", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
-              <button onClick={() => setAddVendorPage(false)}
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); }}
                 style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F }}>
-                Discard
+                {editVendorId ? "Cancel" : "Discard"}
               </button>
               <button onClick={submitDraft} disabled={addVendorLoading}
                 style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
-                {addVendorLoading ? "Saving…" : "💾 Save as Draft"}
+                {addVendorLoading ? "Saving…" : editVendorId ? "💾 Save Changes" : "💾 Save as Draft"}
               </button>
             </div>
 
