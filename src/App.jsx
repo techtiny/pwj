@@ -304,14 +304,16 @@ function parseImageRefs(ref) {
 // This handles Railway's ephemeral storage (files wiped on redeploy) and any network issue.
 function ImageOrLink({ src, label, thumbStyle = {} }) {
   const [failed, setFailed] = useState(false);
-  if (failed) {
+  const isPdf = src && src.toLowerCase().endsWith(".pdf");
+  if (isPdf || failed) {
     return (
       <a href={src} target="_blank" rel="noreferrer"
-        style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"9px 14px",
-          background:"#f1f5f9", borderRadius:8, color:"#1d4ed8", fontSize:12,
-          fontWeight:600, textDecoration:"none", border:"1px solid #dbeafe",
-          whiteSpace:"nowrap", cursor:"pointer" }}>
-        📎 {label}
+        style={{ display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+          gap:4, padding:"12px 16px", background:"#fef2f2", borderRadius:8, color:"#ef4444",
+          fontSize:12, fontWeight:700, textDecoration:"none", border:"1.5px solid #fecaca",
+          minWidth:72, cursor:"pointer", ...thumbStyle }}>
+        <span style={{ fontSize:24 }}>📄</span>
+        <span>PDF</span>
       </a>
     );
   }
@@ -596,7 +598,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Happizo CloudDesk</span>
             </div>
             <div style={{ color:"rgba(255,255,255,.4)", fontSize:13.5, marginTop:10, lineHeight:1.6 }}>
-              Purchase Work Journal · Procurement Dashboard
+              Purchase Work Journal
             </div>
           </div>
 
@@ -863,7 +865,7 @@ function CountdownPage({ onLaunched }) {
           </div>
 
           {/* logo / title */}
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>Procurement Tracker</div>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>Happizo CloudDesk</div>
           <h1 style={{
             fontSize: 38, fontWeight: 800, lineHeight: 1.15,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -873,7 +875,7 @@ function CountdownPage({ onLaunched }) {
             animation: "shimmer 4s linear infinite",
             marginBottom: 12,
           }}>
-            Procurement Dashboard
+            Purchase Work Journal
           </h1>
           <p style={{ fontSize: 15, color: "#64748b", marginBottom: 44, lineHeight: 1.6 }}>
             A smarter way to track, approve &amp; manage procurement workflows.
@@ -1309,6 +1311,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [statusF, setStatusF]         = useState("ALL");
   const [approvalF, setApprovalF]     = useState("ALL");
   const [projectF, setProjectF]       = useState("");
+  const [raisedByF, setRaisedByF]     = useState("");
+  const [datePreset, setDatePreset]   = useState("");   // today | week | month | custom | ""
+  const [dateFrom,   setDateFrom]     = useState("");
+  const [dateTo,     setDateTo]       = useState("");
   const [page, setPage]               = useState(0);
   const [sortBy, setSortBy]           = useState("updatedAt");
   const [sortDir, setSortDir]         = useState("desc");
@@ -1476,19 +1482,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [engDeliveryUploading, setEngDeliveryUploading] = useState(false);
   const [engDeliveredDate, setEngDeliveredDate]         = useState("");
   const [engDateSaving, setEngDateSaving]               = useState(false);
+  const [engRemarks, setEngRemarks]                     = useState("");
+  const [engRemarksSaving, setEngRemarksSaving]         = useState(false);
 
   // ── Fetch data ──
-  const fetchEntries = useCallback(async () => {
-    setLoading(true); setError(null);
+  const fetchEntries = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
     try {
       const params = { page, size: PAGE_SIZE, sortBy, sortDir };
       if (search)              params.search      = search;
       if (statusF !== "ALL")   params.status      = statusF;
       if (approvalF !== "ALL") params.approval    = approvalF;
       if (projectF)            params.projectName = projectF;
+      if (!isEngineer && raisedByF) params.raisedBy = raisedByF;
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo)   params.dateTo   = dateTo;
 
       const res = isEngineer
-        ? await api.getMyEntries(user.fullName || user.username, { page, size: PAGE_SIZE, sortBy, sortDir })
+        ? await api.getMyEntries(user.fullName || user.username, params)
         : await api.getEntries(params);
 
       if (res.success) {
@@ -1500,7 +1512,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       } else { setError(res.message); }
     } catch { setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
     finally { setLoading(false); }
-  }, [page, search, statusF, approvalF, projectF, sortBy, sortDir, isEngineer, user]);
+  }, [page, search, statusF, approvalF, projectF, raisedByF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user]);
 
   const fetchProjects = useCallback(async () => {
     try { const r = await api.getProjects(); if (r.success) setProjects(r.data); } catch {}
@@ -1516,9 +1528,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
-  // Sync engineer's delivered-date input when the document modal opens on a new entry
+  // Sync engineer's delivered-date and remarks when the document modal opens on a new entry
   useEffect(() => {
-    if (docModal?.entry) setEngDeliveredDate(docModal.entry.deliveredDate || "");
+    if (docModal?.entry) {
+      setEngDeliveredDate(docModal.entry.deliveredDate || "");
+      setEngRemarks(docModal.entry.remarks || "");
+    }
   }, [docModal?.entry?.id]);
   useEffect(() => { fetchManagedProjects(); }, [fetchManagedProjects]);
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
@@ -1530,20 +1545,38 @@ function Dashboard({ user, onLogout: handleLogout }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchEntries]);
 
-  // Track whether user is actively editing — pause polling during edits
-  const pollingPausedRef = useRef(false);
+  // Track whether user is actively editing — skip silent refresh during edits
+  const editingRef = useRef(false);
   useEffect(() => {
-    pollingPausedRef.current = !!(
+    editingRef.current = !!(
       createModal || editingEntry || approvalModal || assignModal ||
       userMgmtModal || projectMgmtModal || addVendorPage || docEditMode
     );
   }, [createModal, editingEntry, approvalModal, assignModal, userMgmtModal, projectMgmtModal, addVendorPage, docEditMode]);
 
-  // Poll every 30 seconds — keeps all users in sync without a page refresh
+  // SSE — server pushes an event whenever any entry changes; client silently re-fetches
+  useEffect(() => {
+    if (!BACKEND_BASE) return;
+    let es;
+    const connect = () => {
+      es = new EventSource(`${BACKEND_BASE}/api/v1/pwj/events`);
+      es.addEventListener("update", () => {
+        if (!document.hidden && !editingRef.current) fetchEntries(true);
+      });
+      es.onerror = () => {
+        es.close();
+        setTimeout(connect, 5000); // reconnect after 5 s if dropped
+      };
+    };
+    connect();
+    return () => es && es.close();
+  }, [fetchEntries]);
+
+  // Fallback poll every 60 s — catches missed SSE events (tab backgrounded, network blip)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!document.hidden && !pollingPausedRef.current) fetchEntries();
-    }, 30000);
+      if (!document.hidden && !editingRef.current) fetchEntries(true);
+    }, 60000);
     return () => clearInterval(interval);
   }, [fetchEntries]);
 
@@ -2294,6 +2327,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
     finally { setEngDateSaving(false); }
   };
 
+  const saveEngRemarks = async () => {
+    if (!docModal) return;
+    setEngRemarksSaving(true);
+    try {
+      const r = await api.procurementUpdate(docModal.entry.id, { remarks: engRemarks.trim() || null });
+      if (r.success) {
+        setDocModal(m => ({ ...m, entry: { ...m.entry, remarks: engRemarks.trim() } }));
+        setEntries(es => es.map(x => x.id === docModal.entry.id ? { ...x, remarks: engRemarks.trim() } : x));
+        showToast("Remarks saved ✅");
+      } else showToast(r.message || "Failed to save", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setEngRemarksSaving(false); }
+  };
+
   // ── User Management ──
   const openUserMgmt = async () => {
     setUserMgmtModal(true);
@@ -2466,8 +2513,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-hbadge { display: none !important; }
           .app-tabs { padding: 0 8px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
           .app-tabs button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
-          .app-statsrow { padding: 10px 10px 0 !important; gap: 8px !important; }
-          .app-statsrow > div { min-width: 100px !important; padding: 10px 12px !important; flex: 0 0 auto !important; }
+          .app-statsrow { padding: 10px 10px 0 !important; gap: 10px !important; flex-direction: column !important; }
+          .app-statsrow > div { min-width: unset !important; width: 100% !important; }
           .app-statsrow .stat-val { font-size: 22px !important; }
           .app-filterbar { padding: 10px 12px !important; gap: 8px !important; }
           .app-tablewrap { margin: 0 8px 14px !important; }
@@ -2624,30 +2671,112 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
-        <div style={s.statsRow} className="app-statsrow">
+        <div className="app-statsrow" style={{ display: "flex", gap: 14, padding: "20px 32px 0", flexWrap: "wrap" }}>
+          {/* ── Group 1: PR Status ── */}
           {[
-            { label: "Total PRs",    value: stats.total,       accent: "#3b82f6", statusV: null,     approvalV: null },
-            { label: "Closed",       value: stats.closed,      accent: "#22c55e", statusV: "CLOSED", approvalV: null },
-            { label: "Open",         value: stats.open,        accent: "#f59e0b", statusV: "OPEN",   approvalV: null },
-            { label: "Proceed",      value: stats.proceed,     accent: "#0ea5e9", statusV: null,     approvalV: "PROCEED" },
-            { label: "On Hold",      value: stats.hold,        accent: "#f97316", statusV: null,     approvalV: "HOLD" },
-            { label: "Not Approved", value: stats.notApproved, accent: "#ef4444", statusV: null,     approvalV: "NOT_APPROVED" },
-          ].map(c => {
-            const isActive = (c.statusV ? statusF === c.statusV : c.approvalV ? approvalF === c.approvalV : statusF === "ALL" && approvalF === "ALL");
-            return (
-              <div key={c.label}
-                onClick={() => {
-                  setStatusF(c.statusV || "ALL");
-                  setApprovalF(c.approvalV || "ALL");
-                  setPage(0);
-                }}
-                style={{ ...s.statCard(c.accent), cursor: "pointer", transition: "box-shadow .15s, transform .1s", boxShadow: isActive ? `0 4px 18px ${c.accent}44` : "0 2px 12px rgba(15,76,129,.07)", transform: isActive ? "translateY(-2px)" : "none", background: isActive ? `${c.accent}0d` : "#fff", outline: isActive ? `2px solid ${c.accent}` : "none" }}>
-                <div style={s.statLbl}>{c.label}</div>
-                <div className="stat-val" style={{ ...s.statVal, color: isActive ? c.accent : "#1e293b" }}>{loading ? "—" : (c.value ?? "—")}</div>
+            [
+              { label: "Total PRs", value: stats.total,  accent: "#3b82f6", dot: "#3b82f6", statusV: null,     approvalV: null },
+              { label: "Closed",    value: stats.closed, accent: "#22c55e", dot: "#22c55e", statusV: "CLOSED", approvalV: null },
+              { label: "Open",      value: stats.open,   accent: "#f59e0b", dot: "#f59e0b", statusV: "OPEN",   approvalV: null },
+            ],
+            [
+              { label: "Proceed",      value: stats.proceed,     accent: "#0ea5e9", dot: "#0ea5e9", statusV: null, approvalV: "PROCEED" },
+              { label: "On Hold",      value: stats.hold,        accent: "#f97316", dot: "#f97316", statusV: null, approvalV: "HOLD" },
+              { label: "Not Approved", value: stats.notApproved, accent: "#ef4444", dot: "#ef4444", statusV: null, approvalV: "NOT_APPROVED" },
+            ],
+          ].map((group, gi) => (
+            <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
+              <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#3b82f6" : "#f97316", display: "inline-block" }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
+                  {gi === 0 ? "PR Status" : "Approval Status"}
+                </span>
               </div>
-            );
-          })}
+              <div style={{ display: "flex" }}>
+                {group.map((c, ci) => {
+                  const isActive = c.statusV ? statusF === c.statusV : c.approvalV ? approvalF === c.approvalV : statusF === "ALL" && approvalF === "ALL";
+                  return (
+                    <div key={c.label}
+                      onClick={() => { setStatusF(c.statusV || "ALL"); setApprovalF(c.approvalV || "ALL"); setPage(0); }}
+                      style={{
+                        flex: 1, padding: "14px 16px", cursor: "pointer", textAlign: "center",
+                        borderRight: ci < group.length - 1 ? "1px solid #f1f5f9" : "none",
+                        background: isActive ? `${c.accent}0e` : "transparent",
+                        transition: "background .15s, transform .1s",
+                        position: "relative",
+                      }}>
+                      {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, borderRadius: "0 0 3px 3px" }} />}
+                      <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? c.accent : "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
+                      <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? c.accent : "#0f172a", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
+                        {loading ? "—" : (c.value ?? "—")}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
+
+        {/* ─── DATE FILTER ─── */}
+        {(() => {
+          const today = new Date();
+          const fmt = d => d.toISOString().split("T")[0];
+          const presets = [
+            { key: "today", label: "Today" },
+            { key: "week",  label: "This Week" },
+            { key: "month", label: "This Month" },
+            { key: "custom",label: "Custom" },
+          ];
+          const applyPreset = key => {
+            setDatePreset(key);
+            setPage(0);
+            if (key === "today") {
+              setDateFrom(fmt(today)); setDateTo(fmt(today));
+            } else if (key === "week") {
+              const mon = new Date(today); mon.setDate(today.getDate() - today.getDay() + 1);
+              setDateFrom(fmt(mon)); setDateTo(fmt(today));
+            } else if (key === "month") {
+              setDateFrom(fmt(new Date(today.getFullYear(), today.getMonth(), 1)));
+              setDateTo(fmt(today));
+            } else if (key === "custom") {
+              setDateFrom(""); setDateTo("");
+            } else {
+              setDateFrom(""); setDateTo("");
+            }
+          };
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 32px 0", flexWrap: "wrap" }}>
+              {presets.map(p => (
+                <button key={p.key} onClick={() => applyPreset(datePreset === p.key ? "" : p.key)}
+                  style={{ border: `1.5px solid ${datePreset === p.key ? "#1e3a5f" : "#e2e8f0"}`,
+                    background: datePreset === p.key ? "#1e3a5f" : "#fff",
+                    color: datePreset === p.key ? "#fff" : "#64748b",
+                    borderRadius: 20, padding: "5px 14px", fontSize: 12.5, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                  {p.label}
+                </button>
+              ))}
+              {datePreset === "custom" && (
+                <>
+                  <input type="date" value={dateFrom} max={dateTo || fmt(today)}
+                    onChange={e => { setDateFrom(e.target.value); setPage(0); }}
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#0f172a" }} />
+                  <span style={{ color: "#94a3b8", fontSize: 12 }}>to</span>
+                  <input type="date" value={dateTo} min={dateFrom} max={fmt(today)}
+                    onChange={e => { setDateTo(e.target.value); setPage(0); }}
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#0f172a" }} />
+                </>
+              )}
+              {datePreset && (
+                <button onClick={() => { setDatePreset(""); setDateFrom(""); setDateTo(""); setPage(0); }}
+                  style={{ border: "none", background: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: "4px 6px" }}>
+                  ✕ Clear
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ─── ERROR ─── */}
         {error && <div style={s.errorBanner} className="app-errbanner">⚠️ {error}</div>}
@@ -2674,6 +2803,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="HOLD">Hold</option>
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
+          {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
+            <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
+              <option value="">All Users</option>
+              {[...new Map(allUsers.filter(u => u.active !== false).map(u => [u.fullName || u.username, u])).values()]
+                .sort((a, b) => (a.fullName || a.username).localeCompare(b.fullName || b.username))
+                .map(u => (
+                  <option key={u.id} value={u.fullName || u.username}>{u.fullName || u.username}</option>
+                ))}
+            </select>
+          )}
           <button onClick={fetchEntries} title="Refresh entries"
             style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 13px", fontSize: 14, cursor: "pointer", color: "#64748b", lineHeight: 1 }}>
             ↺
@@ -2891,14 +3030,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <button
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => openDocModal(row)}>
-                            📄 {row.docStatus === "VP_APPROVED" ? "Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
+                            📄 {row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
                           </button>
                         )}
                         {(isEngineer || isVP || isOH || isCeo) && row.docStatus && (
                           <button
                             style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={() => { setEngDocFile(null); openDocModal(row); }}>
-                            📄 {row.docStatus === "VP_APPROVED" ? "Doc Approved" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc"}
+                            📄 {row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc"}
                           </button>
                         )}
                         {isAdmin && (
@@ -3933,11 +4072,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {/* 4. Image Reference */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Image Reference</label>
-                  <input style={s.input} type="file" accept="image/*" multiple
+                  <input style={s.input} type="file" accept="image/*,application/pdf,.pdf" multiple
                     onChange={async e => {
                       const files = Array.from(e.target.files);
                       if (!files.length) return;
-                      showToast(`Uploading ${files.length} image${files.length > 1 ? "s" : ""}…`);
+                      showToast(`Uploading ${files.length} file${files.length > 1 ? "s" : ""}…`);
                       const existing = parseImageRefs(createForm.imageReference);
                       const urls = [...existing];
                       for (const file of files) {
@@ -3946,25 +4085,36 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         else showToast(`Failed: ${file.name}`, "error");
                       }
                       setCreateForm(f => ({ ...f, imageReference: JSON.stringify(urls) }));
-                      showToast(`${urls.length} image${urls.length > 1 ? "s" : ""} uploaded ✅`);
+                      showToast(`${urls.length} file${urls.length > 1 ? "s" : ""} uploaded ✅`);
                       e.target.value = "";
                     }} />
                   {parseImageRefs(createForm.imageReference).length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                      {parseImageRefs(createForm.imageReference).map((url, i) => (
-                        <div key={i} style={{ position: "relative" }}>
-                          <img src={BACKEND_BASE + url} alt={`preview-${i + 1}`}
-                            style={{ height: 90, width: 90, objectFit: "cover", borderRadius: 8, border: "1px solid #e2eaf5" }} />
-                          <button type="button"
-                            onClick={() => {
-                              const updated = parseImageRefs(createForm.imageReference).filter((_, idx) => idx !== i);
-                              setCreateForm(f => ({ ...f, imageReference: updated.length ? JSON.stringify(updated) : "" }));
-                            }}
-                            style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                      {parseImageRefs(createForm.imageReference).map((url, i) => {
+                        const isPdf = url.toLowerCase().endsWith(".pdf");
+                        return (
+                          <div key={i} style={{ position: "relative" }}>
+                            {isPdf ? (
+                              <a href={BACKEND_BASE + url} target="_blank" rel="noreferrer"
+                                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 90, width: 90, borderRadius: 8, border: "1.5px solid #e2eaf5", background: "#fef2f2", gap: 4, textDecoration: "none" }}>
+                                <span style={{ fontSize: 28 }}>📄</span>
+                                <span style={{ fontSize: 9, color: "#ef4444", fontWeight: 700 }}>PDF</span>
+                              </a>
+                            ) : (
+                              <img src={BACKEND_BASE + url} alt={`preview-${i + 1}`}
+                                style={{ height: 90, width: 90, objectFit: "cover", borderRadius: 8, border: "1px solid #e2eaf5" }} />
+                            )}
+                            <button type="button"
+                              onClick={() => {
+                                const updated = parseImageRefs(createForm.imageReference).filter((_, idx) => idx !== i);
+                                setCreateForm(f => ({ ...f, imageReference: updated.length ? JSON.stringify(updated) : "" }));
+                              }}
+                              style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -4519,7 +4669,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const docNum = e.docNumber || autoDocNumber(e);
               const statusColor = e.docStatus === "VP_APPROVED" ? "#166534" : e.docStatus === "PENDING_VP_APPROVAL" ? "#92400e" : e.docStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
               const statusBg    = e.docStatus === "VP_APPROVED" ? "#dcfce7" : e.docStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : e.docStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
-              const statusLabel = e.docStatus === "VP_APPROVED" ? "✅ VP Approved" : e.docStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : e.docStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
+              const statusLabel = e.docStatus === "VP_APPROVED" ? "✅ Doc Issued" : e.docStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : e.docStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
               return (
                 <>
                   {/* Top bar */}
@@ -4803,40 +4953,70 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       const dd = parseDocData(e);
                       return (
                         <>
-                          {/* Delivered Date — engineer only */}
-                          {(isEngineer || isProjectManager) && (
-                            <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-                                📅 Delivered Date
+                          {/* Delivered Date + Remarks — editable for Engineer/PM, read-only for all others */}
+                          {(() => {
+                            const canEdit = isEngineer || isProjectManager;
+                            return (
+                              <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", gap: 24, flexWrap: "wrap" }}>
+                                {/* Delivered Date */}
+                                <div style={{ flex: "0 0 auto" }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                    📅 Delivered Date
+                                  </div>
+                                  {canEdit ? (
+                                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                      <input type="date" value={engDeliveredDate}
+                                        max={new Date().toISOString().split("T")[0]}
+                                        onChange={ev => {
+                                          const today = new Date().toISOString().split("T")[0];
+                                          setEngDeliveredDate(ev.target.value > today ? today : ev.target.value);
+                                        }}
+                                        style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
+                                      <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
+                                        style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        {engDateSaving ? "Saving…" : "💾 Save"}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: e.deliveredDate ? "#166534" : "#94a3b8" }}>
+                                      {e.deliveredDate ? fmtDate(e.deliveredDate) : "Not yet delivered"}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Remarks */}
+                                <div style={{ flex: 1, minWidth: 220 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                    📝 Remarks
+                                  </div>
+                                  {canEdit ? (
+                                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                      <textarea value={engRemarks} onChange={ev => setEngRemarks(ev.target.value)}
+                                        placeholder="Add remarks…" rows={2}
+                                        style={{ flex: 1, border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#eff6ff", resize: "vertical" }} />
+                                      <button onClick={saveEngRemarks} disabled={engRemarksSaving}
+                                        style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        {engRemarksSaving ? "Saving…" : "💾 Save"}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: 14, color: e.remarks ? "#0f172a" : "#94a3b8", lineHeight: 1.6 }}>
+                                      {e.remarks || "No remarks"}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                                <input type="date" value={engDeliveredDate}
-                                  max={new Date().toISOString().split("T")[0]}
-                                  onChange={ev => {
-                                    const today = new Date().toISOString().split("T")[0];
-                                    setEngDeliveredDate(ev.target.value > today ? today : ev.target.value);
-                                  }}
-                                  style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
-                                <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
-                                  style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                                  {engDateSaving ? "Saving…" : "💾 Save"}
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
+                          {/* Uploaded docs — always visible to all; only engineers can upload */}
                           <div style={{ display: "flex", flexDirection: "column" }}>
-                            {(isEngineer || (dd.vendorInvoices || []).length > 0) && (
-                              <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
-                                files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
-                                uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
-                                canUpload={isEngineer} onUpload={uploadEngFiles} />
-                            )}
-                            {(isEngineer || (dd.deliveryDocs || []).length > 0) && (
-                              <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
-                                files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
-                                uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
-                                canUpload={isEngineer} onUpload={uploadEngFiles} />
-                            )}
+                            <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
+                              files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
+                              uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
+                              canUpload={isEngineer} onUpload={uploadEngFiles} />
+                            <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
+                              files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
+                              uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
+                              canUpload={isEngineer} onUpload={uploadEngFiles} />
                           </div>
                         </>
                       );
