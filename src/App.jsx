@@ -413,12 +413,13 @@ function calcTotals(items, cgstPct, sgstPct, igstPct) {
 
 // ─── ROLE HELPERS ──────────────────────────────────────────────────
 const ROLE_META = {
-  ADMIN:       { label: "Admin",       color: "#7c3aed", bg: "#ede9fe" },
-  ENGINEER:    { label: "Engineer",    color: "#0369a1", bg: "#e0f2fe" },
-  PROCUREMENT: { label: "Procurement", color: "#065f46", bg: "#d1fae5" },
-  VP:          { label: "VP",          color: "#b45309", bg: "#fef3c7" },
-  OH:          { label: "OH",          color: "#be185d", bg: "#fce7f3" },
-  CEO:         { label: "CEO",         color: "#dc2626", bg: "#fee2e2" },
+  ADMIN:           { label: "Admin",           color: "#7c3aed", bg: "#ede9fe" },
+  ENGINEER:        { label: "Engineer",        color: "#0369a1", bg: "#e0f2fe" },
+  PROCUREMENT:     { label: "Procurement",     color: "#065f46", bg: "#d1fae5" },
+  VP:              { label: "VP",              color: "#b45309", bg: "#fef3c7" },
+  OH:              { label: "OH",              color: "#be185d", bg: "#fce7f3" },
+  CEO:             { label: "CEO",             color: "#dc2626", bg: "#fee2e2" },
+  PROJECT_MANAGER: { label: "Project Manager", color: "#0f766e", bg: "#ccfbf1" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -1157,7 +1158,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, onNavigate, onManageUsers }) {
+function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
   const modules = [
     {
       key: "entries",
@@ -1175,7 +1176,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       icon: Building2,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isProcurement || isVP || isOH || isCeo,
+      visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager,
     },
     {
       key: "projects",
@@ -1184,7 +1185,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       icon: FolderKanban,
       gradient: "linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)",
       shadow: "rgba(139,92,246,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo,
+      visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
       key: "account",
@@ -1193,7 +1194,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       icon: BarChart2,
       gradient: "linear-gradient(135deg, #92400e 0%, #f59e0b 100%)",
       shadow: "rgba(245,158,11,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo,
+      visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
       key: "hr",
@@ -1285,12 +1286,13 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
 
 // ─── DASHBOARD (always mounted when user is set — no conditional hooks) ───
 function Dashboard({ user, onLogout: handleLogout }) {
-  const isAdmin       = user?.role === "ADMIN";
-  const isProcurement = user?.role === "PROCUREMENT";
-  const isEngineer    = user?.role === "ENGINEER";
-  const isVP          = user?.role === "VP";
-  const isOH          = user?.role === "OH";
-  const isCeo         = user?.role === "CEO";
+  const isAdmin          = user?.role === "ADMIN";
+  const isProcurement    = user?.role === "PROCUREMENT";
+  const isEngineer       = user?.role === "ENGINEER";
+  const isVP             = user?.role === "VP";
+  const isOH             = user?.role === "OH";
+  const isCeo            = user?.role === "CEO";
+  const isProjectManager = user?.role === "PROJECT_MANAGER";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
@@ -2514,9 +2516,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
             { key: "hr",         label: "HR",         icon: null },
             { key: "operations", label: "Operations",       icon: null },
             { key: "chatbot",    label: "Happizo Chat Bot", icon: null },
-            ...((isAdmin || isProcurement || isVP || isOH || isCeo) ? [{ key: "vendors",  label: "Vendors",  icon: null }] : []),
-            ...((isAdmin || isVP || isOH || isCeo)                 ? [{ key: "projects", label: "Projects", icon: null }] : []),
-            ...((isAdmin || isVP || isOH || isCeo)                 ? [{ key: "account",  label: "Account",  icon: null }] : []),
+            ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [{ key: "vendors",  label: "Vendors",  icon: null }] : []),
+            ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "projects", label: "Projects", icon: null }] : []),
+            ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "account",  label: "Account",  icon: null }] : []),
           ].map(t => {
             const active = mainTab === t.key;
             return (
@@ -2542,7 +2544,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {mainTab === "home" && (
           <HomeDashboard
             isAdmin={isAdmin} isProcurement={isProcurement}
-            isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo}
+            isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
             onNavigate={key => {
               setMainTab(key);
               if (key === "vendors") loadVendorsTab();
@@ -2665,7 +2667,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Req Date","dateOfRequirement"],
                     ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
-                    ...((isAdmin || isProcurement || isVP || isOH || isCeo) ? [["PWJ","pwjIssued"]] : []),
+                    ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [["PWJ","pwjIssued"]] : []),
                     ...(!isEngineer ? [["ACK","ack"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
@@ -2716,8 +2718,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {!isEngineer && (
                       <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
-                    {/* PWJ — visible to Admin, Procurement, VP, OH, CEO; editable only by Admin/Procurement */}
-                    {(isAdmin || isProcurement || isVP || isOH || isCeo) && (
+                    {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
+                    {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
                       <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                         {(isAdmin || isProcurement) ? (
                           <button
@@ -4996,6 +4998,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <option value="VP">VP</option>
                     <option value="OH">OH</option>
                     <option value="CEO">CEO</option>
+                    <option value="PROJECT_MANAGER">Project Manager</option>
                   </select>
                 </div>
                 <div style={{ paddingTop: 16 }}>
