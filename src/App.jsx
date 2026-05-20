@@ -2461,6 +2461,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-hright button { padding: 5px 8px !important; font-size: 10px !important; }
           .app-statsrow > div { min-width: 88px !important; }
         }
+        @media (max-width: 768px) {
+          .doc-modal-overlay { align-items: flex-start !important; }
+          .doc-modal-box {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+          }
+        }
       `}</style>
 
       <div style={s.root}>
@@ -4476,8 +4487,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── DOCUMENT PREVIEW MODAL ─── */}
       {docModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }} onClick={() => setDocModal(null)}>
-          <div style={{ background: "#fff", borderRadius: 20, width: "96%", maxWidth: 760, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.32)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+        <div className="doc-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }} onClick={() => setDocModal(null)}>
+          <div className="doc-modal-box" style={{ background: "#fff", borderRadius: 20, width: "96%", maxWidth: 760, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.32)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
 
             {/* Header */}
             {(() => {
