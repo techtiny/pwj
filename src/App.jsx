@@ -2257,6 +2257,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Engineer: save delivered date ──
   const saveEngDeliveredDate = async () => {
     if (!docModal || !engDeliveredDate) return;
+    if ((isEngineer || isProjectManager) && engDeliveredDate > new Date().toISOString().split("T")[0]) {
+      showToast("Delivered date cannot be a future date", "error");
+      return;
+    }
     setEngDateSaving(true);
     try {
       const r = await api.deliveryUpdate(docModal.entry.id, {
@@ -4772,13 +4776,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (
                         <>
                           {/* Delivered Date — engineer only */}
-                          {isEngineer && (
+                          {(isEngineer || isProjectManager) && (
                             <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
                               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                                 📅 Delivered Date
                               </div>
                               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                                 <input type="date" value={engDeliveredDate} onChange={ev => setEngDeliveredDate(ev.target.value)}
+                                  max={new Date().toISOString().split("T")[0]}
                                   style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
                                 <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
                                   style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
