@@ -4782,8 +4782,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 📅 Delivered Date
                               </div>
                               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                                <input type="date" value={engDeliveredDate} onChange={ev => setEngDeliveredDate(ev.target.value)}
+                                <input type="date" value={engDeliveredDate}
                                   max={new Date().toISOString().split("T")[0]}
+                                  onChange={ev => {
+                                    const today = new Date().toISOString().split("T")[0];
+                                    setEngDeliveredDate(ev.target.value > today ? today : ev.target.value);
+                                  }}
                                   style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
                                 <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
                                   style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
