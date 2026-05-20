@@ -1530,6 +1530,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchEntries]);
 
+  // Track whether user is actively editing — pause polling during edits
+  const pollingPausedRef = useRef(false);
+  useEffect(() => {
+    pollingPausedRef.current = !!(
+      createModal || editingEntry || approvalModal || assignModal ||
+      userMgmtModal || projectMgmtModal || addVendorPage || docEditMode
+    );
+  }, [createModal, editingEntry, approvalModal, assignModal, userMgmtModal, projectMgmtModal, addVendorPage, docEditMode]);
+
+  // Poll every 30 seconds — keeps all users in sync without a page refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden && !pollingPausedRef.current) fetchEntries();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchEntries]);
+
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => { setPage(0); fetchEntries(); }, 400);
