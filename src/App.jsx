@@ -2525,6 +2525,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-hright button { padding: 5px 8px !important; font-size: 10px !important; }
           .app-statsrow > div { min-width: 88px !important; }
         }
+        .doc-modal-footer {
+          max-height: 42vh;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+        }
         @media (max-width: 768px) {
           .doc-modal-overlay { align-items: flex-start !important; }
           .doc-modal-box {
@@ -2534,6 +2540,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
             max-height: 100vh !important;
             border-radius: 0 !important;
             margin: 0 !important;
+          }
+          .doc-modal-footer {
+            max-height: 50vh !important;
           }
         }
       `}</style>
@@ -4946,7 +4955,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   })()}
 
                   {/* Footer actions */}
-                  <div style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
+                  <div className="doc-modal-footer" style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
 
                     {/* Upload section — shown when VP_APPROVED; engineers upload, others view only */}
                     {e.docStatus === "VP_APPROVED" && (() => {
