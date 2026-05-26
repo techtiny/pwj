@@ -349,6 +349,7 @@ function parseDocData(entry) {
     deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
     vendorAddress1: "", vendorAddress2: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
+    joTerms: "",
     vendorInvoices: [], deliveryDocs: [],
     signatureEnabled: false, signatureUrl: "",
   };
@@ -598,7 +599,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Happizo CloudDesk</span>
             </div>
             <div style={{ color:"rgba(255,255,255,.4)", fontSize:13.5, marginTop:10, lineHeight:1.6 }}>
-              Purchase Work Journal
+              Infrastructure & Solutions
             </div>
           </div>
 
@@ -1613,10 +1614,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Create / Edit submit ──
   const submitCreate = async () => {
-    if (!createForm.projectName || !createForm.materialRequired) {
+    if (!createForm.projectName || !createForm.materialRequired || !createForm.specification) {
       showToast("Fill required fields", "error"); return;
     }
-    if (isEngineer && (!createForm.specification || !createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
+    if (isEngineer && (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
       showToast("Please fill all required fields", "error"); return;
     }
     setCreateLoading(true);
@@ -2056,7 +2057,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
     const docNum    = e.docNumber || autoDocNumber(e);
     const today     = fmtDate(new Date().toISOString());
-    const terms     = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+    const terms     = e.pwjType === "JO" ? null : (e.pwjType === "PO" ? PO_TERMS : WO_TERMS);
     const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
     const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -2074,7 +2075,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </tr>`;
       }).join("");
 
-    const termRows = terms.map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
+    const termRows = e.pwjType === "JO"
+      ? `<tr><td style="padding:4px 8px;font-size:11px;color:#333;white-space:pre-line;">${docData.joTerms || ""}</td></tr>`
+      : terms.map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
@@ -2085,14 +2088,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
     <style>
-      @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
-      * { box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0; padding: 0; line-height: 1.5; }
+      @page { size: A4 portrait; margin: 12mm 14mm 12mm 14mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0 auto; padding: 12mm 14mm; line-height: 1.5; width: 210mm; max-width: 100%; }
       table { width: 100%; border-collapse: collapse; }
-      tr { page-break-inside: avoid; }
+      thead { display: table-header-group; }
+      tr { page-break-inside: avoid; break-inside: avoid; }
       .sec { margin-bottom: 12px; }
       .stitle { font-weight:700; border-bottom:1px solid #111; padding-bottom:4px; margin:12px 0 6px; }
-      @media print { button { display: none; } }
+      .page-break { page-break-before: always; break-before: page; padding-top: 4px; }
+      .no-break { page-break-inside: avoid; break-inside: avoid; }
+      @media print { button { display: none; } body { padding: 0; width: 100%; max-width: none; margin: 0; } }
     </style></head><body>
 
     <!-- HEADER -->
@@ -2136,47 +2142,58 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
     <div class="sec">
       <div>Dear Team,</div>
-      <div>We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
+      <div>${e.pwjType === "JO"
+        ? "Please find below job work as per requirement."
+        : `We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : "work order"} to you with all details below and annexed.`
+      }</div>
     </div>
 
-    <!-- ITEMS TABLE -->
-    <table class="sec">
-      <thead><tr>
-        <th style="${thBase}text-align:center;width:36px;">S.No</th>
-        <th style="${thBase}text-align:left;width:38%;">Item</th>
-        <th style="${thBase}text-align:center;width:52px;">Unit</th>
-        <th style="${thBase}text-align:center;width:52px;">Qty</th>
-        <th style="${thBase}text-align:right;width:80px;">Rate</th>
-        <th style="${thBase}text-align:right;width:88px;">Amount</th>
-      </tr></thead>
-      <tbody>
-        ${itemRows}
+    <!-- ITEMS TABLE (rows can paginate freely; header repeats on each page) -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
+      <thead>
         <tr>
-          <td colspan="4" rowspan="5" style="${tdBase}border-right:1px solid #ddd;vertical-align:top;">
+          <th style="${thBase}text-align:center;width:5%;">S.No</th>
+          <th style="${thBase}text-align:left;width:40%;">Item / Description</th>
+          <th style="${thBase}text-align:center;width:8%;">Unit</th>
+          <th style="${thBase}text-align:center;width:8%;">Qty</th>
+          <th style="${thBase}text-align:right;width:17%;">Rate</th>
+          <th style="${thBase}text-align:right;width:22%;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <!-- TOTALS (always kept together, never split across pages) -->
+    <div class="no-break" style="margin-bottom:12px;border-top:2px solid #111;">
+      ${e.pwjType === "JO" ? `
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="width:60%;padding:8px 10px;vertical-align:top;border-right:1px solid #ddd;border-bottom:2px solid #111;">
             <div style="font-weight:700;font-size:11px;">Amount in words</div>
             <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
           </td>
-          <td style="${tdBase}text-align:right;font-weight:600;">Sub Total</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.subTotal)}</td>
+          <td style="text-align:right;padding:7px 10px;font-weight:700;border-bottom:2px solid #111;vertical-align:middle;">Total</td>
+          <td style="text-align:right;padding:7px 10px;font-weight:700;border-bottom:2px solid #111;vertical-align:middle;width:100px;">${fmtTotal(totals.total)}</td>
         </tr>
+      </table>` : `
+      <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td style="${tdBase}text-align:right;">CGST (${docData.cgstPct}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.cgst)}</td>
+          <td style="width:55%;padding:8px 10px;vertical-align:top;border-right:1px solid #ddd;border-bottom:1px solid #ddd;">
+            <div style="font-weight:700;font-size:11px;">Amount in words</div>
+            <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
+          </td>
+          <td style="padding:0;vertical-align:top;width:45%;">
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;font-weight:600;">Sub Total</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;width:90px;">${fmtCcy(totals.subTotal)}</td></tr>
+              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">CGST (${docData.cgstPct}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.cgst)}</td></tr>
+              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">SGST (${docData.sgstPct}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.sgst)}</td></tr>
+              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">IGST (${docData.igstPct || 0}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.igst)}</td></tr>
+              <tr><td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td><td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td></tr>
+            </table>
+          </td>
         </tr>
-        <tr>
-          <td style="${tdBase}text-align:right;">SGST (${docData.sgstPct}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.sgst)}</td>
-        </tr>
-        <tr>
-          <td style="${tdBase}text-align:right;">IGST (${docData.igstPct || 0}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.igst)}</td>
-        </tr>
-        <tr>
-          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
-        </tr>
-      </tbody>
-    </table>
+      </table>`}
+    </div>
 
     <!-- INFO GRID -->
     <table class="sec" style="border:1px solid #ddd;">
@@ -2196,24 +2213,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
       </tr>
     </table>
 
-    <div class="stitle">General Terms</div>
+    <div class="stitle">${e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
     <table class="sec"><tbody>${termRows}</tbody></table>
 
-    <!-- PAGE 2 START -->
-    <div style="page-break-before:always;padding-top:12px;">
-      <div class="stitle" style="margin-top:0;">Payment Terms</div>
+    ${e.pwjType !== "JO" ? `
+    <div class="sec">
+      <div class="stitle">Payment Terms</div>
       <div class="sec">${stageRows}</div>
-
       <div class="sec" style="font-size:11px;padding-left:8px;">
         <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
         <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
         <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
       </div>
+    </div>` : ""}
 
     <!-- SIGNATURE -->
-    <div class="sec" style="page-break-inside:avoid;margin-top:16px;">
+    <div class="sec no-break" style="margin-top:16px;">
       <div>For <strong>${COMPANY_INFO.name}</strong></div>
-      <table style="margin-top:16px;">
+      <table style="margin-top:16px;table-layout:fixed;">
         <tr>
           <td style="width:50%;padding:0;vertical-align:top;">
             ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
@@ -2226,14 +2243,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </tr>
       </table>
     </div>
-    </div>
     </body></html>`;
+
   };
 
   const downloadDoc = () => {
     if (!docModal) return;
     const html = buildDocHtml(docModal.entry, docModal.vendor);
-    const win = window.open("", "_blank", "width=900,height=700");
+    const win = window.open("", "_blank", "width=820,height=900");
     if (!win) return;
     win.document.write(html + `<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>`);
     win.document.close();
@@ -2554,7 +2571,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
               <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : "Procurement Tracker"}</div>
-              <div style={s.hSub}>Purchase Work Journal · Procurement</div>
+              <div style={s.hSub}>Infrastructure & Solutions</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
@@ -2842,7 +2859,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       style={{ cursor: "pointer" }} />
                   </th>
                   {[
-                    ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
+                    ["S.No","—"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Material","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ["OH Approval","approvalStatus"],
@@ -2870,7 +2887,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <input type="checkbox" checked={selectedIds.has(row.id)}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: "pointer" }} />
                     </td>
-                    <td style={{ ...s.td, color: "#94a3b8", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td style={{ ...s.td, color: "#94a3b8", fontSize: 12, textAlign: "center" }} onClick={() => setDetailRow(row)}>{page * PAGE_SIZE + idx + 1}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.updatedAt || row.timestamp)}
                     </td>
@@ -3558,7 +3575,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           value={projectMgmtForm.clientGstNo} onChange={e => setF("clientGstNo", e.target.value)} />
                       </div>
                       <div>
-                        {lbl("Client Address")}
+                        {lbl("Site Address")}
                         <textarea rows={3} style={{ ...inpSt, resize: "none" }} placeholder="Full address…"
                           value={projectMgmtForm.clientAddress}
                           onChange={e => {
@@ -3578,7 +3595,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               setF("billingSameAsClient", e.target.checked);
                               if (e.target.checked) setF("billingAddress", projectMgmtForm.clientAddress);
                             }} />
-                          Same as Client Address
+                          Same as Site Address
                         </label>
                       </div>
                     </div>
@@ -4129,7 +4146,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 5. Specification */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification{isEngineer && " *"}</label>
+                  <label style={s.label}>Specification *</label>
                   <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
@@ -4698,7 +4715,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     const proj_   = managedProjects.find(p => p.name === e.projectName) || null;
                     const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(e); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
-                    const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+                    const terms   = e.pwjType === "JO" ? null : (e.pwjType === "PO" ? PO_TERMS : WO_TERMS);
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
                     const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
                     const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 11, textAlign: "left" };
@@ -4889,18 +4906,30 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </div>
                           </div>
 
-                          {/* --- GENERAL TERMS --- */}
+                          {/* --- GENERAL TERMS / JO TERMS --- */}
                           <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
-                            {terms.map((t, i) => (
-                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
-                                <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
-                                <span style={{ color: "#333" }}>{t}</span>
-                              </div>
-                            ))}
+                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>{e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
+                            {e.pwjType === "JO" ? (
+                              docEditMode
+                                ? <textarea
+                                    rows={5}
+                                    value={docData.joTerms || ""}
+                                    onChange={ev => setField("joTerms", ev.target.value)}
+                                    style={{ ...inpSt, resize: "vertical", minHeight: 80 }}
+                                    placeholder="Enter terms and conditions for this job order…" />
+                                : <div style={{ fontSize: 11, color: "#333", whiteSpace: "pre-line", minHeight: 40 }}>{docData.joTerms || <span style={{ color: "#94a3b8" }}>No terms entered</span>}</div>
+                            ) : (
+                              terms.map((t, i) => (
+                                <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
+                                  <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
+                                  <span style={{ color: "#333" }}>{t}</span>
+                                </div>
+                              ))
+                            )}
                           </div>
 
-                          {/* --- PAYMENT TERMS --- */}
+                          {/* --- PAYMENT TERMS (PO / WO only) --- */}
+                          {e.pwjType !== "JO" && (
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
@@ -4917,6 +4946,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
                             </div>
                           </div>
+                          )}
 
                           {/* VP Comments banner */}
                           {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
