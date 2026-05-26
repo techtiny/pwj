@@ -2076,8 +2076,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       }).join("");
 
     const termItems = e.pwjType === "JO"
-      ? `<div style="font-size:11px;color:#333;white-space:pre-line;padding:4px 0;">${docData.joTerms || ""}</div>`
-      : terms.map((t, i) => `<div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;page-break-inside:avoid;break-inside:avoid;"><span style="font-weight:600;min-width:18px;flex-shrink:0;">${i+1}</span><span style="color:#333;">${t}</span></div>`).join("");
+      ? `<div style="font-size:11px;color:#333;white-space:pre-line;padding:4px 0;margin-bottom:14px;">${docData.joTerms || ""}</div>`
+      : terms.map((t, i) => `<div style="display:flex;gap:8px;margin-bottom:${i === terms.length - 1 ? "14px" : "5px"};font-size:11px;page-break-inside:avoid;break-inside:avoid;"><span style="font-weight:600;min-width:18px;flex-shrink:0;">${i+1}</span><span style="color:#333;">${t}</span></div>`).join("");
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
@@ -2213,11 +2213,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
       </tr>
     </table>
 
-    <div class="stitle">${e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
-    <div class="sec">${termItems}</div>
+    <div class="stitle" style="break-after:avoid;page-break-after:avoid;">${e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
+    ${termItems}
 
     ${e.pwjType !== "JO" ? `
-    <div class="sec" style="page-break-before:auto;break-before:auto;">
+    <div class="sec">
       <div class="stitle">Payment Terms</div>
       <div class="sec">${stageRows}</div>
       <div class="sec" style="font-size:11px;padding-left:8px;">
@@ -2228,7 +2228,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     </div>` : ""}
 
     <!-- SIGNATURE -->
-    <div class="sec no-break" style="margin-top:16px;">
+    <div class="sec" style="margin-top:16px;">
       <div>For <strong>${COMPANY_INFO.name}</strong></div>
       <table style="margin-top:16px;table-layout:fixed;">
         <tr>
