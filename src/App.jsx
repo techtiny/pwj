@@ -2075,9 +2075,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </tr>`;
       }).join("");
 
-    const termRows = e.pwjType === "JO"
-      ? `<tr><td style="padding:4px 8px;font-size:11px;color:#333;white-space:pre-line;">${docData.joTerms || ""}</td></tr>`
-      : terms.map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
+    const termItems = e.pwjType === "JO"
+      ? `<div style="font-size:11px;color:#333;white-space:pre-line;padding:4px 0;">${docData.joTerms || ""}</div>`
+      : terms.map((t, i) => `<div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;page-break-inside:avoid;break-inside:avoid;"><span style="font-weight:600;min-width:18px;flex-shrink:0;">${i+1}</span><span style="color:#333;">${t}</span></div>`).join("");
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
@@ -2214,10 +2214,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     </table>
 
     <div class="stitle">${e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
-    <table class="sec"><tbody>${termRows}</tbody></table>
+    <div class="sec">${termItems}</div>
 
     ${e.pwjType !== "JO" ? `
-    <div class="sec">
+    <div class="sec" style="page-break-before:auto;break-before:auto;">
       <div class="stitle">Payment Terms</div>
       <div class="sec">${stageRows}</div>
       <div class="sec" style="font-size:11px;padding-left:8px;">
