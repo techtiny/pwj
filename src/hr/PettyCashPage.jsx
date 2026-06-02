@@ -146,11 +146,11 @@ export default function PettyCashPage({ user }) {
   const displayList = viewTab === "mine" ? entries : allEntries;
 
   return (
-    <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+    <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Summary stat cards */}
       {summary && (
-        <div style={{ display: "flex", gap: 14, marginBottom: 24 }}>
+        <div className="hr-stat-flex" style={{ display: "flex", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Approved Amount",  value: fmtINR(summary.totalApproved), accent: "#059669" },
             { label: "Pending Amount",   value: fmtINR(summary.totalPending),  accent: "#d97706" },
@@ -182,7 +182,7 @@ export default function PettyCashPage({ user }) {
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
           <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New Petty Cash Entry</div>
-          <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
+          <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
 
             <div>
               <label style={LBL}>Expense Date *</label>

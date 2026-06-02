@@ -10,16 +10,9 @@ const STATUS_COLOR = {
 
 async function getLocation() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Location not supported by this browser."));
-      return;
-    }
+    if (!navigator.geolocation) { reject(new Error("Location not supported by this browser.")); return; }
     navigator.geolocation.getCurrentPosition(
-      pos => resolve({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-      }),
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
       () => reject(new Error("Location access denied. Please allow location permission and try again.")),
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
     );
@@ -31,10 +24,28 @@ async function reverseGeocode(lat, lng) {
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`);
     const d = await res.json();
     return d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  } catch {
-    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  }
+  } catch { return `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
 }
+
+const Tooltip = ({ tooltip }) => {
+  if (!tooltip) return null;
+  return (
+    <div style={{
+      position: "fixed", left: tooltip.x, top: tooltip.y,
+      transform: "translateX(-50%)",
+      background: "#1e293b", color: "#fff",
+      padding: "8px 12px", borderRadius: 8,
+      fontSize: 12, lineHeight: 1.6,
+      maxWidth: 320, zIndex: 9999,
+      pointerEvents: "none",
+      boxShadow: "0 6px 20px rgba(0,0,0,0.28)",
+      whiteSpace: "normal", wordBreak: "break-word",
+      textAlign: "center",
+    }}>
+      📍 {tooltip.text}
+    </div>
+  );
+};
 
 export default function AttendancePage({ user, adminView = false }) {
   const [today, setToday]     = useState(null);
@@ -43,6 +54,14 @@ export default function AttendancePage({ user, adminView = false }) {
   const [loading, setLoading] = useState(false);
   const [locMsg, setLocMsg]   = useState("");
   const [summary, setSummary] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
+
+  const showTip = (e, text) => {
+    if (!text) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setTooltip({ text, x: r.left + r.width / 2, y: r.bottom + 8 });
+  };
+  const hideTip = () => setTooltip(null);
 
   const username = user?.username;
 
@@ -62,7 +81,7 @@ export default function AttendancePage({ user, adminView = false }) {
 
   const loadAll = useCallback(async () => {
     try {
-      const r = await attendanceApi.getAll();
+      const r = await attendanceApi.getFieldStaff();
       setAllRec(r.data?.data || []);
     } catch (e) { console.error(e); }
   }, []);
@@ -78,24 +97,19 @@ export default function AttendancePage({ user, adminView = false }) {
       const address = await reverseGeocode(lat, lng);
       setLocMsg("");
       const accuracyNote = accuracy > 200
-        ? `\n\n⚠️ Low GPS accuracy (±${Math.round(accuracy)}m). The address shown may not be precise — move outdoors or near a window for a better signal, then try again.`
+        ? `\n\n⚠️ Low GPS accuracy (±${Math.round(accuracy)}m). Move outdoors for a better signal, then try again.`
         : "";
-      if (accuracyNote) {
-        const proceed = window.confirm(`📍 ${address}${accuracyNote}\n\nProceed anyway?`);
-        if (!proceed) return;
-      }
+      if (accuracyNote && !window.confirm(`📍 ${address}${accuracyNote}\n\nProceed anyway?`)) return;
       const r = await apiFn({ username, lat, lng, address });
       if (r.data?.success) await load();
       else alert(r.data?.message || `${label} failed`);
-    } catch (e) {
-      alert(e.message);
-    } finally { setLoading(false); setLocMsg(""); }
+    } catch (e) { alert(e.message); }
+    finally { setLoading(false); setLocMsg(""); }
   };
 
   const handleCheckIn  = () => captureAndRecord(attendanceApi.checkIn,  "Check-in");
   const handleCheckOut = () => captureAndRecord(attendanceApi.checkOut, "Check-out");
 
-  // PWJ design tokens
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
     fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
@@ -114,19 +128,25 @@ export default function AttendancePage({ user, adminView = false }) {
   });
   const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600 });
 
+  const LocCell = ({ text, maxWidth = 160 }) => (
+    <div
+      onMouseEnter={e => showTip(e, text)}
+      onMouseLeave={hideTip}
+      style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "default", maxWidth }}
+    >
+      {text || "—"}
+    </div>
+  );
+
   if (adminView) {
     return (
-      <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
-        <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>All Attendance Records</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>{allRec.length} total records</div>
+      <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+        <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>Field Staff Attendance</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Site Engineers &amp; Project Managers · {allRec.length} records</div>
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }} className="table-scroll-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
-              <tr>
-                {["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status"].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
+              <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {allRec.map(a => {
@@ -136,13 +156,11 @@ export default function AttendancePage({ user, adminView = false }) {
                     <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{a.fullName}</td>
                     <td style={TD()}>{fmtDate(a.workDate)}</td>
                     <td style={TD()}>{fmtTime(a.checkInTime)}</td>
-                    <td style={TD({ fontSize: 12, color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={a.checkInAddress}>{a.checkInAddress || "—"}</td>
+                    <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkInAddress} /></td>
                     <td style={TD()}>{fmtTime(a.checkOutTime)}</td>
-                    <td style={TD({ fontSize: 12, color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={a.checkOutAddress}>{a.checkOutAddress || "—"}</td>
+                    <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkOutAddress} /></td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
-                    <td style={TD()}>
-                      <span style={badge(s)}>{s.label}</span>
-                    </td>
+                    <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
                   </tr>
                 );
               })}
@@ -152,6 +170,7 @@ export default function AttendancePage({ user, adminView = false }) {
             </tbody>
           </table>
         </div>
+        <Tooltip tooltip={tooltip} />
       </div>
     );
   }
@@ -160,11 +179,10 @@ export default function AttendancePage({ user, adminView = false }) {
   const checkedOut = !!today?.checkOutTime;
 
   return (
-    <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+    <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
-      {/* Summary stats — PWJ statCard style */}
       {summary && (
-        <div style={{ display: "flex", gap: 14, marginBottom: 24 }}>
+        <div className="hr-stat-flex" style={{ display: "flex", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Present",  value: summary.presentDays, accent: "#059669" },
             { label: "Half Day", value: summary.halfDays,    accent: "#d97706" },
@@ -179,23 +197,19 @@ export default function AttendancePage({ user, adminView = false }) {
         </div>
       )}
 
-      {/* Today's check-in card */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px", marginBottom: 24, maxWidth: 520 }}>
+      <div className="hr-check-card" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px", marginBottom: 24, maxWidth: 520 }}>
         <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Today's Attendance</div>
         <div style={{ fontSize: 12.5, color: "#94a3b8", marginBottom: 20 }}>
           {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
         </div>
 
-        {/* Status timeline */}
         <div className="att-timeline" style={{ display: "flex", alignItems: "flex-start", gap: 0, marginBottom: 24, position: "relative" }}>
           {[
             { label: "Check In",  time: today?.checkInTime,  addr: today?.checkInAddress,  done: checkedIn },
             { label: "Check Out", time: today?.checkOutTime, addr: today?.checkOutAddress, done: checkedOut },
           ].map((step, i) => (
             <div key={i} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-              {i === 1 && (
-                <div className="att-line" style={{ position: "absolute", left: 0, right: 0, top: 18, height: 2, background: checkedIn ? "#1e3a5f" : "#e2e8f0", zIndex: 0 }} />
-              )}
+              {i === 1 && <div className="att-line" style={{ position: "absolute", left: 0, right: 0, top: 18, height: 2, background: checkedIn ? "#1e3a5f" : "#e2e8f0", zIndex: 0 }} />}
               <div style={{
                 width: 36, height: 36, borderRadius: "50%",
                 background: step.done ? "#1e3a5f" : "#f8fafc",
@@ -250,7 +264,6 @@ export default function AttendancePage({ user, adminView = false }) {
         </div>
       </div>
 
-      {/* Attendance History */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "baseline", gap: 10 }}>
           <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Attendance History</div>
@@ -259,11 +272,7 @@ export default function AttendancePage({ user, adminView = false }) {
         <div className="table-scroll-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
-              <tr>
-                {["Date","Check-In","Location","Check-Out","Duration","Status"].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
+              <tr>{["Date","Check-In","Location","Check-Out","Duration","Status"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {history.map(a => {
@@ -272,12 +281,10 @@ export default function AttendancePage({ user, adminView = false }) {
                   <tr key={a.id}>
                     <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{fmtDate(a.workDate)}</td>
                     <td style={TD()}>{fmtTime(a.checkInTime)}</td>
-                    <td style={TD({ fontSize: 12, color: "#64748b", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={a.checkInAddress}>{a.checkInAddress || "—"}</td>
+                    <td style={TD({ maxWidth: 180 })}><LocCell text={a.checkInAddress} maxWidth={180} /></td>
                     <td style={TD()}>{fmtTime(a.checkOutTime)}</td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
-                    <td style={TD()}>
-                      <span style={badge(s)}>{s.label}</span>
-                    </td>
+                    <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
                   </tr>
                 );
               })}
@@ -288,6 +295,8 @@ export default function AttendancePage({ user, adminView = false }) {
           </table>
         </div>
       </div>
+
+      <Tooltip tooltip={tooltip} />
     </div>
   );
 }

@@ -46,10 +46,10 @@ export default function HRDashboard({ user }) {
   const greeting = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
 
   return (
-    <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 148px)" }}>
+    <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 148px)" }}>
 
       {/* Hero welcome — dark navy, matches PWJ modal header palette */}
-      <div style={{
+      <div className="hr-hero" style={{
         background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
         borderRadius: 14, padding: "22px 28px", marginBottom: 24,
         display: "flex", alignItems: "center", gap: 20,
@@ -72,7 +72,7 @@ export default function HRDashboard({ user }) {
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>Not checked in yet today</div>
           )}
         </div>
-        <div style={{
+        <div className="hr-hero-icon" style={{
           width: 56, height: 56, borderRadius: 14,
           background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)",
           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
@@ -82,7 +82,7 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* KPI row — white cards with colored top border (PWJ statCard style) */}
-      <div className="kpi-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid-4 hr-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
         {[
           { label: "Present (Month)", value: attSummary?.presentDays ?? "—",  accent: "#059669" },
           { label: "Half Days",       value: attSummary?.halfDays    ?? "—",  accent: "#d97706" },
@@ -96,7 +96,7 @@ export default function HRDashboard({ user }) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isAdmin ? "1fr 1fr" : "1fr", gap: 20 }}>
+      <div className="hr-admin-grid" style={{ display: "grid", gridTemplateColumns: isAdmin ? "1fr 1fr" : "1fr", gap: 20 }}>
 
         {/* My recent leaves */}
         <div style={card}>

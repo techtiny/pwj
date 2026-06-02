@@ -28,7 +28,8 @@ export const attendanceApi = {
   getToday:   (username) => api.get(`/attendance/today/${username}`),
   getHistory: (username) => api.get(`/attendance/history/${username}`),
   getTodayAll: ()       => api.get('/attendance/today-all'),
-  getAll:     ()        => api.get('/attendance/all'),
+  getAll:        ()     => api.get('/attendance/all'),
+  getFieldStaff: ()     => api.get('/attendance/field-staff'),
   getSummary: (username) => api.get(`/attendance/summary/${username}`),
 };
 

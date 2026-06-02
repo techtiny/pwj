@@ -101,11 +101,11 @@ export default function LeavePage({ user }) {
   const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600 });
 
   return (
-    <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+    <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Summary stats — PWJ statCard style */}
       {summary && (
-        <div style={{ display: "flex", gap: 14, marginBottom: 24, maxWidth: 520 }}>
+        <div className="hr-stat-flex" style={{ display: "flex", gap: 14, marginBottom: 24, maxWidth: 520 }}>
           {[
             { label: "Pending",  value: summary.pending,  accent: "#d97706" },
             { label: "Approved", value: summary.approved, accent: "#059669" },
@@ -132,7 +132,7 @@ export default function LeavePage({ user }) {
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 560 }}>
           <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New Leave Application</div>
-          <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
+          <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
             <div>
               <label style={LBL}>Leave Type</label>
               <select style={INP()} value={form.leaveType} onChange={e => setForm(f => ({ ...f, leaveType: e.target.value }))}>

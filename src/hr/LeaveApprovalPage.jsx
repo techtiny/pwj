@@ -46,7 +46,7 @@ export default function LeaveApprovalPage({ user }) {
   const list   = tab === "pending" ? pending : all;
 
   return (
-    <div style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+    <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Page title */}
       <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>Leave Approvals</div>
@@ -88,8 +88,8 @@ export default function LeaveApprovalPage({ user }) {
             const isProcessing = processing === l.id + "approve" || processing === l.id + "reject";
             const initials = (l.fullName || l.username || "?").charAt(0).toUpperCase();
             return (
-              <div key={l.id} style={{ ...card, padding: "20px 24px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
+              <div key={l.id} className="hr-approval-card" style={{ ...card, padding: "20px 24px" }}>
+                <div className="hr-approval-body" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
 
                   {/* Employee info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -110,7 +110,7 @@ export default function LeaveApprovalPage({ user }) {
                       <span style={badge(s)}>{s.label}</span>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: 13 }}>
+                    <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: 13 }}>
                       <div><span style={{ color: "#94a3b8" }}>Type: </span><strong style={{ color: "#0f172a" }}>{l.leaveType}</strong></div>
                       <div><span style={{ color: "#94a3b8" }}>From: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
                       <div><span style={{ color: "#94a3b8" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>
@@ -131,7 +131,7 @@ export default function LeaveApprovalPage({ user }) {
 
                   {/* Action area */}
                   {l.status === "PENDING" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 220 }}>
+                    <div className="hr-approval-action" style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 220 }}>
                       <textarea
                         value={commentMap[l.id] || ""}
                         onChange={e => setCommentMap(m => ({ ...m, [l.id]: e.target.value }))}
