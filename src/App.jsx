@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
+import HRSection from "./hr/HRSection";
 import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot } from "lucide-react";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
@@ -2580,19 +2581,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <span style={{ background: roleMeta.bg, color: roleMeta.color, borderRadius: 4, padding: "1px 7px", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3 }}>{roleMeta.label}</span>
               <span style={{ color: "#0f172a", fontSize: 12.5, fontWeight: 600 }}>{user.fullName || user.username}</span>
             </div>
-            {(isAdmin || isProcurement) && (
+            {mainTab !== "hr" && (isAdmin || isProcurement) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV}>↓ Export</button>
             )}
-            {(isAdmin || isProcurement || isOH || isVP || isCeo) && (
+            {mainTab !== "hr" && (isAdmin || isProcurement || isOH || isVP || isCeo) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPending}>Pending</button>
             )}
-            {isVP && (
+            {mainTab !== "hr" && isVP && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPendingDocs}>Doc Approvals</button>
             )}
-            {(isAdmin || isVP || isOH) && (
+            {mainTab !== "hr" && (isAdmin || isVP || isOH) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openUserMgmt}>Manage Users</button>
             )}
-            {(isAdmin || isVP) && (
+            {mainTab !== "hr" && (isAdmin || isVP) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={async () => {
                 showToast("Sending backup…", "info");
                 try {
@@ -2602,7 +2603,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 } catch { showToast("Backup failed", "error"); }
               }}>💾 Backup Now</button>
             )}
-            {!isCeo && (
+            {mainTab !== "hr" && !isCeo && (
               <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
                 setEditingEntry(null);
                 setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
@@ -2624,7 +2625,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
             ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [{ key: "vendors",  label: "Vendors",  icon: null }] : []),
             ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "projects", label: "Projects", icon: null }] : []),
             ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "account",  label: "Account",  icon: null }] : []),
-          ].map(t => {
+          ].filter(t => mainTab !== "hr" || t.key === "home" || t.key === "hr")
+          .map(t => {
             const active = mainTab === t.key;
             return (
               <button key={t.key}
@@ -2683,17 +2685,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </div>
         )}
 
-        {mainTab === "hr" && (
-          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#be185d,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(236,72,153,0.35)" }}>
-              <UserCog size={32} color="#fff" strokeWidth={1.8} />
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>HR Module</div>
-              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — Human Resources management</div>
-            </div>
-          </div>
-        )}
+        {mainTab === "hr" && <HRSection user={user} />}
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
