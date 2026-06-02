@@ -4,6 +4,10 @@ const BASE = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/hr`
   : '/api/v1/hr';
 
+const PROJECTS_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/projects`
+  : '/api/v1/projects';
+
 const UPLOAD_BASE = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/upload`
   : '/api/v1/upload';
@@ -53,6 +57,10 @@ export const pettyCashApi = {
   reject:     (id, data)       => api.put(`/petty-cash/${id}/reject`, data),
   delete:     (id, username)   => api.delete(`/petty-cash/${id}?username=${username}`),
   getSummary: (username)       => api.get(`/petty-cash/summary/${username}`),
+};
+
+export const projectsApi = {
+  getActive: () => axios.get(`${PROJECTS_BASE}/active`),
 };
 
 export function fmtTime(dt) {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { pettyCashApi, uploadDocument, attachmentFullUrl, fmtDate } from "./hrApi";
+import { pettyCashApi, projectsApi, uploadDocument, attachmentFullUrl, fmtDate } from "./hrApi";
 
 const CATEGORIES   = ["TRAVEL", "FOOD", "OFFICE_SUPPLIES", "UTILITIES", "MAINTENANCE", "OTHERS"];
 const PAYMENT_MODES = ["CASH", "UPI", "CARD", "OTHER"];
@@ -12,6 +12,7 @@ const STATUS_CFG = {
 
 const EMPTY_FORM = {
   expenseDate: new Date().toISOString().split("T")[0],
+  projectName: "",
   category: "TRAVEL",
   description: "",
   amount: "",
@@ -35,6 +36,7 @@ export default function PettyCashPage({ user }) {
   const [viewTab, setViewTab]     = useState("mine");   // "mine" | "all"
   const [commentMap, setCommentMap] = useState({});
   const [processing, setProcessing] = useState(null);
+  const [projects, setProjects]   = useState([]);
 
   const username = user?.username;
 
@@ -56,11 +58,15 @@ export default function PettyCashPage({ user }) {
   useEffect(() => {
     load();
     if (isApprover) loadAll();
+    projectsApi.getActive()
+      .then(r => setProjects(r.data?.data || []))
+      .catch(() => {});
   }, [load, loadAll, isApprover]);
 
   const validate = () => {
     const e = {};
     if (!form.expenseDate) e.expenseDate = "Required";
+    if (!form.projectName) e.projectName = "Select a project";
     if (!form.description.trim()) e.description = "Required";
     if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) e.amount = "Enter a valid amount";
     return e;
@@ -201,6 +207,18 @@ export default function PettyCashPage({ user }) {
               {errors.amount && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
             </div>
 
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={LBL}>Project *</label>
+              <select style={INP(errors.projectName)} value={form.projectName}
+                onChange={e => setForm(f => ({ ...f, projectName: e.target.value }))}>
+                <option value="">— Select project —</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+              {errors.projectName && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
+            </div>
+
             <div>
               <label style={LBL}>Category</label>
               <select style={INP()} value={form.category}
@@ -302,7 +320,7 @@ export default function PettyCashPage({ user }) {
                 <tr>
                   {[
                     ...(viewTab === "all" ? ["Employee"] : []),
-                    "Date", "Category", "Description", "Amount", "Mode", "Status", "Receipt", "Action",
+                    "Date", "Project", "Category", "Description", "Amount", "Mode", "Status", "Receipt", "Action",
                   ].map(h => <th key={h} style={TH}>{h}</th>)}
                 </tr>
               </thead>
@@ -317,6 +335,11 @@ export default function PettyCashPage({ user }) {
                         <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{entry.fullName}</td>
                       )}
                       <td style={TD({ whiteSpace: "nowrap" })}>{fmtDate(entry.expenseDate)}</td>
+                      <td style={TD({ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
+                        {entry.projectName
+                          ? <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>{entry.projectName}</span>
+                          : <span style={{ color: "#cbd5e1" }}>—</span>}
+                      </td>
                       <td style={TD()}>
                         <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
                           {entry.category.replace(/_/g, " ")}
