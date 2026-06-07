@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut } from "lucide-react";
+import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot } from "lucide-react";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -237,6 +238,8 @@ const api = {
   }).then(r => r.json()),
   toggleVendorEmail: (id) => fetch(`${API_BASE}/entries/${id}/toggle-vendor-email`, { method: "PATCH" }).then(r => r.json()),
   triggerBackup: () => fetch(`${REPORT_BASE}/trigger-backup`, { method: "POST" }).then(r => r.json()),
+  downloadBackup: () => fetch(`${REPORT_BASE}/download-backup`),
+  restoreBackup: (file) => { const fd = new FormData(); fd.append("file", file); return fetch(`${REPORT_BASE}/restore`, { method: "POST", body: fd }).then(r => r.json()); },
   uploadDocument: (file) => {
     const form = new FormData();
     form.append("file", file);
@@ -251,7 +254,14 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(r => r.json()),
+  splitByVendor: (id, splits) =>
+    fetch(`${API_BASE}/entries/${id}/split-by-vendor`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(splits),
+    }).then(r => r.json()),
   getManagedProjects: () => fetch(PROJECT_BASE).then(r => r.json()),
+  getBudgetSummary: () => fetch(`${API_BASE}/pwj/budget-summary`).then(r => r.json()),
   getActiveProjects: () => fetch(`${PROJECT_BASE}/active`).then(r => r.json()),
   getProjectClients: () => fetch(`${PROJECT_BASE}/clients`).then(r => r.json()),
   createProject: (body) => fetch(PROJECT_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
@@ -347,10 +357,9 @@ function parseDocData(entry) {
     ],
     amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
     completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
-    deliveryAddress: "", contactDetails: "", kindAttn: "", msme: "", panNumber: "", gstNumber: "",
+    deliveryAddress: "", contactDetails: "", kindAttn: "", kindAttnSalutation: "", msme: "", panNumber: "", gstNumber: "",
     vendorAddress1: "", vendorAddress2: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
-    joTerms: "",
     vendorInvoices: [], deliveryDocs: [],
     signatureEnabled: false, signatureUrl: "",
   };
@@ -598,9 +607,6 @@ function LoginPage({ onLogin, logoutMessage }) {
             <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#fff", letterSpacing:"-0.8px", lineHeight:1.15 }}>
               Sign in to<br/>
               <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Happizo CloudDesk</span>
-            </div>
-            <div style={{ color:"rgba(255,255,255,.4)", fontSize:13.5, marginTop:10, lineHeight:1.6 }}>
-              Infrastructure & Solutions
             </div>
           </div>
 
@@ -1201,6 +1207,15 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
+      key: "sales",
+      label: "Sales",
+      desc: "Pipeline, leads, deal tracking & conversion analytics",
+      icon: TrendingUp,
+      gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
+      shadow: "rgba(16,185,129,0.35)",
+      visible: isAdmin || isVP || isOH || isCeo || isProjectManager || isProcurement,
+    },
+    {
       key: "hr",
       label: "HR",
       desc: "Human resources, attendance, payroll & team management",
@@ -1240,16 +1255,16 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
   ].filter(m => m.visible);
 
   return (
-    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
-      <div style={{ marginBottom: 40, textAlign: "center" }}>
-        <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
-        <div style={{ fontSize: 15, color: "#64748b", marginTop: 8 }}>Select a module to get started</div>
+    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
+      <div style={{ marginBottom: 32, textAlign: "center", padding: "0 8px" }}>
+        <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
+        <div style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>Select a module to get started</div>
       </div>
 
-      <div style={{
+      <div className="home-module-grid" style={{
         display: "grid",
         gridTemplateColumns: `repeat(${Math.min(modules.length, 4)}, 1fr)`,
-        gap: 24,
+        gap: 20,
         width: "100%",
         maxWidth: 960,
       }}>
@@ -1277,10 +1292,10 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
               <Icon size={32} color="#fff" strokeWidth={1.8} />
             </div>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{desc}</div>
+              <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
+              <div className="mod-desc" style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", marginTop: 4 }}>Open →</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
           </button>
         ))}
       </div>
@@ -1330,12 +1345,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [createModal, setCreateModal]     = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [editingEntry, setEditingEntry]   = useState(null); // holds entry being edited by engineer
-  const [pendingModal, setPendingModal]   = useState(false);
-  const [pendingList, setPendingList]     = useState([]);
+  const [pendingModal, setPendingModal]     = useState(false);
+  const [pendingList, setPendingList]       = useState([]);
+  const [pendingSearch, setPendingSearch]   = useState("");
+  const [pendingOHActionMap, setPendingOHActionMap] = useState({}); // { [id]: { status, comment, saving } }
   const [toast, setToast]                 = useState(null);
 
   // Approval form
-  const [approvalForm, setApprovalForm] = useState({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+  const [approvalForm, setApprovalForm] = useState({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
   const [approvalLoading, setApprovalLoading] = useState(false);
 
   // Create form
@@ -1367,9 +1384,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [vendorOcrProgress, setVendorOcrProgress] = useState(0);
   const [vendorLoading, setVendorLoading] = useState(false);
   const [assignModal, setAssignModal]     = useState(null);  // holds the PWJ row being edited
-  const [assignForm, setAssignForm]       = useState({ vendor: "", pwjType: "" });
-  const [assignVendorSearch, setAssignVendorSearch] = useState("");
-  const [showAssignVendorDrop, setShowAssignVendorDrop] = useState(false);
+  const [assignForm, setAssignForm]       = useState({ vendors: [""], pwjType: "" });
+  const [assignVendorSearches, setAssignVendorSearches] = useState([""]);
+  const [showAssignVendorDrops, setShowAssignVendorDrops] = useState([false]);
   const [approvedVendors, setApprovedVendors] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [userMgmtModal, setUserMgmtModal] = useState(false);
@@ -1379,20 +1396,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [docModal, setDocModal]           = useState(null);   // { entry, vendor }
   const [docLoading, setDocLoading]       = useState(false);
   const [docEditMode, setDocEditMode]     = useState(false);
+  const [docViewIndex, setDocViewIndex]   = useState(0);     // active PO index in multi-vendor
   const [docEditForm, setDocEditForm]     = useState({});
   const [docSaving, setDocSaving]         = useState(false);
   const [selectedIds, setSelectedIds]       = useState(new Set());
-  const [genDocModal, setGenDocModal]       = useState(false);  // vendor+pwjType picker
-  const [genDocVendor, setGenDocVendor]     = useState("");
-  const [genDocPwjType, setGenDocPwjType]   = useState("PO");
-  const [genDocSaving, setGenDocSaving]     = useState(false);
-  const [pendingDocs, setPendingDocs]     = useState([]);
+  const [genDocModal, setGenDocModal]         = useState(false);
+  const [genDocPwjType, setGenDocPwjType]     = useState("PO");
+  const [genDocItemVendors, setGenDocItemVendors] = useState({}); // { [entryId]: vendorName }
+  const [genDocApplyAll, setGenDocApplyAll]   = useState("");     // quick "same vendor for all"
+  const [genDocSaving, setGenDocSaving]       = useState(false);
+  const [pendingDocs, setPendingDocs]         = useState([]);
   const [pendingDocsModal, setPendingDocsModal] = useState(false);
   const [pendingDocsLoading, setPendingDocsLoading] = useState(false);
+  const [docApprovalSearch, setDocApprovalSearch] = useState("");
   const [vpCommentMap, setVpCommentMap]         = useState({});  // docId → comment text
   const [managedProjects, setManagedProjects] = useState([]);
+  const [budgetSummary, setBudgetSummary] = useState({});
   const [projectMgmtModal, setProjectMgmtModal] = useState(false);
-  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", quoteValue: "", quoteGstPct: "18", quoteDocUrl: "", additionalWoValue: "", additionalWoGstPct: "18", additionalWoDocUrl: "", additionalQuoteValue: "", additionalQuoteGstPct: "18", additionalQuoteDocUrl: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
+  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientSalutation: "Mr.", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", quoteValue: "", quoteGstPct: "18", quoteDocUrl: "", additionalWoValue: "", additionalWoGstPct: "18", additionalWoDocUrl: "", additionalQuoteValue: "", additionalQuoteGstPct: "18", additionalQuoteDocUrl: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
   const [projectMgmtForm, setProjectMgmtForm] = useState(BLANK_PROJECT_FORM);
   const [editingProject, setEditingProject] = useState(null);
   const [projectMgmtLoading, setProjectMgmtLoading] = useState(false);
@@ -1488,7 +1509,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [engRemarksSaving, setEngRemarksSaving]         = useState(false);
 
   // ── Fetch data ──
+  const fetchSeqRef = useRef(0);
   const fetchEntries = useCallback(async (silent = false) => {
+    const seq = ++fetchSeqRef.current;
     if (!silent) setLoading(true);
     setError(null);
     try {
@@ -1505,6 +1528,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         ? await api.getMyEntries(user.fullName || user.username, params)
         : await api.getEntries(params);
 
+      if (fetchSeqRef.current !== seq) return; // stale response — a newer fetch is in flight
       if (res.success) {
         const d = res.data;
         setEntries(d.content);
@@ -1512,8 +1536,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         setTotalPages(d.totalPages);
         setStats({ total: d.totalElements, closed: d.totalClosed, open: d.totalOpen, proceed: d.totalProceed, hold: d.totalHold, notApproved: d.totalNotApproved });
       } else { setError(res.message); }
-    } catch { setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
-    finally { setLoading(false); }
+    } catch { if (fetchSeqRef.current === seq) setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
+    finally { if (fetchSeqRef.current === seq) setLoading(false); }
   }, [page, search, statusF, approvalF, projectF, raisedByF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user]);
 
   const fetchProjects = useCallback(async () => {
@@ -1521,7 +1545,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
   }, []);
 
   const fetchManagedProjects = useCallback(async () => {
-    try { const r = await api.getManagedProjects(); if (r.success) setManagedProjects(r.data); } catch {}
+    try {
+      const [r, bs] = await Promise.all([api.getManagedProjects(), api.getBudgetSummary()]);
+      if (r.success) setManagedProjects(r.data);
+      if (bs.success) setBudgetSummary(bs.data || {});
+    } catch {}
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -1560,18 +1588,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
   useEffect(() => {
     if (!BACKEND_BASE) return;
     let es;
+    let retryDelay = 3000;
+    let retryTimer;
     const connect = () => {
       es = new EventSource(`${BACKEND_BASE}/api/v1/pwj/events`);
       es.addEventListener("update", () => {
+        retryDelay = 3000; // reset backoff on successful message
         if (!document.hidden && !editingRef.current) fetchEntries(true);
       });
+      es.addEventListener("ping", () => { retryDelay = 3000; }); // heartbeat resets backoff
       es.onerror = () => {
         es.close();
-        setTimeout(connect, 5000); // reconnect after 5 s if dropped
+        retryTimer = setTimeout(() => {
+          retryDelay = Math.min(retryDelay * 2, 30000); // cap at 30 s
+          connect();
+        }, retryDelay);
       };
     };
     connect();
-    return () => es && es.close();
+    return () => { es && es.close(); clearTimeout(retryTimer); };
   }, [fetchEntries]);
 
   // Fallback poll every 60 s — catches missed SSE events (tab backgrounded, network blip)
@@ -1595,7 +1630,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Approval submit ──
   const submitApproval = async () => {
-    if (!approvalForm.approvedBy.trim()) { showToast("Please enter approver name", "error"); return; }
     if (isOH && approvalForm.approvalStatus !== "PROCEED" && !approvalForm.comment.trim()) {
       showToast("Remarks are mandatory when not approving", "error"); return;
     }
@@ -1615,10 +1649,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Create / Edit submit ──
   const submitCreate = async () => {
-    if (!createForm.projectName || !createForm.materialRequired || !createForm.specification) {
+    if (!createForm.projectName || !createForm.materialRequired) {
       showToast("Fill required fields", "error"); return;
     }
-    if (isEngineer && (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
+    if (isEngineer && (!createForm.specification || !createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
       showToast("Please fill all required fields", "error"); return;
     }
     setCreateLoading(true);
@@ -1846,9 +1880,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Assign Vendor / PWJ Type ──
   const openAssign = async (row) => {
-    setAssignForm({ vendor: row.vendor || "", pwjType: row.pwjType || "" });
-    setAssignVendorSearch(row.vendor || "");
-    setShowAssignVendorDrop(false);
+    const vendorList = row.vendor ? [row.vendor] : [""];
+    setAssignForm({ vendors: vendorList, pwjType: row.pwjType || "" });
+    setAssignVendorSearches([...vendorList]);
+    setShowAssignVendorDrops(vendorList.map(() => false));
     setAssignModal(row);
     if (approvedVendors.length === 0) {
       try {
@@ -1862,16 +1897,31 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!assignModal) return;
     setAssignLoading(true);
     try {
+      const vendors = assignForm.vendors.filter(v => v.trim());
+      const uniqueVendors = [...new Set(vendors.map(v => v.toLowerCase()))];
+      if (uniqueVendors.length < vendors.length) {
+        showToast("Each vendor must be unique — duplicate vendors are not allowed.", "error");
+        setAssignLoading(false);
+        return;
+      }
+      const firstVendor = vendors[0] || null;
+      let docData = null;
+      if (vendors.length > 1) {
+        docData = JSON.stringify({
+          multiVendor: true,
+          docs: vendors.map(v => ({ vendor: v, items: [{ item: "", unit: "", qty: "", rate: "" }] }))
+        });
+      }
       const r = await api.procurementUpdate(assignModal.id, {
-        vendor:  assignForm.vendor  || null,
+        vendor:  firstVendor,
         pwjType: assignForm.pwjType || null,
+        ...(docData ? { docData } : {}),
       });
       if (r.success) {
-        const updatedEntry = { ...assignModal, vendor: assignForm.vendor, pwjType: assignForm.pwjType };
+        const updatedEntry = { ...assignModal, vendor: firstVendor, pwjType: assignForm.pwjType, ...(docData ? { docData } : {}) };
         showToast("Vendor & PWJ Type assigned ✅");
         setAssignModal(null);
         fetchEntries();
-        // Auto-open doc preview if PWJ type is set
         if (assignForm.pwjType) openDocModal(updatedEntry);
       } else showToast(r.message || "Update failed", "error");
     } catch { showToast("Network error", "error"); }
@@ -1881,9 +1931,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Document generation ──
   const openDocModal = async (row) => {
     setDocModal({ entry: row, vendor: null });
-    // Ensure users are loaded for contact details lookup
+    setDocViewIndex(0);
     if (!allUsers.length) {
       try { const ur = await api.getUsers(); if (ur.success) setAllUsers(ur.data); } catch {}
+    }
+    if (approvedVendors.length === 0) {
+      try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
     }
     if (row.vendor) {
       try {
@@ -1897,22 +1950,66 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!docModal) return;
     setDocLoading(true);
     try {
-      const r = await api.submitDoc(docModal.entry.id);
-      if (r.success) {
-        setEntries(es => es.map(e => e.id === docModal.entry.id ? { ...e, docStatus: r.data.docStatus, docNumber: r.data.docNumber, dependency: r.data.dependency } : e));
-        showToast(`${r.data.docNumber} sent for VP approval ✅`);
-        setDocModal(null);
-      } else showToast(r.message || "Failed", "error");
+      const e = docModal.entry;
+      let parsed = null;
+      try { parsed = JSON.parse(e.docData || "{}"); } catch {}
+      const isMulti = parsed?.multiVendor && Array.isArray(parsed.docs);
+
+      if (isMulti) {
+        // Update only the current sub-doc's status in docData
+        const docs = parsed.docs.map((d, i) =>
+          i === docViewIndex ? { ...d, docStatus: "PENDING_VP_APPROVAL" } : d
+        );
+        const updatedDocData = JSON.stringify({ ...parsed, docs });
+        // Save docData + set entry-level to PENDING_VP_APPROVAL (so it appears in VP queue)
+        const saveR = await api.updateEntry(e.id, {
+          raisedBy: e.raisedBy, projectName: e.projectName,
+          approvalStatus: e.approvalStatus, status: e.status,
+          boqNo: e.boqNo, materialRequired: e.materialRequired,
+          vendor: e.vendor, pwjType: e.pwjType, pwjIssued: e.pwjIssued,
+          docData: updatedDocData, docNumber: e.docNumber || null,
+        });
+        if (!saveR.success) { showToast(saveR.message || "Failed", "error"); return; }
+        // Also update entry-level docStatus via submitDoc (idempotent — safe to call multiple times)
+        await api.submitDoc(e.id);
+        const updated = { ...e, docData: updatedDocData, docStatus: "PENDING_VP_APPROVAL", dependency: "VP Approval" };
+        setDocModal(m => ({ ...m, entry: updated }));
+        setEntries(es => es.map(en => en.id === e.id ? updated : en));
+        showToast(`PO ${docViewIndex + 1} (${docs[docViewIndex].vendor}) sent for VP approval ✅`);
+      } else {
+        const r = await api.submitDoc(e.id);
+        if (r.success) {
+          // Also submit any clubbed secondary entries so they all show PENDING_VP_APPROVAL
+          const clubbedIds = parsed?.clubbedEntryIds || [];
+          for (const linkedId of clubbedIds) {
+            await api.submitDoc(linkedId);
+          }
+          if (clubbedIds.length > 0) await fetchEntries();
+          else setEntries(es => es.map(en => en.id === e.id ? { ...en, docStatus: r.data.docStatus, docNumber: r.data.docNumber, dependency: r.data.dependency } : en));
+          showToast(`${r.data.docNumber} sent for VP approval ✅${clubbedIds.length > 0 ? ` (+ ${clubbedIds.length} clubbed entr${clubbedIds.length > 1 ? "ies" : "y"})` : ""}`);
+          setDocModal(null);
+        } else showToast(r.message || "Failed", "error");
+      }
     } catch { showToast("Network error", "error"); }
     finally { setDocLoading(false); }
   };
 
-  const startDocEdit = () => {
+  const startDocEdit = async () => {
+    if (approvedVendors.length === 0) {
+      try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
+    }
     const e = docModal.entry;
     const v = docModal.vendor;
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
     const proj = managedProjects.find(p => p.name === e.projectName) || null;
-    const data = parseDocData(e);
+    // For multi-vendor: load the active sub-doc's data so each vendor's items are independent
+    let parsedFull = null;
+    try { parsedFull = JSON.parse(e.docData || "{}"); } catch {}
+    const isMultiEdit = parsedFull?.multiVendor && Array.isArray(parsedFull.docs);
+    const sourceEntry = isMultiEdit
+      ? { ...e, vendor: parsedFull.docs[docViewIndex]?.vendor, docData: JSON.stringify(parsedFull.docs[docViewIndex] || {}) }
+      : e;
+    const data = parseDocData(sourceEntry);
     const autoDocNum = autoDocNumber(e);
     const msmeVal = v?.msmeNumber === "MSME-REGISTERED" ? "Registered" : v?.msmeNumber || "";
     const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
@@ -1933,13 +2030,98 @@ function Dashboard({ user, onLogout: handleLogout }) {
     setDocEditMode(true);
   };
 
-  const saveDocEdits = async () => {
+  const splitAndCreatePOs = async () => {
     if (!docModal) return;
     setDocSaving(true);
     try {
       const e = docModal.entry;
+      // Group items by vendor
+      const groups = {};
+      for (const item of (docEditForm.items || [])) {
+        const v = (item.vendor || "").trim() || "__unassigned__";
+        if (!groups[v]) groups[v] = [];
+        groups[v].push(item);
+      }
+      const vendorKeys = Object.keys(groups).filter(v => v !== "__unassigned__");
+      if (vendorKeys.length < 2) { showToast("Need at least 2 vendors to split", "error"); return; }
+
+      // Build multi-vendor docs structure — stored in the SAME entry
+      const docs = vendorKeys.map(vendor => ({
+        vendor,
+        items: groups[vendor],
+        cgstPct: docEditForm.cgstPct || "0",
+        sgstPct: docEditForm.sgstPct || "0",
+        igstPct: docEditForm.igstPct || "0",
+        completionDate:  docEditForm.completionDate  || "",
+        deliveryAddress: docEditForm.deliveryAddress || "",
+        contactDetails:  docEditForm.contactDetails  || "",
+        vendorAddress1:  docEditForm.vendorAddress1  || "",
+        vendorAddress2:  docEditForm.vendorAddress2  || "",
+        gstNumber:       docEditForm.gstNumber       || "",
+        docStatus: "DRAFT",
+      }));
+
+      const multiDocData = JSON.stringify({ multiVendor: true, docs });
+      const body = {
+        raisedBy: e.raisedBy, projectName: e.projectName,
+        approvalStatus: e.approvalStatus, status: e.status,
+        boqNo: e.boqNo, materialRequired: e.materialRequired,
+        specification: e.specification, brand: e.brand,
+        unit: e.unit, quantity: e.quantity, remarks: e.remarks,
+        vendor: vendorKeys[0],
+        pwjType: e.pwjType, pwjIssued: e.pwjIssued,
+        docData: multiDocData, docNumber: e.docNumber || null,
+      };
+      const r = await api.updateEntry(e.id, body);
+      if (r.success) {
+        const updated = { ...e, ...r.data, docData: multiDocData };
+        setDocEditMode(false);
+        setDocViewIndex(0);
+        setDocModal({ entry: updated, vendor: docModal.vendor });
+        await fetchEntries(true);
+        showToast(`${vendorKeys.length} vendor POs saved in this entry ✅`);
+      } else showToast(r.message || "Failed", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setDocSaving(false); }
+  };
+
+  const saveDocEdits = async (forceCombined = false) => {
+    if (!docModal) return;
+
+    // Detect multiple vendors in items
+    if (!forceCombined) {
+      const vendors = [...new Set((docEditForm.items || []).map(r => (r.vendor || "").trim()).filter(Boolean))];
+      if (vendors.length > 1) {
+        const confirmed = window.confirm(
+          `Items are assigned to ${vendors.length} different vendors:\n${vendors.join(", ")}\n\nClick OK to create ${vendors.length} separate POs (one per vendor).\nClick Cancel to save as one combined document.`
+        );
+        if (confirmed) {
+          await splitAndCreatePOs();
+          return;
+        }
+      }
+    }
+
+    const allItems = docEditForm.items || [];
+    const itemNames = allItems.map(r => (r.item || "").trim().toLowerCase()).filter(Boolean);
+    const dupeItems = itemNames.filter((n, i) => itemNames.indexOf(n) !== i);
+    if (dupeItems.length > 0) {
+      const dupeStr = [...new Set(dupeItems)].map(d => `"${d}"`).join(", ");
+      if (!window.confirm(`Duplicate items found: ${dupeStr}.\n\nEach PO item must be unique. Continue anyway?`)) return;
+    }
+
+    setDocSaving(true);
+    try {
+      const e = docModal.entry;
       const savedTotals = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct, docEditForm.igstPct);
-      const docDataStr = JSON.stringify({ ...docEditForm, amountInWords: amountToWords(savedTotals.total) });
+      // For multi-vendor: merge edited sub-doc back into its slot, preserving other vendors' data
+      let parsedTop = null;
+      try { parsedTop = JSON.parse(e.docData || "{}"); } catch {}
+      const isMultiSave = parsedTop?.multiVendor && Array.isArray(parsedTop.docs);
+      const subDocData = { ...docEditForm, amountInWords: amountToWords(savedTotals.total) };
+      const docDataStr = isMultiSave
+        ? JSON.stringify({ ...parsedTop, docs: parsedTop.docs.map((d, i) => i === docViewIndex ? { ...d, ...subDocData } : d) })
+        : JSON.stringify(subDocData);
       const body = {
         raisedBy:         e.raisedBy,
         projectName:      e.projectName,
@@ -1985,6 +2167,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const openPendingDocs = async () => {
     setPendingDocsModal(true);
     setPendingDocsLoading(true);
+    setDocApprovalSearch("");
     try {
       const r = await api.getPendingDocApprovals();
       if (r.success) setPendingDocs(r.data);
@@ -1996,6 +2179,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const comment = vpCommentMap[id] || "";
     const r = await api.approveDoc(id, comment);
     if (r.success) {
+      // Also approve any clubbed secondary entries
+      const entry = pendingDocs.find(d => d.id === id);
+      try {
+        const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
+        for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
+      } catch {}
       setPendingDocs(d => d.filter(x => x.id !== id));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
@@ -2007,6 +2196,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const comment = vpCommentMap[id] || "";
     const r = await api.rejectDoc(id, comment);
     if (r.success) {
+      // Also reject any clubbed secondary entries
+      const entry = pendingDocs.find(d => d.id === id);
+      try {
+        const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
+        for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
+      } catch {}
       setPendingDocs(d => d.filter(x => x.id !== id));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
@@ -2014,36 +2209,162 @@ function Dashboard({ user, onLogout: handleLogout }) {
     } else showToast(r.message || "Failed", "error");
   };
 
+  const handleSubDocApprove = async (entryId, subIdx) => {
+    const commentKey = `${entryId}_${subIdx}`;
+    const comment = vpCommentMap[commentKey] || "";
+    const entry = pendingDocs.find(d => d.id === entryId);
+    if (!entry) return;
+    let parsed;
+    try { parsed = JSON.parse(entry.docData || "{}"); } catch { return; }
+    if (!parsed.multiVendor || !Array.isArray(parsed.docs)) return;
+
+    const newDocs = parsed.docs.map((d, i) => i === subIdx ? { ...d, docStatus: "VP_APPROVED", vpApprovedAt: new Date().toISOString() } : d);
+    const newDocData = JSON.stringify({ ...parsed, docs: newDocs });
+
+    try {
+      const saveR = await api.updateEntry(entryId, {
+        raisedBy: entry.raisedBy, projectName: entry.projectName,
+        approvalStatus: entry.approvalStatus, status: entry.status,
+        boqNo: entry.boqNo, materialRequired: entry.materialRequired,
+        vendor: entry.vendor, pwjType: entry.pwjType, pwjIssued: !!entry.pwjIssued,
+        docData: newDocData, docNumber: entry.docNumber || null,
+      });
+      if (!saveR.success) { showToast(saveR.message || "Failed to save", "error"); return; }
+
+      const allApproved = newDocs.every(d => d.docStatus === "VP_APPROVED");
+      if (allApproved) {
+        const r = await api.approveDoc(entryId, comment);
+        if (r.success) { setPendingDocs(d => d.filter(x => x.id !== entryId)); showToast("All vendor POs approved ✅"); }
+        else showToast(r.message || "Failed", "error");
+      } else {
+        setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
+        showToast(`PO for ${parsed.docs[subIdx].vendor} approved ✅`);
+      }
+      fetchEntries();
+    } catch { showToast("Network error", "error"); }
+  };
+
+  const handleSubDocReject = async (entryId, subIdx) => {
+    const commentKey = `${entryId}_${subIdx}`;
+    const comment = vpCommentMap[commentKey] || "";
+    const entry = pendingDocs.find(d => d.id === entryId);
+    if (!entry) return;
+    let parsed;
+    try { parsed = JSON.parse(entry.docData || "{}"); } catch { return; }
+    if (!parsed.multiVendor || !Array.isArray(parsed.docs)) return;
+
+    const newDocs = parsed.docs.map((d, i) => i === subIdx ? { ...d, docStatus: "VP_REJECTED" } : d);
+    const newDocData = JSON.stringify({ ...parsed, docs: newDocs });
+
+    try {
+      await api.updateEntry(entryId, {
+        raisedBy: entry.raisedBy, projectName: entry.projectName,
+        approvalStatus: entry.approvalStatus, status: entry.status,
+        boqNo: entry.boqNo, materialRequired: entry.materialRequired,
+        vendor: entry.vendor, pwjType: entry.pwjType, pwjIssued: !!entry.pwjIssued,
+        docData: newDocData, docNumber: entry.docNumber || null,
+      });
+      const r = await api.rejectDoc(entryId, comment);
+      if (r.success) {
+        const stillPending = newDocs.some(d => d.docStatus === "PENDING_VP_APPROVAL");
+        if (stillPending) setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
+        else setPendingDocs(d => d.filter(x => x.id !== entryId));
+        showToast(`PO for ${parsed.docs[subIdx].vendor} rejected`);
+      } else showToast(r.message || "Failed", "error");
+      fetchEntries();
+    } catch { showToast("Network error", "error"); }
+  };
+
   // ── Generate Doc from multiple selected entries ───────────────────
-  const toggleSelect = (id) => setSelectedIds(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
+  const canSelectEntry = (row) =>
+    row.approvalStatus === "PROCEED" &&
+    !row.pwjIssued &&
+    row.docStatus !== "VP_APPROVED" &&
+    row.docStatus !== "PENDING_VP_APPROVAL" &&
+    !((() => { try { const p = JSON.parse(row.docData || "{}"); return p.multiVendor && Array.isArray(p.docs) && p.docs.some(d => d.docStatus === "VP_APPROVED" || d.docStatus === "PENDING_VP_APPROVAL"); } catch { return false; } })());
+
+  const toggleSelect = (id) => {
+    const row = entries.find(e => e.id === id);
+    if (!row) return;
+    if (!canSelectEntry(row)) {
+      showToast("Only OH-approved entries ready for vendor assignment can be selected", "error"); return;
+    }
+    setSelectedIds(prev => {
+      if (prev.has(id)) {
+        const next = new Set(prev); next.delete(id); return next;
+      }
+      if (prev.size > 0) {
+        const firstId = [...prev][0];
+        const firstRow = entries.find(e => e.id === firstId);
+        if (firstRow && firstRow.projectName !== row.projectName) {
+          showToast(`All selected entries must be from the same project (${firstRow.projectName})`, "error");
+          return prev;
+        }
+      }
+      const next = new Set(prev); next.add(id); return next;
+    });
+  };
 
   const submitGenDoc = async () => {
-    if (!genDocVendor || !genDocPwjType) { showToast("Pick vendor and doc type", "error"); return; }
+    const selected = entries.filter(e => selectedIds.has(e.id));
+    // Validate every item has a vendor assigned
+    const missing = selected.filter(e => !(genDocItemVendors[e.id] || "").trim());
+    if (missing.length) { showToast(`Assign a vendor to all ${missing.length} unassigned item(s)`, "error"); return; }
     setGenDocSaving(true);
     try {
-      const selected = entries.filter(e => selectedIds.has(e.id));
-      const items = selected.map(e => ({
-        item: "",
-        unit: e.unit || "",
-        qty: e.quantity != null ? String(e.quantity) : "",
-        rate: "",
-      }));
-      while (items.length < 4) items.push({ item: "", unit: "", qty: "", rate: "" });
-      const primary = selected[0];
-      const existing = parseDocData(primary);
-      const newDocData = JSON.stringify({ ...existing, items });
-      const r = await api.updateEntry(primary.id, { vendor: genDocVendor, pwjType: genDocPwjType, docData: newDocData });
-      if (r.success) {
-        const updated = { ...primary, vendor: genDocVendor, pwjType: genDocPwjType, docData: newDocData };
-        setGenDocModal(false);
-        setSelectedIds(new Set());
-        fetchEntries();
-        openDocModal(updated);
-      } else showToast(r.message || "Failed", "error");
+      // Group entries by vendor
+      const groups = {};
+      for (const e of selected) {
+        const v = genDocItemVendors[e.id].trim();
+        if (!groups[v]) groups[v] = [];
+        groups[v].push(e);
+      }
+      const vendorList = Object.keys(groups);
+      const results = [];
+      for (const vendor of vendorList) {
+        const groupEntries = groups[vendor];
+        const items = groupEntries.map(e => ({
+          item: e.materialRequired || "",
+          unit: e.unit || "",
+          qty: e.quantity != null ? String(e.quantity) : "",
+          rate: "",
+          spec: e.specification || "",
+        }));
+        while (items.length < 4) items.push({ item: "", unit: "", qty: "", rate: "", spec: "" });
+        const primary = groupEntries[0];
+        const secondaryIds = groupEntries.slice(1).map(e => e.id);
+        const existing = parseDocData(primary);
+        const newDocData = JSON.stringify({ ...existing, items, ...(secondaryIds.length > 0 ? { clubbedEntryIds: secondaryIds } : {}) });
+        const r = await api.updateEntry(primary.id, {
+          raisedBy: primary.raisedBy,
+          projectName: primary.projectName,
+          approvalStatus: primary.approvalStatus,
+          status: primary.status,
+          boqNo: primary.boqNo || null,
+          materialRequired: primary.materialRequired || items.find(i => i.item)?.item || "—",
+          vendor, pwjType: genDocPwjType, docData: newDocData,
+        });
+        if (r.success) {
+          results.push({ ...primary, vendor, pwjType: genDocPwjType, docData: newDocData });
+          // Tag each secondary entry with clubbedWithId so UI can show which entry it belongs to
+          for (const sec of groupEntries.slice(1)) {
+            const secExisting = parseDocData(sec);
+            await api.updateEntry(sec.id, {
+              raisedBy: sec.raisedBy, projectName: sec.projectName,
+              approvalStatus: sec.approvalStatus, status: sec.status,
+              boqNo: sec.boqNo || null, materialRequired: sec.materialRequired,
+              vendor: sec.vendor || null, pwjType: sec.pwjType || null,
+              pwjIssued: !!sec.pwjIssued, docNumber: sec.docNumber || null,
+              docData: JSON.stringify({ ...secExisting, clubbedWithId: primary.id }),
+            });
+          }
+        } else showToast(`Failed for vendor ${vendor}: ${r.message}`, "error");
+      }
+      setGenDocModal(false);
+      setSelectedIds(new Set());
+      await fetchEntries();
+      if (results.length === 1) openDocModal(results[0]);
+      else if (results.length > 1) showToast(`${results.length} documents created — open each entry to view`, "success");
     } finally { setGenDocSaving(false); }
   };
 
@@ -2057,8 +2378,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
     const docNum    = e.docNumber || autoDocNumber(e);
-    const today     = fmtDate(new Date().toISOString());
-    const terms     = e.pwjType === "JO" ? null : (e.pwjType === "PO" ? PO_TERMS : WO_TERMS);
+    const subDocVpDate = (() => { try { const d = JSON.parse(e.docData || "{}"); return d.vpApprovedAt || null; } catch { return null; } })();
+    const docDate   = (() => {
+      const raw = subDocVpDate || e.approvedAt || new Date().toISOString();
+      const s = String(raw).substring(0, 10);
+      const [y, m, d] = s.split("-");
+      return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
+    })();
+    const terms     = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
     const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
     const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -2076,9 +2403,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </tr>`;
       }).join("");
 
-    const termItems = e.pwjType === "JO"
-      ? `<div style="font-size:11px;color:#333;white-space:pre-line;padding:4px 0;margin-bottom:14px;">${docData.joTerms || ""}</div>`
-      : terms.map((t, i) => `<div style="display:flex;gap:8px;margin-bottom:${i === terms.length - 1 ? "14px" : "5px"};font-size:11px;page-break-inside:avoid;break-inside:avoid;"><span style="font-weight:600;min-width:18px;flex-shrink:0;">${i+1}</span><span style="color:#333;">${t}</span></div>`).join("");
+    const ANCHOR = 4; // min rows kept with header to avoid orphan
+    const termRowsAnchor = terms.slice(0, ANCHOR).map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
+    const termRowsRest   = terms.slice(ANCHOR).map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1+ANCHOR}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
     const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
       .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
 
@@ -2089,17 +2416,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
     <style>
-      @page { size: A4 portrait; margin: 12mm 14mm 12mm 14mm; }
-      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0 auto; padding: 12mm 14mm; line-height: 1.5; width: 210mm; max-width: 100%; }
+      @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; font-size: 11.5px; color: #111; margin: 0; padding: 0; line-height: 1.5; }
       table { width: 100%; border-collapse: collapse; }
-      thead { display: table-header-group; }
-      tr { page-break-inside: avoid; break-inside: avoid; }
+      tr { page-break-inside: avoid; }
       .sec { margin-bottom: 12px; }
-      .stitle { font-weight:700; border-bottom:1px solid #111; padding-bottom:4px; margin:12px 0 6px; }
-      .page-break { page-break-before: always; break-before: page; padding-top: 4px; }
-      .no-break { page-break-inside: avoid; break-inside: avoid; }
-      @media print { button { display: none; } body { padding: 0; width: 100%; max-width: none; margin: 0; } }
+      .stitle { font-weight:700; border-bottom:1px solid #111; padding-bottom:4px; margin:12px 0 6px; page-break-after: avoid; }
+      .sec-block { page-break-inside: avoid; orphans: 3; widows: 3; }
+      @media print { button { display: none; } }
     </style></head><body>
 
     <!-- HEADER -->
@@ -2112,7 +2437,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style="font-size:17px;font-weight:900;color:#111;margin-bottom:6px;">${typeName}</div>
           <table style="font-size:11px;line-height:1.7;border-collapse:collapse;margin-left:auto;">
             <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Number</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${docNum}</strong></td></tr>
-            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${today}</strong></td></tr>
+            <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">${e.pwjType} Date</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${docDate}</strong></td></tr>
             <tr><td style="white-space:nowrap;padding-right:6px;color:#555;">Project Name</td><td style="padding:0 6px;">:</td><td style="text-align:left;"><strong>${e.projectName}</strong></td></tr>
           </table>
         </td>
@@ -2129,7 +2454,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           ${(docData.vendorAddress2||(v?.city||v?.state)) ? `<div>${docData.vendorAddress2||[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
           ${(()=>{ const g=docData.gstNumber||v?.gstNumber||""; const p=docData.panNumber||v?.panNumber||""; return (g||p)?`<div>${g?"GST: "+g:""}${g&&p?"&nbsp;&nbsp;&nbsp;":""}${p?"PAN: "+p:""}</div>`:""; })()}
           ${(()=>{ const m=docData.msme||(v?.msmeNumber==="MSME-REGISTERED"?"Registered":v?.msmeNumber||""); return m?`<div>MSME: ${m}</div>`:""; })()}
-          <div>Kind Attn.: ${docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")||""}</div>
+          <div>Kind Attn.: ${[docData.kindAttnSalutation, docData.kindAttn||[v?.contactPerson,v?.phoneNumber].filter(Boolean).join(" · ")].filter(Boolean).join(" ")}</div>
         </td>
         <td style="vertical-align:top;width:50%;padding-left:16px;border-left:1px solid #ddd;">
           <div style="font-weight:700;margin-bottom:4px;">BILL TO:</div>
@@ -2143,58 +2468,47 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
     <div class="sec">
       <div>Dear Team,</div>
-      <div>${e.pwjType === "JO"
-        ? "Please find below job work as per requirement."
-        : `We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : "work order"} to you with all details below and annexed.`
-      }</div>
+      <div>We are pleased to issue the below ${e.pwjType === "PO" ? "purchase order" : e.pwjType === "WO" ? "work order" : "job order"} to you with all details below and annexed.</div>
     </div>
 
-    <!-- ITEMS TABLE (rows can paginate freely; header repeats on each page) -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
-      <thead>
+    <!-- ITEMS TABLE -->
+    <table class="sec">
+      <thead><tr>
+        <th style="${thBase}text-align:center;width:36px;">S.No</th>
+        <th style="${thBase}text-align:left;width:38%;">Item</th>
+        <th style="${thBase}text-align:center;width:52px;">Unit</th>
+        <th style="${thBase}text-align:center;width:52px;">Qty</th>
+        <th style="${thBase}text-align:right;width:80px;">Rate</th>
+        <th style="${thBase}text-align:right;width:88px;">Amount</th>
+      </tr></thead>
+      <tbody>
+        ${itemRows}
         <tr>
-          <th style="${thBase}text-align:center;width:5%;">S.No</th>
-          <th style="${thBase}text-align:left;width:40%;">Item / Description</th>
-          <th style="${thBase}text-align:center;width:8%;">Unit</th>
-          <th style="${thBase}text-align:center;width:8%;">Qty</th>
-          <th style="${thBase}text-align:right;width:17%;">Rate</th>
-          <th style="${thBase}text-align:right;width:22%;">Amount</th>
+          <td colspan="4" rowspan="5" style="${tdBase}border-right:1px solid #ddd;vertical-align:top;">
+            <div style="font-weight:700;font-size:11px;">Amount in words</div>
+            <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
+          </td>
+          <td style="${tdBase}text-align:right;font-weight:600;">Sub Total</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.subTotal)}</td>
         </tr>
-      </thead>
-      <tbody>${itemRows}</tbody>
+        <tr>
+          <td style="${tdBase}text-align:right;">CGST (${docData.cgstPct}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.cgst)}</td>
+        </tr>
+        <tr>
+          <td style="${tdBase}text-align:right;">SGST (${docData.sgstPct}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.sgst)}</td>
+        </tr>
+        <tr>
+          <td style="${tdBase}text-align:right;">IGST (${docData.igstPct || 0}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(totals.igst)}</td>
+        </tr>
+        <tr>
+          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
+        </tr>
+      </tbody>
     </table>
-
-    <!-- TOTALS (always kept together, never split across pages) -->
-    <div class="no-break" style="margin-bottom:12px;border-top:2px solid #111;">
-      ${e.pwjType === "JO" ? `
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="width:60%;padding:8px 10px;vertical-align:top;border-right:1px solid #ddd;border-bottom:2px solid #111;">
-            <div style="font-weight:700;font-size:11px;">Amount in words</div>
-            <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
-          </td>
-          <td style="text-align:right;padding:7px 10px;font-weight:700;border-bottom:2px solid #111;vertical-align:middle;">Total</td>
-          <td style="text-align:right;padding:7px 10px;font-weight:700;border-bottom:2px solid #111;vertical-align:middle;width:100px;">${fmtTotal(totals.total)}</td>
-        </tr>
-      </table>` : `
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="width:55%;padding:8px 10px;vertical-align:top;border-right:1px solid #ddd;border-bottom:1px solid #ddd;">
-            <div style="font-weight:700;font-size:11px;">Amount in words</div>
-            <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
-          </td>
-          <td style="padding:0;vertical-align:top;width:45%;">
-            <table style="width:100%;border-collapse:collapse;">
-              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;font-weight:600;">Sub Total</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;width:90px;">${fmtCcy(totals.subTotal)}</td></tr>
-              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">CGST (${docData.cgstPct}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.cgst)}</td></tr>
-              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">SGST (${docData.sgstPct}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.sgst)}</td></tr>
-              <tr><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">IGST (${docData.igstPct || 0}%)</td><td style="text-align:right;padding:5px 10px;border-bottom:1px solid #ddd;">${fmtCcy(totals.igst)}</td></tr>
-              <tr><td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td><td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td></tr>
-            </table>
-          </td>
-        </tr>
-      </table>`}
-    </div>
 
     <!-- INFO GRID -->
     <table class="sec" style="border:1px solid #ddd;">
@@ -2214,24 +2528,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
       </tr>
     </table>
 
-    <div class="stitle" style="break-after:avoid;page-break-after:avoid;">${e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
-    ${termItems}
+    <div style="page-break-inside:avoid;">
+      <div class="stitle">General Terms</div>
+      <table style="width:100%;border-collapse:collapse;"><tbody>${termRowsAnchor}</tbody></table>
+    </div>
+    ${termRowsRest ? `<table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><tbody>${termRowsRest}</tbody></table>` : ""}
 
-    ${e.pwjType !== "JO" ? `
-    <div class="sec">
+    <div class="sec-block" style="margin-top:8px;">
       <div class="stitle">Payment Terms</div>
       <div class="sec">${stageRows}</div>
-      <div class="sec" style="font-size:11px;padding-left:8px;">
-        <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
-        <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
-        <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
-      </div>
-    </div>` : ""}
+    </div>
+
+    <div class="sec-block" style="font-size:11px;padding-left:8px;margin-bottom:12px;">
+      <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
+      <div style="padding-left:12px;">- Site engineer signed copy along with measurement sheet and DC copy</div>
+      <div style="padding-left:12px;">- Test / warranty / guarantee certificate, etc</div>
+    </div>
 
     <!-- SIGNATURE -->
-    <div class="sec" style="margin-top:16px;">
+    <div class="sec-block" style="margin-top:16px;">
       <div>For <strong>${COMPANY_INFO.name}</strong></div>
-      <table style="margin-top:16px;table-layout:fixed;">
+      <table style="margin-top:16px;">
         <tr>
           <td style="width:50%;padding:0;vertical-align:top;">
             ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
@@ -2245,13 +2562,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
       </table>
     </div>
     </body></html>`;
-
   };
 
   const downloadDoc = () => {
     if (!docModal) return;
-    const html = buildDocHtml(docModal.entry, docModal.vendor);
-    const win = window.open("", "_blank", "width=820,height=900");
+    const e = docModal.entry;
+    let entryToRender = e;
+    let vendorToRender = docModal.vendor;
+    try {
+      const parsed = JSON.parse(e.docData || "{}");
+      if (parsed?.multiVendor && Array.isArray(parsed.docs)) {
+        const subDoc = parsed.docs[Math.min(docViewIndex, parsed.docs.length - 1)];
+        entryToRender = { ...e, vendor: subDoc.vendor, docData: JSON.stringify(subDoc) };
+        vendorToRender = approvedVendors.find(av => av.name === subDoc.vendor) || docModal.vendor;
+      }
+    } catch {}
+    const html = buildDocHtml(entryToRender, vendorToRender);
+    const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
     win.document.write(html + `<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>`);
     win.document.close();
@@ -2411,10 +2738,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Pending approvals ──
   const openPending = async () => {
+    setPendingSearch("");
+    setPendingOHActionMap({});
     try {
       const r = await api.getPending();
       if (r.success) { setPendingList(r.data); setPendingModal(true); }
     } catch { showToast("Failed to load pending", "error"); }
+  };
+
+  const submitInlineOH = async (row) => {
+    const action = pendingOHActionMap[row.id] || { status: "PROCEED", comment: "" };
+    if (action.status !== "PROCEED" && !(action.comment || "").trim()) {
+      showToast("Remarks required when not approving", "error"); return;
+    }
+    setPendingOHActionMap(m => ({ ...m, [row.id]: { ...action, saving: true } }));
+    try {
+      const res = await api.updateApproval(row.id, { approvalStatus: action.status, comment: action.comment || "", approvedBy: "OH" });
+      if (res.success) {
+        setPendingList(d => d.filter(x => x.id !== row.id));
+        showToast(`#${row.id} — ${action.status === "PROCEED" ? "Approved ✅" : action.status === "HOLD" ? "On Hold ⏸" : "Not Approved ❌"}`);
+        fetchEntries(true);
+      } else showToast(res.message || "Failed", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setPendingOHActionMap(m => ({ ...m, [row.id]: { ...m[row.id], saving: false } })); }
   };
 
   // ── Sort ──
@@ -2433,15 +2779,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
     hLeft: { display: "flex", alignItems: "center", gap: 12 },
     hTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px", lineHeight: 1.15 },
     hSub: { fontSize: 12.5, color: "#94a3b8", marginTop: 2, letterSpacing: 0.1 },
-    hRight: { display: "flex", gap: 7, alignItems: "center" },
-    // ghost = outline; primary = solid navy
+    hRight: { display: "flex", gap: 6, alignItems: "center" },
     hBtn: (variant) => ({
-      background: variant === "primary" ? "#1e3a5f" : "#ffffff",
-      border: variant === "primary" ? "none" : "1.5px solid #e2e8f0",
-      borderRadius: 8, padding: "8px 15px",
-      color: variant === "primary" ? "#ffffff" : "#374151",
-      fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+      background: variant === "primary"
+        ? "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)"
+        : variant === "danger"
+        ? "rgba(239,68,68,0.06)"
+        : "rgba(15,23,42,0.04)",
+      border: variant === "primary"
+        ? "none"
+        : variant === "danger"
+        ? "1px solid rgba(239,68,68,0.18)"
+        : "1px solid rgba(15,23,42,0.09)",
+      borderRadius: 50,
+      padding: variant === "primary" ? "8px 18px" : "7px 14px",
+      color: variant === "primary" ? "#fff" : variant === "danger" ? "#ef4444" : "#475569",
+      fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
       display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+      transition: "all .16s ease", letterSpacing: 0.1,
     }),
     // ── Stats ──
     statsRow: { display: "flex", gap: 12, padding: "20px 32px 0", overflowX: "auto" },
@@ -2522,8 +2877,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:8px; }
         tr:hover td { background:#f8fafc !important; transition: background .1s; }
         input:focus, select:focus, textarea:focus { border-color:#1e3a5f !important; box-shadow: 0 0 0 3px rgba(30,58,95,.08) !important; }
-        .hbtn-hover:hover { background:#f8fafc !important; border-color:#cbd5e1 !important; }
-        .hbtn-primary-hover:hover { background:#162d4a !important; }
+        .hbtn-hover:hover { background:rgba(15,23,42,0.09) !important; border-color:rgba(15,23,42,0.18) !important; color:#0f172a !important; }
+        .hbtn-danger-hover:hover { background:rgba(239,68,68,0.11) !important; border-color:rgba(239,68,68,0.32) !important; }
+        .hbtn-primary-hover:hover { opacity:0.88; box-shadow:0 4px 16px rgba(37,99,235,0.38) !important; }
         @media (max-width: 768px) {
           .app-header { padding: 0 12px !important; height: auto !important; min-height: 56px; flex-wrap: wrap; gap: 8px; padding-top: 8px !important; padding-bottom: 8px !important; }
           .app-hright { flex-wrap: wrap !important; gap: 5px !important; justify-content: flex-start; }
@@ -2572,80 +2928,137 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
               <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : "Procurement Tracker"}</div>
-              <div style={s.hSub}>Infrastructure & Solutions</div>
+              <div style={s.hSub}>Purchase Work Journal · Procurement</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
-            {/* Role badge + user */}
-            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 8, background: "#f8fafc", borderRadius: 8, padding: "5px 12px", border: "1px solid #e2e8f0" }}>
-              <span style={{ background: roleMeta.bg, color: roleMeta.color, borderRadius: 4, padding: "1px 7px", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3 }}>{roleMeta.label}</span>
-              <span style={{ color: "#0f172a", fontSize: 12.5, fontWeight: 600 }}>{user.fullName || user.username}</span>
+            {/* Avatar + name + role */}
+            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "5px 14px 5px 6px", border: "1px solid rgba(15,23,42,0.08)" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0, letterSpacing: 0 }}>
+                {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
+              </div>
+              <div style={{ lineHeight: 1.25 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{roleMeta.label}</div>
+              </div>
             </div>
+
+            {/* Action buttons */}
             {mainTab !== "hr" && (isAdmin || isProcurement) && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV}>↓ Export</button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV} title="Export CSV">
+                <Download size={13} strokeWidth={2.2} /> Export
+              </button>
             )}
-            {mainTab !== "hr" && (isAdmin || isProcurement || isOH || isVP || isCeo) && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPending}>Pending</button>
-            )}
-            {mainTab !== "hr" && isVP && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openPendingDocs}>Doc Approvals</button>
-            )}
-            {mainTab !== "hr" && (isAdmin || isVP || isOH) && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={openUserMgmt}>Manage Users</button>
-            )}
-            {mainTab !== "hr" && (isAdmin || isVP) && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={async () => {
-                showToast("Sending backup…", "info");
+            {mainTab !== "hr" && (isAdmin || isVP) && (<>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Download full backup ZIP (DB + uploads + Excel)" onClick={async () => {
+                showToast("Preparing backup…", "info");
+                try {
+                  const res = await api.downloadBackup();
+                  if (!res.ok) { showToast("Backup download failed", "error"); return; }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `PWJ-FullBackup-${new Date().toISOString().substring(0,10)}.zip`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Backup downloaded ✅");
+                } catch { showToast("Backup download failed", "error"); }
+              }}>
+                <Download size={13} strokeWidth={2.2} /> Backup
+              </button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Email backup to admin" onClick={async () => {
+                showToast("Sending backup email…", "info");
                 try {
                   const r = await api.triggerBackup();
-                  if (r.success) showToast("Backup sent to admin ✅");
+                  if (r.success) showToast("Backup emailed to admin ✅");
                   else showToast(r.message || "Backup failed", "error");
-                } catch { showToast("Backup failed", "error"); }
-              }}>💾 Backup Now</button>
-            )}
-            {mainTab !== "hr" && !isCeo && (
+                } catch { showToast("Backup email failed", "error"); }
+              }}>
+                <Database size={13} strokeWidth={2.2} /> Email Backup
+              </button>
+              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Restore system from a backup ZIP" onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file"; input.accept = ".zip";
+                input.onchange = async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (!window.confirm(`Restore from "${file.name}"?\n\nThis will OVERWRITE the current database and uploaded files. Make sure you have a recent backup before proceeding.`)) return;
+                  showToast("Restoring…", "info");
+                  try {
+                    const r = await api.restoreBackup(file);
+                    if (r.success) {
+                      showToast(`Restore complete — DB restored, ${r.data?.filesRestored || 0} file(s) recovered ✅`);
+                      setTimeout(() => window.location.reload(), 2000);
+                    } else showToast(r.message || "Restore failed", "error");
+                  } catch { showToast("Restore failed", "error"); }
+                };
+                input.click();
+              }}>
+                <Database size={13} strokeWidth={2.2} /> Restore
+              </button>
+            </>)}
+            {mainTab === "entries" && !isCeo && (
               <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
                 setEditingEntry(null);
                 setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
                 setCreateModal(true);
-              }}>+ New Entry</button>
+              }}>
+                <Plus size={14} strokeWidth={2.5} /> New Entry
+              </button>
             )}
-            <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={handleLogout}>Logout</button>
+            <button className="hbtn-hover hbtn-danger-hover" style={s.hBtn("danger")} onClick={handleLogout} title="Sign out">
+              <LogOut size={13} strokeWidth={2.2} /> Logout
+            </button>
           </div>
         </div>
 
         {/* ─── MAIN TABS ─── */}
-        <div className="app-tabs" style={{ display: "flex", gap: 0, padding: "0 32px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-          {[
-            { key: "home",    label: null,          icon: Home },
-            { key: "entries", label: "Procurement Entries", icon: null },
-            { key: "hr",         label: "HR",         icon: null },
-            { key: "operations", label: "Operations",       icon: null },
-            { key: "chatbot",    label: "Happizo Chat Bot", icon: null },
-            ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [{ key: "vendors",  label: "Vendors",  icon: null }] : []),
-            ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "projects", label: "Projects", icon: null }] : []),
-            ...((isAdmin || isVP || isOH || isCeo || isProjectManager)                 ? [{ key: "account",  label: "Account",  icon: null }] : []),
-          ].filter(t => mainTab !== "hr" || t.key === "home" || t.key === "hr")
-          .map(t => {
-            const active = mainTab === t.key;
+        <div className="app-tabs" style={{ display: "flex", alignItems: "center", gap: 0, padding: "0 32px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
+          {/* Home always visible */}
+          {(() => {
+            const active = mainTab === "home";
             return (
-              <button key={t.key}
-                onClick={() => {
-                  setMainTab(t.key);
-                  if (t.key === "vendors") loadVendorsTab();
-                  if (t.key === "projects") fetchManagedProjects();
-                }}
-                title={t.key === "home" ? "Home" : undefined}
+              <button onClick={() => setMainTab("home")} title="Home"
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "14px 22px", fontSize: 13.5, fontWeight: active ? 600 : 500,
+                  padding: "14px 22px", fontSize: 13.5,
                   color: active ? "#0f172a" : "#94a3b8",
                   borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
-                  marginBottom: -1, letterSpacing: 0.1,
-                  display: "flex", alignItems: "center", gap: 6 }}>
-                {t.icon ? <t.icon size={17} strokeWidth={active ? 2.2 : 1.8} /> : t.label}
+                  marginBottom: -1, display: "flex", alignItems: "center", gap: 6 }}>
+                <Home size={17} strokeWidth={active ? 2.2 : 1.8} />
               </button>
             );
-          })}
+          })()}
+
+          {/* Contextual tab — only show the current module's tab */}
+          {mainTab !== "home" && (() => {
+            const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales" };
+            const label = labels[mainTab] || mainTab;
+            return (
+              <button style={{ border: "none", background: "none", cursor: "default", fontFamily: "inherit",
+                padding: "14px 22px", fontSize: 13.5, fontWeight: 600,
+                color: "#0f172a",
+                borderBottom: "2.5px solid #1e3a5f",
+                marginBottom: -1, letterSpacing: 0.1,
+                display: "flex", alignItems: "center", gap: 6 }}>
+                {label}
+              </button>
+            );
+          })()}
+
+          {/* Approval action buttons — only when on Procurement tab */}
+          {mainTab === "entries" && (isAdmin || isOH || isVP || isCeo) && (
+            <button onClick={openPending}
+              style={{ border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#475569", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 8 }}>
+              <Clock size={13} strokeWidth={2.2} /> Pending OH
+            </button>
+          )}
+          {mainTab === "entries" && isVP && (
+            <button onClick={openPendingDocs}
+              style={{ border: "none", background: "linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
+              <FileCheck size={13} strokeWidth={2.2} /> Doc Approvals
+            </button>
+          )}
         </div>
 
         {mainTab === "home" && (
@@ -2803,10 +3216,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <div style={s.filterBar} className="app-filterbar">
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>🔍</span>
-            <input style={s.searchInput} placeholder="Search material, project, vendor…"
+            <input style={s.searchInput} placeholder="Search doc number, material, project, vendor…"
               value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
           </div>
-          <select style={s.sel} value={projectF} onChange={e => { setProjectF(e.target.value); setPage(0); fetchEntries(); }}>
+          <select style={s.sel} value={projectF} onChange={e => { setProjectF(e.target.value); setPage(0); }}>
             <option value="">All Projects</option>
             {projects.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -2835,6 +3248,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 13px", fontSize: 14, cursor: "pointer", color: "#64748b", lineHeight: 1 }}>
             ↺
           </button>
+          <button
+            onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setRaisedByF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            ✕ Clear Filters
+          </button>
           <div style={s.resultCount}>{totalElements} results</div>
         </div>
 
@@ -2845,13 +3263,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <thead>
                 <tr>
                   <th style={{ ...s.th, width: 36, textAlign: "center" }}>
-                    <input type="checkbox"
-                      checked={entries.length > 0 && entries.every(e => selectedIds.has(e.id))}
-                      onChange={ev => setSelectedIds(ev.target.checked ? new Set(entries.map(e => e.id)) : new Set())}
-                      style={{ cursor: "pointer" }} />
+                    {(() => {
+                      const firstSel = selectedIds.size > 0 ? entries.find(e => selectedIds.has(e.id)) : null;
+                      const eligible = entries.filter(e => canSelectEntry(e) && (!firstSel || e.projectName === firstSel.projectName));
+                      return (
+                        <input type="checkbox"
+                          checked={eligible.length > 0 && eligible.every(e => selectedIds.has(e.id))}
+                          onChange={ev => setSelectedIds(ev.target.checked ? new Set(eligible.map(e => e.id)) : new Set())}
+                          style={{ cursor: "pointer" }} />
+                      );
+                    })()}
                   </th>
                   {[
-                    ["S.No","—"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
+                    ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Material","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ["OH Approval","approvalStatus"],
@@ -2873,13 +3297,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <tr><td colSpan={20} style={s.emptyRow}>Loading entries…</td></tr>
                 ) : entries.length === 0 ? (
                   <tr><td colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
-                ) : entries.map((row, idx) => (
-                  <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#f0f4ff" : idx % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer" }}>
+                ) : entries.map((row, idx) => {
+                    const firstSel = selectedIds.size > 0 ? entries.find(e => selectedIds.has(e.id)) : null;
+                    const isEligible = canSelectEntry(row) && (!firstSel || row.projectName === firstSel.projectName || selectedIds.has(row.id));
+                    return (
+                  <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#f0f4ff" : idx % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer", opacity: (!isEligible && selectedIds.size > 0) ? 0.45 : 1 }}>
                     <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.has(row.id)}
-                        onChange={() => toggleSelect(row.id)} style={{ cursor: "pointer" }} />
+                        disabled={!isEligible}
+                        onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td style={{ ...s.td, color: "#94a3b8", fontSize: 12, textAlign: "center" }} onClick={() => setDetailRow(row)}>{page * PAGE_SIZE + idx + 1}</td>
+                    <td style={{ ...s.td, color: "#94a3b8", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.updatedAt || row.timestamp)}
                     </td>
@@ -2976,11 +3404,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <option value="">— None —</option>
                           <option value="OH Approval">OH Approval</option>
                           <option value="Procurement">Procurement</option>
-                          <option value="VP Approval">VP Approval</option>
                           <option value="Site team">Site team</option>
                           <option value="DH Approval">DH Approval</option>
                           <option value="Vendor">Vendor</option>
                           <option value="DIP">DIP</option>
+                          {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : (
                         <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
@@ -3014,7 +3442,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             : canApprove(row) && (
                               <button style={s.approveBtn}
                                 onClick={() => {
-                                  setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+                                  setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
                                   setApprovalModal({ entry: row });
                                 }}>
                                 ✅ Approve
@@ -3044,20 +3472,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )
                         )}
-                        {(isAdmin || isProcurement) && row.vendor && row.pwjType && (
-                          <button
-                            style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                            onClick={() => openDocModal(row)}>
-                            📄 {row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc"}
-                          </button>
-                        )}
-                        {(isEngineer || isVP || isOH || isCeo) && row.docStatus && (
-                          <button
-                            style={{ background: row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                            onClick={() => { setEngDocFile(null); openDocModal(row); }}>
-                            📄 {row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc"}
-                          </button>
-                        )}
+                        {(isAdmin || isProcurement) && row.vendor && row.pwjType && (() => {
+                          const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
+                          if (clubbedWithId) {
+                            const primary = entries.find(e => e.id === clubbedWithId);
+                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
+                              📎 Clubs #{clubbedWithId}
+                            </button>;
+                          }
+                          const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
+                          const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc";
+                          const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
+                          return (
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => openDocModal(row)}>
+                              📄 {lbl}
+                            </button>
+                          );
+                        })()}
+                        {(isEngineer || isVP || isOH || isCeo || isProjectManager) && row.docStatus && (() => {
+                          const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
+                          if (clubbedWithId) {
+                            const primary = entries.find(e => e.id === clubbedWithId);
+                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => { setEngDocFile(null); primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info"); }}>
+                              📎 Clubs #{clubbedWithId}
+                            </button>;
+                          }
+                          const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
+                          const lbl = rowPartial ? "Partially Issued" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
+                          const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)";
+                          return (
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => { setEngDocFile(null); openDocModal(row); }}>
+                              📄 {lbl}
+                            </button>
+                          );
+                        })()}
                         {isAdmin && (
                           <button
                             style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -3074,10 +3526,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             🗑️ Delete
                           </button>
                         )}
+                        {(() => {
+                          try {
+                            const dd = JSON.parse(row.docData || "{}");
+                            if (Array.isArray(dd.clubbedEntryIds) && dd.clubbedEntryIds.length > 0) return (
+                              <div style={{ fontSize: 10, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
+                                📎 Clubs #{dd.clubbedEntryIds.join(", #")}
+                              </div>
+                            );
+                          } catch {}
+                          return null;
+                        })()}
                       </div>
                     </td>
                   </tr>
-                ))}
+                    );
+                })}
               </tbody>
             </table>
           </div>
@@ -3134,7 +3598,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   Vendor Management
                   <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
-                {(isAdmin || isProcurement) && (
+                {isAdmin && (
                   <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
                     onClick={() => { setAddVendorForm(BLANK_VENDOR_FORM); setAddVendorPage(true); }}>
                     ➕ Add Vendor
@@ -3296,9 +3760,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
           };
           const openEditProject = async (p) => {
             setEditingProject(p);
+            const CLIENT_SALUTATIONS = ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."];
+            const rawClient = (p.clientName || "").trim();
+            const matchedSal = CLIENT_SALUTATIONS.find(s => rawClient.startsWith(s + " "));
+            const clientSalutation = matchedSal || "";
+            const clientNameOnly   = matchedSal ? rawClient.slice(matchedSal.length + 1) : rawClient;
             setProjectMgmtForm({
               name: p.name, location: p.location || "", description: p.description || "",
-              clientName: p.clientName || "", clientGstNo: p.clientGstNo || "",
+              clientSalutation, clientName: clientNameOnly, clientGstNo: p.clientGstNo || "",
               clientAddress: p.clientAddress || "", billingAddress: p.billingAddress || "",
               billingSameAsClient: (p.billingAddress || "") === (p.clientAddress || ""),
               projectValue: p.projectValue != null ? String(p.projectValue) : "",
@@ -3328,6 +3797,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             try {
               const body = {
                 ...projectMgmtForm,
+                clientName: [projectMgmtForm.clientSalutation, projectMgmtForm.clientName].filter(Boolean).join(" ") || null,
                 projectValue: projectMgmtForm.projectValue ? parseFloat(projectMgmtForm.projectValue) : null,
                 quoteValue: projectMgmtForm.quoteValue ? parseFloat(projectMgmtForm.quoteValue) : null,
                 quoteGstPct: projectMgmtForm.quoteGstPct ? parseInt(projectMgmtForm.quoteGstPct) : null,
@@ -3341,6 +3811,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 billingAddress: projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress,
               };
               delete body.billingSameAsClient;
+              delete body.clientSalutation;
               const r = editingProject
                 ? await api.updateProject(editingProject.id, body)
                 : await api.createProject(body);
@@ -3485,6 +3956,73 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                       </div>
                     </div>
+                    {/* Budget Utilisation */}
+                    {(() => {
+                      const budget = p.quoteValue != null ? p.quoteValue * 0.80 : null;
+                      const summary = budgetSummary[p.name] || {};
+                      const cats = [
+                        { key: "material",      label: "Material",       color: "#10b981" },
+                        { key: "subcontract",   label: "Sub-Contract",   color: "#8b5cf6" },
+                        { key: "labour",        label: "Labour",         color: "#3b82f6" },
+                        { key: "consultants",   label: "Consultants",    color: "#f59e0b" },
+                        { key: "miscellaneous", label: "Miscellaneous",  color: "#64748b" },
+                      ];
+                      const totalExp = cats.reduce((s, c) => s + (summary[c.key] || 0), 0);
+                      const activeCats = cats.filter(c => (summary[c.key] || 0) > 0);
+                      if (activeCats.length === 0 && budget == null) return null;
+                      const pct = budget > 0 ? Math.min((totalExp / budget) * 100, 100) : 0;
+                      const barColor = pct >= 90 ? "#ef4444" : pct >= 75 ? "#f59e0b" : "#10b981";
+                      return (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget Utilisation</span>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: barColor }}>{pct.toFixed(1)}%</span>
+                          </div>
+                          <div style={{ background: "#f1f5f9", borderRadius: 100, height: 7, marginBottom: 10 }}>
+                            <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: "100%", transition: "width 0.4s ease" }} />
+                          </div>
+                          {activeCats.map(({ key, label, color }) => {
+                            const val = summary[key] || 0;
+                            const expPct = budget > 0 ? Math.min((val / budget) * 100, 100) : 0;
+                            return (
+                              <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                                <span style={{ fontSize: 10, color: "#64748b", width: 78, flexShrink: 0 }}>{label}</span>
+                                <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 100, height: 4 }}>
+                                  <div style={{ width: `${expPct}%`, background: color, borderRadius: 100, height: "100%" }} />
+                                </div>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "#0f172a", width: 85, textAlign: "right", flexShrink: 0 }}>
+                                  ₹{Number(val).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {activeCats.length === 0 && (
+                            <div style={{ fontSize: 11, color: "#cbd5e1", textAlign: "center", padding: "4px 0" }}>No PWJ documents raised yet</div>
+                          )}
+                          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1px solid #f1f5f9" }}>
+                            <div>
+                              <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total Expenses</div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>₹{Number(totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                            </div>
+                            {budget != null && (
+                              <div style={{ textAlign: "center" }}>
+                                <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Budget (80%)</div>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: "#6366f1" }}>₹{Number(budget).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                              </div>
+                            )}
+                            {budget != null && (
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Est. Profit</div>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: (p.quoteValue - totalExp) >= p.quoteValue * 0.2 ? "#10b981" : "#f59e0b" }}>
+                                  ₹{Number(p.quoteValue - totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
                   </div>
                 ))}
@@ -3557,9 +4095,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
                       <div>
                         {lbl("Client Name")}
-                        <input style={inpSt} placeholder="Type or select existing client" list="client-names-list"
-                          value={projectMgmtForm.clientName}
-                          onChange={e => onClientSelect(e.target.value)} />
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <select value={projectMgmtForm.clientSalutation}
+                            onChange={e => setF("clientSalutation", e.target.value)}
+                            style={{ ...selSt, width: 80, flexShrink: 0 }}>
+                            <option value="">—</option>
+                            <option value="Mr.">Mr.</option>
+                            <option value="Mrs.">Mrs.</option>
+                            <option value="Ms.">Ms.</option>
+                            <option value="Dr.">Dr.</option>
+                          </select>
+                          <input style={inpSt} placeholder="Type or select existing client" list="client-names-list"
+                            value={projectMgmtForm.clientName}
+                            onChange={e => onClientSelect(e.target.value)} />
+                        </div>
                       </div>
                       <div>
                         {lbl("Client GST No.")}
@@ -3567,7 +4116,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           value={projectMgmtForm.clientGstNo} onChange={e => setF("clientGstNo", e.target.value)} />
                       </div>
                       <div>
-                        {lbl("Site Address")}
+                        {lbl("Client Address")}
                         <textarea rows={3} style={{ ...inpSt, resize: "none" }} placeholder="Full address…"
                           value={projectMgmtForm.clientAddress}
                           onChange={e => {
@@ -3587,7 +4136,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               setF("billingSameAsClient", e.target.checked);
                               if (e.target.checked) setF("billingAddress", projectMgmtForm.clientAddress);
                             }} />
-                          Same as Site Address
+                          Same as Client Address
                         </label>
                       </div>
                     </div>
@@ -3809,6 +4358,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         {/* ─── ACCOUNT MODULE ─── */}
         {mainTab === "account" && <AccountSection isCeo={isCeo} />}
+        {mainTab === "sales"   && <SalesPage />}
 
       </div>
 
@@ -3912,7 +4462,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <button style={{ ...s.submitBtn(), marginTop: 20 }}
                       onClick={() => {
                         setDetailRow(null);
-                        setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
+                        setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
                         setApprovalModal({ entry: detailRow });
                       }}>
                       ✅ Take Approval Action
@@ -3966,9 +4516,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </select>
               </div>
               <div style={s.formGroup}>
-                <label style={s.label}>Approved By *</label>
-                <input style={s.input} placeholder="e.g. Bharat Sir" value={approvalForm.approvedBy}
-                  onChange={e => setApprovalForm(f => ({ ...f, approvedBy: e.target.value }))} />
+                <label style={s.label}>Approved By</label>
+                <div style={{ ...s.input, background: "#f8fafc", color: "#64748b", cursor: "default", display: "flex", alignItems: "center" }}>OH</div>
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>
@@ -3996,45 +4545,128 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </div>
       )}
 
-      {/* ─── PENDING APPROVALS MODAL ─── */}
+      {/* ─── PENDING OH APPROVAL MODAL ─── */}
       {pendingModal && (
-        <div style={s.overlay} onClick={() => setPendingModal(false)}>
-          <div style={s.modalBox(660)} onClick={e => e.stopPropagation()}>
-            <div style={s.mHeader}>
-              <div>
-                <div style={s.mTitle}>Pending Approvals</div>
-                <div style={s.mSub}>{pendingList.length} entries awaiting action</div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setPendingModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 780, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Pending OH Approval</div>
+                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingList.length} entr{pendingList.length !== 1 ? "ies" : "y"} awaiting action · sorted by latest</div>
+                </div>
+                <button onClick={() => setPendingModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
-              <button style={s.closeBtn} onClick={() => setPendingModal(false)}>✕</button>
+              {/* Search */}
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8", pointerEvents: "none" }}>🔍</span>
+                <input
+                  autoFocus
+                  placeholder="Search by material, project, raised by…"
+                  value={pendingSearch}
+                  onChange={e => setPendingSearch(e.target.value)}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
+                />
+                {pendingSearch && (
+                  <button onClick={() => setPendingSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                )}
+              </div>
             </div>
-            <div style={s.mBody}>
-              {pendingList.length === 0
-                ? <div style={{ textAlign: "center", padding: "32px 0", color: "#94a3b8" }}>🎉 No pending approvals!</div>
-                : pendingList.map(row => (
-                  <div key={row.id} style={s.pendingItem}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, color: "#1e293b" }}>{row.materialRequired}</div>
-                      <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{row.projectName} · {row.raisedBy} · #{row.id}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
-                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot)} />
-                        {APPROVAL_META[row.approvalStatus]?.label}
-                      </span>
-                      {canApprove(row) && (
-                        <button style={s.approveBtn}
-                          onClick={() => {
-                            setPendingModal(false);
-                            setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "Bharath" });
-                            setApprovalModal({ entry: row });
-                          }}>
-                          Approve
-                        </button>
-                      )}
-                    </div>
+
+            {/* List */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "16px 28px" }}>
+              {(() => {
+                const q = pendingSearch.trim().toLowerCase();
+                const sorted = [...pendingList].sort((a, b) => new Date(b.updatedAt || b.timestamp || 0) - new Date(a.updatedAt || a.timestamp || 0));
+                const filtered = q ? sorted.filter(r =>
+                  (r.materialRequired || "").toLowerCase().includes(q) ||
+                  (r.projectName || "").toLowerCase().includes(q) ||
+                  (r.raisedBy || "").toLowerCase().includes(q) ||
+                  (r.boqNo || "").toLowerCase().includes(q)
+                ) : sorted;
+
+                if (filtered.length === 0) return (
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8", fontSize: 15 }}>
+                    {q ? `No results for "${pendingSearch}"` : "🎉 No pending approvals!"}
                   </div>
-                ))
-              }
+                );
+
+                return filtered.map((row, idx) => {
+                  const action = pendingOHActionMap[row.id] || { status: "PROCEED", comment: "" };
+                  const setAction = (patch) => setPendingOHActionMap(m => ({ ...m, [row.id]: { ...action, ...patch } }));
+                  const reqDate = row.updatedAt || row.timestamp;
+                  const relTime = reqDate ? (() => {
+                    const diff = Date.now() - new Date(reqDate).getTime();
+                    const m = Math.floor(diff / 60000);
+                    if (m < 1) return "just now";
+                    if (m < 60) return `${m}m ago`;
+                    const h = Math.floor(m / 60);
+                    if (h < 24) return `${h}h ago`;
+                    return `${Math.floor(h / 24)}d ago`;
+                  })() : "";
+
+                  return (
+                    <div key={row.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, padding: "18px 20px", marginBottom: 12 }}>
+                      {/* Top row */}
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                        <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>#{idx + 1}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14.5, color: "#0f172a", marginBottom: 3 }}>{row.materialRequired}</div>
+                          <div style={{ fontSize: 12.5, color: "#64748b" }}>
+                            {row.projectName}
+                            {row.boqNo && <span> · BOQ: {row.boqNo}</span>}
+                            {row.vendor && <span> · {row.vendor}</span>}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
+                            Raised by <strong style={{ color: "#475569" }}>{row.raisedBy}</strong> · #{row.id}
+                            {relTime && <span> · {relTime}</span>}
+                          </div>
+                        </div>
+                        <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                          <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot)} />
+                          {APPROVAL_META[row.approvalStatus]?.label}
+                        </span>
+                      </div>
+
+                      {/* Action selector */}
+                      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                        {[
+                          { val: "PROCEED",      label: "✅ Proceed",      bg: action.status === "PROCEED"      ? "linear-gradient(135deg,#166534,#16a34a)" : "#f0fdf4", color: action.status === "PROCEED"      ? "#fff" : "#166534", border: action.status === "PROCEED"      ? "none" : "1.5px solid #bbf7d0" },
+                          { val: "HOLD",         label: "⏸ Hold",          bg: action.status === "HOLD"         ? "linear-gradient(135deg,#92400e,#d97706)" : "#fffbeb", color: action.status === "HOLD"         ? "#fff" : "#92400e", border: action.status === "HOLD"         ? "none" : "1.5px solid #fde68a" },
+                          { val: "NOT_APPROVED", label: "❌ Not Approved",  bg: action.status === "NOT_APPROVED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : "#fff1f2", color: action.status === "NOT_APPROVED" ? "#fff" : "#991b1b", border: action.status === "NOT_APPROVED" ? "none" : "1.5px solid #fecdd3" },
+                        ].map(opt => (
+                          <button key={opt.val} onClick={() => setAction({ status: opt.val })}
+                            style={{ flex: 1, padding: "8px 6px", border: opt.border, borderRadius: 9, background: opt.bg, color: opt.color, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Remarks — required for non-Proceed */}
+                      {action.status !== "PROCEED" && (
+                        <textarea
+                          rows={2}
+                          placeholder="Remarks required — state reason for Hold / Not Approved…"
+                          value={action.comment || ""}
+                          onChange={e => setAction({ comment: e.target.value })}
+                          style={{ width: "100%", border: `1.5px solid ${!action.comment?.trim() ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 9, padding: "8px 12px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
+                        />
+                      )}
+
+                      {/* Submit */}
+                      <button
+                        onClick={() => submitInlineOH(row)}
+                        disabled={action.saving}
+                        style={{ width: "100%", padding: "10px 16px", border: "none", borderRadius: 9, cursor: action.saving ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13,
+                          background: action.status === "PROCEED" ? "linear-gradient(135deg,#166534,#16a34a)" : action.status === "HOLD" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#991b1b,#ef4444)",
+                          color: "#fff", opacity: action.saving ? 0.7 : 1 }}>
+                        {action.saving ? "Saving…" : `Confirm — ${action.status === "PROCEED" ? "Proceed" : action.status === "HOLD" ? "Hold" : "Not Approved"}`}
+                      </button>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
@@ -4138,7 +4770,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 5. Specification */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification *</label>
+                  <label style={s.label}>Specification{isEngineer && " *"}</label>
                   <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
@@ -4577,25 +5209,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={s.mBody}>
               {/* Engineer's reference info for procurement */}
-              {(assignModal.materialRequired || parseImageRefs(assignModal.imageReference).length > 0) && (
+              {assignModal.materialRequired && (
                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                  {assignModal.materialRequired && (
-                    <div style={{ marginBottom: parseImageRefs(assignModal.imageReference).length > 0 ? 10 : 0 }}>
-                      <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
-                      <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
-                    </div>
-                  )}
-                  {parseImageRefs(assignModal.imageReference).length > 0 && (
-                    <div>
-                      <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Reference Images ({parseImageRefs(assignModal.imageReference).length})</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {parseImageRefs(assignModal.imageReference).map((url, i) => (
-                          <ImageOrLink key={i} src={BACKEND_BASE + url} label={`Image ${i + 1}`}
-                            thumbStyle={{ height: 90, maxWidth: "48%", background: "#fff" }} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
+                  <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
                 </div>
               )}
               <div style={s.formGroup}>
@@ -4611,50 +5228,68 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ))}
                 </div>
               </div>
-              <div style={{ ...s.formGroup, position: "relative" }}>
+              <div style={s.formGroup}>
                 <label style={s.label}>Vendor</label>
-                <input
-                  type="text"
-                  style={{ ...s.select2, cursor: "text" }}
-                  placeholder="Search vendor…"
-                  value={assignVendorSearch}
-                  autoComplete="off"
-                  onChange={e => {
-                    setAssignVendorSearch(e.target.value);
-                    setAssignForm(f => ({ ...f, vendor: "" }));
-                    setShowAssignVendorDrop(true);
-                  }}
-                  onFocus={() => setShowAssignVendorDrop(true)}
-                  onBlur={() => setTimeout(() => setShowAssignVendorDrop(false), 150)}
-                />
-                {showAssignVendorDrop && (() => {
-                  const q = assignVendorSearch.trim().toLowerCase();
-                  const filtered = approvedVendors.filter(v =>
-                    !q || v.name.toLowerCase().includes(q) || (v.category || "").toLowerCase().includes(q)
-                  );
-                  return filtered.length > 0 ? (
-                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
-                      {filtered.map(v => (
-                        <div key={v.id}
-                          onMouseDown={() => {
-                            setAssignForm(f => ({ ...f, vendor: v.name }));
-                            setAssignVendorSearch(v.name);
-                            setShowAssignVendorDrop(false);
-                          }}
-                          style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}
-                          onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
-                          onMouseLeave={e => e.currentTarget.style.background = "#fff"}
-                        >
-                          <span style={{ fontWeight: 600, color: "#0f172a" }}>{v.name}</span>
-                          {v.category && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 8 }}>{v.category}</span>}
-                        </div>
-                      ))}
+                {assignForm.vendors.map((vendor, vi) => (
+                  <div key={vi} style={{ position: "relative", marginBottom: 8 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input
+                        type="text"
+                        style={{ ...s.select2, cursor: "text", flex: 1 }}
+                        placeholder={assignForm.vendors.length > 1 ? `Vendor ${vi + 1} — search…` : "Search vendor…"}
+                        value={assignVendorSearches[vi] || ""}
+                        autoComplete="off"
+                        onChange={e => {
+                          const ns = [...assignVendorSearches]; ns[vi] = e.target.value; setAssignVendorSearches(ns);
+                          setAssignForm(f => { const v = [...f.vendors]; v[vi] = ""; return { ...f, vendors: v }; });
+                          const nd = [...showAssignVendorDrops]; nd[vi] = true; setShowAssignVendorDrops(nd);
+                        }}
+                        onFocus={() => { const nd = [...showAssignVendorDrops]; nd[vi] = true; setShowAssignVendorDrops(nd); }}
+                        onBlur={() => setTimeout(() => { const nd = [...showAssignVendorDrops]; nd[vi] = false; setShowAssignVendorDrops(nd); }, 150)}
+                      />
+                      {assignForm.vendors.length > 1 && (
+                        <button type="button" onClick={() => {
+                          setAssignForm(f => ({ ...f, vendors: f.vendors.filter((_, i) => i !== vi) }));
+                          setAssignVendorSearches(s => s.filter((_, i) => i !== vi));
+                          setShowAssignVendorDrops(d => d.filter((_, i) => i !== vi));
+                        }} style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>×</button>
+                      )}
                     </div>
-                  ) : null;
-                })()}
-                {assignForm.vendor && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 600 }}>✓ {assignForm.vendor}</div>
-                )}
+                    {showAssignVendorDrops[vi] && (() => {
+                      const q = (assignVendorSearches[vi] || "").trim().toLowerCase();
+                      const filtered = approvedVendors.filter(v => !q || v.name.toLowerCase().includes(q) || (v.category || "").toLowerCase().includes(q));
+                      return filtered.length > 0 ? (
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: assignForm.vendors.length > 1 ? 46 : 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
+                          {filtered.map(v => (
+                            <div key={v.id}
+                              onMouseDown={() => {
+                                const alreadyUsed = assignForm.vendors.some((existing, idx) => idx !== vi && existing.toLowerCase() === v.name.toLowerCase());
+                                if (alreadyUsed) { showToast(`${v.name} is already added as a vendor`, "error"); return; }
+                                const nv = [...assignForm.vendors]; nv[vi] = v.name; setAssignForm(f => ({ ...f, vendors: nv }));
+                                const ns = [...assignVendorSearches]; ns[vi] = v.name; setAssignVendorSearches(ns);
+                                const nd = [...showAssignVendorDrops]; nd[vi] = false; setShowAssignVendorDrops(nd);
+                              }}
+                              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}
+                              onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                            >
+                              <span style={{ fontWeight: 600, color: "#0f172a" }}>{v.name}</span>
+                              {v.category && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 8 }}>{v.category}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+                    {vendor && <div style={{ marginTop: 4, fontSize: 12, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
+                  </div>
+                ))}
+                <button type="button" onClick={() => {
+                  setAssignForm(f => ({ ...f, vendors: [...f.vendors, ""] }));
+                  setAssignVendorSearches(s => [...s, ""]);
+                  setShowAssignVendorDrops(d => [...d, false]);
+                }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  + Add Vendor
+                </button>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
                 <button style={{ ...s.submitBtn(), flex: 1 }} onClick={submitAssign} disabled={assignLoading}>
@@ -4677,7 +5312,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
             {/* Header */}
             {(() => {
-              const e = docModal.entry; const v = docModal.vendor;
+              const e = docModal.entry;
+              // For multi-vendor: resolve vendor object for the currently viewed sub-doc
+              let multiDocs = null;
+              try { const pd = JSON.parse(e.docData || "{}"); if (pd.multiVendor && Array.isArray(pd.docs)) multiDocs = pd.docs; } catch {}
+              const isMulti    = !!multiDocs;
+              const multiCount = multiDocs ? multiDocs.length : 1;
+              const safeIdx    = isMulti ? Math.min(docViewIndex, multiCount - 1) : 0;
+              const currentVendorName = isMulti ? multiDocs[safeIdx]?.vendor : e.vendor;
+              const v = isMulti
+                ? (approvedVendors.find(av => av.name === currentVendorName) || docModal.vendor)
+                : docModal.vendor;
+
               const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
               const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
               const typeColor = "#fff";
@@ -4685,29 +5331,78 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
               const today = fmtDate(new Date().toISOString());
               const docNum = e.docNumber || autoDocNumber(e);
-              const statusColor = e.docStatus === "VP_APPROVED" ? "#166534" : e.docStatus === "PENDING_VP_APPROVAL" ? "#92400e" : e.docStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
-              const statusBg    = e.docStatus === "VP_APPROVED" ? "#dcfce7" : e.docStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : e.docStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
-              const statusLabel = e.docStatus === "VP_APPROVED" ? "✅ Doc Issued" : e.docStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : e.docStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
+              // For multi-vendor: derive per-sub-doc status and overall partial status
+              const activeDocStatus = isMulti ? (() => {
+                const sub = multiDocs[safeIdx]?.docStatus || "DRAFT";
+                if (sub === "DRAFT") return "DRAFT";
+                if (sub === "PENDING_VP_APPROVAL" && e.docStatus === "VP_APPROVED") return "VP_APPROVED";
+                return sub;
+              })() : e.docStatus;
+              // "Partially Issued" — some sub-docs approved, some still draft/pending
+              const isPartiallyIssued = isMulti && e.docStatus === "VP_APPROVED" &&
+                multiDocs.some(d => (d.docStatus || "DRAFT") === "DRAFT");
+              const statusColor = activeDocStatus === "VP_APPROVED" ? "#166534" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#92400e" : activeDocStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
+              const statusBg    = activeDocStatus === "VP_APPROVED" ? "#dcfce7" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : activeDocStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
+              const statusLabel = activeDocStatus === "VP_APPROVED" ? "✅ Doc Issued" : activeDocStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : activeDocStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
               return (
                 <>
                   {/* Top bar */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ background: typeBg, color: typeColor, borderRadius: 8, padding: "4px 14px", fontWeight: 800, fontSize: 13 }}>{e.pwjType}</span>
                       <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{typeName}</span>
                       <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700 }}>{statusLabel}</span>
+                      {isPartiallyIssued && (
+                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700, border: "1px solid #fde68a" }}>
+                          ⚠️ Partially Issued
+                        </span>
+                      )}
+                      {isMulti && (
+                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "1px solid #bfdbfe" }}>
+                          📄 {multiCount} Vendors
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <button onClick={() => { setDocModal(null); setDocEditMode(false); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+                      {/* Multi-vendor navigation */}
+                      {isMulti && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 10, padding: "4px 10px", border: "1px solid #e2e8f0" }}>
+                          <button onClick={() => setDocViewIndex(i => Math.max(0, i - 1))} disabled={safeIdx === 0}
+                            style={{ background: "none", border: "none", cursor: safeIdx === 0 ? "default" : "pointer", color: safeIdx === 0 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>‹</button>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 70, textAlign: "center" }}>
+                            {multiDocs[safeIdx].vendor || `PO ${safeIdx + 1}`}<br/>
+                            <span style={{ fontWeight: 500, color: "#94a3b8" }}>{safeIdx + 1} / {multiCount}</span><br/>
+                            {multiDocs.map((doc, di) => {
+                              const sub = doc.docStatus || "DRAFT";
+                              const st = sub === "DRAFT" ? "DRAFT"
+                                : sub === "PENDING_VP_APPROVAL" && e.docStatus === "VP_APPROVED" ? "VP_APPROVED"
+                                : sub;
+                              const c = st === "VP_APPROVED" ? "#16a34a" : st === "PENDING_VP_APPROVAL" ? "#d97706" : "#94a3b8";
+                              const lbl = st === "VP_APPROVED" ? "✅" : st === "PENDING_VP_APPROVAL" ? "⏳" : "—";
+                              return di === safeIdx
+                                ? <span key={di} style={{ fontSize: 11, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : "Draft"}</span>
+                                : null;
+                            })}
+                          </span>
+                          <button onClick={() => setDocViewIndex(i => Math.min(multiCount - 1, i + 1))} disabled={safeIdx === multiCount - 1}
+                            style={{ background: "none", border: "none", cursor: safeIdx === multiCount - 1 ? "default" : "pointer", color: safeIdx === multiCount - 1 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>›</button>
+                        </div>
+                      )}
+                      <button onClick={() => { setDocModal(null); setDocEditMode(false); setDocViewIndex(0); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
                     </div>
                   </div>
 
                   {/* Document body — Happizo format */}
                   {(() => {
                     const proj_   = managedProjects.find(p => p.name === e.projectName) || null;
-                    const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(e); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
+                    // For multi-vendor, use the active sub-doc's data
+                    const activeSubDoc = isMulti && multiDocs ? multiDocs[safeIdx] : null;
+                    const effectiveEntry = activeSubDoc
+                      ? { ...e, vendor: activeSubDoc.vendor, docData: JSON.stringify(activeSubDoc) }
+                      : e;
+                    const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(effectiveEntry); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
-                    const terms   = e.pwjType === "JO" ? null : (e.pwjType === "PO" ? PO_TERMS : WO_TERMS);
+                    const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
                     const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
                     const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 11, textAlign: "left" };
@@ -4772,7 +5467,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                   ? <>MSME: <input value={msme} onChange={ev => setField("msme", ev.target.value)} style={{ ...inpSt, width: 120, display: "inline" }} placeholder="MSME" /></>
                                   : (msme ? `MSME: ${msme}` : "");
                               })()}</div>
-                              <div>Kind Attn.: {docEditMode ? <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" /> : (docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ") || "")}</div>
+                              <div>Kind Attn.: {docEditMode ? (
+                                <span style={{ display: "inline-flex", gap: 4, alignItems: "center", verticalAlign: "middle" }}>
+                                  <select value={docData.kindAttnSalutation || ""} onChange={ev => setField("kindAttnSalutation", ev.target.value)}
+                                    style={{ ...inpSt, width: 70, display: "inline", padding: "4px 6px" }}>
+                                    <option value="">—</option>
+                                    <option value="Mr.">Mr.</option>
+                                    <option value="Mrs.">Mrs.</option>
+                                    <option value="Ms.">Ms.</option>
+                                    <option value="Dr.">Dr.</option>
+                                  </select>
+                                  <input value={docData.kindAttn || ""} onChange={ev => setField("kindAttn", ev.target.value)} style={{ ...inpSt, width: 180, display: "inline" }} placeholder="Contact person · number" />
+                                </span>
+                              ) : [docData.kindAttnSalutation, docData.kindAttn || [v?.contactPerson, v?.phoneNumber].filter(Boolean).join(" · ")].filter(Boolean).join(" ")}</div>
                             </div>
                             <div style={{ borderLeft: "1px solid #ddd", paddingLeft: 20 }}>
                               <div style={{ fontWeight: 700, marginBottom: 5 }}>BILL TO:</div>
@@ -4793,9 +5500,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <thead>
                               <tr style={{ background: "#ededeb" }}>
                                 <th style={{ ...thSt, width: 36, textAlign: "center" }}>S.No</th>
-                                <th style={{ ...thSt, width: "38%" }}>Item</th>
+                                <th style={{ ...thSt, width: "30%" }}>Item</th>
                                 <th style={{ ...thSt, textAlign: "center", width: 50 }}>Unit</th>
-                                <th style={{ ...thSt, textAlign: "center", width: 50 }}>Qty</th>
+                                <th style={{ ...thSt, textAlign: "center", width: 65 }}>Qty</th>
                                 <th style={{ ...thSt, textAlign: "right", width: 80 }}>Rate</th>
                                 <th style={{ ...thSt, textAlign: "right", width: 90 }}>Amount</th>
                                 {docEditMode && <th style={{ ...thSt, width: 28 }}></th>}
@@ -4814,7 +5521,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                       {docEditMode ? <input list="unit-list" value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", width: 70 }} placeholder="—" autoComplete="off" /> : row.unit || ""}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
-                                      {docEditMode ? <input type="number" value={row.qty} onChange={ev => setItem(i, "qty", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0" /> : (row.qty || "")}
+                                      {docEditMode ? <input type="number" value={row.qty} onChange={ev => setItem(i, "qty", ev.target.value)} style={{ ...inpSt, textAlign: "right", width: 60 }} placeholder="0" /> : (row.qty || "")}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "right" }}>
                                       {docEditMode ? <input type="number" value={row.rate} onChange={ev => setItem(i, "rate", ev.target.value)} style={{ ...inpSt, textAlign: "right" }} placeholder="0.00" /> : fmtCcy(row.rate)}
@@ -4837,7 +5544,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               {docEditMode && (
                                 <tr>
                                   <td colSpan={7} style={{ padding: "4px 10px" }}>
-                                    <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "" }] }))}
+                                    <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", vendor: "" }] }))}
                                       style={{ fontSize: 11, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
                                 </tr>
@@ -4898,30 +5605,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </div>
                           </div>
 
-                          {/* --- GENERAL TERMS / JO TERMS --- */}
+                          {/* --- GENERAL TERMS --- */}
                           <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>{e.pwjType === "JO" ? "Terms" : "General Terms"}</div>
-                            {e.pwjType === "JO" ? (
-                              docEditMode
-                                ? <textarea
-                                    rows={5}
-                                    value={docData.joTerms || ""}
-                                    onChange={ev => setField("joTerms", ev.target.value)}
-                                    style={{ ...inpSt, resize: "vertical", minHeight: 80 }}
-                                    placeholder="Enter terms and conditions for this job order…" />
-                                : <div style={{ fontSize: 11, color: "#333", whiteSpace: "pre-line", minHeight: 40 }}>{docData.joTerms || <span style={{ color: "#94a3b8" }}>No terms entered</span>}</div>
-                            ) : (
-                              terms.map((t, i) => (
-                                <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
-                                  <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
-                                  <span style={{ color: "#333" }}>{t}</span>
-                                </div>
-                              ))
-                            )}
+                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
+                            {terms.map((t, i) => (
+                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
+                                <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
+                                <span style={{ color: "#333" }}>{t}</span>
+                              </div>
+                            ))}
                           </div>
 
-                          {/* --- PAYMENT TERMS (PO / WO only) --- */}
-                          {e.pwjType !== "JO" && (
+                          {/* --- PAYMENT TERMS --- */}
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
@@ -4938,7 +5633,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
                             </div>
                           </div>
-                          )}
 
                           {/* VP Comments banner */}
                           {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
@@ -5073,7 +5767,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                     <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
                       {/* Edit → Save → Send for VP Approval in order */}
-                      {(isAdmin || isProcurement) && e.docStatus !== "VP_APPROVED" && !docEditMode && (
+                      {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
                         isProcurement && e.pwjIssued ? (
                           <button disabled title="PWJ issued — editing locked"
                             style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#94a3b8", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
@@ -5087,7 +5781,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )
                       )}
                       {docEditMode && (<>
-                        <button onClick={saveDocEdits} disabled={docSaving}
+                        <button onClick={() => saveDocEdits()} disabled={docSaving}
                           style={{ background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                           {docSaving ? "Saving…" : "💾 Save"}
                         </button>
@@ -5096,19 +5790,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           Cancel
                         </button>
                       </>)}
-                      {(isAdmin || isProcurement) && !docEditMode && e.docStatus !== "PENDING_VP_APPROVAL" && e.docStatus !== "VP_APPROVED" && (
-                        <button onClick={sendDocForApproval} disabled={docLoading}
-                          style={{ background: e.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                          {docLoading ? "Sending…" : e.docStatus === "REVISION_REQUESTED" ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
-                        </button>
-                      )}
-                      {e.docStatus === "VP_APPROVED" && !isEngineer && (
+                      {(isAdmin || isProcurement) && !docEditMode &&
+                        activeDocStatus !== "PENDING_VP_APPROVAL" &&
+                        activeDocStatus !== "VP_APPROVED" && (
+                          <button onClick={sendDocForApproval} disabled={docLoading}
+                            style={{ background: activeDocStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                            {docLoading ? "Sending…" : isMulti ? `🚀 Send PO ${safeIdx + 1} for VP Approval` : activeDocStatus === "REVISION_REQUESTED" ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
+                          </button>
+                        )}
+                      {activeDocStatus === "VP_APPROVED" && !isEngineer && (
                         <button onClick={downloadDoc}
                           style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                          ⬇ Download PDF
+                          ⬇ {isMulti ? `Download PO ${safeIdx + 1} PDF` : "Download PDF"}
                         </button>
                       )}
-                      {e.docStatus === "VP_APPROVED" && (isVP || isAdmin) && (
+                      {activeDocStatus === "VP_APPROVED" && (isVP || isAdmin) && (
                         <button onClick={async () => {
                           try {
                             const r = await api.toggleVendorEmail(e.id);
@@ -5125,7 +5821,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
                         </button>
                       )}
-                      {e.docStatus === "VP_APPROVED" && isProcurement && (
+                      {activeDocStatus === "VP_APPROVED" && isProcurement && (
                         <button onClick={sendDocToVendor} disabled={!e.vendorEmailEnabled}
                           title={!e.vendorEmailEnabled ? "Email not enabled by VP/Admin" : "Send document to vendor"}
                           style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -5149,30 +5845,123 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {pendingDocsModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setPendingDocsModal(false)}>
           <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 820, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 28px 18px", borderBottom: "1px solid #f1f5f9" }}>
-              <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Document Approvals</div>
-                <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending VP review</div>
+            {/* Header */}
+            <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Document Approvals</div>
+                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending · sorted by latest request</div>
+                </div>
+                <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
-              <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              {/* Search */}
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8", pointerEvents: "none" }}>🔍</span>
+                <input
+                  autoFocus
+                  placeholder="Search by project, doc number, vendor, material…"
+                  value={docApprovalSearch}
+                  onChange={e => setDocApprovalSearch(e.target.value)}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
+                />
+                {docApprovalSearch && (
+                  <button onClick={() => setDocApprovalSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                )}
+              </div>
             </div>
             <div style={{ overflowY: "auto", flex: 1, padding: "16px 28px" }}>
               {pendingDocsLoading ? (
                 <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Loading…</div>
-              ) : pendingDocs.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 15 }}>No documents pending approval</div>
-              ) : pendingDocs.map(doc => {
-                const typeColor = "#fff";
-                const typeBg    = doc.pwjType === "PO" ? "#1d4ed8" : doc.pwjType === "WO" ? "#92400e" : "#166534";
-                const typeName  = doc.pwjType === "PO" ? "Purchase Order" : doc.pwjType === "WO" ? "Work Order" : "Job Order";
+              ) : (() => {
+                const q = docApprovalSearch.trim().toLowerCase();
+                const sorted = [...pendingDocs].sort((a, b) => new Date(b.updatedAt || b.timestamp || 0) - new Date(a.updatedAt || a.timestamp || 0));
+                const filtered = q ? sorted.filter(d =>
+                  (d.docNumber || "").toLowerCase().includes(q) ||
+                  (d.projectName || "").toLowerCase().includes(q) ||
+                  (d.vendor || "").toLowerCase().includes(q) ||
+                  (d.materialRequired || "").toLowerCase().includes(q) ||
+                  (d.raisedBy || "").toLowerCase().includes(q)
+                ) : sorted;
+                if (filtered.length === 0) return (
+                  <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 15 }}>
+                    {q ? `No results for "${docApprovalSearch}"` : "No documents pending approval"}
+                  </div>
+                );
+                return filtered.map((doc, docIdx) => {
+                const typeBg   = doc.pwjType === "PO" ? "#1d4ed8" : doc.pwjType === "WO" ? "#92400e" : "#166534";
+                const typeName = doc.pwjType === "PO" ? "Purchase Order" : doc.pwjType === "WO" ? "Work Order" : "Job Order";
+                const reqDate  = doc.updatedAt || doc.timestamp;
+                const relTime  = reqDate ? (() => {
+                  const diff = Date.now() - new Date(reqDate).getTime();
+                  const m = Math.floor(diff / 60000);
+                  if (m < 1)  return "just now";
+                  if (m < 60) return `${m}m ago`;
+                  const h = Math.floor(m / 60);
+                  if (h < 24) return `${h}h ago`;
+                  return `${Math.floor(h / 24)}d ago`;
+                })() : "";
+
+                // Detect multi-vendor entry
+                let multiDocs = null;
+                try { const pd = JSON.parse(doc.docData || "{}"); if (pd.multiVendor && Array.isArray(pd.docs)) multiDocs = pd.docs; } catch {}
+
+                if (multiDocs) {
+                  const pendingSubDocs = multiDocs.map((sd, i) => ({ ...sd, idx: i })).filter(sd => sd.docStatus === "PENDING_VP_APPROVAL");
+                  return (
+                    <div key={doc.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, marginBottom: 14, overflow: "hidden" }}>
+                      <div style={{ background: "#f8fafc", padding: "14px 22px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                        <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>{doc.pwjType}</span>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{doc.docNumber}</span>
+                        <span style={{ fontSize: 12, color: "#64748b" }}>· {doc.projectName}</span>
+                        {relTime && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2 }}>· {relTime}</span>}
+                        <span style={{ marginLeft: "auto", background: "#eff6ff", color: "#1d4ed8", borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+                          {pendingSubDocs.length}/{multiDocs.length} vendor POs pending
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#475569", padding: "8px 22px", borderBottom: "1px solid #f1f5f9" }}>{doc.materialRequired}</div>
+                      {pendingSubDocs.map(subDoc => {
+                        const commentKey = `${doc.id}_${subDoc.idx}`;
+                        return (
+                          <div key={subDoc.idx} style={{ padding: "14px 22px", borderBottom: "1px solid #f8fafc" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                              <div>
+                                <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
+                                <span style={{ fontSize: 11, color: "#f59e0b", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
+                              </div>
+                              <button onClick={() => { openDocModal({ ...doc, docData: JSON.stringify(subDoc) }); setDocViewIndex(subDoc.idx); }}
+                                style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>
+                                👁 Preview
+                              </button>
+                            </div>
+                            <textarea
+                              rows={2}
+                              placeholder="Comments (optional) — pricing concerns, revision needed…"
+                              value={vpCommentMap[commentKey] || ""}
+                              onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
+                              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✅ Approve</button>
+                              <button onClick={() => handleSubDocReject(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>❌ Not Approved</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={doc.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, padding: "18px 22px", marginBottom: 14 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{ background: typeBg, color: typeColor, borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>{doc.pwjType}</span>
+                          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                          <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>{doc.pwjType}</span>
                           <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{doc.docNumber}</span>
                           <span style={{ fontSize: 12, color: "#64748b" }}>· {typeName}</span>
+                          {relTime && <span style={{ fontSize: 11, color: "#94a3b8" }}>· {relTime}</span>}
                         </div>
                         <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600, marginBottom: 2 }}>{doc.materialRequired}</div>
                         <div style={{ fontSize: 12, color: "#64748b" }}>{doc.projectName} · Vendor: <strong>{doc.vendor}</strong></div>
@@ -5182,7 +5971,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         👁 Preview
                       </button>
                     </div>
-                    {/* VP Comment box */}
                     <div style={{ marginBottom: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".04em" }}>Comments / Notes (optional)</div>
                       <textarea
@@ -5203,7 +5991,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           </div>
         </div>
@@ -5431,7 +6220,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 500, background: "linear-gradient(135deg,#0f172a,#1e3a5f)", borderRadius: 14, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,.35)" }}>
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
           {(isAdmin || isProcurement) && (
-            <button onClick={() => { setGenDocVendor(""); setGenDocPwjType("PO"); setGenDocModal(true); }}
+            <button onClick={async () => {
+                setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocPwjType("PO");
+                if (approvedVendors.length === 0) {
+                  try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
+                }
+                setGenDocModal(true);
+              }}
               style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
               📄 Generate PO / WO / JO
             </button>
@@ -5443,51 +6238,132 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </div>
       )}
 
-      {/* ─── GEN DOC MODAL (vendor + pwjType picker) ─── */}
-      {genDocModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setGenDocModal(false)}>
-          <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,.22)", overflow: "hidden" }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📄 Generate Document</div>
-              <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
-            </div>
-            <div style={{ padding: "24px" }}>
-              <div style={{ marginBottom: 6, fontSize: 12, color: "#64748b", fontWeight: 600 }}>
-                {selectedIds.size} PWJ {selectedIds.size === 1 ? "entry" : "entries"} will be added as line items.
-                Doc saved to entry #{[...selectedIds][0]}.
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Doc Type</label>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {["PO","WO","JO"].map(t => (
-                    <button key={t} onClick={() => setGenDocPwjType(t)}
-                      style={{ flex: 1, padding: "10px 0", border: `2px solid ${genDocPwjType === t ? "#2563eb" : "#e2e8f0"}`, borderRadius: 10, background: genDocPwjType === t ? "#eff6ff" : "#f8fafc", color: genDocPwjType === t ? "#1d4ed8" : "#64748b", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                      {t}
-                    </button>
-                  ))}
+      {/* ─── GEN DOC MODAL (per-item vendor assignment) ─── */}
+      {genDocModal && (() => {
+        const selected = entries.filter(e => selectedIds.has(e.id));
+        // Count unique vendor groups for the summary
+        const vendorGroups = {};
+        for (const e of selected) {
+          const v = (genDocItemVendors[e.id] || "").trim();
+          if (v) { if (!vendorGroups[v]) vendorGroups[v] = 0; vendorGroups[v]++; }
+        }
+        const docCount = Object.keys(vendorGroups).length;
+        const allAssigned = selected.every(e => (genDocItemVendors[e.id] || "").trim());
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+            onClick={() => setGenDocModal(false)}>
+            <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 620, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,.22)", overflow: "hidden" }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📄 Generate Document(s)</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginTop: 2 }}>{selected.length} {selected.length === 1 ? "item" : "items"} selected</div>
                 </div>
+                <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
               </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Vendor</label>
-                <select value={genDocVendor} onChange={e => setGenDocVendor(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", outline: "none" }}>
-                  <option value="">— Select vendor —</option>
-                  {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                </select>
+
+              <div style={{ overflowY: "auto", flex: 1, padding: "20px 24px" }}>
+                {/* Doc Type */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>Doc Type</label>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    {["PO","WO","JO"].map(t => (
+                      <button key={t} onClick={() => setGenDocPwjType(t)}
+                        style={{ flex: 1, padding: "10px 0", border: `2px solid ${genDocPwjType === t ? "#2563eb" : "#e2e8f0"}`, borderRadius: 10, background: genDocPwjType === t ? "#eff6ff" : "#f8fafc", color: genDocPwjType === t ? "#1d4ed8" : "#64748b", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Apply same vendor to all */}
+                <div style={{ marginBottom: 18, background: "#f8fafc", borderRadius: 10, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
+                    Same Vendor for All Items
+                  </label>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <select value={genDocApplyAll} onChange={e => setGenDocApplyAll(e.target.value)}
+                      style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff" }}>
+                      <option value="">— Select vendor —</option>
+                      {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                    </select>
+                    <button onClick={() => {
+                        if (!genDocApplyAll) return;
+                        const map = {};
+                        selected.forEach(e => { map[e.id] = genDocApplyAll; });
+                        setGenDocItemVendors(map);
+                      }}
+                      disabled={!genDocApplyAll}
+                      style={{ background: genDocApplyAll ? "linear-gradient(135deg,#1e3a5f,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "8px 16px", color: genDocApplyAll ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 12, cursor: genDocApplyAll ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                      Apply to All
+                    </button>
+                  </div>
+                </div>
+
+                {/* Per-item vendor assignment */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
+                    Assign Vendor per Item
+                  </label>
+                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                    {/* Table header */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "#f1f5f9", padding: "8px 12px", borderBottom: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Material / Entry</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Vendor</div>
+                    </div>
+                    {selected.map((e, i) => {
+                      const assigned = (genDocItemVendors[e.id] || "").trim();
+                      return (
+                        <div key={e.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", padding: "10px 12px", borderBottom: i < selected.length - 1 ? "1px solid #f1f5f9" : "none", background: assigned ? "#fff" : "#fffbeb", alignItems: "center", gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.materialRequired}>
+                              {e.materialRequired}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>#{e.id} · {e.projectName}</div>
+                          </div>
+                          <select value={genDocItemVendors[e.id] || ""}
+                            onChange={ev => setGenDocItemVendors(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                            style={{ width: "100%", border: `1.5px solid ${assigned ? "#86efac" : "#fbbf24"}`, borderRadius: 7, padding: "6px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", background: assigned ? "#f0fdf4" : "#fffbeb" }}>
+                            <option value="">— Select vendor —</option>
+                            {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Summary */}
+                {allAssigned && docCount > 0 && (
+                  <div style={{ background: docCount === 1 ? "#f0fdf4" : "#eff6ff", border: `1.5px solid ${docCount === 1 ? "#86efac" : "#bfdbfe"}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: docCount === 1 ? "#166534" : "#1d4ed8", fontWeight: 600 }}>
+                    {docCount === 1
+                      ? `✅ 1 document will be created for ${Object.keys(vendorGroups)[0]} with ${selected.length} line item(s)`
+                      : `📄 ${docCount} separate documents will be created — one per vendor`}
+                    {docCount > 1 && (
+                      <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: 12, fontWeight: 500 }}>
+                        {Object.entries(vendorGroups).map(([v, count]) => (
+                          <li key={v}>{v}: {count} item(s)</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+
+              {/* Footer */}
+              <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
                 <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                <button onClick={submitGenDoc} disabled={genDocSaving}
-                  style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", border: "none", borderRadius: 8, padding: "9px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                  {genDocSaving ? "Creating…" : "Create & Open Doc"}
+                <button onClick={submitGenDoc} disabled={genDocSaving || !allAssigned}
+                  style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
+                  {genDocSaving ? "Creating…" : docCount > 1 ? `Create ${docCount} Documents` : "Create & Open Doc"}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {viewVendor && (() => {
         const vv = viewVendor;
@@ -5629,7 +6505,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
 
       {/* ─── ADD VENDOR FULL PAGE ─── */}
-      {addVendorPage && (() => {
+      {addVendorPage && isAdmin && (() => {
         const avf = addVendorForm;
         const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
         const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };

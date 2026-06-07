@@ -3,7 +3,7 @@ import {
   FolderOpen, Edit2, X, Save, AlertTriangle, Plus,
   TrendingUp, IndianRupee, BarChart2, FileText
 } from 'lucide-react';
-import api from './accountApi';
+import api, { projectsApi } from './accountApi';
 import CollectionPage from './CollectionPage';
 
 const BUDGET_RATIO = 0.80;
@@ -11,96 +11,29 @@ const STORAGE_KEY = 'pwj_projects_v2';
 
 const EMPTY_EXPENSES = { material: 0, labour: 0, subcontract: 0, consultants: 0, miscellaneous: 0 };
 
-const INITIAL_PROJECTS = [
-  {
-    // Real data from PDF — Padma Shyam project
-    id: 1,
-    name: 'Padma Shyam res Perungudi',
-    client: 'Padma Shyam Suryodev',
-    fy: '2025-2026',
-    quoteGross: 1215840,
-    collectionReceived: 610000,
-    expenses: { material: 399363, labour: 157761, subcontract: 0, consultants: 39600, miscellaneous: 35730 },
-    status: 'active',
-  },
-  {
-    // 3BHK villa full interior — active, carcass done, finishing stage
-    id: 2,
-    name: 'Ravi Kumar Villa — Adyar',
-    client: 'Ravi Kumar Sharma',
-    fy: '2025-2026',
-    quoteGross: 2450000,
-    collectionReceived: 1837500,
-    expenses: { material: 875200, labour: 298500, subcontract: 162000, consultants: 68000, miscellaneous: 38750 },
-    status: 'active',
-  },
-  {
-    // 2BHK apartment full interior — handed over, payments closed
-    id: 3,
-    name: 'Meenakshi Apt Interiors — Velachery',
-    client: 'Meenakshi Rajendran',
-    fy: '2025-2026',
-    quoteGross: 875000,
-    collectionReceived: 875000,
-    expenses: { material: 294500, labour: 112800, subcontract: 0, consultants: 33000, miscellaneous: 17640 },
-    status: 'completed',
-  },
-  {
-    // Commercial office 4500 sqft fit-out — mid execution, subcontractor heavy
-    id: 4,
-    name: 'Sundar Tech Office Fit-out — Nungambakkam',
-    client: 'Sundar Pichai Enterprises',
-    fy: '2025-2026',
-    quoteGross: 3820000,
-    collectionReceived: 1910000,
-    expenses: { material: 648000, labour: 196000, subcontract: 524000, consultants: 88000, miscellaneous: 49500 },
-    status: 'active',
-  },
-  {
-    // 4BHK bungalow — recently started, advance received, design & procurement phase
-    id: 5,
-    name: 'Lakshmi Narayan res — Besant Nagar',
-    client: 'Lakshmi Narayan Iyer',
-    fy: '2025-2026',
-    quoteGross: 1680000,
-    collectionReceived: 840000,
-    expenses: { material: 312500, labour: 118400, subcontract: 0, consultants: 56000, miscellaneous: 22800 },
-    status: 'active',
-  },
-  {
-    // Boutique showroom refit — completed and handed over last quarter
-    id: 6,
-    name: 'Priya Boutique Showroom Refit — T Nagar',
-    client: 'Priya Fashion House',
-    fy: '2025-2026',
-    quoteGross: 990000,
-    collectionReceived: 990000,
-    expenses: { material: 318400, labour: 129600, subcontract: 96000, consultants: 27500, miscellaneous: 16200 },
-    status: 'completed',
-  },
-  {
-    // New 3BHK residence — WO signed, design approved, material procurement starting
-    id: 7,
-    name: 'Anand Residence — Porur',
-    client: 'Anand Krishnamurthy',
-    fy: '2025-2026',
-    quoteGross: 1540000,
-    collectionReceived: 770000,
-    expenses: { material: 198600, labour: 64200, subcontract: 0, consultants: 52000, miscellaneous: 14800 },
-    status: 'active',
-  },
-  {
-    // Dental clinic interior — on hold due to client delay in civil works
-    id: 8,
-    name: 'Kavitha Dental Clinic — Chromepet',
-    client: 'Dr. Kavitha Subramanian',
-    fy: '2025-2026',
-    quoteGross: 620000,
-    collectionReceived: 310000,
-    expenses: { material: 148200, labour: 58400, subcontract: 0, consultants: 24000, miscellaneous: 12600 },
-    status: 'onhold',
-  },
-];
+function mapPwjProject(p) {
+  return {
+    id: p.id,
+    name: p.name || '',
+    client: p.clientName || '',
+    fy: '',
+    quoteGross: Number(p.quoteTotalValue || p.projectValue || 0),
+    quoteValue: Number(p.quoteValue || 0),
+    quoteGstPct: p.quoteGstPct ?? null,
+    totalValue: Number(p.totalValue || 0),
+    gstPct: p.gstPct ?? null,
+    collectionReceived: 0,
+    expenses: { ...EMPTY_EXPENSES },
+    status: p.active !== false ? 'active' : 'completed',
+    location: p.location || '',
+    description: p.description || '',
+    clientGstNo: p.clientGstNo || '',
+    clientAddress: p.clientAddress || '',
+    billingAddress: p.billingAddress || '',
+    poWoStatus: p.poWoStatus || '',
+    businessType: '',
+  };
+}
 
 function fmt(n) {
   if (!n && n !== 0) return '₹0';
@@ -144,14 +77,7 @@ const EXPENSE_COLORS = {
 };
 
 export default function ProjectsPage({ isCeo = false }) {
-  const [projects, setProjects] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-    } catch {
-      return INITIAL_PROJECTS;
-    }
-  });
+  const [projects, setProjects] = useState([]);
 
   const [editing, setEditing] = useState(null); // project id or 'new'
   const [collectionProjectId, setCollectionProjectId] = useState(null);
@@ -165,8 +91,30 @@ export default function ProjectsPage({ isCeo = false }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }, [projects]);
+    localStorage.removeItem(STORAGE_KEY);
+    Promise.all([projectsApi.getAll(), projectsApi.getBudgetSummary()])
+      .then(([r, budgetMap]) => {
+        // budgetMap keys are exact projectName strings from PwjEntry
+        // build a lowercase lookup for case-insensitive matching
+        const lowerMap = {};
+        Object.entries(budgetMap).forEach(([k, v]) => { lowerMap[k.trim().toLowerCase()] = v; });
+        setProjects((r.data || []).map(p => {
+          const mapped = mapPwjProject(p);
+          const b = lowerMap[(p.name || '').trim().toLowerCase()] || {};
+          return {
+            ...mapped,
+            expenses: {
+              material:      b.material      || 0,
+              labour:        b.labour        || 0,
+              subcontract:   b.subcontract   || 0,
+              consultants:   b.consultants   || 0,
+              miscellaneous: b.miscellaneous || 0,
+            },
+          };
+        }));
+      })
+      .catch(() => setProjects([]));
+  }, []);
 
   // ── Aggregate summary ──
   const totalBudget = projects.reduce((s, p) => s + p.quoteGross * BUDGET_RATIO, 0);
@@ -181,8 +129,7 @@ export default function ProjectsPage({ isCeo = false }) {
     setEditing(project.id);
     setCollectionProjectId(project.id);
     setSelectedPwjId('');
-    fetch('/api/v1/projects')
-      .then(r => r.json())
+    projectsApi.getAll()
       .then(r => setPwjProjects(r.data || []))
       .catch(() => setPwjProjects([]));
     setForm({

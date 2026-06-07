@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowRightLeft, Plus, Trash2, AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import { ArrowRightLeft, Plus, Trash2, AlertTriangle, CheckCircle2, X, ChevronDown, ChevronRight } from 'lucide-react';
 import api from './accountApi';
 
 function fmt(n) {
@@ -15,13 +15,18 @@ function fmtDate(d) {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function FundTransferPage({ isCeo = false }) {
-  const [b2bProjects, setB2bProjects] = useState([]);
-  const [transfers, setTransfers]     = useState([]);
-  const [showForm, setShowForm]       = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [saving, setSaving]           = useState(false);
-  const [error, setError]             = useState('');
-  const [fromBalance, setFromBalance] = useState(null);
+  const [b2bProjects, setB2bProjects]   = useState([]);
+  const [transfers, setTransfers]       = useState([]);
+  const [showForm, setShowForm]         = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState('');
+  const [fromBalance, setFromBalance]   = useState(null);
+  const [expanded, setExpanded]         = useState({ bank: true, project: true });
+
+  function toggleSection(key) {
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const [form, setForm] = useState({
     fromProjectId: '', toProjectId: '', amount: '', transferDate: today(), remarks: '',
@@ -100,7 +105,7 @@ export default function FundTransferPage({ isCeo = false }) {
           <div>
             <div style={{ color: 'white', fontWeight: 700, fontSize: 15 }}>B2B Fund Transfer</div>
             <div style={{ color: '#c4b5fd', fontSize: 12, marginTop: 2 }}>
-              Only B2B → B2B transfers are permitted · {b2bProjects.length} eligible projects
+              {b2bProjects.length} project{b2bProjects.length !== 1 ? 's' : ''} · Bank Balance & Total Project Balance
             </div>
           </div>
         </div>
@@ -126,44 +131,133 @@ export default function FundTransferPage({ isCeo = false }) {
         ))}
       </div>
 
-      {/* ── B2B Project Balances ── */}
-      <div className="card" style={{ padding: 20, marginBottom: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 14 }}>B2B Project Balances</div>
+      {/* ── Project Balance Tree ── */}
+      <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden' }}>
         {loading ? (
           <div className="loading" style={{ height: 80 }}>Loading…</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-            {b2bProjects.map(p => {
-              const outgoing  = transfers.filter(t => t.fromProjectId === p.id).reduce((s, t) => s + Number(t.amount), 0);
-              const incoming  = transfers.filter(t => t.toProjectId   === p.id).reduce((s, t) => s + Number(t.amount), 0);
-              const available = Number(p.availableBalance);
-              const collected = Number(p.collectionReceived);
-              const pct       = collected > 0 ? Math.min((available / collected) * 100, 100) : 0;
-              const barColor  = pct < 10 ? '#ef4444' : pct < 30 ? '#f59e0b' : '#10b981';
-              return (
-                <div key={p.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, lineHeight: 1.3, marginRight: 8 }}>{p.name}</div>
-                    <span style={{ padding: '2px 8px', borderRadius: 100, fontSize: 10, fontWeight: 700, background: '#ede9fe', color: '#7c3aed', flexShrink: 0 }}>B2B</span>
+        ) : (() => {
+          const totalBank    = b2bProjects.reduce((s, p) => s + Number(p.collectionReceived ?? 0), 0);
+          const totalProject = b2bProjects.reduce((s, p) => s + Number(p.availableBalance   ?? 0), 0);
+
+          const sections = [
+            { key: 'bank',    label: 'Bank Balance',          total: totalBank,    color: '#1e40af', bg: '#eff6ff', lineColor: '#93c5fd', valueKey: 'collectionReceived', showTransfers: false },
+            { key: 'project', label: 'Total Project Balance', total: totalProject, color: '#065f46', bg: '#f0fdf4', lineColor: '#6ee7b7', valueKey: 'availableBalance',   showTransfers: true  },
+          ];
+
+          return sections.map((sec, si) => {
+            const isOpenSec = expanded[sec.key];
+            const isLastSec = si === sections.length - 1;
+
+            return (
+              <div key={sec.key} style={{ borderBottom: isLastSec ? 'none' : '1px solid #e2e8f0' }}>
+
+                {/* ── Parent node ── */}
+                <div
+                  onClick={() => toggleSection(sec.key)}
+                  style={{ display: 'flex', alignItems: 'center', padding: '0 16px', cursor: 'pointer', background: sec.bg, height: 46, userSelect: 'none' }}
+                >
+                  {/* Root vertical connector to next sibling */}
+                  <div style={{ width: 20, alignSelf: 'stretch', flexShrink: 0, position: 'relative' }}>
+                    {si > 0 && (
+                      <div style={{ position: 'absolute', left: 9, top: 0, bottom: '50%', width: 1, background: '#94a3b8' }} />
+                    )}
+                    {!isLastSec && (
+                      <div style={{ position: 'absolute', left: 9, top: '50%', bottom: 0, width: 1, background: '#94a3b8' }} />
+                    )}
+                    <div style={{ position: 'absolute', left: 9, top: '50%', width: 11, height: 1, background: '#94a3b8' }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b', marginBottom: 6 }}>
-                    <span>Collected: {fmt(collected)}</span>
-                    <span style={{ color: barColor, fontWeight: 700 }}>Avail: {fmt(available)}</span>
+
+                  {/* Toggle icon */}
+                  <div style={{ marginRight: 6, color: sec.color, lineHeight: 0 }}>
+                    {isOpenSec ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: 100, height: 6 }}>
-                    <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: '100%' }} />
-                  </div>
-                  {(outgoing > 0 || incoming > 0) && (
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11 }}>
-                      {outgoing > 0 && <span style={{ color: '#ef4444' }}>↑ Out: {fmt(outgoing)}</span>}
-                      {incoming > 0 && <span style={{ color: '#10b981' }}>↓ In: {fmt(incoming)}</span>}
-                    </div>
-                  )}
+
+                  {/* Label + count */}
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: sec.color }}>
+                    {sec.label}
+                    <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>
+                      {b2bProjects.length} project{b2bProjects.length !== 1 ? 's' : ''}
+                    </span>
+                  </span>
+
+                  {/* Total */}
+                  <span style={{ fontWeight: 800, fontSize: 15, color: sec.color }}>{fmt(sec.total)}</span>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* ── Child nodes ── */}
+                {isOpenSec && b2bProjects.map((p, pi) => {
+                  const isLastChild = pi === b2bProjects.length - 1;
+                  const value       = Number(p[sec.valueKey] ?? 0);
+                  const valColor    = sec.key === 'project'
+                    ? (value <= 0 ? '#ef4444' : value < 50000 ? '#f59e0b' : '#10b981')
+                    : '#1e293b';
+
+                  const outgoing = sec.showTransfers
+                    ? transfers.filter(t => t.fromProjectId === p.id).reduce((s, t) => s + Number(t.amount), 0)
+                    : 0;
+                  const incoming = sec.showTransfers
+                    ? transfers.filter(t => t.toProjectId   === p.id).reduce((s, t) => s + Number(t.amount), 0)
+                    : 0;
+
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: 'flex', alignItems: 'center',
+                        background: pi % 2 === 0 ? '#fff' : '#fafcff',
+                        borderTop: '1px solid #f1f5f9',
+                        minHeight: 38,
+                      }}
+                    >
+                      {/* Level-0 gutter: carries vertical sibling line */}
+                      <div style={{ width: 20, alignSelf: 'stretch', flexShrink: 0, position: 'relative' }}>
+                        {!isLastSec && (
+                          <div style={{ position: 'absolute', left: 9, top: 0, bottom: 0, width: 1, background: '#94a3b8' }} />
+                        )}
+                      </div>
+
+                      {/* Level-1 gutter: vertical + horizontal branch */}
+                      <div style={{ width: 28, alignSelf: 'stretch', flexShrink: 0, position: 'relative' }}>
+                        {/* Vertical line (stops at center for last child) */}
+                        <div style={{
+                          position: 'absolute', left: 9,
+                          top: 0, bottom: isLastChild ? '50%' : 0,
+                          width: 1, background: sec.lineColor,
+                        }} />
+                        {/* Horizontal branch */}
+                        <div style={{
+                          position: 'absolute', left: 9, top: '50%',
+                          width: 16, height: 1, background: sec.lineColor,
+                        }} />
+                      </div>
+
+                      {/* Leaf dot */}
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: sec.lineColor, flexShrink: 0, marginRight: 8 }} />
+
+                      {/* Project name */}
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>
+                        {p.name}
+                      </span>
+
+                      {/* Transfer indicators */}
+                      {sec.showTransfers && (outgoing > 0 || incoming > 0) && (
+                        <div style={{ display: 'flex', gap: 6, fontSize: 11, marginRight: 12, flexShrink: 0 }}>
+                          {outgoing > 0 && <span style={{ color: '#ef4444', fontWeight: 600 }}>↑ {fmt(outgoing)}</span>}
+                          {incoming > 0 && <span style={{ color: '#10b981', fontWeight: 600 }}>↓ {fmt(incoming)}</span>}
+                        </div>
+                      )}
+
+                      {/* Value */}
+                      <span style={{ fontWeight: 700, fontSize: 13, color: valColor, flexShrink: 0, paddingRight: 16, minWidth: 100, textAlign: 'right' }}>
+                        {fmt(value)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {/* ── Transfer History ── */}

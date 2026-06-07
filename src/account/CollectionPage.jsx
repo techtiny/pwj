@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Trash2, X, Bell, BellOff, Send } from 'lucide-react';
-import api from './accountApi';
+import api, { projectsApi } from './accountApi';
 
 const STAGES = [
   { value: 'ADVANCE', label: 'Advance' },
@@ -62,7 +62,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
   const [editInterval, setEditInterval] = useState('');
 
   useEffect(() => {
-    api.get('/projects').then(r => setProjects(r.data || [])).catch(() => {});
+    projectsApi.getAll().then(r => setProjects(r.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
