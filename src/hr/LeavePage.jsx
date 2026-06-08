@@ -12,7 +12,10 @@ const STATUS_CFG = {
 
 const EMPTY = { leaveType: "CASUAL", fromDate: "", toDate: "", reason: "" };
 
+const RESTRICTED_ROLES = ["VP", "CEO", "OH"];
+
 export default function LeavePage({ user }) {
+  const canApplyLeave = !RESTRICTED_ROLES.includes(user?.role);
   const [leaves, setLeaves]     = useState([]);
   const [summary, setSummary]   = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -122,14 +125,19 @@ export default function LeavePage({ user }) {
       {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>My Leave Requests</div>
-        <button onClick={() => { setShowForm(true); setForm(EMPTY); setErrors({}); }}
-          style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-          + Apply Leave
-        </button>
+        {canApplyLeave && (
+          <button onClick={() => { setShowForm(true); setForm(EMPTY); setErrors({}); }}
+            style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+            + Apply Leave
+          </button>
+        )}
+        {!canApplyLeave && (
+          <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>Leave applications not applicable for this role</span>
+        )}
       </div>
 
       {/* Apply leave form */}
-      {showForm && (
+      {showForm && canApplyLeave && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 560 }}>
           <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New Leave Application</div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
