@@ -3305,7 +3305,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
                     ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [["PWJ","pwjIssued"]] : []),
-                    ...(!isEngineer ? [["ACK","ack"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
@@ -3375,25 +3374,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </button>
                         ) : (
                           <span style={{ fontSize: 16, color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
-                        )}
-                      </td>
-                    )}
-                    {/* ACK toggle — hidden for Engineer */}
-                    {!isEngineer && (
-                      <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                        {(isAdmin || isProcurement || isVP) ? (
-                          <button
-                            title={row.ack ? "ACK — click to unset" : "Not ACK — click to acknowledge"}
-                            onClick={async () => {
-                              const r = await api.procurementUpdate(row.id, { ack: !row.ack });
-                              if (r.success) fetchEntries();
-                              else showToast(r.message || "Update failed", "error");
-                            }}
-                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
-                            {row.ack ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: 16, color: row.ack ? "#16a34a" : "#ef4444" }}>{row.ack ? "✓" : "✗"}</span>
                         )}
                       </td>
                     )}
@@ -4412,7 +4392,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
                   ["Dependency", detailRow.dependency],
-                  ["ACK", detailRow.ack ? "✓ Acknowledged" : "✗ Not Acknowledged"],
                 ].map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
