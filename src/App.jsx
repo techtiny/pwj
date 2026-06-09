@@ -1561,12 +1561,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
-  // Sync engineer's delivered-date, remarks and site remarks when the document modal opens on a new entry
+  // Sync engineer's delivered-date and remarks when the document modal opens on a new entry
   useEffect(() => {
     if (docModal?.entry) {
       setEngDeliveredDate(docModal.entry.deliveredDate || "");
       setEngRemarks(docModal.entry.remarks || "");
-      setSiteRemarks(docModal.entry.siteRemarks || "");
+      setSiteRemarks("");
     }
   }, [docModal?.entry?.id]);
   useEffect(() => { fetchManagedProjects(); }, [fetchManagedProjects]);
@@ -2691,14 +2691,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
   };
 
   const saveSiteRemarks = async () => {
-    if (!docModal) return;
+    if (!docModal || !siteRemarks.trim()) return;
+    const name = user.fullName || user.username || "Procurement";
+    const now = new Date();
+    const fmtNow = now.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+    const newEntry = `[${fmtNow} · ${name}] ${siteRemarks.trim()}`;
+    const existing = docModal.entry.siteRemarks;
+    const combined = existing ? `${existing}\n${newEntry}` : newEntry;
     setSiteRemarksSaving(true);
     try {
-      const r = await api.procurementUpdate(docModal.entry.id, { siteRemarks: siteRemarks.trim() || null });
+      const r = await api.procurementUpdate(docModal.entry.id, { siteRemarks: combined });
       if (r.success) {
-        setDocModal(m => ({ ...m, entry: { ...m.entry, siteRemarks: siteRemarks.trim() } }));
-        setEntries(es => es.map(x => x.id === docModal.entry.id ? { ...x, siteRemarks: siteRemarks.trim() } : x));
-        showToast("Site remarks saved ✅");
+        setDocModal(m => ({ ...m, entry: { ...m.entry, siteRemarks: combined } }));
+        setEntries(es => es.map(x => x.id === docModal.entry.id ? { ...x, siteRemarks: combined } : x));
+        setSiteRemarks("");
+        showToast("Remark added ✅");
       } else showToast(r.message || "Failed to save", "error");
     } catch { showToast("Network error", "error"); }
     finally { setSiteRemarksSaving(false); }
@@ -5764,27 +5771,47 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       );
                     })()}
 
-                    {/* Remarks for site team — editable by Procurement/Admin, visible to all, all doc statuses */}
-                    <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-                        🏗️ Remarks for Site Team
-                      </div>
-                      {(isAdmin || isProcurement) ? (
-                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
-                            placeholder="Add remarks for the site team about delivery details…" rows={2}
-                            style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
-                          <button onClick={saveSiteRemarks} disabled={siteRemarksSaving}
-                            style={{ background: "linear-gradient(135deg,#7e22ce,#a855f7)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                            {siteRemarksSaving ? "Saving…" : "💾 Save"}
-                          </button>
+                    {/* Remarks for site team — rolling log, procurement adds, all can view */}
+                    {(() => {
+                      const logEntries = (e.siteRemarks || "").split("\n").filter(Boolean);
+                      return (
+                        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                            🏗️ Remarks for Site Team
+                          </div>
+                          {logEntries.length > 0 && (
+                            <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                              {logEntries.map((line, i) => {
+                                const m = line.match(/^\[(.+?)\]\s*(.*)/);
+                                return m ? (
+                                  <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                                    <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                                  </div>
+                                ) : (
+                                  <div key={i} style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{line}</div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {(isAdmin || isProcurement) ? (
+                            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                              <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
+                                placeholder="Add a new remark for the site team…" rows={2}
+                                style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
+                              <button onClick={saveSiteRemarks} disabled={siteRemarksSaving || !siteRemarks.trim()}
+                                style={{ background: siteRemarks.trim() ? "linear-gradient(135deg,#7e22ce,#a855f7)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: siteRemarks.trim() ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: siteRemarks.trim() ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                {siteRemarksSaving ? "Saving…" : "💾 Add"}
+                              </button>
+                            </div>
+                          ) : (
+                            !logEntries.length && (
+                              <div style={{ fontSize: 14, color: "#94a3b8" }}>No remarks for site team yet.</div>
+                            )
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ fontSize: 14, color: e.siteRemarks ? "#0f172a" : "#94a3b8", lineHeight: 1.6, background: e.siteRemarks ? "#faf5ff" : "transparent", border: e.siteRemarks ? "1px solid #e9d5ff" : "none", borderRadius: 8, padding: e.siteRemarks ? "10px 13px" : 0 }}>
-                          {e.siteRemarks || "No remarks for site team"}
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
 
                     {/* Revision notice + actions for Procurement */}
                     {(isAdmin || isProcurement) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
