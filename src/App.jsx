@@ -4464,6 +4464,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <div style={s.divider}>💬 Remarks</div>
                   <div style={{ gridColumn: "1/-1" }}><div style={s.dVal}>{detailRow.remarks}</div></div>
                 </>}
+                {detailRow.siteRemarks && (() => {
+                  const logEntries = detailRow.siteRemarks.split("\n").filter(Boolean);
+                  return (
+                    <>
+                      <div style={s.divider}>🏗️ Remarks for Site Team</div>
+                      <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", gap: 8 }}>
+                        {logEntries.map((line, i) => {
+                          const m = line.match(/^\[(.+?)\]\s*(.*)/);
+                          return m ? (
+                            <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                              <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                            </div>
+                          ) : (
+                            <div key={i} style={{ fontSize: 13, color: "#0f172a" }}>{line}</div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               {/* Edit button inside detail modal for engineer (locked when PROCEED) */}
               {isEngineer && detailRow.raisedBy === (user?.fullName || user?.username) && (
