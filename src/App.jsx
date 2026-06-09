@@ -5749,28 +5749,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </div>
                             );
                           })()}
-                          {/* Remarks for site team — editable by Procurement/Admin, visible to all */}
-                          <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
-                              🏗️ Remarks for Site Team
-                            </div>
-                            {(isAdmin || isProcurement) ? (
-                              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
-                                  placeholder="Add remarks for the site team about delivery details…" rows={2}
-                                  style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
-                                <button onClick={saveSiteRemarks} disabled={siteRemarksSaving}
-                                  style={{ background: "linear-gradient(135deg,#7e22ce,#a855f7)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                                  {siteRemarksSaving ? "Saving…" : "💾 Save"}
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 14, color: e.siteRemarks ? "#0f172a" : "#94a3b8", lineHeight: 1.6, background: e.siteRemarks ? "#faf5ff" : "transparent", border: e.siteRemarks ? "1px solid #e9d5ff" : "none", borderRadius: 8, padding: e.siteRemarks ? "10px 13px" : 0 }}>
-                                {e.siteRemarks || "No remarks for site team"}
-                              </div>
-                            )}
-                          </div>
-
                           {/* Uploaded docs — always visible to all; only engineers can upload */}
                           <div style={{ display: "flex", flexDirection: "column" }}>
                             <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
@@ -5785,6 +5763,28 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </>
                       );
                     })()}
+
+                    {/* Remarks for site team — editable by Procurement/Admin, visible to all, all doc statuses */}
+                    <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                        🏗️ Remarks for Site Team
+                      </div>
+                      {(isAdmin || isProcurement) ? (
+                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
+                            placeholder="Add remarks for the site team about delivery details…" rows={2}
+                            style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
+                          <button onClick={saveSiteRemarks} disabled={siteRemarksSaving}
+                            style={{ background: "linear-gradient(135deg,#7e22ce,#a855f7)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                            {siteRemarksSaving ? "Saving…" : "💾 Save"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 14, color: e.siteRemarks ? "#0f172a" : "#94a3b8", lineHeight: 1.6, background: e.siteRemarks ? "#faf5ff" : "transparent", border: e.siteRemarks ? "1px solid #e9d5ff" : "none", borderRadius: 8, padding: e.siteRemarks ? "10px 13px" : 0 }}>
+                          {e.siteRemarks || "No remarks for site team"}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Revision notice + actions for Procurement */}
                     {(isAdmin || isProcurement) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
