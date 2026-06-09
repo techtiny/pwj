@@ -4687,7 +4687,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={s.grid2}>
                 {/* 1. Project Name */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Project Name *</label>
+                  <label style={s.label}>Project Name <span style={{color:"#ef4444"}}>*</span></label>
                   {managedProjects.filter(p => p.active).length > 0 ? (
                     <select style={s.select2} value={createForm.projectName}
                       onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))}>
@@ -4714,7 +4714,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 3. Material Required */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Material Required *</label>
+                  <label style={s.label}>Material Required <span style={{color:"#ef4444"}}>*</span></label>
                   <input style={s.input} placeholder="Material Required"
                     value={createForm.materialRequired}
                     onChange={e => setCreateForm(f => ({ ...f, materialRequired: e.target.value }))} />
@@ -4770,7 +4770,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 5. Specification */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification *</label>
+                  <label style={s.label}>Specification <span style={{color:"#ef4444"}}>*</span></label>
                   <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
@@ -4784,14 +4784,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 7. Unit */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Unit{isEngineer && " *"}</label>
+                  <label style={s.label}>Unit{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
                   <input style={s.select2} list="unit-list" value={createForm.unit || ""}
                     onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}
                     placeholder="Type or select unit…" autoComplete="off" />
                 </div>
                 {/* 7. Quantity */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Quantity{isEngineer && " *"}</label>
+                  <label style={s.label}>Quantity{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
                   <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
                     value={createForm.quantity || ""}
                     onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
@@ -4799,7 +4799,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 8. Date of Requirement */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Date of Requirement{isEngineer && " *"}</label>
+                  <label style={s.label}>Date of Requirement{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
                   <input style={s.input} type="date" placeholder="Date of Requirement"
                     value={createForm.dateOfRequirement || ""}
                     onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
