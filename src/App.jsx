@@ -3482,8 +3482,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>;
                           }
                           const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
-                          const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : "View Doc";
-                          const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
+                          const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
+                          const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : row.docStatus === "REVOKED" ? "linear-gradient(135deg,#6b21a8,#9333ea)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openDocModal(row)}>
@@ -5341,9 +5341,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
               // "Partially Issued" — some sub-docs approved, some still draft/pending
               const isPartiallyIssued = isMulti && e.docStatus === "VP_APPROVED" &&
                 multiDocs.some(d => (d.docStatus || "DRAFT") === "DRAFT");
-              const statusColor = activeDocStatus === "VP_APPROVED" ? "#166534" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#92400e" : activeDocStatus === "VP_REJECTED" ? "#991b1b" : "#475569";
-              const statusBg    = activeDocStatus === "VP_APPROVED" ? "#dcfce7" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : activeDocStatus === "VP_REJECTED" ? "#fee2e2" : "#f1f5f9";
-              const statusLabel = activeDocStatus === "VP_APPROVED" ? "✅ Doc Issued" : activeDocStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : activeDocStatus === "VP_REJECTED" ? "❌ Not Approved" : "Draft";
+              const statusColor = activeDocStatus === "VP_APPROVED" ? "#166534" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#92400e" : activeDocStatus === "VP_REJECTED" ? "#991b1b" : activeDocStatus === "REVOKED" ? "#6b21a8" : "#475569";
+              const statusBg    = activeDocStatus === "VP_APPROVED" ? "#dcfce7" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : activeDocStatus === "VP_REJECTED" ? "#fee2e2" : activeDocStatus === "REVOKED" ? "#f3e8ff" : "#f1f5f9";
+              const statusLabel = activeDocStatus === "VP_APPROVED" ? "✅ Doc Issued" : activeDocStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : activeDocStatus === "VP_REJECTED" ? "❌ Not Approved" : activeDocStatus === "REVOKED" ? "↩ Revoked" : "Draft";
               return (
                 <>
                   {/* Top bar */}
@@ -5829,7 +5829,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (reason === null) return; // cancelled
                             const r = await api.revokeDoc(e.id, reason);
                             if (r.success) {
-                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "DRAFT", approvedAt: null } : x));
+                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "REVOKED", approvedAt: null } : x));
                               setDocModal(null);
                               showToast("Approval revoked — document reset to Draft");
                             } else {
