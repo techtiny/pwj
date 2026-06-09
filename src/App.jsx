@@ -883,7 +883,7 @@ function CountdownPage({ onLaunched }) {
             animation: "shimmer 4s linear infinite",
             marginBottom: 12,
           }}>
-            Purchase Work Journal
+            Happizo CloudDesk
           </h1>
           <p style={{ fontSize: 15, color: "#64748b", marginBottom: 44, lineHeight: 1.6 }}>
             A smarter way to track, approve &amp; manage procurement workflows.
@@ -1047,8 +1047,8 @@ function CelebrationPage({ onDone }) {
           </div>
 
           <div style={{ fontSize: 16, color: "#94a3b8", marginBottom: 32, lineHeight: 1.7 }}>
-            Procurement Tracker is officially launched.<br/>
-            <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — making procurement smarter.
+            Happizo CloudDesk is officially launched.<br/>
+            <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — smarter workflows, every day.
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, color: "#475569" }}>
@@ -2928,7 +2928,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
               <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : "Procurement Tracker"}</div>
-              <div style={s.hSub}>Purchase Work Journal · Procurement</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
