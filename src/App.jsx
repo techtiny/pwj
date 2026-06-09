@@ -1650,10 +1650,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Create / Edit submit ──
   const submitCreate = async () => {
-    if (!createForm.projectName || !createForm.materialRequired) {
-      showToast("Fill required fields", "error"); return;
+    if (!createForm.projectName || !createForm.materialRequired || !createForm.specification) {
+      showToast("Project, Material and Specification are required", "error"); return;
     }
-    if (isEngineer && (!createForm.specification || !createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
+    if (isEngineer && (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
       showToast("Please fill all required fields", "error"); return;
     }
     setCreateLoading(true);
@@ -4770,7 +4770,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 5. Specification */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
-                  <label style={s.label}>Specification{isEngineer && " *"}</label>
+                  <label style={s.label}>Specification *</label>
                   <textarea style={s.textarea} placeholder="Specification details…"
                     value={createForm.specification || ""}
                     onChange={e => setCreateForm(f => ({ ...f, specification: e.target.value }))} />
