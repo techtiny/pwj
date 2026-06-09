@@ -229,6 +229,7 @@ const api = {
   updateEntry: (id, body) => fetch(`${API_BASE}/entries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   submitDoc: (id) => fetch(`${API_BASE}/entries/${id}/submit-doc`, { method: "PATCH" }).then(r => r.json()),
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
+  revokeDoc:  (id, reason)  => fetch(`${API_BASE}/entries/${id}/doc-revoke`,  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`).then(r => r.json()),
   sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
@@ -5818,6 +5819,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         }}
                           style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#166534,#16a34a)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
+                        </button>
+                      )}
+                      {activeDocStatus === "VP_APPROVED" && isVP && (
+                        <button
+                          title="Revoke VP approval — document returns to Draft for procurement to re-edit and resubmit"
+                          onClick={async () => {
+                            const reason = window.prompt("Reason for revoking approval (optional):");
+                            if (reason === null) return; // cancelled
+                            const r = await api.revokeDoc(e.id, reason);
+                            if (r.success) {
+                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "DRAFT", approvedAt: null } : x));
+                              setDocModal(null);
+                              showToast("Approval revoked — document reset to Draft");
+                            } else {
+                              showToast(r.message || "Revoke failed", "error");
+                            }
+                          }}
+                          style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                          ↩ Revoke Approval
                         </button>
                       )}
                       {activeDocStatus === "VP_APPROVED" && isProcurement && (
