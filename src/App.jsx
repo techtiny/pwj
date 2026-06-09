@@ -4116,7 +4116,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           value={projectMgmtForm.clientGstNo} onChange={e => setF("clientGstNo", e.target.value)} />
                       </div>
                       <div>
-                        {lbl("Client Address")}
+                        {lbl("Site Address")}
                         <textarea rows={3} style={{ ...inpSt, resize: "none" }} placeholder="Full address…"
                           value={projectMgmtForm.clientAddress}
                           onChange={e => {
@@ -4136,7 +4136,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               setF("billingSameAsClient", e.target.checked);
                               if (e.target.checked) setF("billingAddress", projectMgmtForm.clientAddress);
                             }} />
-                          Same as Client Address
+                          Same as Site Address
                         </label>
                       </div>
                     </div>
