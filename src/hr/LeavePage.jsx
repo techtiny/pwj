@@ -125,15 +125,18 @@ export default function LeavePage({ user }) {
       {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>My Leave Requests</div>
-        {canApplyLeave && (
-          <button onClick={() => { setShowForm(true); setForm(EMPTY); setErrors({}); }}
-            style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-            + Apply Leave
-          </button>
-        )}
-        {!canApplyLeave && (
-          <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>Leave applications not applicable for this role</span>
-        )}
+        <button
+          disabled={!canApplyLeave}
+          onClick={() => { if (canApplyLeave) { setShowForm(true); setForm(EMPTY); setErrors({}); } }}
+          title={!canApplyLeave ? "Leave applications are not applicable for VP, CEO and OH roles" : ""}
+          style={{ border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
+            background: canApplyLeave ? "#1e3a5f" : "#e2e8f0",
+            color: canApplyLeave ? "#fff" : "#94a3b8",
+            cursor: canApplyLeave ? "pointer" : "not-allowed",
+            opacity: canApplyLeave ? 1 : 0.7,
+          }}>
+          + Apply Leave
+        </button>
       </div>
 
       {/* Apply leave form */}
