@@ -356,6 +356,14 @@ function fmtDate(val) {
   return `${d}/${m}/${y}`;
 }
 
+// Converts a YYYY-MM-DD value (e.g. from <input type="date">) to DD-MM-YYYY for display
+function fmtDateDash(val) {
+  if (!val) return "";
+  const s = String(val).substring(0, 10);
+  const [y, m, d] = s.split("-");
+  return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
+}
+
 const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"];
 
 function parseDocData(entry) {
@@ -2529,7 +2537,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       <tr>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;">
           <div style="font-weight:700;margin-bottom:4px;">Date</div>
-          <div>${docData.completionDate||""}</div>
+          <div>${fmtDateDash(docData.completionDate)}</div>
         </td>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
           <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
@@ -5634,7 +5642,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>Date</div>
                               {docEditMode
                                 ? <input type="date" value={docData.completionDate || ""} onChange={ev => setField("completionDate", ev.target.value)} style={{ ...inpSt, marginBottom: 6 }} />
-                                : <div style={{ marginBottom: 6 }}>{docData.completionDate || ""}</div>}
+                                : <div style={{ marginBottom: 6 }}>{fmtDateDash(docData.completionDate)}</div>}
                             </div>
                             <div style={{ padding: "10px 12px", borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>
                               <div style={{ fontWeight: 700, marginBottom: 4 }}>{e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
