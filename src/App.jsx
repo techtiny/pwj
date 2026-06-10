@@ -356,11 +356,6 @@ function fmtDate(val) {
   return `${d}/${m}/${y}`;
 }
 
-// Friendlier label for the Dependency column ("VP Approval" -> "VP approval pending")
-function depLabel(dep) {
-  return dep === "VP Approval" ? "VP approval pending" : dep;
-}
-
 // Converts a YYYY-MM-DD value (e.g. from <input type="date">) to DD-MM-YYYY for display
 function fmtDateDash(val) {
   if (!val) return "";
@@ -3443,11 +3438,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <option value="DH Approval">DH Approval</option>
                           <option value="Vendor">Vendor</option>
                           <option value="DIP">DIP</option>
-                          {row.dependency === "VP Approval" && <option value="VP Approval">VP approval pending</option>}
+                          {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : (
                         <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
-                          {depLabel(row.dependency) || "—"}
+                          {row.dependency || "—"}
                         </span>
                       )}
                     </td>
@@ -4422,7 +4417,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Unit", detailRow.unit],
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
-                  ["Dependency", depLabel(detailRow.dependency)],
+                  ["Dependency", detailRow.dependency],
                 ].map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
