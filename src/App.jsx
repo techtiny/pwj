@@ -143,6 +143,16 @@ const getSessionToken = () => {
   try { return JSON.parse(localStorage.getItem("pwj_user"))?.token || ""; } catch { return ""; }
 };
 
+// Identifies the logged-in user to the backend so test-account data can be
+// kept separate from production data/views.
+const userHeaders = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem("pwj_user"));
+    const name = u?.fullName || u?.username;
+    return name ? { "X-User-Name": name } : {};
+  } catch { return {}; }
+};
+
 const api = {
   login: (body) =>
     fetch(`${AUTH_BASE}/login`, {
@@ -161,14 +171,14 @@ const api = {
     }).then(r => r.json()),
   getEntries: (params) => {
     const q = new URLSearchParams(params).toString();
-    return fetch(`${API_BASE}/entries?${q}`).then(r => r.json());
+    return fetch(`${API_BASE}/entries?${q}`, { headers: userHeaders() }).then(r => r.json());
   },
   getMyEntries: (raisedBy, params) => {
     const q = new URLSearchParams({ ...params, raisedBy }).toString();
-    return fetch(`${API_BASE}/entries/my?${q}`).then(r => r.json());
+    return fetch(`${API_BASE}/entries/my?${q}`, { headers: userHeaders() }).then(r => r.json());
   },
   getProjects: () => fetch(`${API_BASE}/projects`).then(r => r.json()),
-  getPending: () => fetch(`${API_BASE}/pending-approvals`).then(r => r.json()),
+  getPending: () => fetch(`${API_BASE}/pending-approvals`, { headers: userHeaders() }).then(r => r.json()),
   updateApproval: (id, body) =>
     fetch(`${API_BASE}/entries/${id}/approval`, {
       method: "PATCH",
@@ -192,7 +202,7 @@ const api = {
     fetch(`${API_BASE}/entries/${id}`, { method: "DELETE" }).then(r => r.json()),
   getAllEntries: (params) => {
     const q = new URLSearchParams({ ...params, size: 9999, page: 0 }).toString();
-    return fetch(`${API_BASE}/entries?${q}`).then(r => r.json());
+    return fetch(`${API_BASE}/entries?${q}`, { headers: userHeaders() }).then(r => r.json());
   },
   uploadImage: (file) => {
     const form = new FormData();
@@ -231,7 +241,7 @@ const api = {
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   revokeDoc:  (id, reason)  => fetch(`${API_BASE}/entries/${id}/doc-revoke`,  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
-  getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`).then(r => r.json()),
+  getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`, { headers: userHeaders() }).then(r => r.json()),
   sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -262,7 +272,7 @@ const api = {
       body: JSON.stringify(splits),
     }).then(r => r.json()),
   getManagedProjects: () => fetch(PROJECT_BASE).then(r => r.json()),
-  getBudgetSummary: () => fetch(`${API_BASE}/pwj/budget-summary`).then(r => r.json()),
+  getBudgetSummary: () => fetch(`${API_BASE}/pwj/budget-summary`, { headers: userHeaders() }).then(r => r.json()),
   getActiveProjects: () => fetch(`${PROJECT_BASE}/active`).then(r => r.json()),
   getProjectClients: () => fetch(`${PROJECT_BASE}/clients`).then(r => r.json()),
   createProject: (body) => fetch(PROJECT_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
@@ -2956,6 +2966,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
+            {user?.isTestAccount && (
+              <div title="You are logged into a test account. All data you see/create is isolated from production." style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", border: "1px solid #fbbf24", borderRadius: 50, padding: "5px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase" }}>
+                🧪 Test Mode
+              </div>
+            )}
             {/* Avatar + name + role */}
             <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "5px 14px 5px 6px", border: "1px solid rgba(15,23,42,0.08)" }}>
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0, letterSpacing: 0 }}>
