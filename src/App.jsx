@@ -356,6 +356,11 @@ function fmtDate(val) {
   return `${d}/${m}/${y}`;
 }
 
+// Friendlier label for the Dependency column ("VP Approval" -> "VP approval pending")
+function depLabel(dep) {
+  return dep === "VP Approval" ? "VP approval pending" : dep;
+}
+
 // Converts a YYYY-MM-DD value (e.g. from <input type="date">) to DD-MM-YYYY for display
 function fmtDateDash(val) {
   if (!val) return "";
@@ -2570,7 +2575,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     <!-- SIGNATURE -->
     <div class="sec-block" style="margin-top:16px;">
       <div>For <strong>${COMPANY_INFO.name}</strong></div>
-      <table style="margin-top:16px;">
+      <table style="margin-top:16px;width:60%;">
         <tr>
           <td style="width:50%;padding:0;vertical-align:top;">
             ${e.docStatus === "VP_APPROVED" ? `<img src="${window.location.origin}${VP_SIGNATURE_URL}" alt="VP Signature" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-bottom:4px;" />` : `<div style="height:48px;"></div>`}
@@ -2927,7 +2932,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-header { padding: 0 12px !important; height: auto !important; min-height: 56px; flex-wrap: wrap; gap: 8px; padding-top: 8px !important; padding-bottom: 8px !important; }
           .app-hright { flex-wrap: wrap !important; gap: 5px !important; justify-content: flex-start; }
           .app-hright button { padding: 6px 10px !important; font-size: 11px !important; }
-          .app-hbadge { display: none !important; }
+          .app-hbadge { display: flex !important; padding: 4px 10px 4px 4px !important; gap: 6px !important; }
+          .app-hbadge > div:first-child { width: 22px !important; height: 22px !important; font-size: 10px !important; }
+          .app-hbadge > div:last-child > div:first-child { font-size: 11px !important; }
+          .app-hbadge > div:last-child > div:last-child { font-size: 9px !important; }
           .app-tabs { padding: 0 8px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
           .app-tabs button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
           .app-statsrow { padding: 10px 10px 0 !important; gap: 10px !important; flex-direction: column !important; }
@@ -3435,11 +3443,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <option value="DH Approval">DH Approval</option>
                           <option value="Vendor">Vendor</option>
                           <option value="DIP">DIP</option>
-                          {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
+                          {row.dependency === "VP Approval" && <option value="VP Approval">VP approval pending</option>}
                         </select>
                       ) : (
                         <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
-                          {row.dependency || "—"}
+                          {depLabel(row.dependency) || "—"}
                         </span>
                       )}
                     </td>
@@ -4414,7 +4422,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Unit", detailRow.unit],
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
-                  ["Dependency", detailRow.dependency],
+                  ["Dependency", depLabel(detailRow.dependency)],
                 ].map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
@@ -5700,7 +5708,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {/* --- FOOTER / SIGNATURE --- */}
                           <div style={{ marginTop: 8 }}>
                             <div style={{ fontWeight: 600, marginBottom: 24 }}>For <strong>{COMPANY_INFO.name}</strong></div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, paddingTop: 8, borderTop: "1px solid #ddd" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, maxWidth: 360, paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
                                 <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Approved By</div>
                                 {e.docStatus === "VP_APPROVED"
