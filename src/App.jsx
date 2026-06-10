@@ -316,6 +316,17 @@ const WO_TERMS = [
   "GST : The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
 ];
 
+const JO_TERMS = [
+  "Proof of work delivery should be signed and approved by our site engineer along with measurement sheet, for payment process",
+  "Any work, if found unsuitable or bad quality or damaged during supply, shall be re-supplied /re-installed/ redone, at no extra cost",
+  "Destination detail, JO reference and all details to be mentioned clearly on the invoice",
+  "Billing will be as per actuals",
+  "Billing qty change: Invoice value cannot exceed JO value. If exceeding, invoice will not be processed. Final value if found exceeding to JO received, invoice it only with another additional JO.",
+  "Transport/ loading/unloading at vendor scope and not included in the above cost",
+  "In case of any delay in supply / work thereby causing delay in work completion, the same will be outsourced and the amount incurred will be debited",
+  "GST : The tax amount will be paid only after the vendor has filed on GST and reflected in our portal. Incase vendor fails to pay the same, payments shall be withheld for subsequent stages, next projects",
+];
+
 function parseImageRefs(ref) {
   if (!ref) return [];
   try { const p = JSON.parse(ref); return Array.isArray(p) ? p : [ref]; }
@@ -2407,7 +2418,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const [y, m, d] = s.split("-");
       return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
     })();
-    const terms     = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+    const terms     = e.pwjType === "PO" ? PO_TERMS : e.pwjType === "WO" ? WO_TERMS : JO_TERMS;
     const fmtCcy    = (n) => `&#8377; ${Number(n || 0).toFixed(2)}`;
     const fmtTotal  = (n) => `&#8377; ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -5458,7 +5469,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })();
                     const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(effectiveEntry); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
-                    const terms   = e.pwjType === "PO" ? PO_TERMS : WO_TERMS;
+                    const terms   = e.pwjType === "PO" ? PO_TERMS : e.pwjType === "WO" ? WO_TERMS : JO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
                     const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
                     const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 11, textAlign: "left" };
@@ -5701,20 +5712,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           )}
 
                           {/* --- FOOTER / SIGNATURE --- */}
-                          <div style={{ marginTop: 8 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 24 }}>For <strong>{COMPANY_INFO.name}</strong></div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, maxWidth: 360, paddingTop: 8, borderTop: "1px solid #ddd" }}>
+                          <div style={{ marginTop: 8, display: "inline-block" }}>
+                            <div style={{ fontWeight: 600, marginBottom: 24, whiteSpace: "nowrap" }}>For <strong>{COMPANY_INFO.name}</strong></div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
                                 <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Approved By</div>
                                 {e.docStatus === "VP_APPROVED"
-                                  ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
+                                  ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
                               </div>
                               <div>
                                 <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Procurement Executive</div>
                                 {e.docStatus === "VP_APPROVED"
-                                  ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: 160, objectFit: "contain", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
+                                  ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
                               </div>
