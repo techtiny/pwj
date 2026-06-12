@@ -5,6 +5,7 @@ import AccountProjects from "./ProjectsPage";
 import AccountExpenses from "./ExpensePage";
 import AccountTransfers from "./FundTransferPage";
 import CollectionPage from "./CollectionPage";
+import PettyCashPage from "../hr/PettyCashPage";
 
 const EXPENSE_CATS = [
   { key: "material",      label: "Material",      color: "#10b981" },
@@ -14,15 +15,18 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false }) {
+export default function AccountSection({ isCeo = false, user }) {
   const [tab, setTab]     = useState("dashboard");
   const [expCat, setExpCat] = useState("material");
+
+  const showPettyCash = !["VP", "OH", "CEO"].includes(user?.role);
 
   const tabs = [
     { key: "dashboard",   label: "Dashboard"    },
     { key: "projects",    label: "Projects"     },
     { key: "expenses",    label: "Expenses"     },
     { key: "transfers",   label: "Fund Transfer"},
+    ...(showPettyCash ? [{ key: "petty-cash", label: "Petty Cash" }] : []),
   ];
 
   return (
@@ -72,6 +76,7 @@ export default function AccountSection({ isCeo = false }) {
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
         {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
+        {tab === "petty-cash"  && <div className="page-content"><PettyCashPage user={user} /></div>}
       </div>
     </div>
   );

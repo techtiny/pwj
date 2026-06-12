@@ -4444,7 +4444,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} />}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} user={user} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>
