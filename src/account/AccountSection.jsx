@@ -16,16 +16,19 @@ const EXPENSE_CATS = [
 ];
 
 export default function AccountSection({ isCeo = false, user }) {
-  const [tab, setTab]     = useState("dashboard");
+  const canViewFinancials = ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"].includes(user?.role);
+  const showPettyCash      = !["VP", "OH", "CEO"].includes(user?.role);
+
+  const [tab, setTab]     = useState(canViewFinancials ? "dashboard" : "petty-cash");
   const [expCat, setExpCat] = useState("material");
 
-  const showPettyCash = !["VP", "OH", "CEO"].includes(user?.role);
-
   const tabs = [
-    { key: "dashboard",   label: "Dashboard"    },
-    { key: "projects",    label: "Projects"     },
-    { key: "expenses",    label: "Expenses"     },
-    { key: "transfers",   label: "Fund Transfer"},
+    ...(canViewFinancials ? [
+      { key: "dashboard",   label: "Dashboard"    },
+      { key: "projects",    label: "Projects"     },
+      { key: "expenses",    label: "Expenses"     },
+      { key: "transfers",   label: "Fund Transfer"},
+    ] : []),
     ...(showPettyCash ? [{ key: "petty-cash", label: "Petty Cash" }] : []),
   ];
 
