@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
 const STATUS_COLOR = {
@@ -55,6 +55,11 @@ export default function AttendancePage({ user, adminView = false }) {
   const [locMsg, setLocMsg]   = useState("");
   const [summary, setSummary] = useState(null);
   const [tooltip, setTooltip] = useState(null);
+
+  const [filterName, setFilterName]     = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterFrom, setFilterFrom]     = useState("");
+  const [filterTo, setFilterTo]         = useState("");
 
   const showTip = (e, text) => {
     if (!text) return;
@@ -138,18 +143,75 @@ export default function AttendancePage({ user, adminView = false }) {
     </div>
   );
 
+  const employeeOptions = useMemo(() => {
+    const names = new Set(allRec.map(a => a.fullName).filter(Boolean));
+    return [...names].sort();
+  }, [allRec]);
+
+  const filteredRec = useMemo(() => {
+    return allRec.filter(a => {
+      if (filterName && a.fullName !== filterName) return false;
+      if (filterStatus && a.status !== filterStatus) return false;
+      const day = a.workDate ? String(a.workDate).substring(0, 10) : "";
+      if (filterFrom && day < filterFrom) return false;
+      if (filterTo && day > filterTo) return false;
+      return true;
+    });
+  }, [allRec, filterName, filterStatus, filterFrom, filterTo]);
+
+  const hasFilters = filterName || filterStatus || filterFrom || filterTo;
+  const clearFilters = () => { setFilterName(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
+
   if (adminView) {
+    const FILTER_INP = {
+      border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
+      fontSize: 13, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff",
+    };
+    const FILTER_LBL = { fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" };
     return (
       <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
         <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>Field Staff Attendance</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Site Engineers &amp; Project Managers · {allRec.length} records</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Site Engineers &amp; Project Managers · {filteredRec.length} of {allRec.length} records</div>
+
+        {/* Filter bar */}
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <label style={FILTER_LBL}>Employee</label>
+            <select style={{ ...FILTER_INP, minWidth: 160 }} value={filterName} onChange={e => setFilterName(e.target.value)}>
+              <option value="">All Employees</option>
+              {employeeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={FILTER_LBL}>Status</label>
+            <select style={{ ...FILTER_INP, minWidth: 140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">All Statuses</option>
+              {Object.entries(STATUS_COLOR).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={FILTER_LBL}>From</label>
+            <input type="date" style={FILTER_INP} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+          </div>
+          <div>
+            <label style={FILTER_LBL}>To</label>
+            <input type="date" style={FILTER_INP} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+          </div>
+          {hasFilters && (
+            <button onClick={clearFilters}
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+              Clear Filters
+            </button>
+          )}
+        </div>
+
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }} className="table-scroll-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {allRec.map(a => {
+              {filteredRec.map(a => {
                 const s = STATUS_COLOR[a.status] || STATUS_COLOR.ABSENT;
                 return (
                   <tr key={a.id}>
@@ -164,8 +226,10 @@ export default function AttendancePage({ user, adminView = false }) {
                   </tr>
                 );
               })}
-              {allRec.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>No records</td></tr>
+              {filteredRec.length === 0 && (
+                <tr><td colSpan={8} style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
+                  {hasFilters ? "No records match the selected filters." : "No records"}
+                </td></tr>
               )}
             </tbody>
           </table>

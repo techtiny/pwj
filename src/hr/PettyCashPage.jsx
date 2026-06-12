@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { pettyCashApi, projectsApi, uploadDocument, attachmentFullUrl, fmtDate } from "./hrApi";
 
 const CATEGORIES   = ["TRAVEL", "FOOD", "OFFICE_SUPPLIES", "UTILITIES", "MAINTENANCE", "OTHERS"];
@@ -37,6 +37,12 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
   const [commentMap, setCommentMap] = useState({});
   const [processing, setProcessing] = useState(null);
   const [projects, setProjects]   = useState([]);
+
+  const [filterName, setFilterName]     = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterFrom, setFilterFrom]     = useState("");
+  const [filterTo, setFilterTo]         = useState("");
 
   const username = user?.username;
 
@@ -149,7 +155,27 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
   const LBL = { fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
   const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" });
 
-  const displayList = viewTab === "mine" ? entries : allEntries;
+  const employeeOptions = useMemo(() => {
+    const names = new Set(allEntries.map(e => e.fullName || e.username).filter(Boolean));
+    return [...names].sort();
+  }, [allEntries]);
+
+  const filteredAllEntries = useMemo(() => {
+    return allEntries.filter(e => {
+      if (filterName && (e.fullName || e.username) !== filterName) return false;
+      if (filterCategory && e.category !== filterCategory) return false;
+      if (filterStatus && e.status !== filterStatus) return false;
+      const day = e.expenseDate ? String(e.expenseDate).substring(0, 10) : "";
+      if (filterFrom && day < filterFrom) return false;
+      if (filterTo && day > filterTo) return false;
+      return true;
+    });
+  }, [allEntries, filterName, filterCategory, filterStatus, filterFrom, filterTo]);
+
+  const hasFilters = filterName || filterCategory || filterStatus || filterFrom || filterTo;
+  const clearFilters = () => { setFilterName(""); setFilterCategory(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
+
+  const displayList = viewTab === "mine" ? entries : filteredAllEntries;
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -307,11 +333,54 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
         </div>
       )}
 
+      {/* Filter bar — All Entries only */}
+      {isApprover && viewTab === "all" && (
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Employee</label>
+            <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterName} onChange={e => setFilterName(e.target.value)}>
+              <option value="">All Employees</option>
+              {employeeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Category</label>
+            <select style={{ ...INP(), minWidth: 150, width: "auto" }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+              <option value="">All Categories</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase().replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Status</label>
+            <select style={{ ...INP(), minWidth: 140, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">All Statuses</option>
+              {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>From</label>
+            <input type="date" style={{ ...INP(), width: "auto" }} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>To</label>
+            <input type="date" style={{ ...INP(), width: "auto" }} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+          </div>
+          {hasFilters && (
+            <button onClick={clearFilters}
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Entries table */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         {displayList.length === 0 ? (
           <div style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
-            No {title.toLowerCase()} entries yet. Click "+ New Entry" to get started.
+            {viewTab === "all" && hasFilters
+              ? "No entries match the selected filters."
+              : `No ${title.toLowerCase()} entries yet. Click "+ New Entry" to get started.`}
           </div>
         ) : (
           <div className="table-scroll-wrap">

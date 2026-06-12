@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { leaveApi, fmtDate } from "./hrApi";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { leaveApi, fmtDate, leaveTypeLabel } from "./hrApi";
 
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
@@ -14,6 +14,12 @@ export default function LeaveApprovalPage({ user }) {
   const [tab, setTab]               = useState("pending");
   const [commentMap, setCommentMap] = useState({});
   const [processing, setProcessing] = useState(null);
+
+  const [filterName, setFilterName]     = useState("");
+  const [filterType, setFilterType]     = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterFrom, setFilterFrom]     = useState("");
+  const [filterTo, setFilterTo]         = useState("");
 
   const load = useCallback(async () => {
     const [pRes, aRes] = await Promise.all([
@@ -43,7 +49,39 @@ export default function LeaveApprovalPage({ user }) {
 
   const badge  = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" });
   const card   = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0" };
-  const list   = tab === "pending" ? pending : all;
+
+  const employeeOptions = useMemo(() => {
+    const names = new Set(all.map(l => l.fullName || l.username).filter(Boolean));
+    return [...names].sort();
+  }, [all]);
+
+  const typeOptions = useMemo(() => {
+    const types = new Set(all.map(l => l.leaveType).filter(Boolean));
+    return [...types].sort();
+  }, [all]);
+
+  const filteredAll = useMemo(() => {
+    return all.filter(l => {
+      if (filterName && (l.fullName || l.username) !== filterName) return false;
+      if (filterType && l.leaveType !== filterType) return false;
+      if (filterStatus && l.status !== filterStatus) return false;
+      const day = l.fromDate ? String(l.fromDate).substring(0, 10) : "";
+      if (filterFrom && day < filterFrom) return false;
+      if (filterTo && day > filterTo) return false;
+      return true;
+    });
+  }, [all, filterName, filterType, filterStatus, filterFrom, filterTo]);
+
+  const hasFilters = filterName || filterType || filterStatus || filterFrom || filterTo;
+  const clearFilters = () => { setFilterName(""); setFilterType(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
+
+  const list = tab === "pending" ? pending : filteredAll;
+
+  const FILTER_INP = {
+    border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
+    fontSize: 13, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff",
+  };
+  const FILTER_LBL = { fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" };
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -77,9 +115,52 @@ export default function LeaveApprovalPage({ user }) {
         })}
       </div>
 
+      {/* Filter bar — All Requests only */}
+      {tab === "all" && (
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <label style={FILTER_LBL}>Employee</label>
+            <select style={{ ...FILTER_INP, minWidth: 160 }} value={filterName} onChange={e => setFilterName(e.target.value)}>
+              <option value="">All Employees</option>
+              {employeeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={FILTER_LBL}>Leave Type</label>
+            <select style={{ ...FILTER_INP, minWidth: 150 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+              <option value="">All Types</option>
+              {typeOptions.map(t => <option key={t} value={t}>{leaveTypeLabel(t)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={FILTER_LBL}>Status</label>
+            <select style={{ ...FILTER_INP, minWidth: 140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">All Statuses</option>
+              {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={FILTER_LBL}>From</label>
+            <input type="date" style={FILTER_INP} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+          </div>
+          <div>
+            <label style={FILTER_LBL}>To</label>
+            <input type="date" style={FILTER_INP} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+          </div>
+          {hasFilters && (
+            <button onClick={clearFilters}
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
       {list.length === 0 ? (
         <div style={{ ...card, padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
-          {tab === "pending" ? "No pending leave approvals" : "No leave requests found"}
+          {tab === "pending"
+            ? "No pending leave approvals"
+            : hasFilters ? "No leave requests match the selected filters." : "No leave requests found"}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -111,7 +192,7 @@ export default function LeaveApprovalPage({ user }) {
                     </div>
 
                     <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: 13 }}>
-                      <div><span style={{ color: "#94a3b8" }}>Type: </span><strong style={{ color: "#0f172a" }}>{l.leaveType}</strong></div>
+                      <div><span style={{ color: "#94a3b8" }}>Type: </span><strong style={{ color: "#0f172a" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
                       <div><span style={{ color: "#94a3b8" }}>From: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
                       <div><span style={{ color: "#94a3b8" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>
                       <div><span style={{ color: "#94a3b8" }}>Days: </span><strong style={{ color: "#0f172a" }}>{l.totalDays}</strong></div>

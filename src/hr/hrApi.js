@@ -79,3 +79,13 @@ export function fmtHours(minutes) {
   const m = minutes % 60;
   return `${h}h ${m}m`;
 }
+
+const LEAVE_TYPE_LABELS = {
+  CASUAL: 'Casual Leave (CL)',
+  SICK:   'Sick Leave (SL)',
+  OTHER:  'Other',
+};
+
+export function leaveTypeLabel(type) {
+  return LEAVE_TYPE_LABELS[type] || type;
+}

@@ -1,7 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { leaveApi, uploadDocument, attachmentFullUrl, fmtDate } from "./hrApi";
+import { leaveApi, uploadDocument, attachmentFullUrl, fmtDate, leaveTypeLabel } from "./hrApi";
 
-const LEAVE_TYPES = ["CASUAL", "SICK", "EARNED", "COMP_OFF", "OTHER"];
+const LEAVE_TYPES = [
+  { value: "CASUAL", label: "Casual Leave (CL)" },
+  { value: "SICK",   label: "Sick Leave (SL)" },
+  { value: "OTHER",  label: "Other" },
+];
 
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
@@ -147,7 +151,7 @@ export default function LeavePage({ user }) {
             <div>
               <label style={LBL}>Leave Type</label>
               <select style={INP()} value={form.leaveType} onChange={e => setForm(f => ({ ...f, leaveType: e.target.value }))}>
-                {LEAVE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase().replace("_", " ")}</option>)}
+                {LEAVE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end" }}>
@@ -231,7 +235,7 @@ export default function LeavePage({ user }) {
                   const s = STATUS_CFG[l.status] || STATUS_CFG.PENDING;
                   return (
                     <tr key={l.id}>
-                      <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{l.leaveType}</td>
+                      <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{leaveTypeLabel(l.leaveType)}</td>
                       <td style={TD()}>{fmtDate(l.fromDate)}</td>
                       <td style={TD()}>{fmtDate(l.toDate)}</td>
                       <td style={TD({ fontWeight: 700, textAlign: "center" })}>{l.totalDays}</td>

@@ -1213,7 +1213,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers, pendingOHCount = 0, pendingDocCount = 0, pendingVendorCount = 0 }) {
+function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
   const modules = [
     {
       key: "entries",
@@ -1223,7 +1223,6 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       gradient: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
       shadow: "rgba(37,99,235,0.35)",
       visible: true,
-      badge: pendingOHCount + pendingDocCount,
     },
     {
       key: "vendors",
@@ -1233,7 +1232,6 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
       visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager,
-      badge: pendingVendorCount,
     },
     {
       key: "projects",
@@ -1315,7 +1313,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
         width: "100%",
         maxWidth: 960,
       }}>
-        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action, badge }) => (
+        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action }) => (
           <button key={key} onClick={() => action ? action() : onNavigate(key)}
             style={{
               position: "relative",
@@ -1336,7 +1334,6 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${shadow}`; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; }}
           >
-            <CountBadge count={badge} />
             <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
               <Icon size={32} color="#fff" strokeWidth={1.8} />
             </div>
@@ -3171,7 +3168,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <HomeDashboard
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
-            pendingOHCount={pendingOHCount} pendingDocCount={pendingDocCount} pendingVendorCount={pendingVendorCount}
             onNavigate={key => {
               setMainTab(key);
               if (key === "vendors") loadVendorsTab();
