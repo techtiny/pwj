@@ -8,12 +8,16 @@ import PettyCashPage from "./PettyCashPage";
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
+  const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
+  const canViewReimbursement = ["CEO", "VP", "OH"].includes(user?.role);
 
   const tabs = [
     { key: "dashboard",      label: "Dashboard" },
-    { key: "attendance",     label: "Attendance" },
-    { key: "leaves",         label: "My Leaves" },
-    { key: "petty-cash",     label: "Petty Cash" },
+    ...(hidePersonal ? [] : [
+      { key: "attendance",   label: "Attendance" },
+      { key: "leaves",       label: "My Leaves" },
+    ]),
+    ...(canViewReimbursement ? [{ key: "petty-cash", label: "Reimbursement" }] : []),
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
     ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
   ];

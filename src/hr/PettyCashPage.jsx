@@ -174,7 +174,7 @@ export default function PettyCashPage({ user }) {
       {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>Petty Cash</div>
+          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>Reimbursement</div>
           <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 2 }}>Record and track your out-of-pocket expenses</div>
         </div>
         <button
@@ -187,7 +187,7 @@ export default function PettyCashPage({ user }) {
       {/* New entry form */}
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
-          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New Petty Cash Entry</div>
+          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New Reimbursement Entry</div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
 
             <div>
@@ -311,7 +311,7 @@ export default function PettyCashPage({ user }) {
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         {displayList.length === 0 ? (
           <div style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
-            No petty cash entries yet. Click "+ New Entry" to get started.
+            No reimbursement entries yet. Click "+ New Entry" to get started.
           </div>
         ) : (
           <div className="table-scroll-wrap">
