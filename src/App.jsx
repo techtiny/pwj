@@ -375,6 +375,21 @@ function fmtDateDash(val) {
   return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
 }
 
+// Small red notification badge — shows a pending-approval count on tabs/tiles
+function CountBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span style={{
+      position: "absolute", top: -6, right: -6, minWidth: 18, height: 18,
+      background: "#ef4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
+      border: "2px solid #fff", lineHeight: 1, boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+    }}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"];
 
 function parseDocData(entry) {
@@ -1198,7 +1213,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
+function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers, pendingOHCount = 0, pendingDocCount = 0, pendingVendorCount = 0 }) {
   const modules = [
     {
       key: "entries",
@@ -1208,6 +1223,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       gradient: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
       shadow: "rgba(37,99,235,0.35)",
       visible: true,
+      badge: pendingOHCount + pendingDocCount,
     },
     {
       key: "vendors",
@@ -1217,6 +1233,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
       visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager,
+      badge: pendingVendorCount,
     },
     {
       key: "projects",
@@ -1298,9 +1315,10 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
         width: "100%",
         maxWidth: 960,
       }}>
-        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action }) => (
+        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action, badge }) => (
           <button key={key} onClick={() => action ? action() : onNavigate(key)}
             style={{
+              position: "relative",
               background: "#fff",
               border: "1.5px solid #e2e8f0",
               borderRadius: 20,
@@ -1318,6 +1336,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${shadow}`; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; }}
           >
+            <CountBadge count={badge} />
             <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
               <Icon size={32} color="#fff" strokeWidth={1.8} />
             </div>
@@ -1379,6 +1398,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [pendingList, setPendingList]       = useState([]);
   const [pendingSearch, setPendingSearch]   = useState("");
   const [pendingOHActionMap, setPendingOHActionMap] = useState({}); // { [id]: { status, comment, saving } }
+
+  // Notification badge counts — pending-approval counters shown on tabs/tiles
+  const [pendingOHCount, setPendingOHCount]         = useState(0);
+  const [pendingDocCount, setPendingDocCount]       = useState(0);
+  const [pendingVendorCount, setPendingVendorCount] = useState(0);
   const [toast, setToast]                 = useState(null);
 
   // Approval form
@@ -1588,7 +1612,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try { const r = await api.getUsers(); if (r.success) setAllUsers(r.data); } catch {}
   }, []);
 
+  // ── Notification badges: pending-approval counts for the current role ──
+  const fetchPendingCounts = useCallback(async () => {
+    try {
+      if (isAdmin || isOH || isVP || isCeo) {
+        const r = await api.getPending();
+        if (r.success) setPendingOHCount(r.data.length);
+      }
+      if (isVP) {
+        const [docs, vendors] = await Promise.all([api.getPendingDocApprovals(), api.getPendingVendors()]);
+        if (docs.success)    setPendingDocCount(docs.data.length);
+        if (vendors.success) setPendingVendorCount(vendors.data.length);
+      }
+    } catch {}
+  }, [isAdmin, isOH, isVP, isCeo]);
+
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
+  useEffect(() => { fetchPendingCounts(); }, [fetchPendingCounts]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
   // Sync engineer's delivered-date and remarks when the document modal opens on a new entry
   useEffect(() => {
@@ -1603,10 +1643,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // Auto-refresh entries when user returns to this tab (catches VP approval from another session)
   useEffect(() => {
-    const onFocus = () => fetchEntries();
+    const onFocus = () => { fetchEntries(); fetchPendingCounts(); };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [fetchEntries]);
+  }, [fetchEntries, fetchPendingCounts]);
 
   // Track whether user is actively editing — skip silent refresh during edits
   const editingRef = useRef(false);
@@ -1627,7 +1667,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       es = new EventSource(`${BACKEND_BASE}/api/v1/pwj/events`);
       es.addEventListener("update", () => {
         retryDelay = 3000; // reset backoff on successful message
-        if (!document.hidden && !editingRef.current) fetchEntries(true);
+        if (!document.hidden && !editingRef.current) { fetchEntries(true); fetchPendingCounts(); }
       });
       es.addEventListener("ping", () => { retryDelay = 3000; }); // heartbeat resets backoff
       es.onerror = () => {
@@ -1640,15 +1680,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
     };
     connect();
     return () => { es && es.close(); clearTimeout(retryTimer); };
-  }, [fetchEntries]);
+  }, [fetchEntries, fetchPendingCounts]);
 
   // Fallback poll every 60 s — catches missed SSE events (tab backgrounded, network blip)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!document.hidden && !editingRef.current) fetchEntries(true);
+      if (!document.hidden && !editingRef.current) { fetchEntries(true); fetchPendingCounts(); }
     }, 60000);
     return () => clearInterval(interval);
-  }, [fetchEntries]);
+  }, [fetchEntries, fetchPendingCounts]);
 
   // Debounce search
   useEffect(() => {
@@ -1674,7 +1714,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         setApprovalModal(null);
         fetchEntries();
         // Refresh pending list so approved entry disappears immediately
-        api.getPending().then(r => { if (r.success) setPendingList(r.data); });
+        api.getPending().then(r => { if (r.success) { setPendingList(r.data); setPendingOHCount(r.data.length); } });
       } else { showToast(res.message, "error"); }
     } catch { showToast("Failed to update approval", "error"); }
     finally { setApprovalLoading(false); }
@@ -2219,6 +2259,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
       } catch {}
       setPendingDocs(d => d.filter(x => x.id !== id));
+      setPendingDocCount(c => Math.max(0, c - 1));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
       showToast("Document approved ✅");
@@ -2236,6 +2277,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
       } catch {}
       setPendingDocs(d => d.filter(x => x.id !== id));
+      setPendingDocCount(c => Math.max(0, c - 1));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
       showToast(comment ? "Revision requested — Procurement notified" : "Document rejected");
@@ -2267,7 +2309,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const allApproved = newDocs.every(d => d.docStatus === "VP_APPROVED");
       if (allApproved) {
         const r = await api.approveDoc(entryId, comment);
-        if (r.success) { setPendingDocs(d => d.filter(x => x.id !== entryId)); showToast("All vendor POs approved ✅"); }
+        if (r.success) { setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1)); showToast("All vendor POs approved ✅"); }
         else showToast(r.message || "Failed", "error");
       } else {
         setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
@@ -2301,7 +2343,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (r.success) {
         const stillPending = newDocs.some(d => d.docStatus === "PENDING_VP_APPROVAL");
         if (stillPending) setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
-        else setPendingDocs(d => d.filter(x => x.id !== entryId));
+        else { setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1)); }
         showToast(`PO for ${parsed.docs[subIdx].vendor} rejected`);
       } else showToast(r.message || "Failed", "error");
       fetchEntries();
@@ -2810,6 +2852,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const res = await api.updateApproval(row.id, { approvalStatus: action.status, comment: action.comment || "", approvedBy: "OH" });
       if (res.success) {
         setPendingList(d => d.filter(x => x.id !== row.id));
+        setPendingOHCount(c => Math.max(0, c - 1));
         showToast(`#${row.id} — ${action.status === "PROCEED" ? "Approved ✅" : action.status === "HOLD" ? "On Hold ⏸" : "Not Approved ❌"}`);
         fetchEntries(true);
       } else showToast(res.message || "Failed", "error");
@@ -3110,14 +3153,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
           {/* Approval action buttons — only when on Procurement tab */}
           {mainTab === "entries" && (isAdmin || isOH || isVP || isCeo) && (
             <button onClick={openPending}
-              style={{ border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#475569", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 8 }}>
+              style={{ position: "relative", border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#475569", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 8 }}>
               <Clock size={13} strokeWidth={2.2} /> Pending OH
+              <CountBadge count={pendingOHCount} />
             </button>
           )}
           {mainTab === "entries" && isVP && (
             <button onClick={openPendingDocs}
-              style={{ border: "none", background: "linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
+              style={{ position: "relative", border: "none", background: "linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
               <FileCheck size={13} strokeWidth={2.2} /> Doc Approvals
+              <CountBadge count={pendingDocCount} />
             </button>
           )}
         </div>
@@ -3126,6 +3171,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <HomeDashboard
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
+            pendingOHCount={pendingOHCount} pendingDocCount={pendingDocCount} pendingVendorCount={pendingVendorCount}
             onNavigate={key => {
               setMainTab(key);
               if (key === "vendors") loadVendorsTab();
@@ -3749,9 +3795,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </button>
                           {isVP && isPending && (<>
                             <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
+                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
                             <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
+                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
@@ -5229,6 +5275,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const r = await api.approveVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED", active: true } : x));
+                                  setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} approved ✅`);
                                 } else showToast(r.message || "Failed", "error");
                               }}>
@@ -5240,6 +5287,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const r = await api.rejectVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x));
+                                  setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} rejected`, "error");
                                 } else showToast(r.message || "Failed", "error");
                               }}>
