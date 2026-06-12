@@ -1251,7 +1251,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       icon: BarChart2,
       gradient: "linear-gradient(135deg, #92400e 0%, #f59e0b 100%)",
       shadow: "rgba(245,158,11,0.35)",
-      visible: true,
+      visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
       key: "sales",
@@ -4444,7 +4444,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} user={user} />}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>

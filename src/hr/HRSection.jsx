@@ -10,6 +10,7 @@ export default function HRSection({ user }) {
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
   const canViewReimbursement = ["CEO", "VP", "OH"].includes(user?.role);
+  const pettyCashLabel = canViewReimbursement ? "Reimbursement" : "Petty Cash";
 
   const tabs = [
     { key: "dashboard",      label: "Dashboard" },
@@ -17,7 +18,7 @@ export default function HRSection({ user }) {
       { key: "attendance",   label: "Attendance" },
       { key: "leaves",       label: "My Leaves" },
     ]),
-    ...(canViewReimbursement ? [{ key: "petty-cash", label: "Reimbursement" }] : []),
+    { key: "petty-cash", label: pettyCashLabel },
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
     ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
   ];
@@ -70,7 +71,7 @@ export default function HRSection({ user }) {
       {tab === "dashboard"      && <HRDashboard user={user} />}
       {tab === "attendance"     && <AttendancePage user={user} />}
       {tab === "leaves"         && <LeavePage user={user} />}
-      {tab === "petty-cash"     && <PettyCashPage user={user} />}
+      {tab === "petty-cash"     && <PettyCashPage user={user} title={pettyCashLabel} />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}
     </div>
