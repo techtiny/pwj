@@ -46,7 +46,7 @@ export default function HRDashboard({ user }) {
   }, [user?.username]);
 
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
-  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role));
+  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_"));
   const checkedIn       = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime);
   const notCheckedIn    = checkinTargets.filter(u => !todayByUsername.get(u.username)?.checkInTime);
 
@@ -179,8 +179,13 @@ export default function HRDashboard({ user }) {
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{u.fullName}</div>
                     <div style={{ fontSize: 11.5, color: "#94a3b8" }}>{ROLE_LABELS[u.role] || u.role}</div>
                   </div>
-                  <div style={{ textAlign: "right", fontSize: 11.5, color: "#94a3b8" }}>
-                    In: {fmtTime(a?.checkInTime)}{a?.checkOutTime ? ` · Out: ${fmtTime(a.checkOutTime)}` : " · Working"}
+                  <div style={{ textAlign: "right" }}>
+                    <span style={badge(a?.checkOutTime ? { bg: "#eff6ff", color: "#2563eb" } : { bg: "#ecfdf5", color: "#059669" })}>
+                      {a?.checkOutTime ? "Checked Out" : "Working"}
+                    </span>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 4 }}>
+                      In: {fmtTime(a?.checkInTime)}{a?.checkOutTime ? ` · Out: ${fmtTime(a.checkOutTime)}` : ""}
+                    </div>
                   </div>
                 </div>
               );
