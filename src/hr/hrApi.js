@@ -12,6 +12,10 @@ const UPLOAD_BASE = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/upload`
   : '/api/v1/upload';
 
+const USERS_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/users`
+  : '/api/v1/users';
+
 const api = axios.create({ baseURL: BASE, headers: { 'Content-Type': 'application/json' } });
 
 export async function uploadDocument(file) {
@@ -61,6 +65,10 @@ export const pettyCashApi = {
 
 export const projectsApi = {
   getActive: () => axios.get(`${PROJECTS_BASE}/active`),
+};
+
+export const usersApi = {
+  getAll: () => axios.get(USERS_BASE),
 };
 
 export function fmtTime(dt) {

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { attendanceApi, leaveApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
+import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
+
+const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
+const ROLE_LABELS = {
+  ENGINEER: "Site Engineer",
+  PROJECT_MANAGER: "PM",
+  ADMIN: "Admin",
+  PROCUREMENT: "Procurement",
+};
 
 const STATUS_COLOR = {
   PRESENT:  { bg: "#ecfdf5", color: "#059669" },
@@ -21,6 +29,7 @@ export default function HRDashboard({ user }) {
   const [leaveSummary, setLeaveSum] = useState(null);
   const [recentLeaves, setLeaves]   = useState([]);
   const [todayAll, setTodayAll]     = useState([]);
+  const [allUsers, setAllUsers]     = useState([]);
   const isAdmin = ["ADMIN","CEO","VP","OH"].includes(user?.role);
 
   useEffect(() => {
@@ -30,8 +39,16 @@ export default function HRDashboard({ user }) {
     attendanceApi.getSummary(u).then(r => setAttSum(r.data?.data)).catch(() => {});
     leaveApi.summary(u).then(r => setLeaveSum(r.data?.data)).catch(() => {});
     leaveApi.myLeaves(u).then(r => setLeaves((r.data?.data || []).slice(0, 5))).catch(() => {});
-    if (isAdmin) attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
+    if (isAdmin) {
+      attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
+      usersApi.getAll().then(r => setAllUsers(r.data?.data || [])).catch(() => {});
+    }
   }, [user?.username]);
+
+  const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
+  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role));
+  const checkedIn       = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime);
+  const notCheckedIn    = checkinTargets.filter(u => !todayByUsername.get(u.username)?.checkInTime);
 
   const card     = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px" };
   const secTitle = { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 };
@@ -145,6 +162,45 @@ export default function HRDashboard({ user }) {
           </div>
         )}
       </div>
+
+      {/* Today's check-in status — Site Engineers, PMs, Admins & Procurement */}
+      {isAdmin && (
+        <div className="hr-admin-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
+          <div style={card}>
+            <div style={secTitle}>✅ Checked In Today</div>
+            <div style={secSub}>{checkedIn.length} of {checkinTargets.length} (Site Engineers, PMs, Admins &amp; Procurement)</div>
+            {checkedIn.length === 0 ? (
+              <div style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No one has checked in yet</div>
+            ) : checkedIn.map(u => {
+              const a = todayByUsername.get(u.username);
+              return (
+                <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f1f5f9" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{u.fullName}</div>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8" }}>{ROLE_LABELS[u.role] || u.role}</div>
+                  </div>
+                  <div style={{ textAlign: "right", fontSize: 11.5, color: "#94a3b8" }}>
+                    In: {fmtTime(a?.checkInTime)}{a?.checkOutTime ? ` · Out: ${fmtTime(a.checkOutTime)}` : " · Working"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={card}>
+            <div style={secTitle}>⏰ Not Checked In Today</div>
+            <div style={secSub}>{notCheckedIn.length} of {checkinTargets.length} (Site Engineers, PMs, Admins &amp; Procurement)</div>
+            {notCheckedIn.length === 0 ? (
+              <div style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "20px 0" }}>Everyone has checked in</div>
+            ) : notCheckedIn.map(u => (
+              <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{u.fullName}</div>
+                <span style={badge({ bg: "#fef2f2", color: "#dc2626" })}>{ROLE_LABELS[u.role] || u.role}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
