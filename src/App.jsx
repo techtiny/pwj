@@ -2906,9 +2906,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
     resultCount: { marginLeft: "auto", background: "#f8fafc", color: "#475569", borderRadius: 20, padding: "6px 16px", fontSize: 13, fontWeight: 600, border: "1px solid #e2e8f0" },
     // ── Table ──
     tableWrap: { margin: "0 32px 24px", background: "#ffffff", borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" },
-    table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
-    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 11.5, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
-    td: { padding: "12px 14px", color: "#374151", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: 14 },
+    table: { width: "100%", borderCollapse: "collapse", fontSize: 16 },
+    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
+    td: { padding: "12px 14px", color: "#0f172a", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: 16, fontWeight: 500 },
     badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }),
     dot: (c) => ({ width: 6, height: 6, borderRadius: "50%", background: c, flexShrink: 0 }),
     approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
@@ -3409,8 +3409,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         disabled={!isEligible}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td style={{ ...s.td, color: "#94a3b8", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
-                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
+                    <td style={{ ...s.td, color: "#334155", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.updatedAt || row.timestamp)}
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
@@ -3421,7 +3421,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 13, cursor: "pointer" }}>🖼️</span>
                       )}
                     </td>
-                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Approval — visible for all roles */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       <span
@@ -3435,7 +3435,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* Vendor — hidden for Engineer */}
                     {!isEngineer && (
-                      <td style={{ ...s.td, fontSize: 12, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                      <td style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
@@ -3457,7 +3457,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </td>
                     )}
                     {/* Delivered Date */}
-                    <td style={{ ...s.td, fontSize: 12, whiteSpace: "nowrap", color: "#64748b" }} onClick={() => setDetailRow(row)}>
+                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "#334155" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
@@ -3470,7 +3470,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
                       {row.status === "CLOSED" ? (
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>—</span>
+                        <span style={{ color: "#94a3b8" }}>—</span>
                       ) : isProcurement ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
@@ -3483,7 +3483,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               showToast("Network error — could not update dependency", "error");
                             }
                           }}
-                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 11, background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 120 }}>
+                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 16, background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 140 }}>
                           <option value="">— None —</option>
                           <option value="OH Approval">OH Approval</option>
                           <option value="Procurement">Procurement</option>
@@ -3494,7 +3494,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : (
-                        <span style={{ fontSize: 12, color: row.dependency ? "#0f172a" : "#94a3b8" }}>
+                        <span style={{ color: row.dependency ? "#0f172a" : "#94a3b8" }}>
                           {row.dependency || "—"}
                         </span>
                       )}
