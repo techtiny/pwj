@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
+import BugTrackerPage from "./bugs/BugTrackerPage";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -1279,6 +1280,15 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       visible: true,
     },
     {
+      key: "bugs",
+      label: "Bug Tracker",
+      desc: "Report issues and track their resolution",
+      icon: Bug,
+      gradient: "linear-gradient(135deg, #991b1b 0%, #ef4444 100%)",
+      shadow: "rgba(239,68,68,0.35)",
+      visible: true,
+    },
+    {
       key: "chatbot",
       label: "Happizo Chat Bot",
       desc: "AI-powered assistant for instant answers & support",
@@ -2250,7 +2260,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const r = await api.approveDoc(id, comment);
     if (r.success) {
       // Also approve any clubbed secondary entries
-      const entry = pendingDocs.find(d => d.id === id);
+      const entry = pendingDocs.find(d => d.id === id) || entries.find(x => x.id === id);
       try {
         const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
         for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
@@ -2268,7 +2278,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const r = await api.rejectDoc(id, comment);
     if (r.success) {
       // Also reject any clubbed secondary entries
-      const entry = pendingDocs.find(d => d.id === id);
+      const entry = pendingDocs.find(d => d.id === id) || entries.find(x => x.id === id);
       try {
         const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
         for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
@@ -2284,7 +2294,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const handleSubDocApprove = async (entryId, subIdx) => {
     const commentKey = `${entryId}_${subIdx}`;
     const comment = vpCommentMap[commentKey] || "";
-    const entry = pendingDocs.find(d => d.id === entryId);
+    const entry = pendingDocs.find(d => d.id === entryId) || entries.find(x => x.id === entryId);
     if (!entry) return;
     let parsed;
     try { parsed = JSON.parse(entry.docData || "{}"); } catch { return; }
@@ -2319,7 +2329,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const handleSubDocReject = async (entryId, subIdx) => {
     const commentKey = `${entryId}_${subIdx}`;
     const comment = vpCommentMap[commentKey] || "";
-    const entry = pendingDocs.find(d => d.id === entryId);
+    const entry = pendingDocs.find(d => d.id === entryId) || entries.find(x => x.id === entryId);
     if (!entry) return;
     let parsed;
     try { parsed = JSON.parse(entry.docData || "{}"); } catch { return; }
@@ -3025,7 +3035,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={s.hLeft}>
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
-              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : "Procurement Tracker"}</div>
+              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : mainTab === "bugs" ? "Happizo Bug Tracker" : "Procurement Tracker"}</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
@@ -3134,7 +3144,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
           {/* Contextual tab — only show the current module's tab */}
           {mainTab !== "home" && (() => {
-            const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales" };
+            const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", bugs: "Bug Tracker" };
             const label = labels[mainTab] || mainTab;
             return (
               <button style={{ border: "none", background: "none", cursor: "default", fontFamily: "inherit",
@@ -3203,6 +3213,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         )}
 
         {mainTab === "hr" && <HRSection user={user} />}
+
+        {mainTab === "bugs" && <BugTrackerPage user={user} />}
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
@@ -5919,6 +5931,32 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                     )}
 
+                    {/* VP approve / not-approved — directly from the preview */}
+                    {isVP && activeDocStatus === "PENDING_VP_APPROVAL" && (() => {
+                      const commentKey = isMulti ? `${e.id}_${safeIdx}` : e.id;
+                      return (
+                        <div style={{ padding: "0 24px 14px" }}>
+                          <textarea
+                            rows={2}
+                            placeholder="Comments (optional) — pricing concerns, revision needed…"
+                            value={vpCommentMap[commentKey] || ""}
+                            onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
+                            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
+                          />
+                          <div style={{ display: "flex", gap: 10 }}>
+                            <button onClick={() => { (isMulti ? handleSubDocApprove(e.id, safeIdx) : handleDocApprove(e.id)); setDocModal(null); }}
+                              style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                              ✅ Approve
+                            </button>
+                            <button onClick={() => { (isMulti ? handleSubDocReject(e.id, safeIdx) : handleDocReject(e.id)); setDocModal(null); }}
+                              style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                              ❌ Not Approved
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
                       {/* Edit → Save → Send for VP Approval in order */}
                       {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
@@ -6102,7 +6140,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
                                 <span style={{ fontSize: 11, color: "#f59e0b", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
                               </div>
-                              <button onClick={() => { openDocModal({ ...doc, docData: JSON.stringify(subDoc) }); setDocViewIndex(subDoc.idx); }}
+                              <button onClick={() => { openDocModal(doc); setDocViewIndex(subDoc.idx); }}
                                 style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>
                                 👁 Preview
                               </button>
