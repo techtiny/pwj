@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
 
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
+const EXCLUDED_USERNAMES = ["techtinyproc", "shobana", "techtinyadmin", "happizo"];
 const ROLE_LABELS = {
   ENGINEER: "Site Engineer",
   PROJECT_MANAGER: "PM",
@@ -31,6 +32,7 @@ export default function HRDashboard({ user }) {
   const [todayAll, setTodayAll]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
   const isAdmin = ["ADMIN","CEO","VP","OH"].includes(user?.role);
+  const hidePersonal = ["VP","CEO","OH"].includes(user?.role);
 
   useEffect(() => {
     const u = user?.username;
@@ -46,7 +48,7 @@ export default function HRDashboard({ user }) {
   }, [user?.username]);
 
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
-  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_"));
+  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_") && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()));
   const checkedIn       = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime);
   const notCheckedIn    = checkinTargets.filter(u => !todayByUsername.get(u.username)?.checkInTime);
 
@@ -99,41 +101,45 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* KPI row — white cards with colored top border (PWJ statCard style) */}
-      <div className="kpi-grid-4 hr-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
-        {[
-          { label: "Present (Month)", value: attSummary?.presentDays ?? "—",  accent: "#059669" },
-          { label: "Half Days",       value: attSummary?.halfDays    ?? "—",  accent: "#d97706" },
-          { label: "Leave Pending",   value: leaveSummary?.pending   ?? "—",  accent: "#f59e0b" },
-          { label: "Leave Approved",  value: leaveSummary?.approved  ?? "—",  accent: "#1e3a5f" },
-        ].map(k => (
-          <div key={k.label} style={statCard(k.accent)}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{k.label}</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 32, fontWeight: 700, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
-          </div>
-        ))}
-      </div>
+      {!hidePersonal && (
+        <div className="kpi-grid-4 hr-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+          {[
+            { label: "Present (Month)", value: attSummary?.presentDays ?? "—",  accent: "#059669" },
+            { label: "Half Days",       value: attSummary?.halfDays    ?? "—",  accent: "#d97706" },
+            { label: "Leave Pending",   value: leaveSummary?.pending   ?? "—",  accent: "#f59e0b" },
+            { label: "Leave Approved",  value: leaveSummary?.approved  ?? "—",  accent: "#1e3a5f" },
+          ].map(k => (
+            <div key={k.label} style={statCard(k.accent)}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{k.label}</div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 32, fontWeight: 700, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <div className="hr-admin-grid" style={{ display: "grid", gridTemplateColumns: isAdmin ? "1fr 1fr" : "1fr", gap: 20 }}>
+      <div className="hr-admin-grid" style={{ display: "grid", gridTemplateColumns: isAdmin && !hidePersonal ? "1fr 1fr" : "1fr", gap: 20 }}>
 
         {/* My recent leaves */}
-        <div style={card}>
-          <div style={secTitle}>My Recent Leave Requests</div>
-          <div style={secSub}>Latest 5 leave applications</div>
-          {recentLeaves.length === 0 ? (
-            <div style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No leave requests yet</div>
-          ) : recentLeaves.map(l => {
-            const s = LEAVE_STATUS[l.status] || LEAVE_STATUS.PENDING;
-            return (
-              <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{l.leaveType} Leave</div>
-                  <div style={{ fontSize: 11.5, color: "#94a3b8" }}>{fmtDate(l.fromDate)} → {fmtDate(l.toDate)} · {l.totalDays}d</div>
+        {!hidePersonal && (
+          <div style={card}>
+            <div style={secTitle}>My Recent Leave Requests</div>
+            <div style={secSub}>Latest 5 leave applications</div>
+            {recentLeaves.length === 0 ? (
+              <div style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No leave requests yet</div>
+            ) : recentLeaves.map(l => {
+              const s = LEAVE_STATUS[l.status] || LEAVE_STATUS.PENDING;
+              return (
+                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{l.leaveType} Leave</div>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8" }}>{fmtDate(l.fromDate)} → {fmtDate(l.toDate)} · {l.totalDays}d</div>
+                  </div>
+                  <span style={badge(s)}>{s.label}</span>
                 </div>
-                <span style={badge(s)}>{s.label}</span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Today's team attendance (admin) */}
         {isAdmin && (

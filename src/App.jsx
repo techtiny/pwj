@@ -2450,6 +2450,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
     const docNum    = e.docNumber || autoDocNumber(e);
+    const vendorName = v?.name || e.vendor || "";
     const subDocVpDate = (() => { try { const d = JSON.parse(e.docData || "{}"); return d.vpApprovedAt || null; } catch { return null; } })();
     const docDate   = (() => {
       const raw = subDocVpDate || e.approvedAt || new Date().toISOString();
@@ -2486,7 +2487,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const SEC   = `margin-bottom:12px;`;
     const STITLE = `font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:12px 0 6px;`;
     const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}</title>
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${typeName} - ${docNum}${vendorName ? " - " + vendorName : ""}</title>
     <style>
       @page { size: A4; margin: 12mm 14mm 12mm 14mm; }
       * { box-sizing: border-box; }
@@ -2650,7 +2651,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       }
     } catch {}
     const html = buildDocHtml(entryToRender, vendorToRender);
-    const win = window.open("", "_blank", "width=900,height=700");
+    const win = window.open("about:blank", "_blank", "width=900,height=700");
     if (!win) return;
     win.document.write(html + `<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>`);
     win.document.close();
