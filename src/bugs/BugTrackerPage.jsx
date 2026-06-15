@@ -5,6 +5,7 @@ import { usersApi, uploadDocument, attachmentFullUrl } from "../hr/hrApi";
 const MODULES    = ["Vendors", "Projects", "HR", "Procurement", "Account", "Other"];
 const SEVERITIES = ["Low", "Medium", "High", "Critical"];
 const STATUSES   = ["Open", "In Progress", "Testing", "Resolved", "Closed"];
+const ASSIGNEES  = ["Happizo", "Techtiny"];
 
 const SEVERITY_CFG = {
   Low:      { bg: "#f1f5f9", color: "#475569" },
@@ -19,6 +20,16 @@ const STATUS_CFG = {
   Testing:     { bg: "#f5f3ff", color: "#7c3aed" },
   Resolved:    { bg: "#ecfdf5", color: "#059669" },
   Closed:      { bg: "#f8fafc", color: "#94a3b8" },
+};
+
+const ROLE_LABELS = {
+  ADMIN: "Admin",
+  ENGINEER: "Engineer",
+  PROCUREMENT: "Procurement",
+  VP: "VP",
+  OH: "OH",
+  CEO: "CEO",
+  PROJECT_MANAGER: "Project Manager",
 };
 
 const EMPTY_FORM = { title: "", description: "", module: "Other", severity: "Medium" };
@@ -175,7 +186,15 @@ export default function BugTrackerPage({ user }) {
   const badge = (cfg) => ({ background: cfg.bg, color: cfg.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" });
   const selectSm = { border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff", cursor: "pointer" };
 
-  const assignableUsers = users.filter(u => !u.username?.startsWith("test_"));
+  const usersByUsername = useMemo(() => {
+    const map = {};
+    users.forEach(u => { map[u.username] = u; });
+    return map;
+  }, [users]);
+  const selectStatus = (status) => {
+    const cfg = STATUS_CFG[status] || STATUS_CFG.Open;
+    return { ...selectSm, background: cfg.bg, color: cfg.color, fontWeight: 700, border: "none" };
+  };
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -312,7 +331,7 @@ export default function BugTrackerPage({ user }) {
           <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Assigned To</label>
           <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}>
             <option value="">Anyone</option>
-            {assignableUsers.map(u => <option key={u.username} value={u.username}>{u.fullName || u.username}</option>)}
+            {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -374,7 +393,7 @@ export default function BugTrackerPage({ user }) {
                       </td>
                       <td style={TD()}>
                         {isManager ? (
-                          <select style={selectSm} value={b.status} disabled={isBusy}
+                          <select style={selectStatus(b.status)} value={b.status} disabled={isBusy}
                             onChange={e => handleStatusChange(b.id, e.target.value)}>
                             {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
@@ -382,13 +401,20 @@ export default function BugTrackerPage({ user }) {
                           <span style={badge(st)}>{b.status}</span>
                         )}
                       </td>
-                      <td style={TD({ whiteSpace: "nowrap" })}>{b.reportedByName || b.reportedBy}</td>
+                      <td style={TD({ whiteSpace: "nowrap" })}>
+                        <div>{b.reportedByName || b.reportedBy}</div>
+                        {usersByUsername[b.reportedBy]?.role && (
+                          <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 1 }}>
+                            {ROLE_LABELS[usersByUsername[b.reportedBy].role] || usersByUsername[b.reportedBy].role}
+                          </div>
+                        )}
+                      </td>
                       <td style={TD()}>
                         {isManager ? (
                           <select style={selectSm} value={b.assignedTo || ""} disabled={isBusy}
                             onChange={e => handleAssignChange(b.id, e.target.value)}>
                             <option value="">— Unassigned —</option>
-                            {assignableUsers.map(u => <option key={u.username} value={u.username}>{u.fullName || u.username}</option>)}
+                            {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
                           </select>
                         ) : (
                           b.assignedToName || <span style={{ color: "#cbd5e1" }}>—</span>
