@@ -1286,7 +1286,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       icon: Bug,
       gradient: "linear-gradient(135deg, #991b1b 0%, #ef4444 100%)",
       shadow: "rgba(239,68,68,0.35)",
-      visible: true,
+      visible: isAdmin || isVP || isOH || isCeo,
     },
     {
       key: "chatbot",
