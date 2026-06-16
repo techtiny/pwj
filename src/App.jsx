@@ -1965,12 +1965,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     setAssignVendorSearches([...vendorList]);
     setShowAssignVendorDrops(vendorList.map(() => false));
     setAssignModal(row);
-    if (approvedVendors.length === 0) {
-      try {
-        const r = await api.getApprovedVendors();
-        if (r.success) setApprovedVendors(r.data);
-      } catch {}
-    }
+    try {
+      const r = await api.getApprovedVendors();
+      if (r.success) setApprovedVendors(r.data);
+    } catch {}
   };
 
   const submitAssign = async () => {
@@ -2015,9 +2013,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!allUsers.length) {
       try { const ur = await api.getUsers(); if (ur.success) setAllUsers(ur.data); } catch {}
     }
-    if (approvedVendors.length === 0) {
-      try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
-    }
+    try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
     if (row.vendor) {
       try {
         const r = await api.getVendorByName(row.vendor);
@@ -2075,9 +2071,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   };
 
   const startDocEdit = async () => {
-    if (approvedVendors.length === 0) {
-      try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
-    }
+    try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
     const e = docModal.entry;
     const v = docModal.vendor;
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
@@ -6433,9 +6427,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           {(isAdmin || isProcurement) && (
             <button onClick={async () => {
                 setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocPwjType("PO");
-                if (approvedVendors.length === 0) {
-                  try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
-                }
+                try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
                 setGenDocModal(true);
               }}
               style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
