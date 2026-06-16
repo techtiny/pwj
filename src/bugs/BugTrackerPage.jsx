@@ -8,18 +8,18 @@ const STATUSES   = ["Open", "In Progress", "Testing", "Resolved", "Closed"];
 const ASSIGNEES  = ["Happizo", "Techtiny"];
 
 const SEVERITY_CFG = {
-  Low:      { bg: "#f1f5f9", color: "#5a6878" },
-  Medium:   { bg: "#fefce8", color: "#a07820" },
-  High:     { bg: "#fff7ed", color: "#b85e22" },
-  Critical: { bg: "#fef2f2", color: "#a83030" },
+  Low:      { bg: "#f1f5f9", color: "#475569" },
+  Medium:   { bg: "#fffbeb", color: "#d97706" },
+  High:     { bg: "#fff7ed", color: "#ea580c" },
+  Critical: { bg: "#fef2f2", color: "#dc2626" },
 };
 
 const STATUS_CFG = {
-  Open:          { bg: "#eff6ff", color: "#3a6fa5" },
-  "In Progress": { bg: "#fefce8", color: "#a07820" },
-  Testing:       { bg: "#f5f3ff", color: "#6450b0" },
-  Resolved:      { bg: "#ecfdf5", color: "#2a8a68" },
-  Closed:        { bg: "#f8fafc", color: "#7a8a9a" },
+  Open:          { bg: "#eff6ff", color: "#2563eb" },
+  "In Progress": { bg: "#fffbeb", color: "#d97706" },
+  Testing:       { bg: "#f5f3ff", color: "#7c3aed" },
+  Resolved:      { bg: "#ecfdf5", color: "#059669" },
+  Closed:        { bg: "#f8fafc", color: "#94a3b8" },
 };
 
 const COMMENT_TYPE_CFG = {
@@ -291,11 +291,11 @@ export default function BugTrackerPage({ user }) {
       {/* Stat cards */}
       <div className="hr-stat-flex" style={{ display: "flex", gap: 14, marginBottom: 24 }}>
         {[
-          { label: "Open",        value: counts.Open,           accent: "#3a6fa5" },
-          { label: "In Progress", value: counts["In Progress"], accent: "#a07820" },
-          { label: "Testing",     value: counts.Testing,        accent: "#6450b0" },
-          { label: "Resolved",    value: counts.Resolved,       accent: "#2a8a68" },
-          { label: "Closed",      value: counts.Closed,         accent: "#7a8a9a" },
+          { label: "Open",        value: counts.Open,           accent: "#2563eb" },
+          { label: "In Progress", value: counts["In Progress"], accent: "#d97706" },
+          { label: "Testing",     value: counts.Testing,        accent: "#7c3aed" },
+          { label: "Resolved",    value: counts.Resolved,       accent: "#059669" },
+          { label: "Closed",      value: counts.Closed,         accent: "#94a3b8" },
         ].map(k => (
           <div key={k.label} style={statCard(k.accent)}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{k.label}</div>
