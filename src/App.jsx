@@ -1960,15 +1960,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // ── Assign Vendor / PWJ Type ──
   const openAssign = async (row) => {
+    try {
+      const r = await api.getApprovedVendors();
+      if (r.success) setApprovedVendors(r.data);
+    } catch {}
     const vendorList = row.vendor ? [row.vendor] : [""];
     setAssignForm({ vendors: vendorList, pwjType: row.pwjType || "" });
     setAssignVendorSearches([...vendorList]);
     setShowAssignVendorDrops(vendorList.map(() => false));
     setAssignModal(row);
-    try {
-      const r = await api.getApprovedVendors();
-      if (r.success) setApprovedVendors(r.data);
-    } catch {}
   };
 
   const submitAssign = async () => {
