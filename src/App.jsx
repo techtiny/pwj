@@ -472,13 +472,13 @@ function calcTotals(items, cgstPct, sgstPct, igstPct) {
 
 // ─── ROLE HELPERS ──────────────────────────────────────────────────
 const ROLE_META = {
-  ADMIN:           { label: "Admin",           color: "#7c3aed", bg: "#ede9fe" },
-  ENGINEER:        { label: "Engineer",        color: "#0369a1", bg: "#e0f2fe" },
-  PROCUREMENT:     { label: "Procurement",     color: "#065f46", bg: "#d1fae5" },
-  VP:              { label: "VP",              color: "#b45309", bg: "#fef3c7" },
-  OH:              { label: "OH",              color: "#be185d", bg: "#fce7f3" },
-  CEO:             { label: "CEO",             color: "#dc2626", bg: "#fee2e2" },
-  PROJECT_MANAGER: { label: "Project Manager", color: "#0f766e", bg: "#ccfbf1" },
+  ADMIN:           { label: "Admin",           color: "#5a389a", bg: "#f2eeff" },
+  ENGINEER:        { label: "Engineer",        color: "#1a5880", bg: "#e6f3fb" },
+  PROCUREMENT:     { label: "Procurement",     color: "#1a5e44", bg: "#e4f5ee" },
+  VP:              { label: "VP",              color: "#8a5818", bg: "#faf2e0" },
+  OH:              { label: "OH",              color: "#882855", bg: "#faebf3" },
+  CEO:             { label: "CEO",             color: "#8a2222", bg: "#faeaea" },
+  PROJECT_MANAGER: { label: "Project Manager", color: "#1a6060", bg: "#e4f4f4" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -1221,8 +1221,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Procurement Entries",
       desc: "Track purchase requests, work orders & job orders",
       icon: FileText,
-      gradient: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
-      shadow: "rgba(37,99,235,0.35)",
+      gradient: "linear-gradient(150deg, #243b55 0%, #2d4e72 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: true,
     },
     {
@@ -1230,8 +1230,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Vendors",
       desc: "Manage vendor profiles, bank details & approvals",
       icon: Building2,
-      gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
-      shadow: "rgba(16,185,129,0.35)",
+      gradient: "linear-gradient(150deg, #1a4a36 0%, #2a6048 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager,
     },
     {
@@ -1239,8 +1239,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Projects",
       desc: "Monitor active projects, BOQ & payment milestones",
       icon: FolderKanban,
-      gradient: "linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)",
-      shadow: "rgba(139,92,246,0.35)",
+      gradient: "linear-gradient(150deg, #352460 0%, #4a3478 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
@@ -1248,8 +1248,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Account",
       desc: "Financial dashboard, expenses & fund transfers",
       icon: BarChart2,
-      gradient: "linear-gradient(135deg, #92400e 0%, #f59e0b 100%)",
-      shadow: "rgba(245,158,11,0.35)",
+      gradient: "linear-gradient(150deg, #5a3d14 0%, #7a5420 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
     },
     {
@@ -1257,8 +1257,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Sales",
       desc: "Pipeline, leads, deal tracking & conversion analytics",
       icon: TrendingUp,
-      gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
-      shadow: "rgba(16,185,129,0.35)",
+      gradient: "linear-gradient(150deg, #1a4350 0%, #285e6a 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isVP || isOH || isCeo || isProjectManager || isProcurement,
     },
     {
@@ -1266,8 +1266,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "HR",
       desc: "Human resources, attendance, payroll & team management",
       icon: UserCog,
-      gradient: "linear-gradient(135deg, #be185d 0%, #ec4899 100%)",
-      shadow: "rgba(236,72,153,0.35)",
+      gradient: "linear-gradient(150deg, #6b1f44 0%, #8b2e5a 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: true,
     },
     {
@@ -1275,8 +1275,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Operations",
       desc: "Operational workflows, scheduling & process management",
       icon: Settings2,
-      gradient: "linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)",
-      shadow: "rgba(20,184,166,0.35)",
+      gradient: "linear-gradient(150deg, #1a4848 0%, #286260 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: true,
     },
     {
@@ -1284,8 +1284,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Bug Tracker",
       desc: "Report issues and track their resolution",
       icon: Bug,
-      gradient: "linear-gradient(135deg, #991b1b 0%, #ef4444 100%)",
-      shadow: "rgba(239,68,68,0.35)",
+      gradient: "linear-gradient(150deg, #6b1a1a 0%, #8b2a2a 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isVP || isOH || isCeo,
     },
     {
@@ -1293,8 +1293,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Happizo Chat Bot",
       desc: "AI-powered assistant for instant answers & support",
       icon: Bot,
-      gradient: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-      shadow: "rgba(124,58,237,0.35)",
+      gradient: "linear-gradient(150deg, #2a2870 0%, #3c3890 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: true,
     },
     {
@@ -1302,8 +1302,8 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       label: "Manage Users",
       desc: "Create users, assign roles & manage access",
       icon: Users,
-      gradient: "linear-gradient(135deg, #0f4c81 0%, #0ea5e9 100%)",
-      shadow: "rgba(14,165,233,0.35)",
+      gradient: "linear-gradient(150deg, #14355a 0%, #1e4d78 100%)",
+      shadow: "rgba(15,23,42,0.14)",
       visible: isAdmin || isVP || isOH,
       action: onManageUsers,
     },
@@ -1351,7 +1351,7 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
               <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
               <div className="mod-desc" style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginTop: 2 }}>Open →</div>
           </button>
         ))}
       </div>
@@ -2887,7 +2887,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     hRight: { display: "flex", gap: 6, alignItems: "center" },
     hBtn: (variant) => ({
       background: variant === "primary"
-        ? "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)"
+        ? "#2a4d72"
         : variant === "danger"
         ? "rgba(239,68,68,0.06)"
         : "rgba(15,23,42,0.04)",
@@ -3168,7 +3168,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           )}
           {mainTab === "entries" && isVP && (
             <button onClick={openPendingDocs}
-              style={{ position: "relative", border: "none", background: "linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
+              style={{ position: "relative", border: "none", background: "#2a4d72", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
               <FileCheck size={13} strokeWidth={2.2} /> Doc Approvals
               <CountBadge count={pendingDocCount} />
             </button>
@@ -3222,19 +3222,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
           {/* ── Group 1: PR Status ── */}
           {[
             [
-              { label: "Total PRs", value: stats.total,  accent: "#3b82f6", dot: "#3b82f6", statusV: null,     approvalV: null },
-              { label: "Closed",    value: stats.closed, accent: "#22c55e", dot: "#22c55e", statusV: "CLOSED", approvalV: null },
-              { label: "Open",      value: stats.open,   accent: "#f59e0b", dot: "#f59e0b", statusV: "OPEN",   approvalV: null },
+              { label: "Total PRs", value: stats.total,  accent: "#4a7ab5", dot: "#4a7ab5", statusV: null,     approvalV: null },
+              { label: "Closed",    value: stats.closed, accent: "#3a9868", dot: "#3a9868", statusV: "CLOSED", approvalV: null },
+              { label: "Open",      value: stats.open,   accent: "#b89030", dot: "#b89030", statusV: "OPEN",   approvalV: null },
             ],
             [
-              { label: "Proceed",      value: stats.proceed,     accent: "#0ea5e9", dot: "#0ea5e9", statusV: null, approvalV: "PROCEED" },
-              { label: "On Hold",      value: stats.hold,        accent: "#f97316", dot: "#f97316", statusV: null, approvalV: "HOLD" },
-              { label: "Not Approved", value: stats.notApproved, accent: "#ef4444", dot: "#ef4444", statusV: null, approvalV: "NOT_APPROVED" },
+              { label: "Proceed",      value: stats.proceed,     accent: "#3a8aaa", dot: "#3a8aaa", statusV: null, approvalV: "PROCEED" },
+              { label: "On Hold",      value: stats.hold,        accent: "#c87030", dot: "#c87030", statusV: null, approvalV: "HOLD" },
+              { label: "Not Approved", value: stats.notApproved, accent: "#b84848", dot: "#b84848", statusV: null, approvalV: "NOT_APPROVED" },
             ],
           ].map((group, gi) => (
             <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
-              <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#3b82f6" : "#f97316", display: "inline-block" }} />
+              <div style={{ padding: "8px 16px 6px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#4a7ab5" : "#c87030", display: "inline-block" }} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
                   {gi === 0 ? "PR Status" : "Approval Status"}
                 </span>
@@ -3526,7 +3526,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "#1a5880", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openEditEntry(row)}>
                               ✏️ Edit
                             </button>
@@ -3562,7 +3562,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "#1a5880", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openAssign(row)}>
                               ✏️ Assign
                             </button>
@@ -3695,7 +3695,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
                 {isAdmin && (
-                  <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
+                  <button style={{ background: "#4a3478", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
                     onClick={() => { setAddVendorForm(BLANK_VENDOR_FORM); setAddVendorPage(true); }}>
                     ➕ Add Vendor
                   </button>
