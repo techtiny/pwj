@@ -1966,7 +1966,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     } catch {}
     const vendorList = row.vendor ? [row.vendor] : [""];
     setAssignForm({ vendors: vendorList, pwjType: row.pwjType || "" });
-    setAssignVendorSearches([...vendorList]);
+    setAssignVendorSearches(vendorList.map(() => ""));
     setShowAssignVendorDrops(vendorList.map(() => false));
     setAssignModal(row);
   };
