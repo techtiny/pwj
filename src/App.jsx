@@ -6762,7 +6762,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               bankDetails: avf.bankName || avf.accountNumber || avf.ifscCode
                 ? `${avf.bankName || ""}${avf.accountNumber ? " | A/C No: " + avf.accountNumber : ""}${avf.ifscCode ? " | IFSC: " + avf.ifscCode : ""}`
                 : avf.bankDetails,
-              status: "PENDING_APPROVAL",
+              ...(editVendorId ? {} : { status: "PENDING_APPROVAL" }),
             };
             if (editVendorId) {
               const r = await api.updateVendor(editVendorId, body);
