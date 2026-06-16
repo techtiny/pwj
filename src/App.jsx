@@ -3798,9 +3798,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </button>
                           {isVP && isPending && (<>
                             <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
+                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
                             <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
+                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setApprovedVendors(a => a.filter(x => x.id !== v.id)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
@@ -5278,6 +5278,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const r = await api.approveVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED", active: true } : x));
+                                  setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED", active: true } : x) : [...a, { ...v, status: "APPROVED", active: true }]);
                                   setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} approved ✅`);
                                 } else showToast(r.message || "Failed", "error");
@@ -5290,6 +5291,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const r = await api.rejectVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x));
+                                  setApprovedVendors(a => a.filter(x => x.id !== v.id));
                                   setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} rejected`, "error");
                                 } else showToast(r.message || "Failed", "error");
@@ -5370,9 +5372,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {showAssignVendorDrops[vi] && (() => {
                       const q = (assignVendorSearches[vi] || "").trim().toLowerCase();
                       const filtered = approvedVendors.filter(v => !q || v.name.toLowerCase().includes(q) || (v.category || "").toLowerCase().includes(q));
-                      return filtered.length > 0 ? (
+                      return (
                         <div style={{ position: "absolute", top: "100%", left: 0, right: assignForm.vendors.length > 1 ? 46 : 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
-                          {filtered.map(v => (
+                          {filtered.length === 0 ? (
+                            <div style={{ padding: "12px 14px", fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
+                              {approvedVendors.length === 0 ? "No approved vendors. Approve vendors from the Vendors tab first." : "No vendors match your search."}
+                            </div>
+                          ) : filtered.map(v => (
                             <div key={v.id}
                               onMouseDown={() => {
                                 const alreadyUsed = assignForm.vendors.some((existing, idx) => idx !== vi && existing.toLowerCase() === v.name.toLowerCase());
@@ -5390,7 +5396,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </div>
                           ))}
                         </div>
-                      ) : null;
+                      );
                     })()}
                     {vendor && <div style={{ marginTop: 4, fontSize: 12, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
                   </div>
