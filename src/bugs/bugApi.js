@@ -10,9 +10,12 @@ export const bugApi = {
   create:         (data)   => api.post('', data),
   getAll:         ()       => api.get(''),
   getFiltered:    (params) => api.get('', { params }),
-  updateStatus:   (id, status)     => api.put(`/${id}/status`, { status }),
-  updateSeverity: (id, severity)   => api.put(`/${id}/severity`, { severity }),
-  assign:         (id, assignedTo) => api.put(`/${id}/assign`, { assignedTo }),
+  update:         (id, data) => api.put(`/${id}`, data),
+  updateStatus:   (id, status, actorUsername)     => api.put(`/${id}/status`,   { status, actorUsername }),
+  updateSeverity: (id, severity, actorUsername)   => api.put(`/${id}/severity`, { severity, actorUsername }),
+  assign:         (id, assignedTo, actorUsername) => api.put(`/${id}/assign`,   { assignedTo, actorUsername }),
+  getComments:    (id) => api.get(`/${id}/comments`),
+  addComment:     (id, commentText, actorUsername) => api.post(`/${id}/comments`, { commentText, actorUsername }),
   delete:         (id)     => api.delete(`/${id}`),
 };
 
