@@ -5,26 +5,49 @@
 /* Prevent horizontal overflow */
 html, body, #root { max-width: 100vw; overflow-x: hidden; }
 
-/* ── App layout ───────────────────────────────────────────────────────── */
+/* ── Touch targets & iOS zoom prevention ──────────────────────────────── */
 @media (max-width: 768px) {
+  button { min-height: 40px; }
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+  * { -webkit-tap-highlight-color: transparent; }
+}
 
-  /* Header */
+/* ── Login card ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .lg-card {
+    padding: 32px 20px !important;
+    border-radius: 20px !important;
+    width: 92vw !important;
+    max-width: 420px !important;
+  }
+  .lg-logo-row { gap: 10px !important; margin-bottom: 24px !important; }
+  .lg-input { padding: 12px 14px !important; }
+  .lg-btn { padding: 14px !important; font-size: 15px !important; }
+}
+
+/* ── App Header ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
   .app-header {
-    padding: 0 12px !important;
+    padding: 8px 12px !important;
     min-height: 52px !important;
     height: auto !important;
     flex-wrap: wrap !important;
     gap: 6px !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
   }
   .app-header .app-hTitle { font-size: 13px !important; }
   .app-header img { height: 28px !important; }
   .app-hbadge { display: none !important; }
-  .app-hright { flex-wrap: wrap !important; gap: 5px !important; }
-  .app-hright button { padding: 6px 10px !important; font-size: 11px !important; }
+  .app-hright {
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+  .app-hright button { padding: 6px 10px !important; font-size: 11px !important; min-height: 34px !important; }
+}
 
-  /* Tabs bar — horizontal scroll */
+/* ── Tabs bar — horizontal scroll ─────────────────────────────────────── */
+@media (max-width: 768px) {
   .app-tabs {
     padding: 0 8px !important;
     overflow-x: auto !important;
@@ -34,13 +57,33 @@ html, body, #root { max-width: 100vw; overflow-x: hidden; }
     display: flex !important;
   }
   .app-tabs::-webkit-scrollbar { display: none; }
-  .app-tabs button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap !important; flex-shrink: 0; }
+  .app-tabs button {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}
 
-  /* Stats row */
-  .app-statsrow { padding: 10px 10px 0 !important; gap: 8px !important; flex-wrap: wrap !important; }
-  .app-statsrow > div { min-width: calc(50% - 4px) !important; flex: 1 1 calc(50% - 4px) !important; }
+/* ── Stats / KPI row ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app-statsrow {
+    padding: 10px 10px 0 !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+  .app-statsrow > div {
+    min-width: calc(50% - 4px) !important;
+    flex: 1 1 calc(50% - 4px) !important;
+  }
+  .kpi-grid-4, .kpi-grid-6 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
 
-  /* Filter bar */
+/* ── Filter / action bar ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
   .app-filterbar {
     padding: 10px 12px !important;
     gap: 8px !important;
@@ -49,24 +92,48 @@ html, body, #root { max-width: 100vw; overflow-x: hidden; }
   }
   .app-filterbar input,
   .app-filterbar select { width: 100% !important; }
+}
 
-  /* Table wrap — horizontal scroll */
+/* ── Table — horizontal scroll ────────────────────────────────────────── */
+@media (max-width: 768px) {
   .app-tablewrap {
     margin: 0 0 14px !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
   .app-tablewrap table { min-width: 640px; }
+  .table-scroll-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .table-scroll-wrap table { min-width: 600px; }
+}
 
-  /* Pagination */
+/* ── Pagination ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
   .app-pagination {
     padding: 10px 12px 18px !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 8px !important;
   }
+}
 
-  /* Doc modal — full screen on mobile */
+/* ── Modals — slide up from bottom on mobile ──────────────────────────── */
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 18px 18px 0 0 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Doc modal — full screen */
   .doc-modal-overlay { align-items: flex-start !important; }
   .doc-modal-box {
     width: 100% !important;
@@ -76,112 +143,71 @@ html, body, #root { max-width: 100vw; overflow-x: hidden; }
     border-radius: 0 !important;
     margin: 0 !important;
   }
+}
 
-  /* HomeDashboard module grid — 2 cols on mobile */
+/* ── Home dashboard grid ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .home-welcome { font-size: 20px !important; padding: 0 12px !important; }
   .home-module-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
     padding: 0 12px !important;
   }
-  .home-module-grid button {
-    padding: 20px 12px !important;
-  }
+  .home-module-grid button { padding: 18px 10px !important; }
   .home-module-grid button > div:first-child {
-    width: 52px !important;
-    height: 52px !important;
+    width: 48px !important;
+    height: 48px !important;
   }
   .home-module-grid .mod-label { font-size: 13px !important; }
-  .home-module-grid .mod-desc  { font-size: 11px !important; display: none; }
+  .home-module-grid .mod-desc { display: none !important; }
+}
 
-  /* HR / Sales pages padding */
-  .hr-page, .sales-page { padding: 14px 12px !important; }
-
-  /* Generic page section padding */
-  [class*="page-pad"] { padding: 14px 12px !important; }
-
-  /* Sub-nav tabs (HR / Sales / Account) */
+/* ── Sub-navigation tabs ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
   .sub-nav {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     white-space: nowrap !important;
     padding: 0 8px !important;
+    scrollbar-width: none !important;
   }
   .sub-nav::-webkit-scrollbar { display: none; }
-  .sub-nav button { white-space: nowrap !important; flex-shrink: 0; padding: 10px 14px !important; font-size: 12.5px !important; }
-
-  /* Modals — full screen */
-  .modal-overlay {
-    align-items: flex-end !important;
-    padding: 0 !important;
+  .sub-nav button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 10px 14px !important;
+    font-size: 12.5px !important;
   }
-  .modal-box {
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 92dvh !important;
-    border-radius: 16px 16px 0 0 !important;
-  }
+}
 
-  /* Overflow tables */
-  .table-scroll-wrap {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  .table-scroll-wrap table { min-width: 600px; }
-
-  /* KPI 4-col grids → 2-col */
-  .kpi-grid-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-  }
-  .kpi-grid-6 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-  }
-
-  /* Charts — full width */
-  .chart-row-2 {
-    grid-template-columns: 1fr !important;
-  }
-  .chart-row-3 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Board view Kanban — single column */
-  .kanban-board {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Attendance timeline */
-  .att-timeline { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
-  .att-timeline .att-line { display: none !important; }
-
-  /* Leave table — hide less important cols */
-  .leave-table th:nth-child(5),
-  .leave-table td:nth-child(5) { display: none; }
-
-  /* Vendor / project modal forms → single column */
+/* ── Forms — single column on mobile ─────────────────────────────────── */
+@media (max-width: 768px) {
   .form-2col { grid-template-columns: 1fr !important; }
-
-  /* Action buttons row */
-  .action-row { flex-wrap: wrap !important; gap: 8px !important; }
-  .action-row button { font-size: 12px !important; padding: 8px 12px !important; }
-
-  /* Account section wrap */
+  .hr-page, .sales-page { padding: 14px 12px !important; }
   .acct-wrap { padding: 0 !important; }
 }
 
+/* ── Action button rows ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .action-row { flex-wrap: wrap !important; gap: 8px !important; }
+  .action-row button { font-size: 12px !important; padding: 8px 12px !important; }
+}
+
+/* ── Charts / Kanban ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .chart-row-2, .chart-row-3 { grid-template-columns: 1fr !important; }
+  .kanban-board { grid-template-columns: 1fr !important; }
+}
+
+/* ── Extra small screens ──────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .app-statsrow > div { min-width: 100% !important; }
   .home-module-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
   .home-welcome { font-size: 18px !important; }
-}
-
-/* ── Touch-friendly tap targets ──────────────────────────────────────── */
-@media (max-width: 768px) {
-  button { min-height: 36px; }
-  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+  .modal-box { max-height: 96dvh !important; }
 }
 
 /* ── Smooth scrolling ─────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }

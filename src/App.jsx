@@ -769,6 +769,14 @@ const APPROVAL_META = {
   HOLD:         { label: "Hold",         bg: "#fef3c7", color: "#d97706", dot: "#f59e0b" },
   NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
 };
+const DEPENDENCY_META = {
+  "OH Approval": { bg: "#fff7ed", color: "#c2410c", dot: "#f97316" },
+  "VP Approval": { bg: "#f5f3ff", color: "#7c3aed", dot: "#8b5cf6" },
+  "Procurement": { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
+  "Site team":   { bg: "#f0fdf4", color: "#166534", dot: "#22c55e" },
+  "Vendor":      { bg: "#fdf4ff", color: "#86198f", dot: "#d946ef" },
+  "DIP":         { bg: "#f8fafc", color: "#475569", dot: "#94a3b8" },
+};
 const STATUS_META = {
   CLOSED: { bg: "#dcfce7", color: "#15803d", dot: "#22c55e" },
   OPEN:   { bg: "#fef9c3", color: "#b45309", dot: "#f59e0b" },
@@ -3220,11 +3228,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
               { label: "Closed",    value: stats.closed, accent: "#22c55e", dot: "#22c55e", statusV: "CLOSED", approvalV: null },
               { label: "Open",      value: stats.open,   accent: "#f59e0b", dot: "#f59e0b", statusV: "OPEN",   approvalV: null },
             ],
-            [
-              { label: "Proceed",      value: stats.proceed,     accent: "#0ea5e9", dot: "#0ea5e9", statusV: null, approvalV: "PROCEED" },
-              { label: "On Hold",      value: stats.hold,        accent: "#f97316", dot: "#f97316", statusV: null, approvalV: "HOLD" },
-              { label: "Not Approved", value: stats.notApproved, accent: "#ef4444", dot: "#ef4444", statusV: null, approvalV: "NOT_APPROVED" },
-            ],
           ].map((group, gi) => (
             <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
               <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
@@ -3388,7 +3391,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Material","materialRequired"],
                     ["Req Date","dateOfRequirement"],
-                    ["OH Approval","approvalStatus"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
                     ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [["PWJ","pwjIssued"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
@@ -3429,17 +3431,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       )}
                     </td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
-                    {/* Approval — visible for all roles */}
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span
-                        style={s.badge(APPROVAL_META[row.approvalStatus])}
-                        title={row.approvalComment ? `OH Remark: ${row.approvalComment}` : undefined}
-                      >
-                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
-                        {APPROVAL_META[row.approvalStatus]?.label || row.approvalStatus}
-                        {row.approvalComment ? " 💬" : ""}
-                      </span>
-                    </td>
                     {/* Vendor — hidden for Engineer */}
                     {!isEngineer && (
                       <td style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
@@ -3495,15 +3486,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <option value="OH Approval">OH Approval</option>
                           <option value="Procurement">Procurement</option>
                           <option value="Site team">Site team</option>
-                          <option value="DH Approval">DH Approval</option>
                           <option value="Vendor">Vendor</option>
                           <option value="DIP">DIP</option>
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
-                      ) : (
-                        <span style={{ color: row.dependency ? "#0f172a" : "#94a3b8" }}>
-                          {row.dependency || "—"}
+                      ) : row.dependency ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "3px 10px", fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap" }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
+                          {row.dependency}
                         </span>
+                      ) : (
+                        <span style={{ color: "#94a3b8" }}>—</span>
                       )}
                     </td>
                     {/* ★ ACTION COLUMN */}
@@ -4657,8 +4650,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── PENDING OH APPROVAL MODAL ─── */}
       {pendingModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setPendingModal(false)}>
-          <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 780, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} className="modal-overlay" onClick={() => setPendingModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 780, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} className="modal-box" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -5312,8 +5305,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── ASSIGN VENDOR / PWJ TYPE MODAL ─── */}
       {assignModal && (
-        <div style={s.overlay} onClick={() => setAssignModal(null)}>
-          <div style={{ ...s.modalBox(460) }} onClick={e => e.stopPropagation()}>
+        <div style={s.overlay} className="modal-overlay" onClick={() => setAssignModal(null)}>
+          <div style={{ ...s.modalBox(460) }} className="modal-box" onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
                 <div style={s.mTitle}>Assign Vendor & PWJ Type</div>
@@ -6054,8 +6047,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── VP PENDING DOC APPROVALS MODAL ─── */}
       {pendingDocsModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={() => setPendingDocsModal(false)}>
-          <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 820, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} className="modal-overlay" onClick={() => setPendingDocsModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 820, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} className="modal-box" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -6211,8 +6204,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── MANAGE USERS MODAL ─── */}
       {userMgmtModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={() => setUserMgmtModal(false)}>
-          <div style={{ background: "#fff", borderRadius: 20, width: "96%", maxWidth: 900, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 32px 80px rgba(0,0,0,.25)", overflow: "hidden", animation: "slideUp .2s ease" }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.6)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} className="modal-overlay" onClick={() => setUserMgmtModal(false)}>
+          <div style={{ background: "#fff", borderRadius: 20, width: "96%", maxWidth: 900, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 32px 80px rgba(0,0,0,.25)", overflow: "hidden", animation: "slideUp .2s ease" }} className="modal-box" onClick={e => e.stopPropagation()}>
 
             {/* ── Header ── */}
             <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)", padding: "24px 32px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -6460,9 +6453,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const allAssigned = selected.every(e => (genDocItemVendors[e.id] || "").trim());
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-            onClick={() => setGenDocModal(false)}>
+            className="modal-overlay" onClick={() => setGenDocModal(false)}>
             <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 620, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,.22)", overflow: "hidden" }}
-              onClick={e => e.stopPropagation()}>
+              className="modal-box" onClick={e => e.stopPropagation()}>
 
               {/* Header */}
               <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
