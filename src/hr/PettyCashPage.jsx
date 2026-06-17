@@ -255,10 +255,60 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .hr-page { padding: 12px 14px !important; }
+          .pc-stat-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+          .pc-header { flex-wrap: wrap; gap: 10px; }
+          .pc-header-btn { width: 100%; }
+          .hr-form-grid { grid-template-columns: 1fr !important; }
+          .hr-form-grid > div[style*="1/-1"] { grid-column: 1 !important; }
+          .pc-filter-bar { flex-direction: column !important; gap: 10px !important; }
+          .pc-filter-bar > div { width: 100% !important; }
+          .pc-filter-bar select, .pc-filter-bar input { width: 100% !important; min-width: unset !important; box-sizing: border-box; }
+          .pc-filter-bar button { width: 100% !important; }
+          .pc-table thead { display: none !important; }
+          .pc-table tbody tr {
+            display: block !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            margin-bottom: 12px !important;
+            padding: 12px 14px !important;
+            background: #fff !important;
+          }
+          .pc-table td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            padding: 6px 0 !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            font-size: 13px !important;
+            gap: 8px;
+          }
+          .pc-table td:last-child { border-bottom: none !important; }
+          .pc-table td::before {
+            content: attr(data-label);
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #94a3b8 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            min-width: 80px;
+            flex-shrink: 0;
+          }
+          .pc-table td[data-label=""] { display: none !important; }
+          .pc-table td[data-label="Action"] { flex-direction: column !important; align-items: stretch !important; }
+          .pc-table td[data-label="Action"]::before { margin-bottom: 6px; }
+          .pc-table td[data-label="Status"] { flex-direction: column !important; align-items: flex-start !important; }
+          .pc-table td[data-label="Proof"] { flex-direction: column !important; align-items: flex-start !important; }
+          .pc-view-toggle { gap: 6px !important; }
+          .pc-view-toggle button { font-size: 12px !important; padding: 7px 12px !important; }
+        }
+      `}</style>
 
       {/* Summary stat cards */}
       {summary && (
-        <div className="hr-stat-flex" style={{ display: "flex", gap: 14, marginBottom: 24 }}>
+        <div className="hr-stat-flex pc-stat-grid" style={{ display: "flex", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Approved Amount",  value: fmtINR(summary.totalApproved), accent: "#059669" },
             { label: "Pending Amount",   value: fmtINR(summary.totalPending),  accent: "#d97706" },
@@ -274,7 +324,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div className="pc-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>{title}</div>
           <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 2 }}>
@@ -286,6 +336,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
         {(!isApprover || title === "Reimbursement") && (
           <button
             onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); setErrors({}); }}
+            className="pc-header-btn"
             style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             {showForm ? "Cancel" : "+ New Request"}
           </button>
@@ -371,7 +422,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
       {/* View toggle for approvers */}
       {isApprover && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div className="pc-view-toggle" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {[
             { key: "mine", label: "My Entries" },
             { key: "all",  label: `All Entries (${allEntries.length})` },
@@ -393,7 +444,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
       {/* Filter bar */}
       {isApprover && viewTab === "all" && (
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div className="pc-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Employee</label>
             <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterName} onChange={e => setFilterName(e.target.value)}>
@@ -442,7 +493,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
           </div>
         ) : (
           <div className="table-scroll-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="pc-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr>
                   {[
@@ -462,26 +513,26 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                   return (
                     <tr key={entry.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       {viewTab === "all" && (
-                        <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{entry.fullName}</td>
+                        <td data-label="Employee" style={TD({ fontWeight: 600, color: "#0f172a" })}>{entry.fullName}</td>
                       )}
-                      <td style={TD({ whiteSpace: "nowrap" })}>{fmtDate(entry.expenseDate)}</td>
-                      <td style={TD({ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
+                      <td data-label="Date" style={TD({ whiteSpace: "nowrap" })}>{fmtDate(entry.expenseDate)}</td>
+                      <td data-label="Project" style={TD({ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
                         {entry.projectName
                           ? <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>{entry.projectName}</span>
                           : <span style={{ color: "#cbd5e1" }}>—</span>}
                       </td>
-                      <td style={TD()}>
+                      <td data-label="Category" style={TD()}>
                         <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
                           {entry.category.replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td style={TD({ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.description}>
+                      <td data-label="Description" style={TD({ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.description}>
                         {entry.description}
                       </td>
-                      <td style={TD({ fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" })}>{fmtINR(entry.amount)}</td>
+                      <td data-label="Amount" style={TD({ fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" })}>{fmtINR(entry.amount)}</td>
 
                       {/* Status + date timeline */}
-                      <td style={TD({ minWidth: 160 })}>
+                      <td data-label="Status" style={TD({ minWidth: 160 })}>
                         <span style={badge(s)}>{s.label}</span>
                         <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 2 }}>
                           {entry.createdAt && (
@@ -506,14 +557,14 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                       </td>
 
                       {/* Receipt (initial attachment) */}
-                      <td style={TD()}>
+                      <td data-label="Receipt" style={TD()}>
                         {entry.attachmentUrl
                           ? <AttachmentLink url={entry.attachmentUrl} label="View" />
                           : <span style={{ color: "#cbd5e1" }}>—</span>}
                       </td>
 
                       {/* Proof (multi-doc, post-transfer) */}
-                      <td style={TD({ minWidth: 160 })}>
+                      <td data-label="Proof" style={TD({ minWidth: 160 })}>
                         {entry.proofUrl || entry.proofUrls ? (
                           <ProofCell entry={entry} />
                         ) : isMine && entry.status === "CASH_TRANSFERRED" ? (
@@ -558,7 +609,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                       </td>
 
                       {/* Action */}
-                      <td style={TD()}>
+                      <td data-label="Action" style={TD()}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {isMine && entry.status === "PENDING" && (
                             <button onClick={() => handleDelete(entry.id)}
