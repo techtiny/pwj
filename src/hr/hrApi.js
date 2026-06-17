@@ -57,10 +57,12 @@ export const pettyCashApi = {
   getMyEntries: (username)     => api.get(`/petty-cash/my/${username}`),
   getPending: ()               => api.get('/petty-cash/pending'),
   getAll:     ()               => api.get('/petty-cash/all'),
-  approve:    (id, data)       => api.put(`/petty-cash/${id}/approve`, data),
-  reject:     (id, data)       => api.put(`/petty-cash/${id}/reject`, data),
-  delete:     (id, username)   => api.delete(`/petty-cash/${id}?username=${username}`),
-  getSummary: (username)       => api.get(`/petty-cash/summary/${username}`),
+  approve:         (id, data)  => api.put(`/petty-cash/${id}/approve`, data),
+  reject:          (id, data)  => api.put(`/petty-cash/${id}/reject`, data),
+  markTransferred: (id)        => api.put(`/petty-cash/${id}/mark-transferred`),
+  submitProof:     (id, data)  => api.put(`/petty-cash/${id}/submit-proof`, data),  // data: { username, proofUrls: [] }
+  delete:          (id, u)     => api.delete(`/petty-cash/${id}?username=${u}`),
+  getSummary:      (username)  => api.get(`/petty-cash/summary/${username}`),
 };
 
 export const projectsApi = {
@@ -79,6 +81,12 @@ export function fmtTime(dt) {
 export function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export function fmtDateTime(d) {
+  if (!d) return null;
+  const iso = typeof d === 'string' && !d.endsWith('Z') && !d.includes('+') ? d + 'Z' : d;
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 }
 
 export function fmtHours(minutes) {

@@ -235,7 +235,8 @@ const api = {
   updateUserPhone: (id, phone) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/phone`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) }).then(r => r.json()),
   updateUserName:     (id, fullName) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/name`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName }) }).then(r => r.json()),
   updateUsername:     (id, username) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/username`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username }) }).then(r => r.json()),
-  changeUserPassword: (id, newPassword) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/password`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword }) }).then(r => r.json()),
+  changeUserPassword:    (id, newPassword)  => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/password`,    { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword }) }).then(r => r.json()),
+  updateUserDesignation: (id, designation) => fetch(`${AUTH_BASE.replace("/auth", "/users")}/${id}/designation`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designation }) }).then(r => r.json()),
   getVendorByName: (name) => fetch(`${VENDOR_BASE}/by-name?name=${encodeURIComponent(name)}`).then(r => r.json()),
   updateEntry: (id, body) => fetch(`${API_BASE}/entries/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   submitDoc: (id) => fetch(`${API_BASE}/entries/${id}/submit-doc`, { method: "PATCH" }).then(r => r.json()),
@@ -1461,7 +1462,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [userMgmtModal, setUserMgmtModal] = useState(false);
   const [allUsers, setAllUsers]           = useState([]);
   const [userMgmtLoading, setUserMgmtLoading] = useState(false);
-  const [newUserForm, setNewUserForm]     = useState({ username: "", password: "", fullName: "", email: "", phone: "", role: "ENGINEER" });
+  const [newUserForm, setNewUserForm]     = useState({ username: "", password: "", fullName: "", email: "", phone: "", designation: "", role: "ENGINEER" });
   const [docModal, setDocModal]           = useState(null);   // { entry, vendor }
   const [docLoading, setDocLoading]       = useState(false);
   const [docEditMode, setDocEditMode]     = useState(false);
@@ -2809,9 +2810,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
     }
     const r = await api.createUser(newUserForm);
     if (r.success) {
-      setAllUsers(u => [...u, r.data]);
-      setNewUserForm({ username: "", password: "", fullName: "", email: "", phone: "", role: "ENGINEER" });
-      showToast(`User "${r.data.username}" created ✅`);
+      let created = r.data;
+      if (newUserForm.designation) {
+        const dr = await api.updateUserDesignation(created.id, newUserForm.designation);
+        if (dr.success) created = dr.data;
+      }
+      setAllUsers(u => [...u, created]);
+      setNewUserForm({ username: "", password: "", fullName: "", email: "", phone: "", designation: "", role: "ENGINEER" });
+      showToast(`User "${created.username}" created ✅`);
     } else {
       showToast(r.message || "Failed to create user", "error");
     }
@@ -3053,7 +3059,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <div style={{ lineHeight: 1.25 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{roleMeta.label}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
               </div>
             </div>
 
@@ -6220,8 +6226,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Add user form ── */}
             <div style={{ padding: "20px 32px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", flexShrink: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
-                {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"],["Email","email","email"],["Phone","phone","tel"]].map(([label, key, type]) => (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+                {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"],["Email","email","email"],["Phone","phone","tel"],["Designation","designation","text"]].map(([label, key, type]) => (
                   <div key={key}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>{label}</div>
                     <input type={type} placeholder={label} value={newUserForm[key]}
@@ -6322,12 +6328,41 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </div>
                     </div>
 
-                    {/* Role */}
-                    <div>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color }} />
-                        {rm.label}
-                      </span>
+                    {/* Designation / Role */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {u.designation ? (
+                        <input type="text" defaultValue={u.designation}
+                          onBlur={async e => {
+                            const val = e.target.value.trim();
+                            if (val === (u.designation || "")) return;
+                            const r = await api.updateUserDesignation(u.id, val || null);
+                            if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val || null } : x)); showToast("Designation updated ✅"); }
+                            else showToast(r.message || "Failed", "error");
+                          }}
+                          style={{ border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 13, fontWeight: 600, color: "#0f172a", width: "100%", maxWidth: 200 }}
+                          onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
+                      ) : (
+                        <>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color }} />
+                            {rm.label}
+                          </span>
+                          {isAdmin && (
+                            <input type="text" placeholder="Add designation…"
+                              onBlur={async e => {
+                                const val = e.target.value.trim();
+                                if (!val) return;
+                                const r = await api.updateUserDesignation(u.id, val);
+                                if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val } : x)); showToast("Designation set ✅"); e.target.value = ""; }
+                                else showToast(r.message || "Failed", "error");
+                              }}
+                              style={{ border: "1px solid transparent", borderRadius: 6, padding: "2px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 11, color: "#94a3b8", width: "100%", maxWidth: 200 }}
+                              onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
+                              onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }} />
+                          )}
+                        </>
+                      )}
                     </div>
 
                     {/* Contact */}

@@ -1,13 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { pettyCashApi, projectsApi, uploadDocument, attachmentFullUrl, fmtDate } from "./hrApi";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { pettyCashApi, projectsApi, uploadDocument, attachmentFullUrl, fmtDate, fmtDateTime } from "./hrApi";
 
-const CATEGORIES   = ["TRAVEL", "FOOD", "OFFICE_SUPPLIES", "UTILITIES", "MAINTENANCE", "OTHERS"];
-const PAYMENT_MODES = ["CASH", "UPI", "CARD", "OTHER"];
+const CATEGORIES = ["TRAVEL", "FOOD", "OFFICE_SUPPLIES", "UTILITIES", "MAINTENANCE", "OTHERS"];
 
 const STATUS_CFG = {
-  PENDING:  { bg: "#fffbeb", color: "#d97706", label: "Pending" },
-  APPROVED: { bg: "#ecfdf5", color: "#059669", label: "Approved" },
-  REJECTED: { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
+  PENDING:          { bg: "#fffbeb", color: "#d97706", label: "Pending" },
+  APPROVED:         { bg: "#ecfdf5", color: "#059669", label: "Approved" },
+  CASH_TRANSFERRED: { bg: "#eff6ff", color: "#2563eb", label: "Cash Transferred" },
+  PROOF_SUBMITTED:  { bg: "#f0fdf4", color: "#166534", label: "Proof Submitted" },
+  REJECTED:         { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
 };
 
 const EMPTY_FORM = {
@@ -16,33 +17,32 @@ const EMPTY_FORM = {
   category: "TRAVEL",
   description: "",
   amount: "",
-  paymentMode: "CASH",
 };
 
 const fmtINR = (v) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(v || 0);
 
-export default function PettyCashPage({ user, title = "Petty Cash" }) {
+export default function PettyCashPage({ user, title = "Petty Cash", defaultTab = "mine" }) {
   const isApprover = ["ADMIN", "CEO", "VP", "OH"].includes(user?.role);
 
-  const [entries, setEntries]     = useState([]);
-  const [allEntries, setAll]      = useState([]);
-  const [summary, setSummary]     = useState(null);
-  const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState(EMPTY_FORM);
-  const [errors, setErrors]       = useState({});
-  const [saving, setSaving]       = useState(false);
-  const [file, setFile]           = useState(null);
-  const [viewTab, setViewTab]     = useState("mine");   // "mine" | "all"
+  const [entries, setEntries]       = useState([]);
+  const [allEntries, setAll]        = useState([]);
+  const [summary, setSummary]       = useState(null);
+  const [showForm, setShowForm]     = useState(false);
+  const [form, setForm]             = useState(EMPTY_FORM);
+  const [errors, setErrors]         = useState({});
+  const [saving, setSaving]         = useState(false);
+  const [viewTab, setViewTab]       = useState(defaultTab);
   const [commentMap, setCommentMap] = useState({});
   const [processing, setProcessing] = useState(null);
-  const [projects, setProjects]   = useState([]);
+  const [projects, setProjects]     = useState([]);
+  const [proofState, setProofState] = useState({}); // { [id]: { files: [], uploading } }
 
-  const [filterName, setFilterName]     = useState("");
+  const [filterName, setFilterName]         = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterFrom, setFilterFrom]     = useState("");
-  const [filterTo, setFilterTo]         = useState("");
+  const [filterStatus, setFilterStatus]     = useState("");
+  const [filterFrom, setFilterFrom]         = useState("");
+  const [filterTo, setFilterTo]             = useState("");
 
   const username = user?.username;
 
@@ -69,10 +69,19 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
       .catch(() => {});
   }, [load, loadAll, isApprover]);
 
+  // Block new request if an active (non-completed) entry exists for same project
+  const ACTIVE_STATUSES = new Set(["PENDING", "APPROVED", "CASH_TRANSFERRED"]);
+  const blockedProjects = useMemo(
+    () => new Set(entries.filter(e => ACTIVE_STATUSES.has(e.status)).map(e => e.projectName)),
+    [entries]
+  );
+  const selectedProjectBlocked = form.projectName && blockedProjects.has(form.projectName);
+
   const validate = () => {
     const e = {};
     if (!form.expenseDate) e.expenseDate = "Required";
     if (!form.projectName) e.projectName = "Select a project";
+    if (selectedProjectBlocked) e.projectName = "A pending request already exists for this project";
     if (!form.description.trim()) e.description = "Required";
     if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) e.amount = "Enter a valid amount";
     return e;
@@ -84,21 +93,23 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
     try {
-      let attachmentUrl = null;
-      if (file) attachmentUrl = await uploadDocument(file);
-      const r = await pettyCashApi.create({ ...form, username, amount: Number(form.amount), attachmentUrl });
+      const r = await pettyCashApi.create({ ...form, username, amount: Number(form.amount) });
       if (r.data?.success) {
         await load();
         if (isApprover) await loadAll();
         setShowForm(false);
         setForm(EMPTY_FORM);
-        setFile(null);
         setErrors({});
       } else {
         alert(r.data?.message || "Failed to create entry");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed");
+      const msg = err.response?.data?.message || "";
+      if (msg.startsWith("ACTIVE_REQUEST_EXISTS:")) {
+        setErrors({ projectName: "An active request exists for this project. Submit proof first before raising a new one." });
+      } else {
+        alert(msg || "Failed");
+      }
     } finally { setSaving(false); }
   };
 
@@ -129,10 +140,47 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
     finally { setProcessing(null); }
   };
 
-  // PWJ design tokens
+  const handleMarkTransferred = async (id) => {
+    setProcessing(id + "transfer");
+    try {
+      const r = await pettyCashApi.markTransferred(id);
+      if (r.data?.success) { await load(); await loadAll(); }
+      else alert(r.data?.message || "Failed");
+    } catch (e) { alert(e.response?.data?.message || "Error"); }
+    finally { setProcessing(null); }
+  };
+
+  const handleProofFilesChange = (id, fileList) => {
+    const files = Array.from(fileList || []);
+    setProofState(s => ({ ...s, [id]: { files, uploading: false } }));
+  };
+
+  const handleRemoveProofFile = (id, idx) => {
+    setProofState(s => {
+      const files = (s[id]?.files || []).filter((_, i) => i !== idx);
+      return { ...s, [id]: { ...s[id], files } };
+    });
+  };
+
+  const handleSubmitProof = async (id) => {
+    const { files = [] } = proofState[id] || {};
+    if (!files.length) return;
+    setProofState(s => ({ ...s, [id]: { ...s[id], uploading: true } }));
+    try {
+      const proofUrls = await Promise.all(files.map(f => uploadDocument(f)));
+      const r = await pettyCashApi.submitProof(id, { username, proofUrls });
+      if (r.data?.success) {
+        setProofState(s => { const c = { ...s }; delete c[id]; return c; });
+        await load();
+        if (isApprover) await loadAll();
+      } else alert(r.data?.message || "Failed");
+    } catch (e) { alert(e.response?.data?.message || "Error"); }
+    finally { setProofState(s => ({ ...s, [id]: { ...s[id], uploading: false } })); }
+  };
+
+  // Styles
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
     fontWeight: 600, fontSize: 11.5, color: "#64748b",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
@@ -153,7 +201,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
     background: "#fff",
   });
   const LBL = { fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
-  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" });
+  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" });
 
   const employeeOptions = useMemo(() => {
     const names = new Set(allEntries.map(e => e.fullName || e.username).filter(Boolean));
@@ -177,6 +225,34 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
 
   const displayList = viewTab === "mine" ? entries : filteredAllEntries;
 
+  const AttachmentLink = ({ url, label }) => {
+    if (!url) return null;
+    return /\.(jpe?g|png|gif|webp|bmp|heic)$/i.test(url)
+      ? <a href={attachmentFullUrl(url)} target="_blank" rel="noreferrer">
+          <img src={attachmentFullUrl(url)} alt="doc"
+            style={{ width: 48, height: 38, objectFit: "cover", borderRadius: 5, border: "1px solid #e2e8f0", display: "block" }} />
+        </a>
+      : <a href={attachmentFullUrl(url)} target="_blank" rel="noreferrer"
+          style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+          📄 {label || "View"}
+        </a>;
+  };
+
+  const ProofCell = ({ entry }) => {
+    let urls = [];
+    if (entry.proofUrls) {
+      try { urls = JSON.parse(entry.proofUrls); } catch { urls = [entry.proofUrl].filter(Boolean); }
+    } else if (entry.proofUrl) {
+      urls = [entry.proofUrl];
+    }
+    if (!urls.length) return <span style={{ color: "#cbd5e1" }}>—</span>;
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {urls.map((url, i) => <AttachmentLink key={i} url={url} label={`Doc ${i + 1}`} />)}
+      </div>
+    );
+  };
+
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
@@ -191,33 +267,39 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{k.label}</div>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: typeof k.value === "string" ? 22 : 32, fontWeight: 700, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+              <div style={{ fontSize: typeof k.value === "string" ? 22 : 32, fontWeight: 700, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Header row */}
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>{title}</div>
-          <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 2 }}>Record and track your out-of-pocket expenses</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>{title}</div>
+          <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 2 }}>
+            {blockedProjects.size > 0
+              ? `Active requests for: ${[...blockedProjects].join(", ")}`
+              : "Record and track your out-of-pocket expenses"}
+          </div>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setErrors({}); }}
-          style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-          + New Entry
-        </button>
+        {(!isApprover || title === "Reimbursement") && (
+          <button
+            onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); setErrors({}); }}
+            style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            {showForm ? "Cancel" : "+ New Request"}
+          </button>
+        )}
       </div>
 
-      {/* New entry form */}
-      {showForm && (
+      {/* New request form */}
+      {showForm && (!isApprover || title === "Reimbursement") && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
-          <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New {title} Entry</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New {title} Request</div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
 
-            <div>
-              <label style={LBL}>Expense Date *</label>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={LBL}>Required Date *</label>
               <input type="date" style={INP(errors.expenseDate)}
                 value={form.expenseDate}
                 onChange={e => setForm(f => ({ ...f, expenseDate: e.target.value }))} />
@@ -227,8 +309,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
             <div>
               <label style={LBL}>Amount (₹) *</label>
               <input type="number" min="1" step="0.01" style={INP(errors.amount)}
-                placeholder="0.00"
-                value={form.amount}
+                placeholder="0.00" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
               {errors.amount && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
             </div>
@@ -238,11 +319,21 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
               <select style={INP(errors.projectName)} value={form.projectName}
                 onChange={e => setForm(f => ({ ...f, projectName: e.target.value }))}>
                 <option value="">— Select project —</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.name}>{p.name}</option>
-                ))}
+                {projects.map(p => {
+                  const blocked = blockedProjects.has(p.name);
+                  return (
+                    <option key={p.id} value={p.name} disabled={blocked}>
+                      {p.name}{blocked ? " (active request)" : ""}
+                    </option>
+                  );
+                })}
               </select>
               {errors.projectName && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
+              {selectedProjectBlocked && !errors.projectName && (
+                <div style={{ fontSize: 11.5, color: "#d97706", marginTop: 3 }}>
+                  ⏳ An active request exists for this project. Submit proof of the previous request first.
+                </div>
+              )}
             </div>
 
             <div>
@@ -255,14 +346,6 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
               </select>
             </div>
 
-            <div>
-              <label style={LBL}>Payment Mode</label>
-              <select style={INP()} value={form.paymentMode}
-                onChange={e => setForm(f => ({ ...f, paymentMode: e.target.value }))}>
-                {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-
             <div style={{ gridColumn: "1/-1" }}>
               <label style={LBL}>Description *</label>
               <textarea style={{ ...INP(errors.description), resize: "vertical", minHeight: 72 }}
@@ -272,34 +355,12 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
               {errors.description && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
             </div>
 
-            <div style={{ gridColumn: "1/-1" }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" }}>
-                Receipt / Attachment <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional — image or PDF, max 20MB)</span>
-              </label>
-              <label style={{
-                display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                border: "1.5px dashed #cbd5e1", borderRadius: 8, padding: "10px 14px",
-                background: file ? "#f0fdf4" : "#f8fafc", color: file ? "#059669" : "#94a3b8",
-                fontSize: 13, fontWeight: 500,
-              }}>
-                <span style={{ fontSize: 18 }}>📎</span>
-                <span>{file ? file.name : "Click to attach a receipt or document"}</span>
-                <input type="file" accept="image/*,application/pdf,.doc,.docx"
-                  style={{ display: "none" }}
-                  onChange={e => setFile(e.target.files[0] || null)} />
-                {file && (
-                  <button type="button" onClick={e => { e.preventDefault(); setFile(null); }}
-                    style={{ marginLeft: "auto", background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
-                )}
-              </label>
-            </div>
-
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 10 }}>
-              <button type="submit" disabled={saving}
-                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
-                {saving ? (file ? "Uploading…" : "Saving…") : "Submit Entry"}
+              <button type="submit" disabled={saving || selectedProjectBlocked}
+                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: selectedProjectBlocked ? "#94a3b8" : "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 15, cursor: selectedProjectBlocked ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+                {saving ? "Submitting…" : "Submit Request"}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); setFile(null); }}
+              <button type="button" onClick={() => { setShowForm(false); setErrors({}); }}
                 style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
@@ -308,7 +369,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
         </div>
       )}
 
-      {/* View toggle for admins */}
+      {/* View toggle for approvers */}
       {isApprover && (
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {[
@@ -319,12 +380,9 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
             return (
               <button key={t.key} onClick={() => setViewTab(t.key)}
                 style={{
-                  border: active ? "none" : "1.5px solid #e2e8f0",
-                  borderRadius: 8, padding: "8px 16px",
-                  background: active ? "#1e3a5f" : "#fff",
-                  color: active ? "#fff" : "#374151",
-                  fontWeight: active ? 600 : 500, fontSize: 13,
-                  cursor: "pointer", fontFamily: "inherit",
+                  border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px",
+                  background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
+                  fontWeight: active ? 600 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
                 }}>
                 {t.label}
               </button>
@@ -333,7 +391,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
         </div>
       )}
 
-      {/* Filter bar — All Entries only */}
+      {/* Filter bar */}
       {isApprover && viewTab === "all" && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
@@ -352,7 +410,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
           </div>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Status</label>
-            <select style={{ ...INP(), minWidth: 140, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="">All Statuses</option>
               {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
             </select>
@@ -380,7 +438,7 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
           <div style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
             {viewTab === "all" && hasFilters
               ? "No entries match the selected filters."
-              : `No ${title.toLowerCase()} entries yet. Click "+ New Entry" to get started.`}
+              : "No requests yet."}
           </div>
         ) : (
           <div className="table-scroll-wrap">
@@ -389,22 +447,25 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
                 <tr>
                   {[
                     ...(viewTab === "all" ? ["Employee"] : []),
-                    "Date", "Project", "Category", "Description", "Amount", "Mode", "Status", "Receipt", "Action",
+                    "Date", "Project", "Category", "Description", "Amount",
+                    "Status", "Receipt", "Proof", "Action",
                   ].map(h => <th key={h} style={TH}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {displayList.map(entry => {
-                  const s = STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
+                {displayList.map((entry, i) => {
+                  const s      = STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
                   const isMine = entry.username === username;
                   const isProc = processing === entry.id + "approve" || processing === entry.id + "reject";
+                  const proof  = proofState[entry.id] || {};
+
                   return (
-                    <tr key={entry.id}>
+                    <tr key={entry.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       {viewTab === "all" && (
                         <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{entry.fullName}</td>
                       )}
                       <td style={TD({ whiteSpace: "nowrap" })}>{fmtDate(entry.expenseDate)}</td>
-                      <td style={TD({ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
+                      <td style={TD({ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
                         {entry.projectName
                           ? <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>{entry.projectName}</span>
                           : <span style={{ color: "#cbd5e1" }}>—</span>}
@@ -414,45 +475,99 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
                           {entry.category.replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td style={TD({ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.description}>
+                      <td style={TD({ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.description}>
                         {entry.description}
                       </td>
                       <td style={TD({ fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" })}>{fmtINR(entry.amount)}</td>
-                      <td style={TD({ color: "#64748b" })}>{entry.paymentMode}</td>
-                      <td style={TD()}>
+
+                      {/* Status + date timeline */}
+                      <td style={TD({ minWidth: 160 })}>
                         <span style={badge(s)}>{s.label}</span>
-                        {entry.approvalComment && (
-                          <div style={{ fontSize: 10.5, color: "#94a3b8", marginTop: 2 }}>{entry.approvalComment}</div>
-                        )}
-                        {entry.approvedBy && (
-                          <div style={{ fontSize: 10.5, color: "#94a3b8" }}>
-                            by {entry.approvedBy}{entry.approvedByRole ? ` · ${entry.approvedByRole}` : ""}
-                          </div>
-                        )}
+                        <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 2 }}>
+                          {entry.createdAt && (
+                            <div style={{ fontSize: 10.5, color: "#94a3b8" }}>✦ Raised: {fmtDateTime(entry.createdAt)}</div>
+                          )}
+                          {entry.approvedAt && (
+                            <div style={{ fontSize: 10.5, color: entry.status === "REJECTED" ? "#dc2626" : "#059669" }}>
+                              {entry.status === "REJECTED" ? "✕ Rejected" : "✓ Approved"}: {fmtDateTime(entry.approvedAt)}
+                              {entry.approvedBy && <span style={{ color: "#94a3b8" }}> · {entry.approvedBy}{entry.approvedByRole ? ` (${entry.approvedByRole})` : ""}</span>}
+                            </div>
+                          )}
+                          {entry.approvalComment && (
+                            <div style={{ fontSize: 10.5, color: "#94a3b8", fontStyle: "italic" }}>{entry.approvalComment}</div>
+                          )}
+                          {entry.cashTransferredAt && (
+                            <div style={{ fontSize: 10.5, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
+                          )}
+                          {entry.proofSubmittedAt && (
+                            <div style={{ fontSize: 10.5, color: "#166534" }}>📎 Proof: {fmtDateTime(entry.proofSubmittedAt)}</div>
+                          )}
+                        </div>
                       </td>
+
+                      {/* Receipt (initial attachment) */}
                       <td style={TD()}>
                         {entry.attachmentUrl
-                          ? /\.(jpe?g|png|gif|webp|bmp|heic)$/i.test(entry.attachmentUrl)
-                            ? <a href={attachmentFullUrl(entry.attachmentUrl)} target="_blank" rel="noreferrer">
-                                <img src={attachmentFullUrl(entry.attachmentUrl)} alt="receipt"
-                                  style={{ width: 56, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0", display: "block" }} />
-                              </a>
-                            : <a href={attachmentFullUrl(entry.attachmentUrl)} target="_blank" rel="noreferrer"
-                                style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 12.5, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                                📄 View
-                              </a>
+                          ? <AttachmentLink url={entry.attachmentUrl} label="View" />
                           : <span style={{ color: "#cbd5e1" }}>—</span>}
                       </td>
+
+                      {/* Proof (multi-doc, post-transfer) */}
+                      <td style={TD({ minWidth: 160 })}>
+                        {entry.proofUrl || entry.proofUrls ? (
+                          <ProofCell entry={entry} />
+                        ) : isMine && entry.status === "CASH_TRANSFERRED" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {/* Selected files list */}
+                            {(proof.files || []).map((f, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "#059669" }}>
+                                <span>📎</span>
+                                <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                                <button type="button" onClick={() => handleRemoveProofFile(entry.id, i)}
+                                  style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>✕</button>
+                              </div>
+                            ))}
+                            {/* Add files button */}
+                            <label style={{
+                              display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+                              border: "1.5px dashed #cbd5e1", borderRadius: 7, padding: "5px 10px",
+                              background: "#f8fafc", color: "#64748b", fontSize: 12, fontWeight: 500,
+                            }}>
+                              📎 {(proof.files || []).length > 0 ? "Add more" : "Attach proof"}
+                              <input type="file" accept="image/*,application/pdf,.doc,.docx" multiple
+                                style={{ display: "none" }}
+                                onChange={e => {
+                                  const existing = proof.files || [];
+                                  const newFiles = Array.from(e.target.files || []);
+                                  setProofState(s => ({ ...s, [entry.id]: { ...s[entry.id], files: [...existing, ...newFiles] } }));
+                                  e.target.value = "";
+                                }} />
+                            </label>
+                            {(proof.files || []).length > 0 && (
+                              <button onClick={() => handleSubmitProof(entry.id)} disabled={proof.uploading}
+                                style={{ border: "none", borderRadius: 6, padding: "5px 10px", background: "#1e3a5f", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: proof.uploading ? 0.6 : 1 }}>
+                                {proof.uploading ? `Uploading ${(proof.files||[]).length} file(s)…` : `Submit ${(proof.files||[]).length} Proof Doc(s)`}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#cbd5e1", fontSize: 12 }}>
+                            {entry.status === "PENDING" || entry.status === "REJECTED" ? "—" : "Awaiting"}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Action */}
                       <td style={TD()}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {/* User can delete their own pending entries */}
                           {isMine && entry.status === "PENDING" && (
                             <button onClick={() => handleDelete(entry.id)}
                               style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
                               Delete
                             </button>
                           )}
-                          {/* Approver actions */}
+
+                          {/* Approve / Reject on PENDING */}
                           {isApprover && entry.status === "PENDING" && (
                             <>
                               <input
@@ -470,6 +585,15 @@ export default function PettyCashPage({ user, title = "Petty Cash" }) {
                                 {processing === entry.id + "reject" ? "…" : "Reject"}
                               </button>
                             </>
+                          )}
+
+                          {/* Mark Cash Transferred on APPROVED */}
+                          {isApprover && entry.status === "APPROVED" && (
+                            <button onClick={() => handleMarkTransferred(entry.id)}
+                              disabled={processing === entry.id + "transfer"}
+                              style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1d4ed8", fontFamily: "inherit", opacity: processing === entry.id + "transfer" ? 0.6 : 1 }}>
+                              {processing === entry.id + "transfer" ? "…" : "Mark Transferred"}
+                            </button>
                           )}
                         </div>
                       </td>

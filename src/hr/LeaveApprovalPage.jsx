@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { leaveApi, fmtDate, leaveTypeLabel } from "./hrApi";
+import { leaveApi, fmtDate, fmtDateTime, leaveTypeLabel } from "./hrApi";
 
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
@@ -202,10 +202,14 @@ export default function LeaveApprovalPage({ user }) {
                       <span style={{ fontWeight: 600, color: "#0f172a" }}>Reason: </span>{l.reason}
                     </div>
 
-                    {l.approvalComment && (
+                    {(l.approvalComment || l.approvedAt) && (
                       <div style={{ background: s.bg, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: s.color, marginTop: 8 }}>
-                        <strong>Comment: </strong>{l.approvalComment}
-                        {l.approvedBy && <span style={{ marginLeft: 8, opacity: 0.7 }}>— {l.approvedBy}</span>}
+                        {l.approvalComment && <div><strong>Comment: </strong>{l.approvalComment}</div>}
+                        <div style={{ fontSize: 11.5, marginTop: l.approvalComment ? 4 : 0, opacity: 0.85 }}>
+                          {l.status === "APPROVED" ? "✓ Approved" : l.status === "REJECTED" ? "✕ Rejected" : "Updated"}
+                          {l.approvedBy && <span> by {l.approvedBy}</span>}
+                          {l.approvedAt && <span> · {fmtDateTime(l.approvedAt)}</span>}
+                        </div>
                       </div>
                     )}
                   </div>
