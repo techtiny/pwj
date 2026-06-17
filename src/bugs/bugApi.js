@@ -21,5 +21,8 @@ export const bugApi = {
 
 export function fmtDateTime(dt) {
   if (!dt) return '—';
-  return new Date(dt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+  // Backend stores LocalDateTime as UTC (Railway JVM runs UTC) without timezone suffix.
+  // Append 'Z' so JS parses as UTC, then display in IST.
+  const iso = typeof dt === 'string' && !dt.endsWith('Z') && !dt.includes('+') ? dt + 'Z' : dt;
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 }
