@@ -3398,6 +3398,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Project","projectName"],["Material","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
+                    ["OH Approval","approvalStatus"],
                     ...((isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) ? [["PWJ","pwjIssued"]] : []),
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
@@ -3441,6 +3442,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {!isEngineer && (
                       <td style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
+                    {/* OH Approval */}
+                    <td style={s.td} onClick={() => setDetailRow(row)}>
+                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
+                        {APPROVAL_META[row.approvalStatus]?.label || "—"}
+                      </span>
+                    </td>
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
                       <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
