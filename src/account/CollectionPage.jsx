@@ -62,7 +62,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
   const [editInterval, setEditInterval] = useState('');
 
   useEffect(() => {
-    projectsApi.getAll().then(r => setProjects(r.data || [])).catch(() => {});
+    projectsApi.getEligible().then(r => setProjects(r.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
   useEffect(() => { load(); }, [load]);
 
   const project = projects.find(p => String(p.id) === String(selectedProject));
-  const workOrderValue = project ? (Number(project.quoteGross) || 0) : 0;
+  const workOrderValue = project ? (Number(project.quoteTotalValue || project.totalValue || project.projectValue || 0)) : 0;
   const totalCollected = collections.reduce((s, c) => s + Number(c.collectedAmt || 0), 0);
   const totalDue       = Math.max(0, workOrderValue - totalCollected);
 
@@ -132,6 +132,8 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
       });
       setEditingId(null);
       load();
+    } catch (e) {
+      alert('Failed to save. Please try again.');
     } finally { setSaving(false); }
   }
 
@@ -300,9 +302,20 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                         {/* Collected — editable */}
                         <td style={{ textAlign: 'right' }}>
                           {isEditing ? (
-                            <input type="number" min="0" value={editCollected}
-                              onChange={e => setEditCollected(e.target.value)}
-                              style={{ ...inp, width: 110, textAlign: 'right', padding: '4px 8px' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                              <input type="number" min="0" value={editCollected}
+                                onChange={e => setEditCollected(e.target.value)}
+                                autoFocus
+                                style={{ ...inp, width: 110, textAlign: 'right', padding: '4px 8px' }} />
+                              <button onClick={() => saveEdit(row)} disabled={saving}
+                                style={{ background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                                {saving ? '…' : 'Save'}
+                              </button>
+                              <button onClick={() => setEditingId(null)}
+                                style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 7, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                ✕
+                              </button>
+                            </div>
                           ) : (
                             <span style={{ fontWeight: 600, color: '#10b981', cursor: isCeo ? 'default' : 'pointer' }}
                               onClick={() => !isCeo && openEdit(row)}>
@@ -375,26 +388,13 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                         {/* Actions */}
                         {!isCeo && (
                           <td>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              {isEditing ? (
-                                <>
-                                  <button onClick={() => saveEdit(row)} disabled={saving}
-                                    style={{ background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                    {saving ? '…' : 'Save'}
-                                  </button>
-                                  <button onClick={() => setEditingId(null)}
-                                    style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <button onClick={() => handleDelete(row.id)}
-                                  style={{ background: '#fff1f2', border: 'none', color: '#f43f5e', cursor: 'pointer', borderRadius: 7, padding: '4px 10px', fontSize: 12, fontFamily: 'inherit' }}
-                                  title="Delete">
-                                  <Trash2 size={13} />
-                                </button>
-                              )}
-                            </div>
+                            {!isEditing && (
+                              <button onClick={() => handleDelete(row.id)}
+                                style={{ background: '#fff1f2', border: 'none', color: '#f43f5e', cursor: 'pointer', borderRadius: 7, padding: '4px 10px', fontSize: 12, fontFamily: 'inherit' }}
+                                title="Delete">
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -411,6 +411,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                     <td style={{ textAlign: 'right', padding: '12px 16px', color: '#10b981' }}>
                       {fmt(collections.reduce((s, c) => s + Number(c.collectedAmt || 0), 0))}
                     </td>
+                    <td></td>
                     <td style={{ textAlign: 'right', padding: '12px 16px', color: '#ef4444' }}>
                       {fmt(collections.reduce((s, c) => s + Number(c.dueAmount || 0), 0))}
                     </td>

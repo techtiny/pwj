@@ -20,7 +20,7 @@ export default function AccountSection({ isCeo = false }) {
 
   const tabs = [
     { key: "dashboard",   label: "Dashboard"    },
-    { key: "projects",    label: "Projects"     },
+    { key: "projects",    label: "Project-wise" },
     { key: "expenses",    label: "Expenses"     },
     { key: "transfers",   label: "Fund Transfer"},
   ];

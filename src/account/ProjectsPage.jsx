@@ -3,7 +3,7 @@ import {
   FolderOpen, Edit2, X, Save, AlertTriangle, Plus,
   TrendingUp, IndianRupee, BarChart2, FileText
 } from 'lucide-react';
-import api, { projectsApi } from './accountApi';
+import api, { projectsApi, dashboardApi, collectionsApi } from './accountApi';
 import CollectionPage from './CollectionPage';
 
 const BUDGET_RATIO = 0.80;
@@ -92,17 +92,24 @@ export default function ProjectsPage({ isCeo = false }) {
 
   useEffect(() => {
     localStorage.removeItem(STORAGE_KEY);
-    Promise.all([projectsApi.getAll(), projectsApi.getBudgetSummary()])
-      .then(([r, budgetMap]) => {
-        // budgetMap keys are exact projectName strings from PwjEntry
-        // build a lowercase lookup for case-insensitive matching
+    Promise.all([
+      projectsApi.getEligible(),
+      projectsApi.getBudgetSummary(),
+      dashboardApi.getVendorGstByProject(),
+      collectionsApi.getTotalsByProject(),
+    ]).then(([r, budgetMap, gstRes, collectionTotals]) => {
         const lowerMap = {};
         Object.entries(budgetMap).forEach(([k, v]) => { lowerMap[k.trim().toLowerCase()] = v; });
+        const gstMap = gstRes?.data || {};
         setProjects((r.data || []).map(p => {
           const mapped = mapPwjProject(p);
           const b = lowerMap[(p.name || '').trim().toLowerCase()] || {};
+          const pwjGst = b.gst || 0;
+          const vendorGst = Number(gstMap[p.id] || gstMap[String(p.id)] || 0);
+          const collected = Number(collectionTotals[p.id] || collectionTotals[String(p.id)] || 0);
           return {
             ...mapped,
+            collectionReceived: collected,
             expenses: {
               material:      b.material      || 0,
               labour:        b.labour        || 0,
@@ -110,6 +117,7 @@ export default function ProjectsPage({ isCeo = false }) {
               consultants:   b.consultants   || 0,
               miscellaneous: b.miscellaneous || 0,
             },
+            totalGst: pwjGst + vendorGst,
           };
         }));
       })
@@ -129,7 +137,7 @@ export default function ProjectsPage({ isCeo = false }) {
     setEditing(project.id);
     setCollectionProjectId(project.id);
     setSelectedPwjId('');
-    projectsApi.getAll()
+    projectsApi.getEligible()
       .then(r => setPwjProjects(r.data || []))
       .catch(() => setPwjProjects([]));
     setForm({
@@ -251,7 +259,7 @@ export default function ProjectsPage({ isCeo = false }) {
         <SummaryCard
           icon={<IndianRupee size={20} color="white" />}
           gradient="linear-gradient(135deg,#10b981,#059669)"
-          label="Total Quote Value"
+          label="Total Work Order Value"
           value={fmt(totalQuote)}
           sub={`Budget (80%): ${fmt(totalBudget)}`}
         />
@@ -327,7 +335,7 @@ export default function ProjectsPage({ isCeo = false }) {
 
               {/* Financial overview */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
-                <MiniStat label="Quote (Gross)" value={fmt(project.quoteGross)} />
+                <MiniStat label="Work Order Value" value={fmt(project.quoteGross)} />
                 <MiniStat label={`Budget (80%)`} value={fmt(budget)} highlight />
                 <MiniStat label="Collected" value={fmt(project.collectionReceived)} />
               </div>
@@ -366,10 +374,14 @@ export default function ProjectsPage({ isCeo = false }) {
               </div>
 
               {/* Footer row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid #f1f5f9', paddingTop: 12, gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 11, color: '#64748b' }}>Total Expenses</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>{fmt(spent)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>Total GST</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{fmt(project.totalGst || 0)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 11, color: '#64748b' }}>Est. Profit</div>
@@ -397,7 +409,7 @@ export default function ProjectsPage({ isCeo = false }) {
                 <th>#</th>
                 <th>Project</th>
                 <th>Type</th>
-                <th>Quote (Gross)</th>
+                <th>Work Order Value</th>
                 <th>Budget (80%)</th>
                 <th>Material</th>
                 <th>Labour</th>
@@ -498,7 +510,7 @@ export default function ProjectsPage({ isCeo = false }) {
                     {/* Quote & collection banner */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
                       {[
-                        { label: 'Quote Value (Gross)', val: fmtR(d.quoteGross), color: '#6366f1' },
+                        { label: 'Work Order Value', val: fmtR(d.quoteGross), color: '#6366f1' },
                         { label: 'Collection Received', val: fmtR(d.collectionReceived), color: '#10b981' },
                         { label: 'Balance as on Date', val: fmtR(d.balanceAsOnDate), color: balColor },
                       ].map(({ label, val, color }) => (

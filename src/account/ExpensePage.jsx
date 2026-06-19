@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Plus, Trash2, ChevronDown, Save } from 'lucide-react';
-import { projectsApi, pwjDocsApi, expenseItemsApi } from './accountApi';
+import { projectsApi, pwjDocsApi, expenseItemsApi, vendorsApi } from './accountApi';
 import api from './accountApi';
 
 const CATEGORY_LABELS = {
@@ -101,10 +101,6 @@ function makeAutoRow(doc) {
     gstPercent: String(Math.round(doc.gstPct ?? 18)),
     pwjGstAmount: String(doc.gstAmount ?? 0),
     pwjTotalPayable: String(doc.totalPayable ?? 0),
-    vendorGross: String(doc.gross ?? 0),
-    vendorGstPercent: String(Math.round(doc.gstPct ?? 18)),
-    vendorGstAmount: String(doc.gstAmount ?? 0),
-    vendorTotalPayable: String(doc.totalPayable ?? 0),
   };
 }
 
@@ -127,15 +123,22 @@ export default function ExpensePage({ category }) {
   const [loadedProjectId, setLoadedProjectId] = useState(null);
   const [pwjStatus, setPwjStatus]             = useState('loading');
   const [trackedRefs, setTrackedRefs]         = useState(new Set());
+  const [vendors, setVendors]                 = useState([]);
+  const [vendorOpen, setVendorOpen]           = useState({});
   const savingRef  = useRef({});
   const newRowsRef = useRef([]);
 
   // Keep newRowsRef in sync with state (to read in effects without triggering re-runs)
   useEffect(() => { newRowsRef.current = newRows; }, [newRows]);
 
+  // Load approved vendors once
+  useEffect(() => {
+    vendorsApi.getApproved().then(setVendors).catch(() => {});
+  }, []);
+
   // Load projects on mount
   useEffect(() => {
-    projectsApi.getAll().then(r => {
+    projectsApi.getEligible().then(r => {
       const all = r.data || [];
       setProjects(all);
       if (all.length > 0) setSelected(all[0]);
@@ -228,10 +231,6 @@ export default function ExpensePage({ category }) {
         const { gstAmt, total } = computeGst(gross, pct);
         row.pwjGstAmount    = String(gstAmt);
         row.pwjTotalPayable = String(total);
-        row.vendorGross        = String(n(field === 'pwjGross' ? val : gross));
-        row.vendorGstPercent   = String(n(field === 'gstPercent' ? val : pct));
-        row.vendorGstAmount    = String(gstAmt);
-        row.vendorTotalPayable = String(total);
       }
       if (field === 'vendorGross' || field === 'vendorGstPercent') {
         const g = field === 'vendorGross' ? val : (prev[id]?.vendorGross ?? String(cur?.vendorGross ?? ''));
@@ -308,10 +307,6 @@ export default function ExpensePage({ category }) {
         );
         updated.pwjGstAmount    = String(gstAmt);
         updated.pwjTotalPayable = String(total);
-        updated.vendorGross        = updated.pwjGross;
-        updated.vendorGstPercent   = updated.gstPercent;
-        updated.vendorGstAmount    = String(gstAmt);
-        updated.vendorTotalPayable = String(total);
       }
       if (field === 'vendorGross' || field === 'vendorGstPercent') {
         const { gstAmt, total } = computeGst(
@@ -365,6 +360,40 @@ export default function ExpensePage({ category }) {
     return payable - paid;
   };
 
+  const liveTotal = (() => {
+    const allRows = [
+      ...items.map(item => {
+        const ed = editData[item.id] || {};
+        const g = (f) => ed[f] !== undefined ? ed[f] : item[f];
+        return {
+          pwjGross: n(g('pwjGross')), pwjGstAmount: n(g('pwjGstAmount')), pwjTotalPayable: n(g('pwjTotalPayable')),
+          vendorGross: n(g('vendorGross')), vendorGstAmount: n(g('vendorGstAmount')), vendorTotalPayable: n(g('vendorTotalPayable')),
+          paidAmount: n(g('paidAmount')),
+        };
+      }),
+      ...newRows.map(r => ({
+        pwjGross: n(r.pwjGross), pwjGstAmount: n(r.pwjGstAmount), pwjTotalPayable: n(r.pwjTotalPayable),
+        vendorGross: n(r.vendorGross), vendorGstAmount: n(r.vendorGstAmount), vendorTotalPayable: n(r.vendorTotalPayable),
+        paidAmount: n(r.paidAmount),
+      })),
+    ];
+    const sum = (f) => allRows.reduce((s, r) => s + r[f], 0);
+    const totalPayableAsPwj  = sum('pwjTotalPayable');
+    const totalPayableActual = sum('vendorTotalPayable');
+    const totalPaid          = sum('paidAmount');
+    return {
+      totalGrossAsPwj:    sum('pwjGross'),
+      totalPwjGst:        sum('pwjGstAmount'),
+      totalPayableAsPwj,
+      totalGrossActual:   sum('vendorGross'),
+      totalGst:           sum('vendorGstAmount'),
+      totalPayableActual,
+      totalPaid,
+      balanceAsPwj:       totalPayableAsPwj  - totalPaid,
+      balanceAsActual:    totalPayableActual - totalPaid,
+    };
+  })();
+
   const TH_BASE = { padding: '5px 6px', fontWeight: 700, fontSize: 10, whiteSpace: 'nowrap', border: '1px solid #93c5fd', textAlign: 'center', verticalAlign: 'middle' };
   const TH_GRP  = { ...TH_BASE, background: '#1e40af', color: '#fff', fontSize: 11 };
   const TH_SUB  = { ...TH_BASE, background: '#dbeafe', color: '#1e3a8a' };
@@ -401,10 +430,6 @@ export default function ExpensePage({ category }) {
       sv('gstPercent',     String(Math.round(doc.gstPct ?? 18)));
       sv('pwjGstAmount',   String(doc.gstAmount   ?? 0));
       sv('pwjTotalPayable',String(doc.totalPayable ?? 0));
-      sv('vendorGross',       String(doc.gross       ?? 0));
-      sv('vendorGstPercent',  String(Math.round(doc.gstPct ?? 18)));
-      sv('vendorGstAmount',   String(doc.gstAmount   ?? 0));
-      sv('vendorTotalPayable',String(doc.totalPayable ?? 0));
       if (isNew) setNewVal(rowKey, '_targetCategory', defaultCatForDocType(doc.pwjType));
       setDocSearch(p => ({ ...p, [pickerKey]: doc.docNumber || '' }));
       setDocOpen(p => ({ ...p, [pickerKey]: false }));
@@ -434,8 +459,43 @@ export default function ExpensePage({ category }) {
           {isNew ? '*' : (item._sno || '')}
         </td>
         <td style={TD}><CI v={gv('description')} on={v => sv('description', v)} /></td>
-        <td style={TD}><CI v={gv('partyName')} on={v => sv('partyName', v)} /></td>
-        <td style={TD}><CI v={gv('monthYear')} on={v => sv('monthYear', v)} /></td>
+        {/* Party Name — approved vendor autocomplete */}
+        <td style={{ ...TD, position: 'relative' }}>
+          <input
+            value={gv('partyName')}
+            onChange={e => {
+              sv('partyName', e.target.value);
+              setVendorOpen(p => ({ ...p, [pickerKey]: true }));
+            }}
+            onFocus={() => setVendorOpen(p => ({ ...p, [pickerKey]: true }))}
+            onBlur={() => setTimeout(() => setVendorOpen(p => ({ ...p, [pickerKey]: false })), 200)}
+            placeholder="Party name…"
+            style={{ ...INP_L, fontSize: 10 }}
+          />
+          {vendorOpen[pickerKey] && (() => {
+            const q = (gv('partyName') || '').toLowerCase();
+            const filtered = vendors.filter(v => !q || v.name.toLowerCase().includes(q));
+            return filtered.length > 0 ? (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 999,
+                background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: 220, maxHeight: 180, overflowY: 'auto',
+              }}>
+                {filtered.map(v => (
+                  <div key={v.id}
+                    onMouseDown={() => { sv('partyName', v.name); setVendorOpen(p => ({ ...p, [pickerKey]: false })); }}
+                    style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 11, borderBottom: '1px solid #f1f5f9' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  >
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{v.name}</div>
+                    {v.category && <div style={{ fontSize: 10, color: '#64748b' }}>{v.category}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : null;
+          })()}
+        </td>
 
         {/* Ref No — searchable PWJ doc picker */}
         <td style={{ ...TD, position: 'relative' }}>
@@ -643,11 +703,12 @@ export default function ExpensePage({ category }) {
                 <span style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.name || '—'}</span>
               </td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Gross as per PWJ</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Gross PWJ</td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
+              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total PWJ GST</td>
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total payable as per PWJ</td>
               <td colSpan={2} style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Gross as per actuals</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total GST</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Vendor GST</td>
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Payable as per invoice</td>
               <td colSpan={2} style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total paid</td>
@@ -663,16 +724,17 @@ export default function ExpensePage({ category }) {
                 <span style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.fy || ''}</span>
               </td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalGrossAsPwj) : ''}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalGrossAsPwj)}</td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalPayableAsPwj) : ''}</td>
-              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalGrossActual) : ''}</td>
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalGst) : ''}</td>
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalPayableActual) : ''}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalPwjGst)}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalPayableAsPwj)}</td>
+              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalGrossActual)}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalGst)}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalPayableActual)}</td>
               <td colSpan={2} style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.totalPaid) : ''}</td>
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.balanceAsPwj) : ''}</td>
-              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{summary ? fmt(summary.balanceAsActual) : ''}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalPaid)}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.balanceAsPwj)}</td>
+              <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.balanceAsActual)}</td>
               <td colSpan={3} style={TD} />
             </tr>
 
@@ -681,7 +743,6 @@ export default function ExpensePage({ category }) {
               <th rowSpan={2} style={{ ...TH_SUB, width: 36 }}>S.No</th>
               <th rowSpan={2} style={{ ...TH_SUB, minWidth: 140, textAlign: 'left', padding: '5px 8px' }}>Description of Item</th>
               <th rowSpan={2} style={{ ...TH_SUB, minWidth: 120, textAlign: 'left', padding: '5px 8px' }}>Party Name</th>
-              <th rowSpan={2} style={{ ...TH_SUB, width: 62 }}>Month - Year</th>
               <th colSpan={5} style={{ ...TH_GRP }}>PWJ Details</th>
               <th colSpan={4} style={{ ...TH_GRP, background: '#14532d' }}>Vendor Invoice detail</th>
               <th rowSpan={2} style={{ ...TH_SUB, width: 88 }}>Payment date</th>
@@ -718,21 +779,21 @@ export default function ExpensePage({ category }) {
                 {newRows.map(row => renderRow(row, true, row._key))}
 
                 {/* Total row */}
-                {items.length > 0 && summary && (
+                {(items.length > 0 || newRows.length > 0) && (
                   <tr style={{ background: '#dbeafe', fontWeight: 700 }}>
                     <td colSpan={5} style={{ ...TD, color: '#1e3a8a', paddingLeft: 10, letterSpacing: 1 }}>TOTAL</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#1e3a8a' }}>{fmt(summary.totalGrossAsPwj)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#1e3a8a' }}>{fmt(liveTotal.totalGrossAsPwj)}</td>
                     <td style={TD} />
-                    <td style={{ ...TD, textAlign: 'right' }}>{fmt(summary.totalGst)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#6366f1' }}>{fmt(summary.totalPayableAsPwj)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(summary.totalGrossActual)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#1e3a8a' }}>{fmt(liveTotal.totalPwjGst)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#6366f1' }}>{fmt(liveTotal.totalPayableAsPwj)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalGrossActual)}</td>
                     <td style={TD} />
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(summary.totalGst)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(summary.totalPayableActual)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalGst)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalPayableActual)}</td>
                     <td colSpan={2} style={TD} />
-                    <td style={{ ...TD, textAlign: 'right', color: '#10b981' }}>{fmt(summary.totalPaid)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(summary.balanceAsPwj)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(summary.balanceAsActual)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#10b981' }}>{fmt(liveTotal.totalPaid)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(liveTotal.balanceAsPwj)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(liveTotal.balanceAsActual)}</td>
                     <td colSpan={3} style={TD} />
                   </tr>
                 )}

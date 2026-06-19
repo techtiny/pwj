@@ -281,6 +281,7 @@ const api = {
   updateProject: (id, body) => fetch(`${PROJECT_BASE}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   deleteProject: (id) => fetch(`${PROJECT_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
   permanentDeleteProject: (id) => fetch(`${PROJECT_BASE}/${id}/permanent`, { method: "DELETE" }).then(r => r.json()),
+  toggleProjectEligible: (id, eligible) => fetch(`${PROJECT_BASE}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eligibleForAccounts: eligible }) }).then(r => r.json()),
 };
 
 // ─── HAPPIZO DOCUMENT CONSTANTS ────────────────────────────────────
@@ -4002,10 +4003,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Card header */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{p.name}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{p.name}</div>
+                          {p.eligibleForAccounts && (
+                            <span style={{ background: "#ede9fe", color: "#7c3aed", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 0.3 }}>Accounts ✓</span>
+                          )}
+                        </div>
                         {p.location && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                         {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
                         {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
                         {(isAdmin || isVP) && (
@@ -4015,6 +4021,33 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
                             else showToast(r.message || "Delete failed", "error");
                           }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                        )}
+                        {(isAdmin || isVP) && !p.eligibleForAccounts && (
+                          <button
+                            onClick={async () => {
+                              const r = await api.toggleProjectEligible(p.id, true);
+                              if (r.success) {
+                                setManagedProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, eligibleForAccounts: true } : proj));
+                                showToast("Marked eligible for Accounts ✅");
+                              } else showToast(r.message || "Failed", "error");
+                            }}
+                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" }}>
+                            ＋ Add to Accounts
+                          </button>
+                        )}
+                        {(isAdmin || isVP) && p.eligibleForAccounts && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`Remove "${p.name}" from the Accounts module?`)) return;
+                              const r = await api.toggleProjectEligible(p.id, false);
+                              if (r.success) {
+                                setManagedProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, eligibleForAccounts: false } : proj));
+                                showToast("Removed from Accounts module");
+                              } else showToast(r.message || "Failed", "error");
+                            }}
+                            style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#7c3aed", fontFamily: "inherit" }}>
+                            ✓ Added to Accounts
+                          </button>
                         )}
                       </div>
                     </div>
@@ -6523,76 +6556,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 </div>
 
-                {/* Apply same vendor to all */}
+                {/* Vendor selection — applies to all items automatically */}
                 <div style={{ marginBottom: 18, background: "#f8fafc", borderRadius: 10, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
-                    Same Vendor for All Items
+                    Vendor <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>— applies to all {selected.length} item(s)</span>
                   </label>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <select value={genDocApplyAll} onChange={e => setGenDocApplyAll(e.target.value)}
-                      style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff" }}>
-                      <option value="">— Select vendor —</option>
-                      {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                    </select>
-                    <button onClick={() => {
-                        if (!genDocApplyAll) return;
-                        const map = {};
-                        selected.forEach(e => { map[e.id] = genDocApplyAll; });
-                        setGenDocItemVendors(map);
-                      }}
-                      disabled={!genDocApplyAll}
-                      style={{ background: genDocApplyAll ? "linear-gradient(135deg,#1e3a5f,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "8px 16px", color: genDocApplyAll ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 12, cursor: genDocApplyAll ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                      Apply to All
-                    </button>
-                  </div>
-                </div>
-
-                {/* Per-item vendor assignment */}
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
-                    Assign Vendor per Item
-                  </label>
-                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-                    {/* Table header */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "#f1f5f9", padding: "8px 12px", borderBottom: "1px solid #e2e8f0" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Material / Entry</div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Vendor</div>
-                    </div>
-                    {selected.map((e, i) => {
-                      const assigned = (genDocItemVendors[e.id] || "").trim();
-                      return (
-                        <div key={e.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", padding: "10px 12px", borderBottom: i < selected.length - 1 ? "1px solid #f1f5f9" : "none", background: assigned ? "#fff" : "#fffbeb", alignItems: "center", gap: 10 }}>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={e.materialRequired}>
-                              {e.materialRequired}
-                            </div>
-                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>#{e.id} · {e.projectName}</div>
-                          </div>
-                          <select value={genDocItemVendors[e.id] || ""}
-                            onChange={ev => setGenDocItemVendors(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                            style={{ width: "100%", border: `1.5px solid ${assigned ? "#86efac" : "#fbbf24"}`, borderRadius: 7, padding: "6px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", background: assigned ? "#f0fdf4" : "#fffbeb" }}>
-                            <option value="">— Select vendor —</option>
-                            {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <select value={genDocApplyAll}
+                    onChange={ev => {
+                      const val = ev.target.value;
+                      setGenDocApplyAll(val);
+                      const map = {};
+                      selected.forEach(e => { map[e.id] = val; });
+                      setGenDocItemVendors(map);
+                    }}
+                    style={{ width: "100%", border: `1.5px solid ${genDocApplyAll ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontFamily: "inherit", outline: "none", background: genDocApplyAll ? "#f0fdf4" : "#fff" }}>
+                    <option value="">— Select vendor —</option>
+                    {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                  </select>
                 </div>
 
                 {/* Summary */}
                 {allAssigned && docCount > 0 && (
-                  <div style={{ background: docCount === 1 ? "#f0fdf4" : "#eff6ff", border: `1.5px solid ${docCount === 1 ? "#86efac" : "#bfdbfe"}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: docCount === 1 ? "#166534" : "#1d4ed8", fontWeight: 600 }}>
-                    {docCount === 1
-                      ? `✅ 1 document will be created for ${Object.keys(vendorGroups)[0]} with ${selected.length} line item(s)`
-                      : `📄 ${docCount} separate documents will be created — one per vendor`}
-                    {docCount > 1 && (
-                      <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: 12, fontWeight: 500 }}>
-                        {Object.entries(vendorGroups).map(([v, count]) => (
-                          <li key={v}>{v}: {count} item(s)</li>
-                        ))}
-                      </ul>
-                    )}
+                  <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                    ✅ 1 {genDocPwjType} will be created for <strong>{genDocApplyAll}</strong> with {selected.length} line item(s)
                   </div>
                 )}
               </div>
@@ -6602,7 +6588,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                 <button onClick={submitGenDoc} disabled={genDocSaving || !allAssigned}
                   style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
-                  {genDocSaving ? "Creating…" : docCount > 1 ? `Create ${docCount} Documents` : "Create & Open Doc"}
+                  {genDocSaving ? "Creating…" : "Create & Open Doc"}
                 </button>
               </div>
             </div>

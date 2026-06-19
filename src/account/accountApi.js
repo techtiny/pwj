@@ -15,9 +15,14 @@ export const pwjDocsApi = {
   getDocs: (projectId) => api.get('/expenses/pwj-docs', { params: projectId ? { projectId } : {} }),
 };
 
+export const vendorsApi = {
+  getApproved: () => api.get('/v1/vendors').then(r => r.data?.data ?? []),
+};
+
 export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
   getProjectExpenses: () => api.get('/dashboard/project-expenses'),
+  getVendorGstByProject: () => api.get('/dashboard/vendor-gst-by-project'),
 };
 
 export const expenseItemsApi = {
@@ -32,6 +37,7 @@ export const expenseItemsApi = {
 
 export const projectsApi = {
   getAll: () => pwjApi.get('/active').then(r => ({ ...r, data: r.data?.data ?? [] })),
+  getEligible: () => pwjApi.get('/eligible-for-accounts').then(r => ({ ...r, data: r.data?.data ?? [] })),
   getById: (id) => pwjApi.get(`/${id}`).then(r => ({ ...r, data: r.data?.data ?? r.data })),
   getBudgetSummary: () => api.get('/v1/pwj/budget-summary').then(r => r.data?.data ?? {}),
 };
@@ -45,11 +51,12 @@ export const salesApi = {
 };
 
 export const collectionsApi = {
-  getByProject: (projectId)       => api.get(`/collections/project/${projectId}`),
-  create:       (data)            => api.post('/collections', data),
-  update:       (id, data)        => api.put(`/collections/${id}`, data),
-  delete:       (id)              => api.delete(`/collections/${id}`),
-  triggerAlerts:()                => api.post('/collections/trigger-alerts'),
+  getByProject:       (projectId) => api.get(`/collections/project/${projectId}`),
+  getTotalsByProject: ()          => api.get('/collections/totals-by-project').then(r => r.data || {}),
+  create:             (data)      => api.post('/collections', data),
+  update:             (id, data)  => api.put(`/collections/${id}`, data),
+  delete:             (id)        => api.delete(`/collections/${id}`),
+  triggerAlerts:      ()          => api.post('/collections/trigger-alerts'),
 };
 
 export const fundTransferApi = {
