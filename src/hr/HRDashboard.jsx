@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
 
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
@@ -24,6 +24,9 @@ export default function HRDashboard({ user }) {
   const [recentLeaves, setLeaves]   = useState([]);
   const [todayAll, setTodayAll]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
+  const [incomplete, setIncomplete]   = useState([]);
+  const [pendingLeaves, setPendingLeaves] = useState([]);
+  const [attFilter, setAttFilter]     = useState("all"); // all | permissions-today
   const isAdmin     = ["ADMIN","CEO","VP","OH"].includes(user?.role);
   const hidePersonal = ["VP","CEO","OH"].includes(user?.role);
 
@@ -37,12 +40,27 @@ export default function HRDashboard({ user }) {
     if (isAdmin) {
       attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
       usersApi.getAll().then(r => setAllUsers(r.data?.data || [])).catch(() => {});
+      attendanceApi.getIncomplete().then(r => setIncomplete(r.data?.data || [])).catch(() => {});
+      leaveApi.pending().then(r => setPendingLeaves(r.data?.data || [])).catch(() => {});
     }
   }, [user?.username]);
 
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
   const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_") && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()));
   const checkedInCount  = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime).length;
+
+  const pendingPermissions = pendingLeaves.filter(l => l.leaveType === "PERMISSION");
+
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const permissionsApprovedToday = useMemo(() =>
+    new Set(pendingLeaves
+      .filter(l => l.leaveType === "PERMISSION" && l.status === "APPROVED" && l.fromDate === todayDate)
+      .map(l => l.username)
+    ), [pendingLeaves, todayDate]);
+
+  const displayTargets = attFilter === "permissions-today"
+    ? checkinTargets.filter(u => permissionsApprovedToday.has(u.username))
+    : checkinTargets;
 
   const card     = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px" };
   const secTitle = { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 };
@@ -133,15 +151,78 @@ export default function HRDashboard({ user }) {
         </div>
       )}
 
+      {/* Needs Review — past records with missing check-out (auto-marked Absent) */}
+      {isAdmin && incomplete.length > 0 && (
+        <div className="hr-needs-review" style={{ ...card, marginBottom: 20, border: "1px solid #fca5a5", borderLeft: "4px solid #dc2626" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div>
+              <div style={{ ...secTitle, color: "#dc2626", marginBottom: 0 }}>Needs Review — Missing Check-Out</div>
+              <div style={{ fontSize: 12.5, color: "#ef4444" }}>
+                {incomplete.length} record{incomplete.length > 1 ? "s" : ""} auto-marked Absent — employee checked in but never checked out
+              </div>
+            </div>
+          </div>
+          <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Employee", "Date", "Check-In", "Location"].map(h => (
+                    <th key={h} style={{ ...th, background: "#fef2f2" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {incomplete.map(a => (
+                  <tr key={a.id} style={{ borderBottom: "1px solid #fee2e2" }}>
+                    <td style={{ ...td, fontWeight: 600, color: "#0f172a" }}>{a.fullName}</td>
+                    <td style={td}>{fmtDate(a.workDate)}</td>
+                    <td style={td}>{fmtTime(a.checkInTime)}</td>
+                    <td style={{ ...td, fontSize: 12, color: "#64748b", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {a.checkInAddress || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: "#94a3b8" }}>
+            Go to <strong>All Attendance</strong> tab to correct check-in / check-out times.
+          </div>
+        </div>
+      )}
+
       {/* Unified team attendance table (admin only) */}
       {isAdmin && (
         <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+          <div className="hr-team-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={secTitle}>Today's Team Attendance</div>
               <div style={secSub}>
                 {checkedInCount} checked in · {checkinTargets.length - checkedInCount} not yet · {checkinTargets.length} total
+                {pendingPermissions.length > 0 && (
+                  <span style={{ marginLeft: 10, background: "#f3e8ff", color: "#7c3aed", borderRadius: 5, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>
+                    {pendingPermissions.length} permission{pendingPermissions.length > 1 ? "s" : ""} pending
+                  </span>
+                )}
               </div>
+            </div>
+            {/* Filter pills */}
+            <div className="hr-pill-row" style={{ display: "flex", gap: 6 }}>
+              {[
+                { key: "all",               label: "All" },
+                { key: "permissions-today", label: "Permissions Today" },
+              ].map(f => {
+                const active = attFilter === f.key;
+                return (
+                  <button key={f.key} onClick={() => setAttFilter(f.key)}
+                    style={{ border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "5px 13px",
+                      background: active ? "#7c3aed" : "#fff", color: active ? "#fff" : "#374151",
+                      fontWeight: active ? 600 : 500, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
@@ -158,11 +239,13 @@ export default function HRDashboard({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {checkinTargets.length === 0 ? (
+                {displayTargets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ ...td, textAlign: "center", color: "#94a3b8", padding: "24px 0" }}>Loading team data…</td>
+                    <td colSpan={7} style={{ ...td, textAlign: "center", color: "#94a3b8", padding: "24px 0" }}>
+                      {attFilter === "permissions-today" ? "No approved permissions for today" : "Loading team data…"}
+                    </td>
                   </tr>
-                ) : checkinTargets.map((u, i) => {
+                ) : displayTargets.map((u, i) => {
                   const a      = todayByUsername.get(u.username);
                   const hasIn  = !!a?.checkInTime;
                   const hasOut = !!a?.checkOutTime;

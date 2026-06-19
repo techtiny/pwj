@@ -7,7 +7,8 @@ const STATUS_CFG = {
   PENDING:          { bg: "#fffbeb", color: "#d97706", label: "Pending" },
   APPROVED:         { bg: "#ecfdf5", color: "#059669", label: "Approved" },
   CASH_TRANSFERRED: { bg: "#eff6ff", color: "#2563eb", label: "Cash Transferred" },
-  PROOF_SUBMITTED:  { bg: "#f0fdf4", color: "#166534", label: "Proof Submitted" },
+  PROOF_SUBMITTED:  { bg: "#fef9c3", color: "#854d0e", label: "Proof Submitted — Awaiting Tally" },
+  PROOF_VERIFIED:   { bg: "#f0fdf4", color: "#15803d", label: "Verified ✓" },
   REJECTED:         { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
 };
 
@@ -33,8 +34,9 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   const [errors, setErrors]         = useState({});
   const [saving, setSaving]         = useState(false);
   const [viewTab, setViewTab]       = useState(defaultTab);
-  const [commentMap, setCommentMap] = useState({});
-  const [processing, setProcessing] = useState(null);
+  const [commentMap, setCommentMap]       = useState({});
+  const [tallyCommentMap, setTallyMap]    = useState({});
+  const [processing, setProcessing]       = useState(null);
   const [projects, setProjects]     = useState([]);
   const [proofState, setProofState] = useState({}); // { [id]: { files: [], uploading } }
 
@@ -69,8 +71,8 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       .catch(() => {});
   }, [load, loadAll, isApprover]);
 
-  // Block new request if an active (non-completed) entry exists for same project
-  const ACTIVE_STATUSES = new Set(["PENDING", "APPROVED", "CASH_TRANSFERRED"]);
+  // Block new request until Admin has tallied the proof — PROOF_SUBMITTED is now also blocking
+  const ACTIVE_STATUSES = new Set(["PENDING", "APPROVED", "CASH_TRANSFERRED", "PROOF_SUBMITTED"]);
   const blockedProjects = useMemo(
     () => new Set(entries.filter(e => ACTIVE_STATUSES.has(e.status)).map(e => e.projectName)),
     [entries]
@@ -133,6 +135,22 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
         : await pettyCashApi.reject(id, body);
       if (r.data?.success) {
         setCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
+        await load();
+        await loadAll();
+      } else alert(r.data?.message || "Failed");
+    } catch (e) { alert(e.response?.data?.message || "Error"); }
+    finally { setProcessing(null); }
+  };
+
+  const handleVerifyProof = async (id) => {
+    setProcessing(id + "verify");
+    try {
+      const r = await pettyCashApi.verifyProof(id, {
+        verifiedBy: user?.fullName || username,
+        tallyComment: tallyCommentMap[id] || "",
+      });
+      if (r.data?.success) {
+        setTallyMap(m => { const c = { ...m }; delete c[id]; return c; });
         await load();
         await loadAll();
       } else alert(r.data?.message || "Failed");
@@ -380,11 +398,17 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 })}
               </select>
               {errors.projectName && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
-              {selectedProjectBlocked && !errors.projectName && (
-                <div style={{ fontSize: 11.5, color: "#d97706", marginTop: 3 }}>
-                  ⏳ An active request exists for this project. Submit proof of the previous request first.
-                </div>
-              )}
+              {selectedProjectBlocked && !errors.projectName && (() => {
+                const blockedEntry = entries.find(e => e.projectName === form.projectName && ACTIVE_STATUSES.has(e.status));
+                const isAwaitingTally = blockedEntry?.status === "PROOF_SUBMITTED";
+                return (
+                  <div style={{ fontSize: 11.5, color: isAwaitingTally ? "#7c3aed" : "#d97706", marginTop: 3 }}>
+                    {isAwaitingTally
+                      ? "🔍 Proof submitted — awaiting Admin tally. You can raise a new request once Admin verifies the proof."
+                      : "⏳ An active request exists for this project. Complete the current request first."}
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
@@ -551,7 +575,16 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                             <div style={{ fontSize: 10.5, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
                           )}
                           {entry.proofSubmittedAt && (
-                            <div style={{ fontSize: 10.5, color: "#166534" }}>📎 Proof: {fmtDateTime(entry.proofSubmittedAt)}</div>
+                            <div style={{ fontSize: 10.5, color: "#166534" }}>📎 Proof submitted: {fmtDateTime(entry.proofSubmittedAt)}</div>
+                          )}
+                          {entry.proofVerifiedAt && (
+                            <div style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
+                              ✓ Tallied: {fmtDateTime(entry.proofVerifiedAt)}
+                              {entry.proofVerifiedBy && <span style={{ color: "#94a3b8", fontWeight: 400 }}> · {entry.proofVerifiedBy}</span>}
+                            </div>
+                          )}
+                          {entry.tallyComment && (
+                            <div style={{ fontSize: 10.5, color: "#64748b", fontStyle: "italic" }}>"{entry.tallyComment}"</div>
                           )}
                         </div>
                       </td>
@@ -645,6 +678,24 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                               style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1d4ed8", fontFamily: "inherit", opacity: processing === entry.id + "transfer" ? 0.6 : 1 }}>
                               {processing === entry.id + "transfer" ? "…" : "Mark Transferred"}
                             </button>
+                          )}
+
+                          {/* Tally & Verify proof — Admin only, on PROOF_SUBMITTED */}
+                          {isApprover && entry.status === "PROOF_SUBMITTED" && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#854d0e", textTransform: "uppercase", letterSpacing: 0.4 }}>Review Proof</div>
+                              <input
+                                placeholder="Tally note (optional)"
+                                value={tallyCommentMap[entry.id] || ""}
+                                onChange={e => setTallyMap(m => ({ ...m, [entry.id]: e.target.value }))}
+                                style={{ border: "1.5px solid #fde68a", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", width: 120, color: "#374151", background: "#fffbeb" }}
+                              />
+                              <button onClick={() => handleVerifyProof(entry.id)}
+                                disabled={processing === entry.id + "verify"}
+                                style={{ background: "#15803d", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: "inherit", opacity: processing === entry.id + "verify" ? 0.6 : 1 }}>
+                                {processing === entry.id + "verify" ? "…" : "✓ Tally & Verify"}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

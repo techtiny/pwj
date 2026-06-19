@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
+function toDateTimeLocal(dt) {
+  if (!dt) return "";
+  const d = new Date(dt);
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const STATUS_COLOR = {
   PRESENT:  { bg: "#ecfdf5", color: "#059669", label: "Present" },
   HALF_DAY: { bg: "#fffbeb", color: "#d97706", label: "Half Day" },
@@ -60,6 +67,12 @@ export default function AttendancePage({ user, adminView = false }) {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterFrom, setFilterFrom]     = useState("");
   const [filterTo, setFilterTo]         = useState("");
+
+  const [editRec, setEditRec]   = useState(null);
+  const [editIn, setEditIn]     = useState("");
+  const [editOut, setEditOut]   = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const showTip = (e, text) => {
     if (!text) return;
@@ -162,6 +175,31 @@ export default function AttendancePage({ user, adminView = false }) {
   const hasFilters = filterName || filterStatus || filterFrom || filterTo;
   const clearFilters = () => { setFilterName(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
 
+  const openEdit = (a) => {
+    setEditRec(a);
+    setEditIn(toDateTimeLocal(a.checkInTime));
+    setEditOut(toDateTimeLocal(a.checkOutTime));
+    setEditNotes(a.notes || "");
+  };
+
+  const saveEdit = async () => {
+    if (!editRec) return;
+    setEditSaving(true);
+    try {
+      await attendanceApi.update(editRec.id, {
+        checkInTime:  editIn  ? editIn.replace("T", "T").replace(" ", "T") : undefined,
+        checkOutTime: editOut ? editOut.replace("T", "T").replace(" ", "T") : undefined,
+        notes: editNotes || undefined,
+      });
+      setEditRec(null);
+      await loadAll();
+    } catch (e) {
+      alert("Failed to save. Please try again.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   if (adminView) {
     const FILTER_INP = {
       border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
@@ -174,7 +212,7 @@ export default function AttendancePage({ user, adminView = false }) {
         <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Site Engineers &amp; Project Managers · {filteredRec.length} of {allRec.length} records</div>
 
         {/* Filter bar */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <label style={FILTER_LBL}>Employee</label>
             <select style={{ ...FILTER_INP, minWidth: 160 }} value={filterName} onChange={e => setFilterName(e.target.value)}>
@@ -208,7 +246,7 @@ export default function AttendancePage({ user, adminView = false }) {
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }} className="table-scroll-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
-              <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
+              <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status","Edit"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {filteredRec.map(a => {
@@ -223,11 +261,17 @@ export default function AttendancePage({ user, adminView = false }) {
                     <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkOutAddress} /></td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
                     <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
+                    <td style={TD()}>
+                      <button onClick={() => openEdit(a)}
+                        style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                        ✏️ Edit
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {filteredRec.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
+                <tr><td colSpan={9} style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
                   {hasFilters ? "No records match the selected filters." : "No records"}
                 </td></tr>
               )}
@@ -235,6 +279,39 @@ export default function AttendancePage({ user, adminView = false }) {
           </table>
         </div>
         <Tooltip tooltip={tooltip} />
+
+        {/* Edit modal */}
+        {editRec && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+            <div className="hr-edit-modal" style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.22)", fontFamily: "inherit" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Edit Attendance</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>{editRec.fullName} · {fmtDate(editRec.workDate)}</div>
+
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-In Time</label>
+              <input type="datetime-local" value={editIn} onChange={e => setEditIn(e.target.value)}
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-Out Time</label>
+              <input type="datetime-local" value={editOut} onChange={e => setEditOut(e.target.value)}
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Admin Notes</label>
+              <input type="text" value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Reason for correction…"
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "inherit", marginBottom: 22, boxSizing: "border-box", outline: "none" }} />
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setEditRec(null)}
+                  style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  Cancel
+                </button>
+                <button onClick={saveEdit} disabled={editSaving}
+                  style={{ flex: 2, border: "none", borderRadius: 9, padding: "10px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: editSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: editSaving ? 0.7 : 1 }}>
+                  {editSaving ? "Saving…" : "Save Correction"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

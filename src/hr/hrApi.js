@@ -31,14 +31,16 @@ export function attachmentFullUrl(path) {
 }
 
 export const attendanceApi = {
-  checkIn:    (data) => api.post('/attendance/checkin', data),
-  checkOut:   (data) => api.post('/attendance/checkout', data),
-  getToday:   (username) => api.get(`/attendance/today/${username}`),
-  getHistory: (username) => api.get(`/attendance/history/${username}`),
-  getTodayAll: ()       => api.get('/attendance/today-all'),
-  getAll:        ()     => api.get('/attendance/all'),
-  getFieldStaff: ()     => api.get('/attendance/field-staff'),
-  getSummary: (username) => api.get(`/attendance/summary/${username}`),
+  checkIn:       (data)      => api.post('/attendance/checkin', data),
+  checkOut:      (data)      => api.post('/attendance/checkout', data),
+  getToday:      (username)  => api.get(`/attendance/today/${username}`),
+  getHistory:    (username)  => api.get(`/attendance/history/${username}`),
+  getTodayAll:   ()          => api.get('/attendance/today-all'),
+  getAll:        ()          => api.get('/attendance/all'),
+  getFieldStaff: ()          => api.get('/attendance/field-staff'),
+  getSummary:    (username)  => api.get(`/attendance/summary/${username}`),
+  getIncomplete: ()          => api.get('/attendance/incomplete'),
+  update:        (id, data)  => api.patch(`/attendance/${id}`, data),
 };
 
 export const leaveApi = {
@@ -59,10 +61,12 @@ export const pettyCashApi = {
   getAll:     ()               => api.get('/petty-cash/all'),
   approve:         (id, data)  => api.put(`/petty-cash/${id}/approve`, data),
   reject:          (id, data)  => api.put(`/petty-cash/${id}/reject`, data),
-  markTransferred: (id)        => api.put(`/petty-cash/${id}/mark-transferred`),
-  submitProof:     (id, data)  => api.put(`/petty-cash/${id}/submit-proof`, data),  // data: { username, proofUrls: [] }
-  delete:          (id, u)     => api.delete(`/petty-cash/${id}?username=${u}`),
-  getSummary:      (username)  => api.get(`/petty-cash/summary/${username}`),
+  markTransferred:    (id)        => api.put(`/petty-cash/${id}/mark-transferred`),
+  submitProof:        (id, data)  => api.put(`/petty-cash/${id}/submit-proof`, data),  // data: { username, proofUrls: [] }
+  getProofReview:     ()          => api.get('/petty-cash/proof-review'),
+  verifyProof:        (id, data)  => api.put(`/petty-cash/${id}/verify-proof`, data),  // data: { verifiedBy, tallyComment }
+  delete:             (id, u)     => api.delete(`/petty-cash/${id}?username=${u}`),
+  getSummary:         (username)  => api.get(`/petty-cash/summary/${username}`),
 };
 
 export const projectsApi = {
@@ -97,9 +101,10 @@ export function fmtHours(minutes) {
 }
 
 const LEAVE_TYPE_LABELS = {
-  CASUAL: 'Casual Leave (CL)',
-  SICK:   'Sick Leave (SL)',
-  OTHER:  'Other',
+  CASUAL:     'Casual Leave (CL)',
+  SICK:       'Sick Leave (SL)',
+  PERMISSION: 'Permission',
+  OTHER:      'Other',
 };
 
 export function leaveTypeLabel(type) {

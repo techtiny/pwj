@@ -29,24 +29,74 @@ export default function HRSection({ user }) {
     <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)", fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <style>{`
         @media (max-width: 768px) {
+          /* General page */
           .hr-page { padding: 12px 16px !important; }
+
+          /* Sub-nav */
           .sub-nav { padding: 0 4px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
           .sub-nav::-webkit-scrollbar { display: none; }
-          .sub-nav button { padding: 10px 12px !important; font-size: 12px !important; }
+          .sub-nav button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
+
+          /* Hero banner */
           .hr-hero { padding: 14px 16px !important; gap: 10px !important; }
           .hr-hero-icon { width: 42px !important; height: 42px !important; font-size: 22px !important; flex-shrink: 0; }
+
+          /* KPI cards */
           .hr-kpi-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; margin-bottom: 16px !important; }
-          .hr-kpi-grid > div, .hr-stat-flex > div { padding: 14px 14px !important; }
-          .hr-admin-grid { grid-template-columns: 1fr !important; }
+          .hr-kpi-grid > div, .hr-stat-flex > div { padding: 12px 12px !important; }
+          .hr-kpi-grid > div div:last-child, .hr-stat-flex > div div:last-child { font-size: 26px !important; }
+
+          /* Stat cards row */
           .hr-stat-flex { flex-wrap: wrap !important; gap: 10px !important; max-width: 100% !important; }
           .hr-stat-flex > div { flex: 1 1 calc(50% - 5px) !important; min-width: 0 !important; }
+
+          /* Admin grid */
+          .hr-admin-grid { grid-template-columns: 1fr !important; }
+
+          /* Check-in card */
           .hr-check-card { max-width: 100% !important; }
+          .att-timeline { gap: 0 !important; }
+          .att-line { top: 16px !important; }
+
+          /* Form */
           .hr-form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+          /* Filter bar — stacks inputs vertically */
+          .hr-filter-bar { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px 14px !important; }
+          .hr-filter-bar > div { width: 100% !important; }
+          .hr-filter-bar select,
+          .hr-filter-bar input[type="date"] { width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+
+          /* Pill/tab rows — wrap */
+          .hr-pill-row { flex-wrap: wrap !important; gap: 6px !important; margin-bottom: 14px !important; }
+          .hr-pill-row button { font-size: 12px !important; padding: 6px 12px !important; }
+
+          /* Page header (title + action button) */
+          .hr-page-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+          .hr-page-header button { width: 100% !important; justify-content: center !important; }
+
+          /* Permission hour buttons */
+          .hr-perm-hours { flex-wrap: wrap !important; gap: 6px !important; }
+          .hr-perm-hours button { flex: 1 1 calc(33% - 4px) !important; min-width: 0 !important; }
+          .hr-perm-hours input[type="number"] { width: 100% !important; box-sizing: border-box !important; }
+
+          /* Team header (title + filter pills) */
+          .hr-team-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+
+          /* Approval cards */
           .hr-approval-card { padding: 14px 16px !important; }
           .hr-approval-body { flex-direction: column !important; gap: 12px !important; }
           .hr-leave-info-grid { grid-template-columns: repeat(2,1fr) !important; gap: 6px 12px !important; }
           .hr-approval-action { width: 100% !important; min-width: 0 !important; }
+
+          /* Edit modal */
+          .hr-edit-modal { width: 92vw !important; padding: 20px 16px !important; max-height: 90vh; overflow-y: auto; }
+
+          /* Tables */
           .table-scroll-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+          /* Needs review section */
+          .hr-needs-review { padding: 14px 14px !important; }
         }
       `}</style>
       {/* Sub-nav — matches main app tab style exactly */}

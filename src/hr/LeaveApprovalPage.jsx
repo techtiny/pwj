@@ -12,6 +12,7 @@ export default function LeaveApprovalPage({ user }) {
   const [pending, setPending]       = useState([]);
   const [all, setAll]               = useState([]);
   const [tab, setTab]               = useState("pending");
+  const [filterCategory, setFilterCategory] = useState("all"); // all | leaves | permissions
   const [commentMap, setCommentMap] = useState({});
   const [processing, setProcessing] = useState(null);
 
@@ -75,7 +76,12 @@ export default function LeaveApprovalPage({ user }) {
   const hasFilters = filterName || filterType || filterStatus || filterFrom || filterTo;
   const clearFilters = () => { setFilterName(""); setFilterType(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
 
-  const list = tab === "pending" ? pending : filteredAll;
+  const applyCategory = (arr) =>
+    filterCategory === "permissions" ? arr.filter(l => l.leaveType === "PERMISSION") :
+    filterCategory === "leaves"      ? arr.filter(l => l.leaveType !== "PERMISSION") : arr;
+
+  const pendingFiltered = applyCategory(pending);
+  const list = tab === "pending" ? pendingFiltered : applyCategory(filteredAll);
 
   const FILTER_INP = {
     border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
@@ -87,13 +93,13 @@ export default function LeaveApprovalPage({ user }) {
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Page title */}
-      <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>Leave Approvals</div>
+      <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.3px" }}>Leave &amp; Permission Approvals</div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>
-        {pending.length} pending approval{pending.length !== 1 ? "s" : ""}
+        {pending.length} pending · {pending.filter(l => l.leaveType === "PERMISSION").length} permissions
       </div>
 
-      {/* Tab pills — PWJ hBtn style */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      {/* Tab pills */}
+      <div className="hr-pill-row" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         {[
           { key: "pending", label: `Pending (${pending.length})` },
           { key: "all",     label: "All Requests" },
@@ -115,9 +121,33 @@ export default function LeaveApprovalPage({ user }) {
         })}
       </div>
 
+      {/* Category filter pills */}
+      <div className="hr-pill-row" style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {[
+          { key: "all",         label: "All" },
+          { key: "leaves",      label: "Leaves Only" },
+          { key: "permissions", label: "Permissions Only" },
+        ].map(c => {
+          const active = filterCategory === c.key;
+          return (
+            <button key={c.key} onClick={() => setFilterCategory(c.key)}
+              style={{
+                border: active ? "none" : "1.5px solid #e2e8f0",
+                borderRadius: 20, padding: "5px 14px",
+                background: active ? "#7c3aed" : "#fff",
+                color: active ? "#fff" : "#374151",
+                fontWeight: active ? 600 : 500, fontSize: 12.5,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Filter bar — All Requests only */}
       {tab === "all" && (
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <label style={FILTER_LBL}>Employee</label>
             <select style={{ ...FILTER_INP, minWidth: 160 }} value={filterName} onChange={e => setFilterName(e.target.value)}>
@@ -192,10 +222,16 @@ export default function LeaveApprovalPage({ user }) {
                     </div>
 
                     <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: 13 }}>
-                      <div><span style={{ color: "#94a3b8" }}>Type: </span><strong style={{ color: "#0f172a" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
-                      <div><span style={{ color: "#94a3b8" }}>From: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
-                      <div><span style={{ color: "#94a3b8" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>
-                      <div><span style={{ color: "#94a3b8" }}>Days: </span><strong style={{ color: "#0f172a" }}>{l.totalDays}</strong></div>
+                      <div><span style={{ color: "#94a3b8" }}>Type: </span><strong style={{ color: l.leaveType === "PERMISSION" ? "#7c3aed" : "#0f172a" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
+                      <div><span style={{ color: "#94a3b8" }}>Date: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
+                      {l.leaveType === "PERMISSION" ? (
+                        <div><span style={{ color: "#94a3b8" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
+                      ) : (
+                        <>
+                          <div><span style={{ color: "#94a3b8" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>
+                          <div><span style={{ color: "#94a3b8" }}>Days: </span><strong style={{ color: "#0f172a" }}>{l.totalDays}</strong></div>
+                        </>
+                      )}
                     </div>
 
                     <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#475569", marginBottom: l.status === "PENDING" ? 10 : 0, border: "1px solid #f1f5f9" }}>
