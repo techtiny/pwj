@@ -1986,12 +1986,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
     setAssignLoading(true);
     try {
       const vendors = assignForm.vendors.filter(v => v.trim());
-      const uniqueVendors = [...new Set(vendors.map(v => v.toLowerCase()))];
-      if (uniqueVendors.length < vendors.length) {
-        showToast("Each vendor must be unique — duplicate vendors are not allowed.", "error");
-        setAssignLoading(false);
-        return;
-      }
       const firstVendor = vendors[0] || null;
       let docData = null;
       if (vendors.length > 1) {
@@ -5421,8 +5415,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           ) : filtered.map(v => (
                             <div key={v.id}
                               onMouseDown={() => {
-                                const alreadyUsed = assignForm.vendors.some((existing, idx) => idx !== vi && existing.toLowerCase() === v.name.toLowerCase());
-                                if (alreadyUsed) { showToast(`${v.name} is already added as a vendor`, "error"); return; }
                                 const nv = [...assignForm.vendors]; nv[vi] = v.name; setAssignForm(f => ({ ...f, vendors: nv }));
                                 const ns = [...assignVendorSearches]; ns[vi] = v.name; setAssignVendorSearches(ns);
                                 const nd = [...showAssignVendorDrops]; nd[vi] = false; setShowAssignVendorDrops(nd);
