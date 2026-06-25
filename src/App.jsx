@@ -220,6 +220,7 @@ const api = {
   getAllVendorsWithStatus: () => fetch(`${VENDOR_BASE}/all`).then(r => r.json()),
   approveVendor: (id) => fetch(`${VENDOR_BASE}/${id}/approve`, { method: "PUT" }).then(r => r.json()),
   rejectVendor: (id) => fetch(`${VENDOR_BASE}/${id}/reject`, { method: "PUT" }).then(r => r.json()),
+  resubmitVendor: (id) => fetch(`${VENDOR_BASE}/${id}/resubmit`, { method: "PUT" }).then(r => r.json()),
   deleteVendor: (id) => fetch(`${VENDOR_BASE}/${id}`, { method: "DELETE" }).then(r => r.json()),
   updateVendor: (id, body) =>
     fetch(`${VENDOR_BASE}/${id}`, {
@@ -1499,6 +1500,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [addVendorPage, setAddVendorPage] = useState(false);
   const [addVendorLoading, setAddVendorLoading] = useState(false);
   const [editVendorId, setEditVendorId] = useState(null);
+  const [editVendorStatus, setEditVendorStatus] = useState(null);
   const BLANK_VENDOR_FORM = {
     name: "", companyType: "", ratings: 0,
     productServices: [{ category: "", items: [""] }],
@@ -1565,6 +1567,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       bankDocUrl: v.bankDocUrl || "",
     });
     setEditVendorId(v.id);
+    setEditVendorStatus(v.status);
     setAddVendorPage(true);
   };
 
@@ -6747,7 +6750,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         const autoVendorCode = () => "VND-" + Date.now().toString(36).toUpperCase();
 
-        const submitDraft = async () => {
+        const submitDraft = async (resubmit = false) => {
           if (!avf.name.trim()) { showToast("Company name is required", "error"); return; }
           setAddVendorLoading(true);
           try {
@@ -6779,10 +6782,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
             if (editVendorId) {
               const r = await api.updateVendor(editVendorId, body);
               if (r.success) {
-                showToast("Vendor updated successfully ✅", "success");
-                setAllVendorsStatus(a => a.map(x => x.id === editVendorId ? { ...x, ...r.data } : x));
+                let finalData = r.data;
+                if (resubmit) {
+                  const rs = await api.resubmitVendor(editVendorId);
+                  if (rs.success) finalData = rs.data;
+                  else { showToast(rs.message || "Failed to send for approval", "error"); return; }
+                }
+                showToast(resubmit ? "Vendor updated and sent for approval ✅" : "Vendor updated successfully ✅", "success");
+                setAllVendorsStatus(a => a.map(x => x.id === editVendorId ? { ...x, ...finalData } : x));
+                setPendingVendorCount(c => resubmit && editVendorStatus !== "PENDING_APPROVAL" ? c + 1 : c);
                 setAddVendorPage(false);
-                setEditVendorId(null);
+                setEditVendorId(null); setEditVendorStatus(null);
               } else showToast(r.message || "Failed to update vendor", "error");
             } else {
               const r = await api.createVendor(body);
@@ -6873,7 +6883,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>{editVendorId ? "Edit Vendor" : "New Vendor Registration"}</span>
                 {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
               </div>
-              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
             </div>
 
             {/* ── Body: sidebar + content ── */}
@@ -7316,14 +7326,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
             {/* ── Fixed bottom action bar ── */}
             <div style={{ background: "#fff", borderTop: "1px solid #e2e8f0", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
-              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); }}
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }}
                 style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F }}>
                 {editVendorId ? "Cancel" : "Discard"}
               </button>
-              <button onClick={submitDraft} disabled={addVendorLoading}
+              <button onClick={() => submitDraft(false)} disabled={addVendorLoading}
                 style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
                 {addVendorLoading ? "Saving…" : editVendorId ? "💾 Save Changes" : "💾 Save as Draft"}
               </button>
+              {editVendorId && editVendorStatus !== "APPROVED" && (
+                <button onClick={() => submitDraft(true)} disabled={addVendorLoading}
+                  style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                  {addVendorLoading ? "Saving…" : "📤 Send for Approval"}
+                </button>
+              )}
             </div>
 
           </div>
