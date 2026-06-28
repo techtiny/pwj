@@ -4,6 +4,7 @@ import AccountSection from "./account/AccountSection";
 import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
+import { TodayAttendanceCard } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
@@ -1227,7 +1228,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
+function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
   const modules = [
     {
       key: "entries",
@@ -1327,6 +1328,10 @@ function HomeDashboard({ isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, 
       <div style={{ marginBottom: 32, textAlign: "center", padding: "0 8px" }}>
         <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
         <div style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>Select a module to get started</div>
+      </div>
+
+      <div className="home-attendance" style={{ width: "100%", maxWidth: 520, marginBottom: 24 }}>
+        <TodayAttendanceCard user={user} style={{ maxWidth: "100%" }} />
       </div>
 
       <div className="home-module-grid" style={{
@@ -3207,6 +3212,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         {mainTab === "home" && (
           <HomeDashboard
+            user={user}
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
             onNavigate={key => {
