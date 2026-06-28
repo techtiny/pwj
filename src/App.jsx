@@ -399,7 +399,7 @@ const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll",
 function parseDocData(entry) {
   const base = {
     items: [
-      { item: "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
+      { item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
       { item: "", unit: "", qty: "", rate: "" },
@@ -2213,7 +2213,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         approvalStatus:   e.approvalStatus,
         status:           e.status,
         boqNo:            docEditForm.boqNo             || e.boqNo            || null,
-        materialRequired: docEditForm.items?.[0]?.item  || e.materialRequired,
+        materialRequired: e.materialRequired,
         specification:    e.specification               || null,
         brand:            e.brand                       || null,
         unit:             docEditForm.items?.[0]?.unit  || e.unit             || null,
@@ -6803,7 +6803,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
 
       {/* ─── ADD VENDOR FULL PAGE ─── */}
-      {addVendorPage && isAdmin && (() => {
+      {addVendorPage && (isAdmin || isVP) && (() => {
         const avf = addVendorForm;
         const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
         const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
