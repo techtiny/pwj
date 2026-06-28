@@ -384,10 +384,10 @@ function CountBadge({ count }) {
   if (!count) return null;
   return (
     <span style={{
-      position: "absolute", top: -6, right: -6, minWidth: 18, height: 18,
+      minWidth: 17, height: 17,
       background: "#ef4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
-      border: "2px solid #fff", lineHeight: 1, boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
+      lineHeight: 1,
     }}>
       {count > 99 ? "99+" : count}
     </span>
@@ -772,13 +772,15 @@ const APPROVAL_META = {
   HOLD:         { label: "Hold",         bg: "#fef3c7", color: "#d97706", dot: "#f59e0b" },
   NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
 };
+const DEPENDENCY_COLOR = { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" };
+const DEPENDENCY_NAMES = ["OH Approval", "VP Approval", "Procurement", "Site team", "Vendor", "DIP"];
 const DEPENDENCY_META = {
-  "OH Approval": { bg: "#fff7ed", color: "#c2410c", dot: "#f97316" },
-  "VP Approval": { bg: "#f5f3ff", color: "#7c3aed", dot: "#8b5cf6" },
-  "Procurement": { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
-  "Site team":   { bg: "#f0fdf4", color: "#166534", dot: "#22c55e" },
-  "Vendor":      { bg: "#fdf4ff", color: "#86198f", dot: "#d946ef" },
-  "DIP":         { bg: "#f8fafc", color: "#475569", dot: "#94a3b8" },
+  "OH Approval": DEPENDENCY_COLOR,
+  "VP Approval": DEPENDENCY_COLOR,
+  "Procurement": DEPENDENCY_COLOR,
+  "Site team":   DEPENDENCY_COLOR,
+  "Vendor":      DEPENDENCY_COLOR,
+  "DIP":         DEPENDENCY_COLOR,
 };
 const STATUS_META = {
   CLOSED: { bg: "#dcfce7", color: "#15803d", dot: "#22c55e" },
@@ -1394,6 +1396,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [search, setSearch]           = useState("");
   const [statusF, setStatusF]         = useState("ALL");
   const [approvalF, setApprovalF]     = useState("ALL");
+  const [dependencyF, setDependencyF] = useState("");
   const [projectF, setProjectF]       = useState("");
   const [raisedByF, setRaisedByF]     = useState("");
   const [datePreset, setDatePreset]   = useState("");   // today | week | month | custom | ""
@@ -1597,6 +1600,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (approvalF !== "ALL") params.approval    = approvalF;
       if (projectF)            params.projectName = projectF;
       if (!isEngineer && raisedByF) params.raisedBy = raisedByF;
+      if (dependencyF)         params.dependency  = dependencyF;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo)   params.dateTo   = dateTo;
 
@@ -1610,11 +1614,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
         setEntries(d.content);
         setTotal(d.totalElements);
         setTotalPages(d.totalPages);
-        setStats({ total: d.totalElements, closed: d.totalClosed, open: d.totalOpen, proceed: d.totalProceed, hold: d.totalHold, notApproved: d.totalNotApproved });
+        setStats({ total: d.totalElements, closed: d.totalClosed, open: d.totalOpen, proceed: d.totalProceed, hold: d.totalHold, notApproved: d.totalNotApproved, dependencyCounts: d.dependencyCounts || {} });
       } else { setError(res.message); }
     } catch { if (fetchSeqRef.current === seq) setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
     finally { if (fetchSeqRef.current === seq) setLoading(false); }
-  }, [page, search, statusF, approvalF, projectF, raisedByF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user]);
+  }, [page, search, statusF, approvalF, projectF, raisedByF, dependencyF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user]);
 
   const fetchProjects = useCallback(async () => {
     try { const r = await api.getProjects(); if (r.success) setProjects(r.data); } catch {}
@@ -2886,11 +2890,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
     // ── Layout ──
     root: { fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif", background: "#f1f5f9", minHeight: "100vh" },
     // ── Header — flat white, sticky ──
-    header: { background: "#ffffff", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", height: 68, position: "sticky", top: 0, zIndex: 100 },
+    header: { background: "#ffffff", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", height: 80, position: "sticky", top: 0, zIndex: 100 },
     hLeft: { display: "flex", alignItems: "center", gap: 12 },
     hTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px", lineHeight: 1.15 },
     hSub: { fontSize: 12.5, color: "#94a3b8", marginTop: 2, letterSpacing: 0.1 },
-    hRight: { display: "flex", gap: 6, alignItems: "center" },
+    hRight: { display: "flex", gap: 8, alignItems: "center" },
     hBtn: (variant) => ({
       background: variant === "primary"
         ? "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)"
@@ -2903,10 +2907,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
         ? "1px solid rgba(239,68,68,0.18)"
         : "1px solid rgba(15,23,42,0.09)",
       borderRadius: 50,
-      padding: variant === "primary" ? "8px 18px" : "7px 14px",
+      padding: variant === "primary" ? "11px 22px" : "10px 18px",
       color: variant === "primary" ? "#fff" : variant === "danger" ? "#ef4444" : "#475569",
-      fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
-      display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+      fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+      display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
       transition: "all .16s ease", letterSpacing: 0.1,
     }),
     // ── Stats ──
@@ -2915,12 +2919,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
     statLbl: { fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 },
     statVal: { fontSize: 32, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", lineHeight: 1.2, marginTop: 6 },
     // ── Filter bar ──
-    filterBar: { display: "flex", gap: 10, padding: "16px 32px", alignItems: "center", flexWrap: "wrap" },
-    searchWrap: { position: "relative", flex: 1, minWidth: 220, maxWidth: 360 },
-    searchIcon: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8" },
-    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px 12px 10px 36px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: "#0f172a" },
-    sel: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px 30px 10px 12px", fontSize: 14, outline: "none", cursor: "pointer", fontFamily: "inherit", color: "#374151", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" },
-    resultCount: { marginLeft: "auto", background: "#f8fafc", color: "#475569", borderRadius: 20, padding: "6px 16px", fontSize: 13, fontWeight: 600, border: "1px solid #e2e8f0" },
+    filterBar: { display: "flex", gap: 12, padding: "18px 32px", alignItems: "center", flexWrap: "wrap" },
+    searchWrap: { position: "relative", flex: 1, minWidth: 260, maxWidth: 420 },
+    searchIcon: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#000" },
+    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 14px 12px 40px", fontSize: 15.5, outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: "#000" },
+    sel: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 34px 12px 14px", fontSize: 15.5, outline: "none", cursor: "pointer", fontFamily: "inherit", color: "#000", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23000' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" },
+    resultCount: { marginLeft: "auto", background: "#f8fafc", color: "#000", borderRadius: 20, padding: "8px 18px", fontSize: 14.5, fontWeight: 600, border: "1px solid #e2e8f0" },
     // ── Table ──
     tableWrap: { margin: "0 32px 24px", background: "#ffffff", borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" },
     table: { width: "100%", borderCollapse: "collapse", fontSize: 16 },
@@ -2931,9 +2935,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
     approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
     // ── Pagination ──
     paginationRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 32px 24px" },
-    pageInfo: { fontSize: 14, color: "#64748b" },
+    pageInfo: { fontSize: 14, color: "#000" },
     pageBtns: { display: "flex", gap: 4 },
-    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "none" : "1.5px solid #e2e8f0", background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151", cursor: "pointer", fontSize: 13.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
+    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "1.5px solid #1e3a5f" : "1.5px solid #e2e8f0", background: active ? "#eff6ff" : "#fff", color: "#000", cursor: "pointer", fontSize: 13.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
     // ── Modals ──
     overlay: { position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
     modalBox: (w) => ({ background: "#fff", borderRadius: 14, width: "95%", maxWidth: w || 580, maxHeight: "88vh", overflow: "auto", boxShadow: "0 20px 56px rgba(0,0,0,.16)", animation: "slideUp .22s ease" }),
@@ -2986,8 +2990,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
         ::-webkit-scrollbar { width:5px; height:5px; }
         ::-webkit-scrollbar-track { background:#f8fafc; }
         ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:8px; }
+        .doc-content-scroll { scrollbar-width: auto; }
+        .doc-content-scroll::-webkit-scrollbar { width:12px; height:12px; }
+        .doc-content-scroll::-webkit-scrollbar-track { background:#f1f5f9; }
+        .doc-content-scroll::-webkit-scrollbar-thumb { background:#000; border-radius:8px; border:2px solid #f1f5f9; }
+        .doc-content-scroll::-webkit-scrollbar-thumb:hover { background:#000; }
         tr:hover td { background:#f8fafc !important; transition: background .1s; }
         input:focus, select:focus, textarea:focus { border-color:#1e3a5f !important; box-shadow: 0 0 0 3px rgba(30,58,95,.08) !important; }
+        .app-filterbar input::placeholder { color:#000; opacity:1; }
         .hbtn-hover:hover { background:rgba(15,23,42,0.09) !important; border-color:rgba(15,23,42,0.18) !important; color:#0f172a !important; }
         .hbtn-danger-hover:hover { background:rgba(239,68,68,0.11) !important; border-color:rgba(239,68,68,0.32) !important; }
         .hbtn-primary-hover:hover { opacity:0.88; box-shadow:0 4px 16px rgba(37,99,235,0.38) !important; }
@@ -3018,7 +3028,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
+          scrollbar-width: auto;
         }
+        .doc-modal-footer::-webkit-scrollbar { width:12px; height:12px; }
+        .doc-modal-footer::-webkit-scrollbar-track { background:#f1f5f9; }
+        .doc-modal-footer::-webkit-scrollbar-thumb { background:#000; border-radius:8px; border:2px solid #f1f5f9; }
+        .doc-modal-footer::-webkit-scrollbar-thumb:hover { background:#000; }
         @media (max-width: 768px) {
           .doc-modal-overlay { align-items: flex-start !important; }
           .doc-modal-box {
@@ -3051,20 +3066,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
             )}
             {/* Avatar + name + role */}
-            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "5px 14px 5px 6px", border: "1px solid rgba(15,23,42,0.08)" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0, letterSpacing: 0 }}>
+            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "6px 16px 6px 7px", border: "1px solid rgba(15,23,42,0.08)" }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0, letterSpacing: 0 }}>
                 {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
               </div>
               <div style={{ lineHeight: 1.25 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
               </div>
             </div>
+
+            <div style={{ width: 1, height: 28, background: "#e2e8f0", margin: "0 6px" }} />
 
             {/* Action buttons */}
             {mainTab !== "hr" && (isAdmin || isProcurement) && (
               <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV} title="Export CSV">
-                <Download size={13} strokeWidth={2.2} /> Export
+                <Download size={16} strokeWidth={2} /> Export
               </button>
             )}
             {mainTab !== "hr" && (isAdmin || isVP) && (<>
@@ -3083,7 +3100,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   showToast("Backup downloaded ✅");
                 } catch { showToast("Backup download failed", "error"); }
               }}>
-                <Download size={13} strokeWidth={2.2} /> Backup
+                <Download size={16} strokeWidth={2} /> Backup
               </button>
               <button className="hbtn-hover" style={s.hBtn("ghost")} title="Email backup to admin" onClick={async () => {
                 showToast("Sending backup email…", "info");
@@ -3093,7 +3110,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   else showToast(r.message || "Backup failed", "error");
                 } catch { showToast("Backup email failed", "error"); }
               }}>
-                <Database size={13} strokeWidth={2.2} /> Email Backup
+                <Database size={16} strokeWidth={2} /> Email Backup
               </button>
               <button className="hbtn-hover" style={s.hBtn("ghost")} title="Restore system from a backup ZIP" onClick={() => {
                 const input = document.createElement("input");
@@ -3113,7 +3130,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 };
                 input.click();
               }}>
-                <Database size={13} strokeWidth={2.2} /> Restore
+                <Database size={16} strokeWidth={2} /> Restore
               </button>
             </>)}
             {mainTab === "entries" && !isCeo && (
@@ -3122,11 +3139,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
                 setCreateModal(true);
               }}>
-                <Plus size={14} strokeWidth={2.5} /> New Entry
+                <Plus size={17} strokeWidth={2.2} /> New Entry
               </button>
             )}
+            <div style={{ width: 1, height: 28, background: "#e2e8f0", margin: "0 6px" }} />
             <button className="hbtn-hover hbtn-danger-hover" style={s.hBtn("danger")} onClick={handleLogout} title="Sign out">
-              <LogOut size={13} strokeWidth={2.2} /> Logout
+              <LogOut size={16} strokeWidth={2} /> Logout
             </button>
           </div>
         </div>
@@ -3140,10 +3158,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <button onClick={() => setMainTab("home")} title="Home"
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                   padding: "14px 22px", fontSize: 13.5,
-                  color: active ? "#0f172a" : "#94a3b8",
+                  color: "#000",
                   borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                   marginBottom: -1, display: "flex", alignItems: "center", gap: 6 }}>
-                <Home size={17} strokeWidth={active ? 2.2 : 1.8} />
+                <Home size={24} strokeWidth={active ? 2.2 : 1.8} />
               </button>
             );
           })()}
@@ -3154,7 +3172,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             const label = labels[mainTab] || mainTab;
             return (
               <button style={{ border: "none", background: "none", cursor: "default", fontFamily: "inherit",
-                padding: "14px 22px", fontSize: 13.5, fontWeight: 600,
+                padding: "14px 26px", fontSize: 17, fontWeight: 600,
                 color: "#0f172a",
                 borderBottom: "2.5px solid #1e3a5f",
                 marginBottom: -1, letterSpacing: 0.1,
@@ -3167,15 +3185,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
           {/* Approval action buttons — only when on Procurement tab */}
           {mainTab === "entries" && (isAdmin || isOH || isVP || isCeo) && (
             <button onClick={openPending}
-              style={{ position: "relative", border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#475569", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 8 }}>
-              <Clock size={13} strokeWidth={2.2} /> Pending OH
+              style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+                padding: "14px 26px", fontSize: 17.5, fontWeight: 600,
+                color: "#475569", borderBottom: "2.5px solid transparent",
+                marginBottom: -1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+              <Clock size={20} strokeWidth={2} /> Pending OH
               <CountBadge count={pendingOHCount} />
             </button>
           )}
           {mainTab === "entries" && isVP && (
             <button onClick={openPendingDocs}
-              style={{ position: "relative", border: "none", background: "linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius: 7, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#fff", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", marginLeft: 6 }}>
-              <FileCheck size={13} strokeWidth={2.2} /> Doc Approvals
+              style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+                padding: "14px 26px", fontSize: 17.5, fontWeight: 600,
+                color: "#2563eb", borderBottom: "2.5px solid transparent",
+                marginBottom: -1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+              <FileCheck size={20} strokeWidth={2} /> Doc Approvals
               <CountBadge count={pendingDocCount} />
             </button>
           )}
@@ -3236,7 +3260,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
               <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#3b82f6" : "#f97316", display: "inline-block" }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
                   {gi === 0 ? "PR Status" : "Approval Status"}
                 </span>
               </div>
@@ -3254,8 +3278,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         position: "relative",
                       }}>
                       {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, borderRadius: "0 0 3px 3px" }} />}
-                      <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? c.accent : "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
-                      <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? c.accent : "#0f172a", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? c.accent : "#000", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
+                      <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? c.accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
                         {loading ? "—" : (c.value ?? "—")}
                       </div>
                     </div>
@@ -3264,6 +3288,39 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
             </div>
           ))}
+
+          {/* ── Group 2: Dependency ── */}
+          <div style={{ flex: 1, minWidth: 480, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
+            <div style={{ padding: "8px 16px 6px", background: "linear-gradient(90deg,#eff6ff,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
+                Dependency
+              </span>
+            </div>
+            <div style={{ display: "flex" }}>
+              {DEPENDENCY_NAMES.map((name, ci) => {
+                const isActive = dependencyF === name;
+                const accent = DEPENDENCY_COLOR.color;
+                return (
+                  <div key={name}
+                    onClick={() => { setDependencyF(isActive ? "" : name); setStatusF(isActive ? "ALL" : "OPEN"); setPage(0); }}
+                    style={{
+                      flex: 1, padding: "14px 10px", cursor: "pointer", textAlign: "center",
+                      borderRight: ci < DEPENDENCY_NAMES.length - 1 ? "1px solid #f1f5f9" : "none",
+                      background: isActive ? `${accent}0e` : "transparent",
+                      transition: "background .15s, transform .1s",
+                      position: "relative",
+                    }}>
+                    {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: "0 0 3px 3px" }} />}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? accent : "#000", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6, whiteSpace: "nowrap" }}>{name}</div>
+                    <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
+                      {loading ? "—" : (stats.dependencyCounts?.[name] ?? 0)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* ─── DATE FILTER ─── */}
@@ -3299,8 +3356,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button key={p.key} onClick={() => applyPreset(datePreset === p.key ? "" : p.key)}
                   style={{ border: `1.5px solid ${datePreset === p.key ? "#1e3a5f" : "#e2e8f0"}`,
                     background: datePreset === p.key ? "#1e3a5f" : "#fff",
-                    color: datePreset === p.key ? "#fff" : "#64748b",
-                    borderRadius: 20, padding: "5px 14px", fontSize: 12.5, fontWeight: 600,
+                    color: datePreset === p.key ? "#fff" : "#000",
+                    borderRadius: 22, padding: "8px 18px", fontSize: 14.5, fontWeight: 600,
                     cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                   {p.label}
                 </button>
@@ -3309,16 +3366,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <>
                   <input type="date" value={dateFrom} max={dateTo || fmt(today)}
                     onChange={e => { setDateFrom(e.target.value); setPage(0); }}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#0f172a" }} />
-                  <span style={{ color: "#94a3b8", fontSize: 12 }}>to</span>
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
+                  <span style={{ color: "#000", fontSize: 13.5 }}>to</span>
                   <input type="date" value={dateTo} min={dateFrom} max={fmt(today)}
                     onChange={e => { setDateTo(e.target.value); setPage(0); }}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#0f172a" }} />
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
                 </>
               )}
               {datePreset && (
                 <button onClick={() => { setDatePreset(""); setDateFrom(""); setDateTo(""); setPage(0); }}
-                  style={{ border: "none", background: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: "4px 6px" }}>
+                  style={{ border: "none", background: "none", color: "#000", fontSize: 13.5, cursor: "pointer", padding: "6px 8px" }}>
                   ✕ Clear
                 </button>
               )}
@@ -3340,11 +3397,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="">All Projects</option>
             {projects.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select style={s.sel} value={statusF} onChange={e => { setStatusF(e.target.value); setPage(0); }}>
-            <option value="ALL">All Status</option>
-            <option value="OPEN">Open</option>
-            <option value="CLOSED">Closed</option>
-          </select>
           <select style={s.sel} value={approvalF} onChange={e => { setApprovalF(e.target.value); setPage(0); }}>
             <option value="ALL">All Approval</option>
             <option value="PROCEED">Proceed</option>
@@ -3362,12 +3414,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </select>
           )}
           <button onClick={fetchEntries} title="Refresh entries"
-            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 13px", fontSize: 14, cursor: "pointer", color: "#64748b", lineHeight: 1 }}>
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0px 8px", fontSize: 36, cursor: "pointer", color: "#000", lineHeight: 1 }}>
             ↺
           </button>
           <button
-            onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setRaisedByF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
-            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setRaisedByF(""); setDependencyF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             ✕ Clear Filters
           </button>
           <div style={s.resultCount}>{totalElements} results</div>
@@ -3393,7 +3445,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </th>
                   {[
                     ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
-                    ["Project","projectName"],["Material","materialRequired"],
+                    ["Project","projectName"],["Item","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
                     ["OH Approval","approvalStatus"],
@@ -3449,7 +3501,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
-                      <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                      <td style={s.td} onClick={e => e.stopPropagation()}>
                         {(isAdmin || isProcurement) ? (
                           <button
                             title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
@@ -3503,8 +3555,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : row.dependency ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "3px 10px", fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap" }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
+                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
                           {row.dependency}
                         </span>
                       ) : (
@@ -3653,7 +3705,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <button style={s.pageBtn(false)} onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>‹</button>
             {pageNumbers.map((p, i, arr) => (
               <>
-                {i > 0 && arr[i] - arr[i-1] > 1 && <span key={`e${i}`} style={{ padding: "0 4px", color: "#94a3b8", lineHeight: "32px" }}>…</span>}
+                {i > 0 && arr[i] - arr[i-1] > 1 && <span key={`e${i}`} style={{ padding: "0 4px", color: "#000", lineHeight: "32px" }}>…</span>}
                 <button key={p} style={s.pageBtn(p === page)} onClick={() => setPage(p)}>{p + 1}</button>
               </>
             ))}
@@ -4508,7 +4560,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Raised By", detailRow.raisedBy],
                   ["Project", detailRow.projectName],
                   ["BOQ No.", detailRow.boqNo],
-                  ["Material", detailRow.materialRequired],
+                  ["Item", detailRow.materialRequired],
                   ["Specification", detailRow.specification],
                   ["Brand", detailRow.brand],
                   ["Unit", detailRow.unit],
@@ -5572,9 +5624,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       setDocEditForm(f => ({ ...f, items }));
                     };
                     const setField = (field, val) => setDocEditForm(f => ({ ...f, [field]: val }));
+                    const saveCompletionDateInline = async (newDate) => {
+                      let topData = {};
+                      try { topData = JSON.parse(e.docData || "{}"); } catch {}
+                      const newDocDataStr = isMulti
+                        ? JSON.stringify({ ...topData, docs: multiDocs.map((d, i) => i === safeIdx ? { ...d, completionDate: newDate } : d) })
+                        : JSON.stringify({ ...topData, completionDate: newDate });
+                      try {
+                        const r = await api.procurementUpdate(e.id, { docData: newDocDataStr });
+                        if (r.success) {
+                          const updated = { ...e, docData: newDocDataStr };
+                          setDocModal(m => ({ ...m, entry: updated }));
+                          setEntries(es => es.map(x => x.id === e.id ? updated : x));
+                          if (docEditMode) setField("completionDate", newDate);
+                        } else showToast(r.message || "Failed to save date", "error");
+                      } catch { showToast("Network error — could not save date", "error"); }
+                    };
                     return (
-                      <div style={{ overflowY: "auto", flex: 1 }}>
-                        <div style={{ padding: "24px 28px", fontFamily: "Arial, sans-serif", fontSize: 12, color: "#111" }}>
+                      <div className="doc-content-scroll" style={{ overflowY: "auto", flex: 1 }}>
+                        <div style={{ padding: "24px 28px", fontFamily: "Arial, sans-serif", fontSize: 14, color: "#111" }}>
 
                           {/* --- HEADER --- */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 16 }}>
@@ -5582,9 +5650,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 120, height: "auto", display: "block" }} />
                             </div>
                             <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 900, fontSize: 17, color: "#111", marginBottom: 6 }}>{typeName}</div>
-                              <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 12, alignItems: "center" }}>
-                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                              <div style={{ fontWeight: 900, fontSize: 19, color: "#111", marginBottom: 6 }}>{typeName}</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 14, alignItems: "center" }}>
+                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
                                 <span style={{ color: "#555" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docDate}</strong></span>
                                 <span style={{ color: "#555" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{e.projectName}</strong></span>
                               </div>
@@ -5655,7 +5723,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </div>
 
                           {/* --- ITEM TABLE --- */}
-                          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: 12 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: 14 }}>
                             <thead>
                               <tr style={{ background: "#ededeb" }}>
                                 <th style={{ ...thSt, width: 36, textAlign: "center" }}>S.No</th>
@@ -5691,7 +5759,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         <button
                                           onClick={() => setDocEditForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
                                           title="Remove row"
-                                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14, fontWeight: 700, lineHeight: 1, padding: "2px 4px", borderRadius: 4 }}>
+                                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 16, fontWeight: 700, lineHeight: 1, padding: "2px 4px", borderRadius: 4 }}>
                                           ×
                                         </button>
                                       </td>
@@ -5704,15 +5772,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <tr>
                                   <td colSpan={7} style={{ padding: "4px 10px" }}>
                                     <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", vendor: "" }] }))}
-                                      style={{ fontSize: 11, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
+                                      style={{ fontSize: 13, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
                                 </tr>
                               )}
                               {/* Totals */}
                               <tr>
                                 <td colSpan={4} rowSpan={6} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
-                                  <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 4 }}>Amount in words</div>
-                                  <div style={{ fontSize: 11, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
+                                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Amount in words</div>
+                                  <div style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
                                 </td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
                                 <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
@@ -5726,7 +5794,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         ? <select value={docData[field] || "0"} onChange={ev => {
                                             setField(field, ev.target.value);
                                             if (field === "cgstPct") setField("sgstPct", ev.target.value);
-                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 11, padding: "1px 4px" }}>
+                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 13, padding: "1px 4px" }}>
                                             {["0","2.5","5","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
                                         : <span style={{ color: "#555" }}>({docData[field] || 0}%)</span>}
@@ -5736,7 +5804,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 </tr>
                               ))}
                               <tr>
-                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 9 }}>(Rounded off)</span></td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 11 }}>(Rounded off)</span></td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtTotal(totals.total)}</td>
                               </tr>
                             </tbody>
@@ -5745,9 +5813,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {/* --- COMPLETION / DELIVERY / CONTACT --- */}
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, border: "1px solid #ddd", marginBottom: 16, marginTop: 0 }}>
                             <div style={{ padding: "10px 12px" }}>
-                              <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>Date</div>
-                              {docEditMode
-                                ? <input type="date" value={docData.completionDate || ""} onChange={ev => setField("completionDate", ev.target.value)} style={{ ...inpSt, marginBottom: 6 }} />
+                              <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>
+                                {e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"}
+                              </div>
+                              {(isAdmin || isProcurement || isVP)
+                                ? <input type="date" value={docData.completionDate || ""}
+                                    onChange={ev => saveCompletionDateInline(ev.target.value)}
+                                    style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
                                 : <div style={{ marginBottom: 6 }}>{fmtDateDash(docData.completionDate)}</div>}
                             </div>
                             <div style={{ padding: "10px 12px", borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>
@@ -5768,7 +5840,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
                             {terms.map((t, i) => (
-                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 11 }}>
+                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 13 }}>
                                 <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
                                 <span style={{ color: "#333" }}>{t}</span>
                               </div>
@@ -5779,14 +5851,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
-                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 11 }}>
+                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 13 }}>
                                 <span style={{ fontWeight: 600, minWidth: 70 }}>{lbl} -</span>
                                 {docEditMode
                                   ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1 }} placeholder={lbl} />
                                   : <span>{docData[key] || ""}</span>}
                               </div>
                             ))}
-                            <div style={{ marginTop: 10, fontSize: 11, paddingLeft: 4 }}>
+                            <div style={{ marginTop: 10, fontSize: 13, paddingLeft: 4 }}>
                               <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
                               <div style={{ paddingLeft: 12 }}>- site engineer signed copy along with measurement sheet and DC copy</div>
                               <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
@@ -5795,7 +5867,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                           {/* VP Comments banner */}
                           {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
-                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 11 }}>
+                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 13 }}>
                               <div style={{ fontWeight: 700, color: e.docStatus === "REVISION_REQUESTED" ? "#c2410c" : e.docStatus === "VP_REJECTED" ? "#be123c" : "#166534", marginBottom: 4 }}>
                                 {e.docStatus === "REVISION_REQUESTED" ? "⚠️ VP Revision Request" : e.docStatus === "VP_REJECTED" ? "❌ VP Comments" : "✅ VP Comments"}
                               </div>
@@ -5808,18 +5880,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ fontWeight: 600, marginBottom: 24, whiteSpace: "nowrap" }}>For <strong>{COMPANY_INFO.name}</strong></div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
-                                <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Approved By</div>
+                                <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>Approved By</div>
                                 {e.docStatus === "VP_APPROVED"
                                   ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 13 }}>Signature & Date</div>
                               </div>
                               <div>
-                                <div style={{ color: "#555", fontSize: 11, marginBottom: 4 }}>Procurement Executive</div>
+                                <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>Procurement Executive</div>
                                 {e.docStatus === "VP_APPROVED"
                                   ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 11 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 13 }}>Signature & Date</div>
                               </div>
                             </div>
                           </div>
