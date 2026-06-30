@@ -401,7 +401,7 @@ export default function ProjectsPage({ isCeo = false }) {
 
       {/* ── Overall Summary Table ── */}
       <div className="card" style={{ padding: 20, marginTop: 24 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>Project Summary — All Categories</h3>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Project Summary — All Categories</div>
         <div className="table-container">
           <table>
             <thead>
@@ -502,7 +502,7 @@ export default function ProjectsPage({ isCeo = false }) {
 
               {!summaryLoading && summaryData && (() => {
                 const d = summaryData;
-                const balColor = Number(d.balanceAsOnDate) >= 0 ? '#10b981' : '#ef4444';
+                const balColor = Number(d.balanceDue) >= 0 ? '#10b981' : '#ef4444';
                 const fmtR = n => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 return (
@@ -512,7 +512,7 @@ export default function ProjectsPage({ isCeo = false }) {
                       {[
                         { label: 'Work Order Value', val: fmtR(d.quoteGross), color: '#6366f1' },
                         { label: 'Collection Received', val: fmtR(d.collectionReceived), color: '#10b981' },
-                        { label: 'Balance as on Date', val: fmtR(d.balanceAsOnDate), color: balColor },
+                        { label: 'Balance Due', val: fmtR(d.balanceDue), color: balColor },
                       ].map(({ label, val, color }) => (
                         <div key={label} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', border: '1px solid #e2e8f0' }}>
                           <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{label}</div>
@@ -576,6 +576,21 @@ export default function ProjectsPage({ isCeo = false }) {
                             <td style={{ padding: '10px 12px', color: '#dc2626' }}>Total Balance to be Paid</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', color: '#dc2626' }}>{fmtR(d.totals.balancePwj)}</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', color: '#dc2626' }}>{fmtR(d.totals.balanceActual)}</td>
+                          </tr>
+                          <tr style={{ borderTop: '2px solid #e2e8f0' }}>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>Total Expenses for the Project</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.totalExpensesPwj)}</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.totalExpensesActual)}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '9px 12px' }}>GST</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right' }}></td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right' }}>{fmtR(d.gstActual)}</td>
+                          </tr>
+                          <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>Gross Expenses (for P&amp;L)</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right' }}></td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.grossExpensesActual)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -837,7 +852,7 @@ function SummaryCard({ icon, gradient, label, value, sub }) {
       }}>{icon}</div>
       <div>
         <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
         {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
