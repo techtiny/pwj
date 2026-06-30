@@ -3398,7 +3398,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <div style={s.filterBar} className="app-filterbar">
           <div style={s.searchWrap}>
             <span style={s.searchIcon}>🔍</span>
-            <input style={s.searchInput} placeholder="Search doc number, material, project, vendor…"
+            <input style={s.searchInput} placeholder="Search ID, doc number, material, project, vendor…"
               value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
           </div>
           <select style={s.sel} value={projectF} onFocus={fetchProjects} onChange={e => { setProjectF(e.target.value); setPage(0); }}>
