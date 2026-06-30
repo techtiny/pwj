@@ -71,11 +71,19 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       .catch(() => {});
   }, [load, loadAll, isApprover]);
 
-  // Block new request until Admin has tallied the proof — PROOF_SUBMITTED is now also blocking
+  // Up to 2 untallied requests may stay open per project at once; a 3rd is
+  // blocked until the oldest of those is tallied (PROOF_VERIFIED).
   const ACTIVE_STATUSES = new Set(["PENDING", "APPROVED", "CASH_TRANSFERRED", "PROOF_SUBMITTED"]);
+  const activeCountByProject = useMemo(() => {
+    const m = new Map();
+    entries.filter(e => ACTIVE_STATUSES.has(e.status)).forEach(e => {
+      m.set(e.projectName, (m.get(e.projectName) || 0) + 1);
+    });
+    return m;
+  }, [entries]);
   const blockedProjects = useMemo(
-    () => new Set(entries.filter(e => ACTIVE_STATUSES.has(e.status)).map(e => e.projectName)),
-    [entries]
+    () => new Set([...activeCountByProject.entries()].filter(([, count]) => count >= 2).map(([p]) => p)),
+    [activeCountByProject]
   );
   const selectedProjectBlocked = form.projectName && blockedProjects.has(form.projectName);
 
@@ -83,7 +91,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     const e = {};
     if (!form.expenseDate) e.expenseDate = "Required";
     if (!form.projectName) e.projectName = "Select a project";
-    if (selectedProjectBlocked) e.projectName = "A pending request already exists for this project";
+    if (selectedProjectBlocked) e.projectName = "2 untallied requests already exist for this project";
     if (!form.description.trim()) e.description = "Required";
     if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) e.amount = "Enter a valid amount";
     return e;
@@ -108,7 +116,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     } catch (err) {
       const msg = err.response?.data?.message || "";
       if (msg.startsWith("ACTIVE_REQUEST_EXISTS:")) {
-        setErrors({ projectName: "An active request exists for this project. Submit proof first before raising a new one." });
+        setErrors({ projectName: "2 untallied requests already exist for this project. The oldest one must be tallied before raising another." });
       } else {
         alert(msg || "Failed");
       }
@@ -199,7 +207,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   // Styles
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontWeight: 600, fontSize: 11.5, color: "#64748b",
+    fontWeight: 600, fontSize: 12, color: "#64748b",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
   };
@@ -334,8 +342,8 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
             { label: "Approved Entries", value: summary.countApproved,          accent: "#1e3a5f" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{k.label}</div>
-              <div style={{ fontSize: typeof k.value === "string" ? 22 : 32, fontWeight: 700, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#64748b" }}>{k.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -345,9 +353,9 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       <div className="pc-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>{title}</div>
-          <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
             {blockedProjects.size > 0
-              ? `Active requests for: ${[...blockedProjects].join(", ")}`
+              ? `2 untallied requests open for: ${[...blockedProjects].join(", ")}`
               : "Record and track your out-of-pocket expenses"}
           </div>
         </div>
@@ -372,7 +380,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               <input type="date" style={INP(errors.expenseDate)}
                 value={form.expenseDate}
                 onChange={e => setForm(f => ({ ...f, expenseDate: e.target.value }))} />
-              {errors.expenseDate && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.expenseDate}</div>}
+              {errors.expenseDate && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.expenseDate}</div>}
             </div>
 
             <div>
@@ -380,7 +388,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               <input type="number" min="1" step="0.01" style={INP(errors.amount)}
                 placeholder="0.00" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-              {errors.amount && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
+              {errors.amount && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
             </div>
 
             <div style={{ gridColumn: "1/-1" }}>
@@ -392,20 +400,22 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                   const blocked = blockedProjects.has(p.name);
                   return (
                     <option key={p.id} value={p.name} disabled={blocked}>
-                      {p.name}{blocked ? " (active request)" : ""}
+                      {p.name}{blocked ? " (2 open requests)" : ""}
                     </option>
                   );
                 })}
               </select>
-              {errors.projectName && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
+              {errors.projectName && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
               {selectedProjectBlocked && !errors.projectName && (() => {
-                const blockedEntry = entries.find(e => e.projectName === form.projectName && ACTIVE_STATUSES.has(e.status));
-                const isAwaitingTally = blockedEntry?.status === "PROOF_SUBMITTED";
+                const oldestBlocking = entries
+                  .filter(e => e.projectName === form.projectName && ACTIVE_STATUSES.has(e.status))
+                  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+                const isAwaitingTally = oldestBlocking?.status === "PROOF_SUBMITTED";
                 return (
-                  <div style={{ fontSize: 11.5, color: isAwaitingTally ? "#7c3aed" : "#d97706", marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: isAwaitingTally ? "#7c3aed" : "#d97706", marginTop: 3 }}>
                     {isAwaitingTally
-                      ? "🔍 Proof submitted — awaiting Admin tally. You can raise a new request once Admin verifies the proof."
-                      : "⏳ An active request exists for this project. Complete the current request first."}
+                      ? "🔍 Proof submitted on the oldest request — awaiting Admin tally. You can raise a new request once it's verified."
+                      : "⏳ 2 untallied requests already exist for this project. Get the oldest one tallied first."}
                   </div>
                 );
               })()}
@@ -427,7 +437,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 placeholder="Describe the expense (what it was for, where, etc.)"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              {errors.description && <div style={{ fontSize: 11.5, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
+              {errors.description && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
             </div>
 
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 10 }}>
@@ -456,7 +466,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               <button key={t.key} onClick={() => setViewTab(t.key)}
                 style={{
                   border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px",
-                  background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
+                  background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#000",
                   fontWeight: active ? 600 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
                 }}>
                 {t.label}
@@ -470,37 +480,37 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       {isApprover && viewTab === "all" && (
         <div className="pc-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Employee</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Employee</label>
             <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterName} onChange={e => setFilterName(e.target.value)}>
               <option value="">All Employees</option>
               {employeeOptions.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Category</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Category</label>
             <select style={{ ...INP(), minWidth: 150, width: "auto" }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
               <option value="">All Categories</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase().replace(/_/g, " ")}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>Status</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Status</label>
             <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="">All Statuses</option>
               {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>From</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>From</label>
             <input type="date" style={{ ...INP(), width: "auto" }} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "block" }}>To</label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>To</label>
             <input type="date" style={{ ...INP(), width: "auto" }} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
           </div>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
               Clear Filters
             </button>
           )}
@@ -560,31 +570,31 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                         <span style={badge(s)}>{s.label}</span>
                         <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 2 }}>
                           {entry.createdAt && (
-                            <div style={{ fontSize: 10.5, color: "#94a3b8" }}>✦ Raised: {fmtDateTime(entry.createdAt)}</div>
+                            <div style={{ fontSize: 11, color: "#94a3b8" }}>✦ Raised: {fmtDateTime(entry.createdAt)}</div>
                           )}
                           {entry.approvedAt && (
-                            <div style={{ fontSize: 10.5, color: entry.status === "REJECTED" ? "#dc2626" : "#059669" }}>
+                            <div style={{ fontSize: 11, color: entry.status === "REJECTED" ? "#dc2626" : "#059669" }}>
                               {entry.status === "REJECTED" ? "✕ Rejected" : "✓ Approved"}: {fmtDateTime(entry.approvedAt)}
                               {entry.approvedBy && <span style={{ color: "#94a3b8" }}> · {entry.approvedBy}{entry.approvedByRole ? ` (${entry.approvedByRole})` : ""}</span>}
                             </div>
                           )}
                           {entry.approvalComment && (
-                            <div style={{ fontSize: 10.5, color: "#94a3b8", fontStyle: "italic" }}>{entry.approvalComment}</div>
+                            <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>{entry.approvalComment}</div>
                           )}
                           {entry.cashTransferredAt && (
-                            <div style={{ fontSize: 10.5, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
+                            <div style={{ fontSize: 11, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
                           )}
                           {entry.proofSubmittedAt && (
-                            <div style={{ fontSize: 10.5, color: "#166534" }}>📎 Proof submitted: {fmtDateTime(entry.proofSubmittedAt)}</div>
+                            <div style={{ fontSize: 11, color: "#166534" }}>📎 Proof submitted: {fmtDateTime(entry.proofSubmittedAt)}</div>
                           )}
                           {entry.proofVerifiedAt && (
-                            <div style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
+                            <div style={{ fontSize: 11, color: "#15803d", fontWeight: 600 }}>
                               ✓ Tallied: {fmtDateTime(entry.proofVerifiedAt)}
                               {entry.proofVerifiedBy && <span style={{ color: "#94a3b8", fontWeight: 400 }}> · {entry.proofVerifiedBy}</span>}
                             </div>
                           )}
                           {entry.tallyComment && (
-                            <div style={{ fontSize: 10.5, color: "#64748b", fontStyle: "italic" }}>"{entry.tallyComment}"</div>
+                            <div style={{ fontSize: 11, color: "#64748b", fontStyle: "italic" }}>"{entry.tallyComment}"</div>
                           )}
                         </div>
                       </td>
@@ -604,7 +614,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                             {/* Selected files list */}
                             {(proof.files || []).map((f, i) => (
-                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "#059669" }}>
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#059669" }}>
                                 <span>📎</span>
                                 <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                                 <button type="button" onClick={() => handleRemoveProofFile(entry.id, i)}
