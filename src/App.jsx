@@ -1778,6 +1778,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           setCreateModal(false);
           setEntries(prev => [{ ...res.data, dependency: res.data.dependency || "OH Approval" }, ...prev]);
           setTotal(t => t + 1);
+          fetchProjects();
         } else showToast(res.message, "error");
       }
     } catch { showToast(editingEntry ? "Update failed" : "Create failed", "error"); }
@@ -3143,6 +3144,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 setEditingEntry(null);
                 setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
                 setCreateModal(true);
+                fetchManagedProjects();
               }}>
                 <Plus size={17} strokeWidth={2.2} /> New Entry
               </button>
@@ -3399,7 +3401,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <input style={s.searchInput} placeholder="Search doc number, material, project, vendor…"
               value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
           </div>
-          <select style={s.sel} value={projectF} onChange={e => { setProjectF(e.target.value); setPage(0); }}>
+          <select style={s.sel} value={projectF} onFocus={fetchProjects} onChange={e => { setProjectF(e.target.value); setPage(0); }}>
             <option value="">All Projects</option>
             {projects.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
