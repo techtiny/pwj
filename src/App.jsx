@@ -3647,7 +3647,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
-                        {(isEngineer || isVP || isOH || isCeo || isProjectManager) && row.docStatus && (() => {
+                        {(isEngineer || isOH || isCeo || isProjectManager) && row.docStatus && (() => {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
