@@ -244,6 +244,7 @@ const api = {
   submitDoc: (id) => fetch(`${API_BASE}/entries/${id}/submit-doc`, { method: "PATCH" }).then(r => r.json()),
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   revokeDoc:  (id, reason)  => fetch(`${API_BASE}/entries/${id}/doc-revoke`,  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason || "" }) }).then(r => r.json()),
+  deleteDoc:  (id)          => fetch(`${API_BASE}/entries/${id}/doc`,          { method: "DELETE" }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`, { headers: userHeaders() }).then(r => r.json()),
   sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
@@ -3627,7 +3628,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )
                         )}
-                        {(isAdmin || isProcurement) && row.vendor && row.pwjType && (() => {
+                        {(isAdmin || isVP) && row.vendor && row.pwjType && row.docNumber && (() => {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
@@ -6145,6 +6146,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           }}
                           style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
                           ↩ Revoke Approval
+                        </button>
+                      )}
+                      {(isAdmin || isVP) && activeDocStatus && (
+                        <button
+                          title="Delete this document and revert the PR to its original pre-doc state"
+                          onClick={async () => {
+                            if (!window.confirm("Delete this document and revert the PR to its original state? This cannot be undone.")) return;
+                            const r = await api.deleteDoc(e.id);
+                            if (r.success) {
+                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docNumber: null, docStatus: null, docData: null, docComments: null, approvedAt: null, pwjIssued: false, deliveredDate: null, status: "OPEN", dependency: "Procurement" } : x));
+                              setDocModal(null);
+                              showToast("Document deleted — PR reverted to original state");
+                            } else {
+                              showToast(r.message || "Delete failed", "error");
+                            }
+                          }}
+                          style={{ background: "linear-gradient(135deg,#7f1d1d,#dc2626)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                          🗑 Delete Doc
                         </button>
                       )}
                       {activeDocStatus === "VP_APPROVED" && isProcurement && (
