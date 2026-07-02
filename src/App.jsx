@@ -1987,7 +1987,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const r = await api.getApprovedVendors();
       if (r.success) setApprovedVendors(r.data);
     } catch {}
-    const vendorList = row.vendor ? [row.vendor] : [""];
+    let vendorList = row.vendor ? [row.vendor] : [""];
+    try {
+      const parsed = JSON.parse(row.docData || "{}");
+      if (parsed.multiVendor && Array.isArray(parsed.docs) && parsed.docs.length > 0) {
+        vendorList = parsed.docs.map(d => d.vendor || "");
+      }
+    } catch {}
     setAssignForm({ vendors: vendorList, pwjType: row.pwjType || "" });
     setAssignVendorSearches(vendorList.map(() => ""));
     setShowAssignVendorDrops(vendorList.map(() => false));
@@ -2002,9 +2008,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const firstVendor = vendors[0] || null;
       let docData = null;
       if (vendors.length > 1) {
+        let existingDocs = [];
+        try {
+          const parsed = JSON.parse(assignModal.docData || "{}");
+          if (parsed.multiVendor && Array.isArray(parsed.docs)) existingDocs = parsed.docs;
+        } catch {}
         docData = JSON.stringify({
           multiVendor: true,
-          docs: vendors.map(v => ({ vendor: v, items: [{ item: "", unit: "", qty: "", rate: "" }] }))
+          docs: vendors.map((v, i) => ({
+            ...(existingDocs[i] || { items: [{ item: "", unit: "", qty: "", rate: "" }] }),
+            vendor: v,
+          }))
         });
       }
       const r = await api.procurementUpdate(assignModal.id, {
