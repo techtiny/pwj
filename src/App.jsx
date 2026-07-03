@@ -1754,8 +1754,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!createForm.projectName || !createForm.materialRequired || !createForm.specification) {
       showToast("Project, Material and Specification are required", "error"); return;
     }
-    if (isEngineer && (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement)) {
-      showToast("Please fill all required fields", "error"); return;
+    if (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement) {
+      showToast("Unit, Quantity and Date of Requirement are required", "error"); return;
     }
     setCreateLoading(true);
     try {
@@ -5005,14 +5005,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 7. Unit */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Unit{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
+                  <label style={s.label}>Unit <span style={{color:"#ef4444"}}>*</span></label>
                   <input style={s.select2} list="unit-list" value={createForm.unit || ""}
                     onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))}
                     placeholder="Type or select unit…" autoComplete="off" />
                 </div>
                 {/* 7. Quantity */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Quantity{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
+                  <label style={s.label}>Quantity <span style={{color:"#ef4444"}}>*</span></label>
                   <input style={{ ...s.input, MozAppearance: "textfield" }} type="number" placeholder="Quantity"
                     value={createForm.quantity || ""}
                     onChange={e => setCreateForm(f => ({ ...f, quantity: e.target.value }))}
@@ -5020,7 +5020,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {/* 8. Date of Requirement */}
                 <div style={s.formGroup}>
-                  <label style={s.label}>Date of Requirement{isEngineer && <span style={{color:"#ef4444"}}> *</span>}</label>
+                  <label style={s.label}>Date of Requirement <span style={{color:"#ef4444"}}>*</span></label>
                   <input style={s.input} type="date" placeholder="Date of Requirement"
                     value={createForm.dateOfRequirement || ""}
                     onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
