@@ -2484,7 +2484,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-    const docNum    = e.docNumber || autoDocNumber(e);
+    const docNum    = docData.docNumber || e.docNumber || autoDocNumber(e);
     const vendorName = v?.name || e.vendor || "";
     const subDocVpDate = (() => { try { const d = JSON.parse(e.docData || "{}"); return d.vpApprovedAt || null; } catch { return null; } })();
     const docDate   = (() => {
@@ -5556,7 +5556,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const typeColor = "#fff";
               const typeBg    = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-              const docNum = e.docNumber || autoDocNumber(e);
+              const docNum = (isMulti && multiDocs[safeIdx]?.docNumber) || e.docNumber || autoDocNumber(e);
               // For multi-vendor: derive per-sub-doc status and overall partial status
               const activeDocStatus = isMulti ? (() => {
                 const sub = multiDocs[safeIdx]?.docStatus || "DRAFT";
