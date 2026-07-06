@@ -207,7 +207,7 @@ export default function AttendancePage({ user, adminView = false }) {
 
   const loadAll = useCallback(async () => {
     try {
-      const r = await attendanceApi.getFieldStaff();
+      const r = await attendanceApi.getAll();
       setAllRec((r.data?.data || []).filter(a => !EXCLUDED_USERNAMES.has(a.username?.toLowerCase())));
     } catch (e) { console.error(e); }
   }, []);
@@ -293,8 +293,8 @@ export default function AttendancePage({ user, adminView = false }) {
     const FILTER_LBL = { fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" };
     return (
       <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Field Staff Attendance</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Site Engineers &amp; Project Managers · {filteredRec.length} of {allRec.length} records</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Team Attendance</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>All staff · {filteredRec.length} of {allRec.length} records</div>
 
         {/* Filter bar */}
         <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
