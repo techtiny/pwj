@@ -2063,29 +2063,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const isMulti = parsed?.multiVendor && Array.isArray(parsed.docs);
 
       if (isMulti) {
-        // First call submitDoc to ensure entry-level docNumber is generated
-        const submitR = await api.submitDoc(e.id);
-        const entryDocNum = submitR?.data?.docNumber || e.docNumber || autoDocNumber(e);
-        const multiCount = parsed.docs.length;
-        // Assign per-sub-doc number and update status
+        // Update only the current sub-doc's status in docData
         const docs = parsed.docs.map((d, i) =>
-          i === docViewIndex
-            ? { ...d, docStatus: "PENDING_VP_APPROVAL", docNumber: d.docNumber || (multiCount > 1 ? `${entryDocNum}-${i + 1}` : entryDocNum) }
-            : d
+          i === docViewIndex ? { ...d, docStatus: "PENDING_VP_APPROVAL" } : d
         );
         const updatedDocData = JSON.stringify({ ...parsed, docs });
+        // Save docData + set entry-level to PENDING_VP_APPROVAL (so it appears in VP queue)
         const saveR = await api.updateEntry(e.id, {
           raisedBy: e.raisedBy, projectName: e.projectName,
           approvalStatus: e.approvalStatus, status: e.status,
           boqNo: e.boqNo, materialRequired: e.materialRequired,
           vendor: e.vendor, pwjType: e.pwjType, pwjIssued: e.pwjIssued,
-          docData: updatedDocData, docNumber: entryDocNum,
+          docData: updatedDocData, docNumber: e.docNumber || null,
         });
         if (!saveR.success) { showToast(saveR.message || "Failed", "error"); return; }
-        const updated = { ...e, docData: updatedDocData, docNumber: entryDocNum, docStatus: "PENDING_VP_APPROVAL", dependency: "VP Approval" };
+        // Also update entry-level docStatus via submitDoc (idempotent — safe to call multiple times)
+        await api.submitDoc(e.id);
+        const updated = { ...e, docData: updatedDocData, docStatus: "PENDING_VP_APPROVAL", dependency: "VP Approval" };
         setDocModal(m => ({ ...m, entry: updated }));
         setEntries(es => es.map(en => en.id === e.id ? updated : en));
-        showToast(`Doc ${docViewIndex + 1} (${docs[docViewIndex].vendor}) sent for VP approval ✅`);
+        showToast(`PO ${docViewIndex + 1} (${docs[docViewIndex].vendor}) sent for VP approval ✅`);
       } else {
         const r = await api.submitDoc(e.id);
         if (r.success) {
@@ -2487,7 +2484,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
     const typeColor = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#166534" : "#7c3aed";
     const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-    const docNum    = docData.docNumber || e.docNumber || autoDocNumber(e);
+    const docNum    = e.docNumber || autoDocNumber(e);
     const vendorName = v?.name || e.vendor || "";
     const subDocVpDate = (() => { try { const d = JSON.parse(e.docData || "{}"); return d.vpApprovedAt || null; } catch { return null; } })();
     const docDate   = (() => {
@@ -5559,10 +5556,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const typeColor = "#fff";
               const typeBg    = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-              const baseDocNum = e.docNumber || autoDocNumber(e);
-              const docNum = isMulti && multiCount > 1
-                ? (multiDocs[safeIdx]?.docNumber || `${baseDocNum}-${safeIdx + 1}`)
-                : baseDocNum;
+              const docNum = e.docNumber || autoDocNumber(e);
               // For multi-vendor: derive per-sub-doc status and overall partial status
               const activeDocStatus = isMulti ? (() => {
                 const sub = multiDocs[safeIdx]?.docStatus || "DRAFT";
