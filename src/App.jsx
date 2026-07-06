@@ -2041,6 +2041,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const openDocModal = async (row) => {
     setDocModal({ entry: row, vendor: null });
     setDocViewIndex(0);
+    setDocEditMode(false);
     if (!allUsers.length) {
       try { const ur = await api.getUsers(); if (ur.success) setAllUsers(ur.data); } catch {}
     }
@@ -5556,7 +5557,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               const typeColor = "#fff";
               const typeBg    = e.pwjType === "PO" ? "#1d4ed8" : e.pwjType === "WO" ? "#92400e" : "#166534";
               const typeName  = e.pwjType === "PO" ? "PURCHASE ORDER" : e.pwjType === "WO" ? "WORK ORDER" : "JOB ORDER";
-              const docNum = (isMulti && multiDocs[safeIdx]?.docNumber) || e.docNumber || autoDocNumber(e);
+              // docNum is resolved inside the inner IIFE (after docData) so it can use docData.docNumber
               // For multi-vendor: derive per-sub-doc status and overall partial status
               const activeDocStatus = isMulti ? (() => {
                 const sub = multiDocs[safeIdx]?.docStatus || "DRAFT";
@@ -5634,6 +5635,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
                     })();
                     const docData = docEditMode ? docEditForm : (() => { const d = parseDocData(effectiveEntry); if (!d.deliveryAddress && proj_?.clientAddress) d.deliveryAddress = proj_.clientAddress; return d; })();
+                    const docNum  = docData.docNumber || (isMulti ? multiDocs[safeIdx]?.docNumber : null) || e.docNumber || autoDocNumber(e);
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
                     const terms   = e.pwjType === "PO" ? PO_TERMS : e.pwjType === "WO" ? WO_TERMS : JO_TERMS;
                     const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
@@ -5685,7 +5687,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
                             <div>
                               <div style={{ fontWeight: 700, marginBottom: 5 }}>TO:</div>
-                              <div style={{ fontWeight: 700 }}>{v?.name || e.vendor}</div>
+                              <div style={{ fontWeight: 700 }}>{isMulti ? (currentVendorName || v?.name) : (v?.name || e.vendor)}</div>
                               {docEditMode
                                 ? <input value={docData.vendorAddress1 || ""} onChange={ev => setField("vendorAddress1", ev.target.value)} style={{ ...inpSt, width: "100%", marginBottom: 3 }} placeholder="Address line 1 (street)" />
                                 : (docData.vendorAddress1 || v?.street) ? <div>{docData.vendorAddress1 || v.street}</div> : null}
