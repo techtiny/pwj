@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
+const EXCLUDED_USERNAMES = new Set(["shobana", "techtinyproc", "tec123"]);
+
 function toDateTimeLocal(dt) {
   if (!dt) return "";
   const d = new Date(dt);
@@ -206,7 +208,7 @@ export default function AttendancePage({ user, adminView = false }) {
   const loadAll = useCallback(async () => {
     try {
       const r = await attendanceApi.getFieldStaff();
-      setAllRec(r.data?.data || []);
+      setAllRec((r.data?.data || []).filter(a => !EXCLUDED_USERNAMES.has(a.username?.toLowerCase())));
     } catch (e) { console.error(e); }
   }, []);
 
