@@ -207,7 +207,7 @@ export default function AttendancePage({ user, adminView = false }) {
 
   const loadAll = useCallback(async () => {
     try {
-      const r = await attendanceApi.getAll();
+      const r = await attendanceApi.getFieldStaff();
       setAllRec((r.data?.data || []).filter(a => !EXCLUDED_USERNAMES.has(a.username?.toLowerCase())));
     } catch (e) { console.error(e); }
   }, []);
@@ -294,7 +294,7 @@ export default function AttendancePage({ user, adminView = false }) {
     return (
       <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Team Attendance</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>All staff · {filteredRec.length} of {allRec.length} records</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Engineers, Project Managers, Admin &amp; Procurement · {filteredRec.length} of {allRec.length} records</div>
 
         {/* Filter bar */}
         <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
