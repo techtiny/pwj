@@ -3765,7 +3765,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>
                   Vendor Management
-                  <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{displayed.length} of {allVendorsStatus.length}</span>
+                  <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#475569" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
                 {isAdmin && (
                   <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
@@ -3784,7 +3784,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <button key={t.key} onClick={() => setVendorStatusTab(t.key)}
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                         padding: "10px 18px", fontSize: 13, fontWeight: active ? 700 : 500,
-                        color: active ? "#1a6ab1" : "#64748b",
+                        color: active ? "#1a6ab1" : "#0f172a",
                         borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent", marginBottom: -2 }}>
                       {t.label}
                       <span style={{ marginLeft: 6, fontSize: 11, background: active ? "#dbeafe" : "#f1f5f9",
@@ -3828,7 +3828,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   {/* Table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1.4fr 1.2fr 1fr 120px", gap: 0, background: "#f8fafc", borderBottom: "1.5px solid #e2eaf5", padding: "10px 20px" }}>
                     {["Vendor", "Category", "Contact", "GST / Code", "Status", "Actions"].map(h => (
-                      <div key={h} style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
+                      <div key={h} style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
                     ))}
                   </div>
                   {/* Rows */}
@@ -3843,27 +3843,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {/* Name */}
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v.name}</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
                             Added {fmtDate(v.createdAt)}
                           </div>
                         </div>
                         {/* Category */}
-                        <div style={{ fontSize: 12, color: "#475569" }}>{v.category || "—"}</div>
+                        <div style={{ fontSize: 13, color: "#0f172a" }}>{v.category || "—"}</div>
                         {/* Contact */}
                         <div>
                           {v.contactPerson && <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500 }}>{v.contactPerson}</div>}
-                          {v.phoneNumber && <div style={{ fontSize: 11, color: "#64748b" }}>📞 {v.phoneNumber}</div>}
-                          {v.email && <div style={{ fontSize: 11, color: "#64748b" }}>✉️ {v.email}</div>}
+                          {v.phoneNumber && <div style={{ fontSize: 12, color: "#334155" }}>📞 {v.phoneNumber}</div>}
+                          {v.email && <div style={{ fontSize: 12, color: "#334155" }}>✉️ {v.email}</div>}
                         </div>
                         {/* GST / Code */}
                         <div>
-                          {v.gstNumber && <div style={{ fontSize: 12, color: "#475569" }}>{v.gstNumber}</div>}
-                          {v.vendorCode && <div style={{ fontSize: 11, color: "#94a3b8" }}>#{v.vendorCode}</div>}
+                          {v.gstNumber && <div style={{ fontSize: 13, color: "#0f172a" }}>{v.gstNumber}</div>}
+                          {v.vendorCode && <div style={{ fontSize: 12, color: "#334155" }}>#{v.vendorCode}</div>}
                           {!v.gstNumber && !v.vendorCode && <span style={{ color: "#94a3b8" }}>—</span>}
                         </div>
                         {/* Status badge */}
                         <div>
-                          <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
+                          <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
                             background: cfg.bg, color: cfg.color, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot }} />
                             {cfg.label}
@@ -3872,18 +3872,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {/* Actions */}
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button onClick={() => setViewVendor(v)}
-                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             👁 View
                           </button>
                           {isVP && isPending && (<>
-                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
-                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setApprovedVendors(a => a.filter(x => x.id !== v.id)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
-                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                               ✏️ Edit
                             </button>
                           )}
@@ -3895,7 +3895,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 if (r.success) { setAllVendorsStatus(a => a.filter(x => x.id !== v.id)); showToast("Vendor deleted ✅"); }
                                 else showToast(r.message || "Delete failed", "error");
                               }}
-                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                               🗑️ Delete
                             </button>
                           )}
