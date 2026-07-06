@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
-const EXCLUDED_USERNAMES = new Set(["shobana", "techtinyproc", "tec123"]);
+const EXCLUDED_USERNAMES = new Set(["techtiny", "techtinyproc", "tec123"]);
 
 function toDateTimeLocal(dt) {
   if (!dt) return "";
