@@ -207,7 +207,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   // Styles
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontWeight: 600, fontSize: 12, color: "#64748b",
+    fontWeight: 600, fontSize: 13, color: "#374151",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
   };
@@ -226,8 +226,8 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a",
     background: "#fff",
   });
-  const LBL = { fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
-  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" });
+  const LBL = { fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 5, display: "block" };
+  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" });
 
   const employeeOptions = useMemo(() => {
     const names = new Set(allEntries.map(e => e.fullName || e.username).filter(Boolean));
@@ -259,7 +259,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
             style={{ width: 48, height: 38, objectFit: "cover", borderRadius: 5, border: "1px solid #e2e8f0", display: "block" }} />
         </a>
       : <a href={attachmentFullUrl(url)} target="_blank" rel="noreferrer"
-          style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+          style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
           📄 {label || "View"}
         </a>;
   };
@@ -271,7 +271,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     } else if (entry.proofUrl) {
       urls = [entry.proofUrl];
     }
-    if (!urls.length) return <span style={{ color: "#cbd5e1" }}>—</span>;
+    if (!urls.length) return <span style={{ color: "#374151" }}>—</span>;
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
         {urls.map((url, i) => <AttachmentLink key={i} url={url} label={`Doc ${i + 1}`} />)}
@@ -342,7 +342,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
             { label: "Approved Entries", value: summary.countApproved,          accent: "#1e3a5f" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "#64748b" }}>{k.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
@@ -353,7 +353,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       <div className="pc-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" }}>{title}</div>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>
             {blockedProjects.size > 0
               ? `2 untallied requests open for: ${[...blockedProjects].join(", ")}`
               : "Record and track your out-of-pocket expenses"}
@@ -363,7 +363,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
           <button
             onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); setErrors({}); }}
             className="pc-header-btn"
-            style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
             {showForm ? "Cancel" : "+ New Request"}
           </button>
         )}
@@ -380,7 +380,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               <input type="date" style={INP(errors.expenseDate)}
                 value={form.expenseDate}
                 onChange={e => setForm(f => ({ ...f, expenseDate: e.target.value }))} />
-              {errors.expenseDate && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.expenseDate}</div>}
+              {errors.expenseDate && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.expenseDate}</div>}
             </div>
 
             <div>
@@ -388,7 +388,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               <input type="number" min="1" step="0.01" style={INP(errors.amount)}
                 placeholder="0.00" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-              {errors.amount && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
+              {errors.amount && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.amount}</div>}
             </div>
 
             <div style={{ gridColumn: "1/-1" }}>
@@ -405,14 +405,14 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                   );
                 })}
               </select>
-              {errors.projectName && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
+              {errors.projectName && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.projectName}</div>}
               {selectedProjectBlocked && !errors.projectName && (() => {
                 const oldestBlocking = entries
                   .filter(e => e.projectName === form.projectName && ACTIVE_STATUSES.has(e.status))
                   .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
                 const isAwaitingTally = oldestBlocking?.status === "PROOF_SUBMITTED";
                 return (
-                  <div style={{ fontSize: 12, color: isAwaitingTally ? "#7c3aed" : "#d97706", marginTop: 3 }}>
+                  <div style={{ fontSize: 13, color: isAwaitingTally ? "#7c3aed" : "#d97706", marginTop: 3 }}>
                     {isAwaitingTally
                       ? "🔍 Proof submitted on the oldest request — awaiting Admin tally. You can raise a new request once it's verified."
                       : "⏳ 2 untallied requests already exist for this project. Get the oldest one tallied first."}
@@ -437,7 +437,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 placeholder="Describe the expense (what it was for, where, etc.)"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              {errors.description && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
+              {errors.description && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
             </div>
 
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 10 }}>
@@ -467,7 +467,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 style={{
                   border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px",
                   background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#000",
-                  fontWeight: active ? 600 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                  fontWeight: active ? 600 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
                 }}>
                 {t.label}
               </button>
@@ -480,37 +480,37 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       {isApprover && viewTab === "all" && (
         <div className="pc-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Employee</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" }}>Employee</label>
             <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterName} onChange={e => setFilterName(e.target.value)}>
               <option value="">All Employees</option>
               {employeeOptions.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Category</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" }}>Category</label>
             <select style={{ ...INP(), minWidth: 150, width: "auto" }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
               <option value="">All Categories</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase().replace(/_/g, " ")}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>Status</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" }}>Status</label>
             <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="">All Statuses</option>
               {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>From</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" }}>From</label>
             <input type="date" style={{ ...INP(), width: "auto" }} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4, display: "block" }}>To</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" }}>To</label>
             <input type="date" style={{ ...INP(), width: "auto" }} value={filterTo} onChange={e => setFilterTo(e.target.value)} />
           </div>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
               Clear Filters
             </button>
           )}
@@ -520,7 +520,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       {/* Entries table */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         {displayList.length === 0 ? (
-          <div style={{ padding: 52, textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
+          <div style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
             {viewTab === "all" && hasFilters
               ? "No entries match the selected filters."
               : "No requests yet."}
@@ -552,11 +552,11 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                       <td data-label="Date" style={TD({ whiteSpace: "nowrap" })}>{fmtDate(entry.expenseDate)}</td>
                       <td data-label="Project" style={TD({ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={entry.projectName}>
                         {entry.projectName
-                          ? <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>{entry.projectName}</span>
-                          : <span style={{ color: "#cbd5e1" }}>—</span>}
+                          ? <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 5, padding: "2px 8px", fontSize: 13, fontWeight: 600 }}>{entry.projectName}</span>
+                          : <span style={{ color: "#374151" }}>—</span>}
                       </td>
                       <td data-label="Category" style={TD()}>
-                        <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ background: "#f1f5f9", color: "#1e293b", borderRadius: 5, padding: "2px 8px", fontSize: 13, fontWeight: 600 }}>
                           {entry.category.replace(/_/g, " ")}
                         </span>
                       </td>
@@ -570,31 +570,31 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                         <span style={badge(s)}>{s.label}</span>
                         <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 2 }}>
                           {entry.createdAt && (
-                            <div style={{ fontSize: 11, color: "#94a3b8" }}>✦ Raised: {fmtDateTime(entry.createdAt)}</div>
+                            <div style={{ fontSize: 13, color: "#374151" }}>✦ Raised: {fmtDateTime(entry.createdAt)}</div>
                           )}
                           {entry.approvedAt && (
-                            <div style={{ fontSize: 11, color: entry.status === "REJECTED" ? "#dc2626" : "#059669" }}>
+                            <div style={{ fontSize: 13, color: entry.status === "REJECTED" ? "#dc2626" : "#059669" }}>
                               {entry.status === "REJECTED" ? "✕ Rejected" : "✓ Approved"}: {fmtDateTime(entry.approvedAt)}
-                              {entry.approvedBy && <span style={{ color: "#94a3b8" }}> · {entry.approvedBy}{entry.approvedByRole ? ` (${entry.approvedByRole})` : ""}</span>}
+                              {entry.approvedBy && <span style={{ color: "#374151" }}> · {entry.approvedBy}{entry.approvedByRole ? ` (${entry.approvedByRole})` : ""}</span>}
                             </div>
                           )}
                           {entry.approvalComment && (
-                            <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>{entry.approvalComment}</div>
+                            <div style={{ fontSize: 13, color: "#374151", fontStyle: "italic" }}>{entry.approvalComment}</div>
                           )}
                           {entry.cashTransferredAt && (
-                            <div style={{ fontSize: 11, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
+                            <div style={{ fontSize: 13, color: "#2563eb" }}>💸 Transferred: {fmtDateTime(entry.cashTransferredAt)}</div>
                           )}
                           {entry.proofSubmittedAt && (
-                            <div style={{ fontSize: 11, color: "#166534" }}>📎 Proof submitted: {fmtDateTime(entry.proofSubmittedAt)}</div>
+                            <div style={{ fontSize: 13, color: "#166534" }}>📎 Proof submitted: {fmtDateTime(entry.proofSubmittedAt)}</div>
                           )}
                           {entry.proofVerifiedAt && (
-                            <div style={{ fontSize: 11, color: "#15803d", fontWeight: 600 }}>
+                            <div style={{ fontSize: 13, color: "#15803d", fontWeight: 600 }}>
                               ✓ Tallied: {fmtDateTime(entry.proofVerifiedAt)}
-                              {entry.proofVerifiedBy && <span style={{ color: "#94a3b8", fontWeight: 400 }}> · {entry.proofVerifiedBy}</span>}
+                              {entry.proofVerifiedBy && <span style={{ color: "#374151", fontWeight: 400 }}> · {entry.proofVerifiedBy}</span>}
                             </div>
                           )}
                           {entry.tallyComment && (
-                            <div style={{ fontSize: 11, color: "#64748b", fontStyle: "italic" }}>"{entry.tallyComment}"</div>
+                            <div style={{ fontSize: 13, color: "#374151", fontStyle: "italic" }}>"{entry.tallyComment}"</div>
                           )}
                         </div>
                       </td>
@@ -603,7 +603,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                       <td data-label="Receipt" style={TD()}>
                         {entry.attachmentUrl
                           ? <AttachmentLink url={entry.attachmentUrl} label="View" />
-                          : <span style={{ color: "#cbd5e1" }}>—</span>}
+                          : <span style={{ color: "#374151" }}>—</span>}
                       </td>
 
                       {/* Proof (multi-doc, post-transfer) */}
@@ -614,18 +614,18 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                             {/* Selected files list */}
                             {(proof.files || []).map((f, i) => (
-                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#059669" }}>
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#059669" }}>
                                 <span>📎</span>
                                 <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                                 <button type="button" onClick={() => handleRemoveProofFile(entry.id, i)}
-                                  style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>✕</button>
+                                  style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>✕</button>
                               </div>
                             ))}
                             {/* Add files button */}
                             <label style={{
                               display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
                               border: "1.5px dashed #cbd5e1", borderRadius: 7, padding: "5px 10px",
-                              background: "#f8fafc", color: "#64748b", fontSize: 12, fontWeight: 500,
+                              background: "#f8fafc", color: "#374151", fontSize: 13, fontWeight: 500,
                             }}>
                               📎 {(proof.files || []).length > 0 ? "Add more" : "Attach proof"}
                               <input type="file" accept="image/*,application/pdf,.doc,.docx" multiple
@@ -639,13 +639,13 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                             </label>
                             {(proof.files || []).length > 0 && (
                               <button onClick={() => handleSubmitProof(entry.id)} disabled={proof.uploading}
-                                style={{ border: "none", borderRadius: 6, padding: "5px 10px", background: "#1e3a5f", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: proof.uploading ? 0.6 : 1 }}>
+                                style={{ border: "none", borderRadius: 6, padding: "5px 10px", background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: proof.uploading ? 0.6 : 1 }}>
                                 {proof.uploading ? `Uploading ${(proof.files||[]).length} file(s)…` : `Submit ${(proof.files||[]).length} Proof Doc(s)`}
                               </button>
                             )}
                           </div>
                         ) : (
-                          <span style={{ color: "#cbd5e1", fontSize: 12 }}>
+                          <span style={{ color: "#374151", fontSize: 13 }}>
                             {entry.status === "PENDING" || entry.status === "REJECTED" ? "—" : "Awaiting"}
                           </span>
                         )}
@@ -656,7 +656,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {isMine && entry.status === "PENDING" && (
                             <button onClick={() => handleDelete(entry.id)}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
+                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
                               Delete
                             </button>
                           )}
@@ -668,14 +668,14 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                                 placeholder="Comment"
                                 value={commentMap[entry.id] || ""}
                                 onChange={e => setCommentMap(m => ({ ...m, [entry.id]: e.target.value }))}
-                                style={{ border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", width: 90, color: "#374151" }}
+                                style={{ border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 13, fontFamily: "inherit", outline: "none", width: 90, color: "#374151" }}
                               />
                               <button onClick={() => handleAction(entry.id, "approve")} disabled={isProc}
-                                style={{ background: "#1e3a5f", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#fff", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
+                                style={{ background: "#1e3a5f", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#fff", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
                                 {processing === entry.id + "approve" ? "…" : "Approve"}
                               </button>
                               <button onClick={() => handleAction(entry.id, "reject")} disabled={isProc}
-                                style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
+                                style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
                                 {processing === entry.id + "reject" ? "…" : "Reject"}
                               </button>
                             </>
@@ -685,7 +685,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           {isApprover && entry.status === "APPROVED" && (
                             <button onClick={() => handleMarkTransferred(entry.id)}
                               disabled={processing === entry.id + "transfer"}
-                              style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1d4ed8", fontFamily: "inherit", opacity: processing === entry.id + "transfer" ? 0.6 : 1 }}>
+                              style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1d4ed8", fontFamily: "inherit", opacity: processing === entry.id + "transfer" ? 0.6 : 1 }}>
                               {processing === entry.id + "transfer" ? "…" : "Mark Transferred"}
                             </button>
                           )}
@@ -693,16 +693,16 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           {/* Tally & Verify proof — Admin only, on PROOF_SUBMITTED */}
                           {isApprover && entry.status === "PROOF_SUBMITTED" && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#854d0e", textTransform: "uppercase", letterSpacing: 0.4 }}>Review Proof</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#854d0e", textTransform: "uppercase", letterSpacing: 0.4 }}>Review Proof</div>
                               <input
                                 placeholder="Tally note (optional)"
                                 value={tallyCommentMap[entry.id] || ""}
                                 onChange={e => setTallyMap(m => ({ ...m, [entry.id]: e.target.value }))}
-                                style={{ border: "1.5px solid #fde68a", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", width: 120, color: "#374151", background: "#fffbeb" }}
+                                style={{ border: "1.5px solid #fde68a", borderRadius: 6, padding: "4px 8px", fontSize: 13, fontFamily: "inherit", outline: "none", width: 120, color: "#374151", background: "#fffbeb" }}
                               />
                               <button onClick={() => handleVerifyProof(entry.id)}
                                 disabled={processing === entry.id + "verify"}
-                                style={{ background: "#15803d", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: "inherit", opacity: processing === entry.id + "verify" ? 0.6 : 1 }}>
+                                style={{ background: "#15803d", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "inherit", opacity: processing === entry.id + "verify" ? 0.6 : 1 }}>
                                 {processing === entry.id + "verify" ? "…" : "✓ Tally & Verify"}
                               </button>
                             </div>

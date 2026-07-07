@@ -348,7 +348,7 @@ function ImageOrLink({ src, label, thumbStyle = {} }) {
       <a href={src} target="_blank" rel="noreferrer"
         style={{ display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
           gap:4, padding:"12px 16px", background:"#fef2f2", borderRadius:8, color:"#ef4444",
-          fontSize:12, fontWeight:700, textDecoration:"none", border:"1.5px solid #fecaca",
+          fontSize:13, fontWeight:700, textDecoration:"none", border:"1.5px solid #fecaca",
           minWidth:72, cursor:"pointer", ...thumbStyle }}>
         <span style={{ fontSize:24 }}>📄</span>
         <span>PDF</span>
@@ -386,7 +386,7 @@ function CountBadge({ count }) {
   return (
     <span style={{
       minWidth: 17, height: 17,
-      background: "#ef4444", color: "#fff", borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+      background: "#ef4444", color: "#fff", borderRadius: 999, fontSize: 12.5, fontWeight: 800,
       display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
       lineHeight: 1,
     }}>
@@ -489,7 +489,7 @@ const ROLE_META = {
 function EngUploadSection({ title, icon, type, files, setFiles, uploading, stored, onUpload, canUpload }) {
   return (
     <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
         {icon} {title}
       </div>
       {stored.length > 0 && (
@@ -498,23 +498,23 @@ function EngUploadSection({ title, icon, type, files, setFiles, uploading, store
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
               <span style={{ fontSize: 16 }}>📄</span>
               <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
-                style={{ flex: 1, fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                style={{ flex: 1, fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {f.name || `File ${i + 1}`}
               </a>
-              <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+              <span style={{ fontSize: 13, color: "#374151", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
             </div>
           ))}
         </div>
       )}
       {canUpload && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: files.length ? "#0f172a" : "#94a3b8" }}>
+          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: files.length ? "#0f172a" : "#94a3b8" }}>
             <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
               onChange={ev => setFiles(Array.from(ev.target.files))} />
             {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
           </label>
           <button onClick={() => onUpload(type, files)} disabled={!files.length || uploading}
-            style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             {uploading ? "Uploading…" : "📤 Upload"}
           </button>
         </div>
@@ -644,11 +644,11 @@ function LoginPage({ onLogin, logoutMessage }) {
             </div>
             <div>
               <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:18, color:"#fff", letterSpacing:.2 }}>HAPPIZO</div>
-              <div style={{ fontSize:10.5, color:"rgba(255,255,255,.4)", letterSpacing:1.4, textTransform:"uppercase", marginTop:1 }}>Infrastructure & Solutions</div>
+              <div style={{ fontSize:12.5, color:"rgba(255,255,255,.4)", letterSpacing:1.4, textTransform:"uppercase", marginTop:1 }}>Infrastructure & Solutions</div>
             </div>
             <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", borderRadius:20, padding:"4px 10px" }}>
               <span style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e", display:"inline-block", animation:"pulse 2s ease infinite" }} />
-              <span style={{ fontSize:10.5, color:"#4ade80", fontWeight:600 }}>Live</span>
+              <span style={{ fontSize:12.5, color:"#4ade80", fontWeight:600 }}>Live</span>
             </div>
           </div>
 
@@ -662,14 +662,14 @@ function LoginPage({ onLogin, logoutMessage }) {
 
           {/* Error */}
           {error && (
-            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
               <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
             </div>
           )}
 
           {/* Signed out by session conflict — shown instead of alert() */}
           {logoutMessage && (
-            <div style={{ background:"rgba(59,130,246,.12)", border:"1px solid rgba(59,130,246,.35)", borderRadius:12, padding:"11px 16px", fontSize:13, marginBottom:20, display:"flex", alignItems:"center", gap:8, color:"#93c5fd" }}>
+            <div style={{ background:"rgba(59,130,246,.12)", border:"1px solid rgba(59,130,246,.35)", borderRadius:12, padding:"11px 16px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8, color:"#93c5fd" }}>
               <span style={{ fontSize:15, flexShrink:0 }}>ℹ</span> {logoutMessage}
             </div>
           )}
@@ -677,17 +677,17 @@ function LoginPage({ onLogin, logoutMessage }) {
           {/* Different user already logged in this browser (same localStorage) */}
           {browserConflict && (
             <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.35)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-              <div style={{ color:"#fca5a5", fontWeight:700, fontSize:13, marginBottom:6 }}>Another User is Active on this Browser</div>
-              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>
+              <div style={{ color:"#fca5a5", fontWeight:700, fontSize:14, marginBottom:6 }}>Another User is Active on this Browser</div>
+              <div style={{ color:"rgba(255,255,255,.7)", fontSize:13, marginBottom:12 }}>
                 <b>{browserConflict.fullName}</b> is currently logged in on this browser. Only one user can be active at a time. Sign in to take over and end their session.
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button type="button" onClick={forceBrowserLogin} disabled={loading}
-                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
                   {loading ? "Signing in…" : "Sign In & End Their Session"}
                 </button>
                 <button type="button" onClick={() => setBrowserConflict(null)} disabled={loading}
-                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
                   Cancel
                 </button>
               </div>
@@ -697,17 +697,17 @@ function LoginPage({ onLogin, logoutMessage }) {
           {/* Same user already logged in on another device (backend ALREADY_LOGGED_IN) */}
           {deviceConflict && (
             <div style={{ background:"rgba(251,191,36,.12)", border:"1px solid rgba(251,191,36,.4)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-              <div style={{ color:"#fde68a", fontWeight:700, fontSize:13, marginBottom:6 }}>Already Signed In on Another Device</div>
-              <div style={{ color:"rgba(255,255,255,.7)", fontSize:12, marginBottom:12 }}>
+              <div style={{ color:"#fde68a", fontWeight:700, fontSize:14, marginBottom:6 }}>Already Signed In on Another Device</div>
+              <div style={{ color:"rgba(255,255,255,.7)", fontSize:13, marginBottom:12 }}>
                 Your account is currently active on another device or browser tab. Signing in here will end that session immediately.
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button type="button" onClick={forceDeviceLogin} disabled={loading}
-                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
                   {loading ? "Signing in…" : "Sign In & End Other Session"}
                 </button>
                 <button type="button" onClick={() => setDeviceConflict(false)} disabled={loading}
-                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
                   Cancel
                 </button>
               </div>
@@ -758,7 +758,7 @@ function LoginPage({ onLogin, logoutMessage }) {
           </form>
 
           {/* Footer */}
-          <div style={{ marginTop:28, paddingTop:20, borderTop:"1px solid rgba(255,255,255,.07)", textAlign:"center", color:"rgba(255,255,255,.25)", fontSize:12 }}>
+          <div style={{ marginTop:28, paddingTop:20, borderTop:"1px solid rgba(255,255,255,.07)", textAlign:"center", color:"rgba(255,255,255,.25)", fontSize:13 }}>
             © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
           </div>
         </div>
@@ -844,7 +844,7 @@ function CountdownPage({ onLaunched }) {
       }}>
         {pad(value)}
       </div>
-      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 3, color: "#94a3b8", textTransform: "uppercase", marginTop: 6 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 3, color: "#374151", textTransform: "uppercase", marginTop: 6 }}>
         {label}
       </div>
     </div>
@@ -897,7 +897,7 @@ function CountdownPage({ onLaunched }) {
                 <rect x="60" y="8" width="22" height="84" rx="4" fill="#29b6e8" opacity="0.55"/>
                 <polygon points="18,38 82,56 82,66 18,48" fill="#29b6e8"/>
               </svg>
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 3, color: "#29b6e8", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>HAPPIZO<sup style={{fontSize:8}}>®</sup></span>
+              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: 3, color: "#29b6e8", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>HAPPIZO<sup style={{fontSize:8}}>®</sup></span>
             </div>
 
             <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.1)" }} />
@@ -921,7 +921,7 @@ function CountdownPage({ onLaunched }) {
                 </svg>
               </div>
               <div style={{ lineHeight: 1 }}>
-                <span style={{ fontSize: 20, fontWeight: 600, color: "#3ab4e8", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Tech</span><span style={{ fontSize: 20, fontWeight: 800, color: "#cbd5e1", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>tiny</span>
+                <span style={{ fontSize: 20, fontWeight: 600, color: "#3ab4e8", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Tech</span><span style={{ fontSize: 20, fontWeight: 800, color: "#374151", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>tiny</span>
               </div>
             </div>
           </div>
@@ -929,11 +929,11 @@ function CountdownPage({ onLaunched }) {
           {/* badge */}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 100, padding: "6px 18px", marginBottom: 28 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#38bdf8", animation: "pulseRing 2s ease-in-out infinite" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: "#7dd3fc", textTransform: "uppercase" }}>Launching Soon</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#7dd3fc", textTransform: "uppercase" }}>Launching Soon</span>
           </div>
 
           {/* logo / title */}
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 4, color: "#64748b", textTransform: "uppercase", marginBottom: 10 }}>Happizo CloudDesk</div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: 4, color: "#374151", textTransform: "uppercase", marginBottom: 10 }}>Happizo CloudDesk</div>
           <h1 style={{
             fontSize: 38, fontWeight: 800, lineHeight: 1.15,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -945,7 +945,7 @@ function CountdownPage({ onLaunched }) {
           }}>
             Happizo CloudDesk
           </h1>
-          <p style={{ fontSize: 15, color: "#64748b", marginBottom: 44, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 15, color: "#374151", marginBottom: 44, lineHeight: 1.6 }}>
             A smarter way to track, approve &amp; manage procurement workflows.
           </p>
 
@@ -961,7 +961,7 @@ function CountdownPage({ onLaunched }) {
           </div>
 
           {/* launch date line */}
-          <div style={{ fontSize: 13, color: "#475569", letterSpacing: 1 }}>
+          <div style={{ fontSize: 14, color: "#1e293b", letterSpacing: 1 }}>
             🚀 &nbsp;Going live on&nbsp;
             <span style={{ color: "#7dd3fc", fontWeight: 600 }}>
               {LAUNCH_DATE.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" })}
@@ -1106,12 +1106,12 @@ function CelebrationPage({ onDone }) {
             We're Live!
           </div>
 
-          <div style={{ fontSize: 16, color: "#94a3b8", marginBottom: 32, lineHeight: 1.7 }}>
+          <div style={{ fontSize: 16, color: "#374151", marginBottom: 32, lineHeight: 1.7 }}>
             Happizo CloudDesk is officially launched.<br/>
             <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — smarter workflows, every day.
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, color: "#475569" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, color: "#1e293b" }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 8px #34d399" }} />
             Taking you to the dashboard…
           </div>
@@ -1327,7 +1327,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
     <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
       <div style={{ marginBottom: 32, textAlign: "center", padding: "0 8px" }}>
         <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
-        <div style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>Select a module to get started</div>
+        <div style={{ fontSize: 14, color: "#374151", marginTop: 8 }}>Select a module to get started</div>
       </div>
 
       <div className="home-attendance" style={{ width: "100%", maxWidth: 520, marginBottom: 24 }}>
@@ -1367,9 +1367,9 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
             </div>
             <div>
               <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
-              <div className="mod-desc" style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</div>
+              <div className="mod-desc" style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{desc}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
           </button>
         ))}
       </div>
@@ -2914,7 +2914,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     header: { background: "#ffffff", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", height: 80, position: "sticky", top: 0, zIndex: 100 },
     hLeft: { display: "flex", alignItems: "center", gap: 12 },
     hTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px", lineHeight: 1.15 },
-    hSub: { fontSize: 12.5, color: "#94a3b8", marginTop: 2, letterSpacing: 0.1 },
+    hSub: { fontSize: 13.5, color: "#374151", marginTop: 2, letterSpacing: 0.1 },
     hRight: { display: "flex", gap: 8, alignItems: "center" },
     hBtn: (variant) => ({
       background: variant === "primary"
@@ -2937,7 +2937,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     // ── Stats ──
     statsRow: { display: "flex", gap: 12, padding: "20px 32px 0", overflowX: "auto" },
     statCard: (accent) => ({ background: "#ffffff", borderRadius: 12, padding: "18px 22px", minWidth: 136, flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}` }),
-    statLbl: { fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 },
+    statLbl: { fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.6 },
     statVal: { fontSize: 32, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", lineHeight: 1.2, marginTop: 6 },
     // ── Filter bar ──
     filterBar: { display: "flex", gap: 12, padding: "18px 32px", alignItems: "center", flexWrap: "wrap" },
@@ -2949,42 +2949,42 @@ function Dashboard({ user, onLogout: handleLogout }) {
     // ── Table ──
     tableWrap: { margin: "0 32px 24px", background: "#ffffff", borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" },
     table: { width: "100%", borderCollapse: "collapse", fontSize: 16 },
-    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
+    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
     td: { padding: "12px 14px", color: "#0f172a", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: 16, fontWeight: 500 },
-    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }),
+    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }),
     dot: (c) => ({ width: 6, height: 6, borderRadius: "50%", background: c, flexShrink: 0 }),
-    approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
+    approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
     // ── Pagination ──
     paginationRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 32px 24px" },
     pageInfo: { fontSize: 14, color: "#000" },
     pageBtns: { display: "flex", gap: 4 },
-    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "1.5px solid #1e3a5f" : "1.5px solid #e2e8f0", background: active ? "#eff6ff" : "#fff", color: "#000", cursor: "pointer", fontSize: 13.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
+    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "1.5px solid #1e3a5f" : "1.5px solid #e2e8f0", background: active ? "#eff6ff" : "#fff", color: "#000", cursor: "pointer", fontSize: 14.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
     // ── Modals ──
     overlay: { position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
     modalBox: (w) => ({ background: "#fff", borderRadius: 14, width: "95%", maxWidth: w || 580, maxHeight: "88vh", overflow: "auto", boxShadow: "0 20px 56px rgba(0,0,0,.16)", animation: "slideUp .22s ease" }),
     mHeader: { background: "#0f172a", padding: "20px 26px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
     mTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.2px" },
-    mSub: { color: "rgba(255,255,255,.5)", fontSize: 13, marginTop: 4 },
+    mSub: { color: "rgba(255,255,255,.5)", fontSize: 14, marginTop: 4 },
     closeBtn: { background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 16 },
     mBody: { padding: "24px 26px" },
     grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px" },
-    dLabel: { fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 },
+    dLabel: { fontSize: 13.5, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 },
     dVal: { fontSize: 14.5, color: "#0f172a", fontWeight: 500 },
-    divider: { gridColumn: "1/-1", borderTop: "1px solid #f1f5f9", paddingTop: 12, fontSize: 11.5, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 6 },
+    divider: { gridColumn: "1/-1", borderTop: "1px solid #f1f5f9", paddingTop: 12, fontSize: 13.5, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 6 },
     formGroup: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 },
-    label: { fontSize: 13, fontWeight: 600, color: "#475569" },
+    label: { fontSize: 14, fontWeight: 600, color: "#1e293b" },
     input: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", color: "#0f172a" },
     textarea: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", minHeight: 78, resize: "vertical", color: "#0f172a" },
     select2: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", background: "#fff", color: "#0f172a" },
     submitBtn: (col) => ({ background: col || "#1e3a5f", border: "none", borderRadius: 9, padding: "12px 28px", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", width: "100%" }),
     toast: (type) => ({ position: "fixed", bottom: 28, right: 28, zIndex: 999, background: type === "error" ? "#dc2626" : "#0f172a", color: "#fff", borderRadius: 10, padding: "14px 22px", fontWeight: 600, fontSize: 14, boxShadow: "0 8px 32px rgba(0,0,0,.2)", animation: "slideUp .22s ease" }),
-    emptyRow: { textAlign: "center", padding: "52px 20px", color: "#94a3b8", fontSize: 15 },
+    emptyRow: { textAlign: "center", padding: "52px 20px", color: "#374151", fontSize: 15 },
     errorBanner: { margin: "16px 32px", padding: "13px 18px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", color: "#b91c1c", fontSize: 14 },
     pendingItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #f1f5f9" },
   };
 
   const SortArrow = ({ field }) => (
-    <span style={{ marginLeft: 3, opacity: sortBy === field ? 1 : 0.3, fontSize: 9 }}>
+    <span style={{ marginLeft: 3, opacity: sortBy === field ? 1 : 0.3, fontSize: 11 }}>
       {sortBy === field ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}
     </span>
   );
@@ -3082,7 +3082,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </div>
           <div style={s.hRight} className="app-hright">
             {user?.isTestAccount && (
-              <div title="You are logged into a test account. All data you see/create is isolated from production." style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", border: "1px solid #fbbf24", borderRadius: 50, padding: "5px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase" }}>
+              <div title="You are logged into a test account. All data you see/create is isolated from production." style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", border: "1px solid #fbbf24", borderRadius: 50, padding: "5px 14px", fontSize: 13, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase" }}>
                 🧪 Test Mode
               </div>
             )}
@@ -3093,7 +3093,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <div style={{ lineHeight: 1.25 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
               </div>
             </div>
 
@@ -3179,7 +3179,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             return (
               <button onClick={() => setMainTab("home")} title="Home"
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "14px 22px", fontSize: 13.5,
+                  padding: "14px 22px", fontSize: 14.5,
                   color: "#000",
                   borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                   marginBottom: -1, display: "flex", alignItems: "center", gap: 6 }}>
@@ -3209,7 +3209,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <button onClick={openPending}
               style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                 padding: "14px 26px", fontSize: 17.5, fontWeight: 600,
-                color: "#475569", borderBottom: "2.5px solid transparent",
+                color: "#1e293b", borderBottom: "2.5px solid transparent",
                 marginBottom: -1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
               <Clock size={20} strokeWidth={2} /> Pending OH
               <CountBadge count={pendingOHCount} />
@@ -3248,7 +3248,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Happizo Chat Bot</div>
-              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — AI-powered assistant for instant answers & support</div>
+              <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>Coming soon — AI-powered assistant for instant answers & support</div>
             </div>
           </div>
         )}
@@ -3260,7 +3260,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Operations Module</div>
-              <div style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>Coming soon — Operational workflows & process management</div>
+              <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>Coming soon — Operational workflows & process management</div>
             </div>
           </div>
         )}
@@ -3283,7 +3283,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
               <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#3b82f6" : "#f97316", display: "inline-block" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
                   {gi === 0 ? "PR Status" : "Approval Status"}
                 </span>
               </div>
@@ -3301,7 +3301,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         position: "relative",
                       }}>
                       {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, borderRadius: "0 0 3px 3px" }} />}
-                      <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? c.accent : "#000", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: isActive ? c.accent : "#000", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
                       <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? c.accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
                         {loading ? "—" : (c.value ?? "—")}
                       </div>
@@ -3316,7 +3316,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={{ flex: 1, minWidth: 480, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
             <div style={{ padding: "8px 16px 6px", background: "linear-gradient(90deg,#eff6ff,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
                 Dependency
               </span>
             </div>
@@ -3335,7 +3335,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       position: "relative",
                     }}>
                     {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: "0 0 3px 3px" }} />}
-                    <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? accent : "#000", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6, whiteSpace: "nowrap" }}>{name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: isActive ? accent : "#000", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6, whiteSpace: "nowrap" }}>{name}</div>
                     <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
                       {loading ? "—" : (stats.dependencyCounts?.[name] ?? 0)}
                     </div>
@@ -3390,7 +3390,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <input type="date" value={dateFrom} max={dateTo || fmt(today)}
                     onChange={e => { setDateFrom(e.target.value); setPage(0); }}
                     style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
-                  <span style={{ color: "#000", fontSize: 13.5 }}>to</span>
+                  <span style={{ color: "#000", fontSize: 14.5 }}>to</span>
                   <input type="date" value={dateTo} min={dateFrom} max={fmt(today)}
                     onChange={e => { setDateTo(e.target.value); setPage(0); }}
                     style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
@@ -3398,7 +3398,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               )}
               {datePreset && (
                 <button onClick={() => { setDatePreset(""); setDateFrom(""); setDateTo(""); setPage(0); }}
-                  style={{ border: "none", background: "none", color: "#000", fontSize: 13.5, cursor: "pointer", padding: "6px 8px" }}>
+                  style={{ border: "none", background: "none", color: "#000", fontSize: 14.5, cursor: "pointer", padding: "6px 8px" }}>
                   ✕ Clear
                 </button>
               )}
@@ -3498,7 +3498,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         disabled={!isEligible}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td style={{ ...s.td, color: "#334155", fontSize: 12 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.updatedAt || row.timestamp)}
                     </td>
@@ -3507,7 +3507,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
                       {parseImageRefs(row.imageReference).length > 0 && (
-                        <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 13, cursor: "pointer" }}>🖼️</span>
+                        <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 14, cursor: "pointer" }}>🖼️</span>
                       )}
                     </td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
@@ -3542,7 +3542,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </td>
                     )}
                     {/* Delivered Date */}
-                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "#334155" }} onClick={() => setDetailRow(row)}>
+                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "#1e293b" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
@@ -3555,7 +3555,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
                       {row.status === "CLOSED" ? (
-                        <span style={{ color: "#94a3b8" }}>—</span>
+                        <span style={{ color: "#374151" }}>—</span>
                       ) : isProcurement ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
@@ -3578,12 +3578,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : row.dependency ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap" }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
                           {row.dependency}
                         </span>
                       ) : (
-                        <span style={{ color: "#94a3b8" }}>—</span>
+                        <span style={{ color: "#374151" }}>—</span>
                       )}
                     </td>
                     {/* ★ ACTION COLUMN */}
@@ -3595,12 +3595,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button
                               disabled
                               title="Editing locked — entry has been OH approved"
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               🔒 Locked
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openEditEntry(row)}>
                               ✏️ Edit
                             </button>
@@ -3608,7 +3608,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                         {isOH && (
                           row.approvalStatus === "PROCEED"
-                            ? <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
+                            ? <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
                             : canApprove(row) && (
                               <button style={s.approveBtn}
                                 onClick={() => {
@@ -3624,19 +3624,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button
                               disabled
                               title={row.docStatus === "VP_APPROVED" ? "VP approved — vendor cannot be changed" : "PWJ issued — editing locked. Contact VP/Admin to make changes."}
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               🔒 Locked
                             </button>
                           ) : isProcurement && row.approvalStatus !== "PROCEED" ? (
                             <button
                               disabled
                               title="OH approval pending — vendor can be assigned only after OH approves"
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#94a3b8", fontSize: 11, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               ⏳ Pending OH
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openAssign(row)}>
                               ✏️ Assign
                             </button>
@@ -3646,7 +3646,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
-                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
                               📎 Clubs #{clubbedWithId}
                             </button>;
@@ -3655,7 +3655,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : row.docStatus === "REVOKED" ? "linear-gradient(135deg,#6b21a8,#9333ea)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
                           return (
-                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openDocModal(row)}>
                               📄 {lbl}
                             </button>
@@ -3665,7 +3665,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
-                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info"); }}>
                               📎 Clubs #{clubbedWithId}
                             </button>;
@@ -3674,7 +3674,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const lbl = rowPartial ? "Partially Issued" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)";
                           return (
-                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); openDocModal(row); }}>
                               📄 {lbl}
                             </button>
@@ -3682,7 +3682,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         })()}
                         {isAdmin && (
                           <button
-                            style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                             onClick={async () => {
                               if (!window.confirm(`Delete entry #${row.id} (${row.materialRequired || "this entry"})? This cannot be undone.`)) return;
                               const r = await api.deleteEntry(row.id);
@@ -3700,7 +3700,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           try {
                             const dd = JSON.parse(row.docData || "{}");
                             if (Array.isArray(dd.clubbedEntryIds) && dd.clubbedEntryIds.length > 0) return (
-                              <div style={{ fontSize: 10, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 12, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
                                 📎 Clubs #{dd.clubbedEntryIds.join(", #")}
                               </div>
                             );
@@ -3766,7 +3766,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>
                   Vendor Management
-                  <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: "#475569" }}>{displayed.length} of {allVendorsStatus.length}</span>
+                  <span style={{ marginLeft: 10, fontSize: 14, fontWeight: 500, color: "#1e293b" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
                 {isAdmin && (
                   <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
@@ -3784,11 +3784,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <button key={t.key} onClick={() => setVendorStatusTab(t.key)}
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                        padding: "10px 18px", fontSize: 13, fontWeight: active ? 700 : 500,
+                        padding: "10px 18px", fontSize: 14, fontWeight: active ? 700 : 500,
                         color: active ? "#1a6ab1" : "#0f172a",
                         borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent", marginBottom: -2 }}>
                       {t.label}
-                      <span style={{ marginLeft: 6, fontSize: 11, background: active ? "#dbeafe" : "#f1f5f9",
+                      <span style={{ marginLeft: 6, fontSize: 13, background: active ? "#dbeafe" : "#f1f5f9",
                         color: active ? "#1d4ed8" : "#64748b", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
                         {count}
                       </span>
@@ -3800,20 +3800,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Search + filter bar */}
               <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
-                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 15, pointerEvents: "none" }}>🔍</span>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#374151", fontSize: 15, pointerEvents: "none" }}>🔍</span>
                   <input
                     type="text" placeholder="Search name, category, contact, GST, email…"
                     value={vendorSearch} onChange={e => setVendorSearch(e.target.value)}
-                    style={{ width: "100%", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", boxSizing: "border-box" }} />
+                    style={{ width: "100%", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", boxSizing: "border-box" }} />
                 </div>
                 <select value={vendorCategoryFilter} onChange={e => setVendorCategoryFilter(e.target.value)}
-                  style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: vendorCategoryFilter ? "#0f172a" : "#94a3b8", outline: "none", cursor: "pointer", minWidth: 160 }}>
+                  style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 14, fontFamily: "inherit", background: "#fff", color: vendorCategoryFilter ? "#0f172a" : "#94a3b8", outline: "none", cursor: "pointer", minWidth: 160 }}>
                   <option value="">All Categories</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {(vendorSearch || vendorCategoryFilter) && (
                   <button onClick={() => { setVendorSearch(""); setVendorCategoryFilter(""); }}
-                    style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#64748b", cursor: "pointer", fontWeight: 600 }}>
+                    style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: "#374151", cursor: "pointer", fontWeight: 600 }}>
                     ✕ Clear
                   </button>
                 )}
@@ -3821,15 +3821,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Vendor list table */}
               {vpLoading ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#64748b" }}>Loading vendors…</div>
+                <div style={{ textAlign: "center", padding: 60, color: "#374151" }}>Loading vendors…</div>
               ) : displayed.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 14 }}>No vendors found</div>
+                <div style={{ textAlign: "center", padding: 60, color: "#374151", fontSize: 14 }}>No vendors found</div>
               ) : (
                 <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #e2eaf5", overflow: "hidden" }}>
                   {/* Table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1.4fr 1.2fr 1fr 120px", gap: 0, background: "#f8fafc", borderBottom: "1.5px solid #e2eaf5", padding: "10px 20px" }}>
                     {["Vendor", "Category", "Contact", "GST / Code", "Status", "Actions"].map(h => (
-                      <div key={h} style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
+                      <div key={h} style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
                     ))}
                   </div>
                   {/* Rows */}
@@ -3844,27 +3844,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {/* Name */}
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v.name}</div>
-                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                          <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>
                             Added {fmtDate(v.createdAt)}
                           </div>
                         </div>
                         {/* Category */}
-                        <div style={{ fontSize: 13, color: "#0f172a" }}>{v.category || "—"}</div>
+                        <div style={{ fontSize: 14, color: "#0f172a" }}>{v.category || "—"}</div>
                         {/* Contact */}
                         <div>
-                          {v.contactPerson && <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500 }}>{v.contactPerson}</div>}
-                          {v.phoneNumber && <div style={{ fontSize: 12, color: "#334155" }}>📞 {v.phoneNumber}</div>}
-                          {v.email && <div style={{ fontSize: 12, color: "#334155" }}>✉️ {v.email}</div>}
+                          {v.contactPerson && <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 500 }}>{v.contactPerson}</div>}
+                          {v.phoneNumber && <div style={{ fontSize: 13, color: "#1e293b" }}>📞 {v.phoneNumber}</div>}
+                          {v.email && <div style={{ fontSize: 13, color: "#1e293b" }}>✉️ {v.email}</div>}
                         </div>
                         {/* GST / Code */}
                         <div>
-                          {v.gstNumber && <div style={{ fontSize: 13, color: "#0f172a" }}>{v.gstNumber}</div>}
-                          {v.vendorCode && <div style={{ fontSize: 12, color: "#334155" }}>#{v.vendorCode}</div>}
-                          {!v.gstNumber && !v.vendorCode && <span style={{ color: "#94a3b8" }}>—</span>}
+                          {v.gstNumber && <div style={{ fontSize: 14, color: "#0f172a" }}>{v.gstNumber}</div>}
+                          {v.vendorCode && <div style={{ fontSize: 13, color: "#1e293b" }}>#{v.vendorCode}</div>}
+                          {!v.gstNumber && !v.vendorCode && <span style={{ color: "#374151" }}>—</span>}
                         </div>
                         {/* Status badge */}
                         <div>
-                          <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
+                          <span style={{ fontSize: 13, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
                             background: cfg.bg, color: cfg.color, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot }} />
                             {cfg.label}
@@ -3873,18 +3873,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {/* Actions */}
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button onClick={() => setViewVendor(v)}
-                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                             👁 View
                           </button>
                           {isVP && isPending && (<>
-                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
-                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setApprovedVendors(a => a.filter(x => x.id !== v.id)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
-                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                               ✏️ Edit
                             </button>
                           )}
@@ -3896,7 +3896,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 if (r.success) { setAllVendorsStatus(a => a.filter(x => x.id !== v.id)); showToast("Vendor deleted ✅"); }
                                 else showToast(r.message || "Delete failed", "error");
                               }}
-                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                               🗑️ Delete
                             </button>
                           )}
@@ -3918,7 +3918,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           const statusBadge = (status, type) => {
             const col = status === "Received" ? "#166534" : status === "Pending" ? "#92400e" : "#475569";
             const bg  = status === "Received" ? "#dcfce7"  : status === "Pending" ? "#fef3c7"  : "#f1f5f9";
-            return <span style={{ background: bg, color: col, borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{status || "—"}</span>;
+            return <span style={{ background: bg, color: col, borderRadius: 20, padding: "2px 10px", fontSize: 13, fontWeight: 700 }}>{status || "—"}</span>;
           };
 
           const openCreateProject = async () => {
@@ -4015,10 +4015,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
             finally { setUploading(false); }
           };
 
-          const inpSt = { width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" };
+          const inpSt = { width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" };
           const selSt = { ...inpSt, cursor: "pointer" };
-          const lbl   = (txt) => <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{txt}</label>;
-          const sec   = (txt) => <div style={{ fontSize: 11, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: 1, borderBottom: "2px solid #e2e8f0", paddingBottom: 6, marginBottom: 14, marginTop: 6 }}>{txt}</div>;
+          const lbl   = (txt) => <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{txt}</label>;
+          const sec   = (txt) => <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: 1, borderBottom: "2px solid #e2e8f0", paddingBottom: 6, marginBottom: 14, marginTop: 6 }}>{txt}</div>;
 
           // auto-fill client fields when client is selected from datalist
           const onClientSelect = (name) => {
@@ -4050,20 +4050,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
                 <div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>Project Management</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>
                     {activeProjects.length} active project{activeProjects.length !== 1 ? "s" : ""} · Engineers select from this list when creating entries
                   </div>
                 </div>
                 {!isCeo && (
                   <button onClick={openCreateProject}
-                    style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                     + Add Project
                   </button>
                 )}
               </div>
 
               {activeProjects.length === 0 && (
-                <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8", fontSize: 15 }}>
+                <div style={{ textAlign: "center", padding: "48px 0", color: "#374151", fontSize: 15 }}>
                   No active projects yet. Click <strong>+ Add Project</strong> to get started.
                 </div>
               )}
@@ -4078,21 +4078,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{p.name}</div>
                           {p.eligibleForAccounts && (
-                            <span style={{ background: "#ede9fe", color: "#7c3aed", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 0.3 }}>Accounts ✓</span>
+                            <span style={{ background: "#ede9fe", color: "#7c3aed", borderRadius: 20, padding: "2px 8px", fontSize: 12, fontWeight: 700, letterSpacing: 0.3 }}>Accounts ✓</span>
                           )}
                         </div>
-                        {p.location && <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
+                        {p.location && <div style={{ fontSize: 13, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
-                        {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
+                        {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
+                        {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
                         {(isAdmin || isVP) && (
                           <button onClick={async () => {
                             if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
                             const r = await api.permanentDeleteProject(p.id);
                             if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
                             else showToast(r.message || "Delete failed", "error");
-                          }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                          }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
                         )}
                         {(isAdmin || isVP) && !p.eligibleForAccounts && (
                           <button
@@ -4103,7 +4103,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 showToast("Marked eligible for Accounts ✅");
                               } else showToast(r.message || "Failed", "error");
                             }}
-                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" }}>
+                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>
                             ＋ Add to Accounts
                           </button>
                         )}
@@ -4117,7 +4117,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 showToast("Removed from Accounts module");
                               } else showToast(r.message || "Failed", "error");
                             }}
-                            style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#7c3aed", fontFamily: "inherit" }}>
+                            style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#7c3aed", fontFamily: "inherit" }}>
                             ✓ Added to Accounts
                           </button>
                         )}
@@ -4127,34 +4127,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Client row */}
                     {p.clientName && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Client</div><div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{p.clientName}</div></div>
-                        {p.clientGstNo && <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 12, color: "#374151" }}>{p.clientGstNo}</div></div>}
+                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Client</div><div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{p.clientName}</div></div>
+                        {p.clientGstNo && <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 13, color: "#374151" }}>{p.clientGstNo}</div></div>}
                       </div>
                     )}
 
                     {/* Financial row */}
                     {p.projectValue != null && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 10px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Gross Value</div><div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{fmtINR(p.projectValue)}</div></div>
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 12, color: "#374151" }}>{p.gstPct != null ? `${p.gstPct}%` : "—"}</div></div>
-                        <div><div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>Total Value</div><div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>{fmtINR(p.totalValue)}</div></div>
+                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Gross Value</div><div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{fmtINR(p.projectValue)}</div></div>
+                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 13, color: "#374151" }}>{p.gstPct != null ? `${p.gstPct}%` : "—"}</div></div>
+                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Total Value</div><div style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{fmtINR(p.totalValue)}</div></div>
                       </div>
                     )}
 
                     {/* PO/WO row */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px" }}>
                       <div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
+                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.poWoStatus)}
-                          {p.poWoDocUrl && <a href={`${BACKEND_BASE}${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.poWoDocUrl && <a href={`${BACKEND_BASE}${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
+                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.amendedPoWoStatus)}
-                          {p.amendedPoWoDocUrl && <a href={`${BACKEND_BASE}${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.amendedPoWoDocUrl && <a href={`${BACKEND_BASE}${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                     </div>
@@ -4167,7 +4167,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         { key: "subcontract",   label: "Sub-Contract",   color: "#8b5cf6" },
                         { key: "labour",        label: "Labour",         color: "#3b82f6" },
                         { key: "consultants",   label: "Consultants",    color: "#f59e0b" },
-                        { key: "miscellaneous", label: "Miscellaneous",  color: "#64748b" },
+                        { key: "miscellaneous", label: "Miscellaneous",  color: "#374151" },
                       ];
                       const totalExp = cats.reduce((s, c) => s + (summary[c.key] || 0), 0);
                       const activeCats = cats.filter(c => (summary[c.key] || 0) > 0);
@@ -4177,8 +4177,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                            <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget Utilisation</span>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: barColor }}>{pct.toFixed(1)}%</span>
+                            <span style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget Utilisation</span>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: barColor }}>{pct.toFixed(1)}%</span>
                           </div>
                           <div style={{ background: "#f1f5f9", borderRadius: 100, height: 7, marginBottom: 10 }}>
                             <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: "100%", transition: "width 0.4s ease" }} />
@@ -4189,34 +4189,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             return (
                               <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                                <span style={{ fontSize: 10, color: "#64748b", width: 78, flexShrink: 0 }}>{label}</span>
+                                <span style={{ fontSize: 12, color: "#374151", width: 78, flexShrink: 0 }}>{label}</span>
                                 <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 100, height: 4 }}>
                                   <div style={{ width: `${expPct}%`, background: color, borderRadius: 100, height: "100%" }} />
                                 </div>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "#0f172a", width: 85, textAlign: "right", flexShrink: 0 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", width: 85, textAlign: "right", flexShrink: 0 }}>
                                   ₹{Number(val).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                 </span>
                               </div>
                             );
                           })}
                           {activeCats.length === 0 && (
-                            <div style={{ fontSize: 11, color: "#cbd5e1", textAlign: "center", padding: "4px 0" }}>No PWJ documents raised yet</div>
+                            <div style={{ fontSize: 13, color: "#374151", textAlign: "center", padding: "4px 0" }}>No PWJ documents raised yet</div>
                           )}
                           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1px solid #f1f5f9" }}>
                             <div>
-                              <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total Expenses</div>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>₹{Number(totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                              <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total Expenses</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: "#ef4444" }}>₹{Number(totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                             </div>
                             {budget != null && (
                               <div style={{ textAlign: "center" }}>
-                                <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Budget (80%)</div>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: "#6366f1" }}>₹{Number(budget).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                                <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Budget (80%)</div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: "#6366f1" }}>₹{Number(budget).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                               </div>
                             )}
                             {budget != null && (
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Est. Profit</div>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: (p.quoteValue - totalExp) >= p.quoteValue * 0.2 ? "#10b981" : "#f59e0b" }}>
+                                <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Est. Profit</div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: (p.quoteValue - totalExp) >= p.quoteValue * 0.2 ? "#10b981" : "#f59e0b" }}>
                                   ₹{Number(p.quoteValue - totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                 </div>
                               </div>
@@ -4225,7 +4225,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                       );
                     })()}
-                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
+                    <div style={{ fontSize: 12, color: "#374151", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
                   </div>
                 ))}
               </div>
@@ -4233,23 +4233,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Inactive projects */}
               {inactiveProjects.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", marginBottom: 10 }}>INACTIVE PROJECTS ({inactiveProjects.length})</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>INACTIVE PROJECTS ({inactiveProjects.length})</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 10 }}>
                     {inactiveProjects.map(p => (
                       <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 18px", opacity: 0.6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#64748b", textDecoration: "line-through" }}>{p.name}</div>
-                          {p.location && <div style={{ fontSize: 11, color: "#94a3b8" }}>📍 {p.location}</div>}
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#374151", textDecoration: "line-through" }}>{p.name}</div>
+                          {p.location && <div style={{ fontSize: 13, color: "#374151" }}>📍 {p.location}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
+                          {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
                           {(isAdmin || isVP) && (
                             <button onClick={async () => {
                               if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
                               const r = await api.permanentDeleteProject(p.id);
                               if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
                               else showToast(r.message || "Delete failed", "error");
-                            }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                            }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
                           )}
                         </div>
                       </div>
@@ -4332,7 +4332,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           placeholder="Billing address…" disabled={projectMgmtForm.billingSameAsClient}
                           value={projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress}
                           onChange={e => setF("billingAddress", e.target.value)} />
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#475569", marginTop: 5, cursor: "pointer" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#1e293b", marginTop: 5, cursor: "pointer" }}>
                           <input type="checkbox" checked={projectMgmtForm.billingSameAsClient}
                             onChange={e => {
                               setF("billingSameAsClient", e.target.checked);
@@ -4367,14 +4367,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Quote Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("quoteDocUrl", e.target.files[0], setQuoteDocUploading)} />
                             {quoteDocUploading ? "Uploading…" : projectMgmtForm.quoteDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.quoteDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.quoteDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4402,14 +4402,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Work Order Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
                             {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.poWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4438,14 +4438,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("additionalQuoteDocUrl", e.target.files[0], setAddQuoteDocUploading)} />
                             {addQuoteDocUploading ? "Uploading…" : projectMgmtForm.additionalQuoteDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.additionalQuoteDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.additionalQuoteDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4475,14 +4475,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("additionalWoDocUrl", e.target.files[0], setAddWoDocUploading)} />
                             {addWoDocUploading ? "Uploading…" : projectMgmtForm.additionalWoDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.additionalWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.additionalWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4500,14 +4500,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
                             {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.poWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4527,14 +4527,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 12, color: "#64748b" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("amendedPoWoDocUrl", e.target.files[0], setAmendedPoWoUploading)} />
                             {amendedPoWoUploading ? "Uploading…" : projectMgmtForm.amendedPoWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.amendedPoWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 12, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -4547,7 +4547,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {projectMgmtLoading ? "Saving…" : editingProject ? "💾 Save Changes" : "✅ Create Project"}
                       </button>
                       <button onClick={() => setProjectMgmtModal(false)}
-                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#64748b", fontFamily: "inherit" }}>
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>
                         Cancel
                       </button>
                     </div>
@@ -4651,11 +4651,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const m = line.match(/^\[(.+?)\]\s*(.*)/);
                           return m ? (
                             <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
-                              <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                              <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
                             </div>
                           ) : (
-                            <div key={i} style={{ fontSize: 13, color: "#0f172a" }}>{line}</div>
+                            <div key={i} style={{ fontSize: 14, color: "#0f172a" }}>{line}</div>
                           );
                         })}
                       </div>
@@ -4666,7 +4666,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Edit button inside detail modal for engineer/PM (locked when PROCEED) */}
               {(isEngineer || isProjectManager) && detailRow.raisedBy === (user?.fullName || user?.username) && (
                 detailRow.approvalStatus === "PROCEED" ? (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: 13, color: "#92400e" }}>
                     🔒 This entry has been OH approved and can no longer be edited.
                   </div>
                 ) : (
@@ -4679,7 +4679,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Approve button inside detail modal */}
               {isOH && (
                 detailRow.approvalStatus === "PROCEED"
-                  ? <div style={{ marginTop: 16, padding: "10px 14px", background: "#dcfce7", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>✅ This entry has been approved. No further action required.</div>
+                  ? <div style={{ marginTop: 16, padding: "10px 14px", background: "#dcfce7", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 14, color: "#166534", fontWeight: 600 }}>✅ This entry has been approved. No further action required.</div>
                   : canApprove(detailRow) && (
                     <button style={{ ...s.submitBtn(), marginTop: 20 }}
                       onClick={() => {
@@ -4712,18 +4712,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: "#166534" }}>Already Approved</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>This entry has been approved and cannot be changed.</div>
-                  <button style={{ marginTop: 20, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#475569" }} onClick={() => setApprovalModal(null)}>Close</button>
+                  <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>This entry has been approved and cannot be changed.</div>
+                  <button style={{ marginTop: 20, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }} onClick={() => setApprovalModal(null)}>Close</button>
                 </div>
               ) : (<>
               {/* Current status */}
               <div style={{ background: "#f8fbff", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", gap: 12, alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#64748b" }}>Current:</span>
+                <span style={{ fontSize: 13, color: "#374151" }}>Current:</span>
                 <span style={s.badge(APPROVAL_META[approvalModal.entry.approvalStatus])}>
                   <span style={s.dot(APPROVAL_META[approvalModal.entry.approvalStatus]?.dot)} />
                   {APPROVAL_META[approvalModal.entry.approvalStatus]?.label}
                 </span>
-                <span style={{ fontSize: 12, color: "#94a3b8" }}>→ Change to:</span>
+                <span style={{ fontSize: 13, color: "#374151" }}>→ Change to:</span>
               </div>
 
               <div style={s.formGroup}>
@@ -4739,7 +4739,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>Approved By</label>
-                <div style={{ ...s.input, background: "#f8fafc", color: "#64748b", cursor: "default", display: "flex", alignItems: "center" }}>OH</div>
+                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>OH</div>
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>
@@ -4776,22 +4776,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Pending OH Approval</div>
-                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingList.length} entr{pendingList.length !== 1 ? "ies" : "y"} awaiting action · sorted by latest</div>
+                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>{pendingList.length} entr{pendingList.length !== 1 ? "ies" : "y"} awaiting action · sorted by latest</div>
                 </div>
-                <button onClick={() => setPendingModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <button onClick={() => setPendingModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#374151", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
               {/* Search */}
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8", pointerEvents: "none" }}>🔍</span>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#374151", pointerEvents: "none" }}>🔍</span>
                 <input
                   autoFocus
                   placeholder="Search by material, project, raised by…"
                   value={pendingSearch}
                   onChange={e => setPendingSearch(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
                 />
                 {pendingSearch && (
-                  <button onClick={() => setPendingSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                  <button onClick={() => setPendingSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#374151", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
                 )}
               </div>
             </div>
@@ -4809,7 +4809,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ) : sorted;
 
                 if (filtered.length === 0) return (
-                  <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8", fontSize: 15 }}>
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "#374151", fontSize: 15 }}>
                     {q ? `No results for "${pendingSearch}"` : "🎉 No pending approvals!"}
                   </div>
                 );
@@ -4832,16 +4832,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div key={row.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, padding: "18px 20px", marginBottom: 12 }}>
                       {/* Top row */}
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-                        <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>#{idx + 1}</span>
+                        <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>#{idx + 1}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, fontSize: 14.5, color: "#0f172a", marginBottom: 3 }}>{row.materialRequired}</div>
-                          <div style={{ fontSize: 12.5, color: "#64748b" }}>
+                          <div style={{ fontSize: 13.5, color: "#374151" }}>
                             {row.projectName}
                             {row.boqNo && <span> · BOQ: {row.boqNo}</span>}
                             {row.vendor && <span> · {row.vendor}</span>}
                           </div>
-                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
-                            Raised by <strong style={{ color: "#475569" }}>{row.raisedBy}</strong> · #{row.id}
+                          <div style={{ fontSize: 13, color: "#374151", marginTop: 3 }}>
+                            Raised by <strong style={{ color: "#1e293b" }}>{row.raisedBy}</strong> · #{row.id}
                             {relTime && <span> · {relTime}</span>}
                           </div>
                         </div>
@@ -4859,7 +4859,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           { val: "NOT_APPROVED", label: "❌ Not Approved",  bg: action.status === "NOT_APPROVED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : "#fff1f2", color: action.status === "NOT_APPROVED" ? "#fff" : "#991b1b", border: action.status === "NOT_APPROVED" ? "none" : "1.5px solid #fecdd3" },
                         ].map(opt => (
                           <button key={opt.val} onClick={() => setAction({ status: opt.val })}
-                            style={{ flex: 1, padding: "8px 6px", border: opt.border, borderRadius: 9, background: opt.bg, color: opt.color, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            style={{ flex: 1, padding: "8px 6px", border: opt.border, borderRadius: 9, background: opt.bg, color: opt.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                             {opt.label}
                           </button>
                         ))}
@@ -4872,7 +4872,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           placeholder="Remarks required — state reason for Hold / Not Approved…"
                           value={action.comment || ""}
                           onChange={e => setAction({ comment: e.target.value })}
-                          style={{ width: "100%", border: `1.5px solid ${!action.comment?.trim() ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 9, padding: "8px 12px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
+                          style={{ width: "100%", border: `1.5px solid ${!action.comment?.trim() ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 9, padding: "8px 12px", fontSize: 13.5, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
                         />
                       )}
 
@@ -4880,7 +4880,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <button
                         onClick={() => submitInlineOH(row)}
                         disabled={action.saving}
-                        style={{ width: "100%", padding: "10px 16px", border: "none", borderRadius: 9, cursor: action.saving ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13,
+                        style={{ width: "100%", padding: "10px 16px", border: "none", borderRadius: 9, cursor: action.saving ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14,
                           background: action.status === "PROCEED" ? "linear-gradient(135deg,#166534,#16a34a)" : action.status === "HOLD" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#991b1b,#ef4444)",
                           color: "#fff", opacity: action.saving ? 0.7 : 1 }}>
                         {action.saving ? "Saving…" : `Confirm — ${action.status === "PROCEED" ? "Proceed" : action.status === "HOLD" ? "Hold" : "Not Approved"}`}
@@ -4924,7 +4924,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))} />
                   )}
                   {managedProjects.filter(p => p.active).length === 0 && (
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
+                    <div style={{ fontSize: 13, color: "#374151", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
                   )}
                 </div>
                 {/* 2. BOQ No. */}
@@ -4970,7 +4970,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <a href={BACKEND_BASE + url} target="_blank" rel="noreferrer"
                                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 90, width: 90, borderRadius: 8, border: "1.5px solid #e2eaf5", background: "#fef2f2", gap: 4, textDecoration: "none" }}>
                                 <span style={{ fontSize: 28 }}>📄</span>
-                                <span style={{ fontSize: 9, color: "#ef4444", fontWeight: 700 }}>PDF</span>
+                                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700 }}>PDF</span>
                               </a>
                             ) : (
                               <img src={BACKEND_BASE + url} alt={`preview-${i + 1}`}
@@ -4981,7 +4981,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const updated = parseImageRefs(createForm.imageReference).filter((_, idx) => idx !== i);
                                 setCreateForm(f => ({ ...f, imageReference: updated.length ? JSON.stringify(updated) : "" }));
                               }}
-                              style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                              style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                               ✕
                             </button>
                           </div>
@@ -5042,13 +5042,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const sec = (key) => ({
           wrap: { border: "1px solid #dbe6f3", borderRadius: 12, marginBottom: 14, overflow: "hidden" },
           head: { background: "#eef5fb", padding: "11px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" },
-          headL: { display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "#1a6ab1" },
+          headL: { display: "flex", alignItems: "center", gap: 7, fontSize: 14, fontWeight: 700, color: "#1a6ab1" },
           body: vendorSec[key] ? { padding: "16px 18px" } : { display: "none" },
         });
         const grid = (cols) => ({ display: "grid", gridTemplateColumns: cols, gap: 10, marginBottom: 10 });
         const fld = { display: "flex", flexDirection: "column", gap: 4 };
-        const lbl = { fontSize: 11.5, fontWeight: 600, color: "#64748b" };
-        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
+        const lbl = { fontSize: 13.5, fontWeight: 600, color: "#374151" };
+        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
         const toggle = (key) => setVendorSec(s => ({ ...s, [key]: !s[key] }));
         const minusBtn = (key) => (
           <button type="button" onClick={() => toggle(key)} style={{ background: "#1a6ab1", border: "none", color: "#fff", width: 22, height: 22, borderRadius: "50%", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -5190,7 +5190,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <span style={{ position: "absolute", left: vf.sameAddressForBillingShipping ? 20 : 3, top: 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: ".2s" }} />
                             </span>
                           </label>
-                          <span style={{ fontSize: 13, color: "#475569" }}>Same Address For Billing &amp; Shipping</span>
+                          <span style={{ fontSize: 14, color: "#1e293b" }}>Same Address For Billing &amp; Shipping</span>
                         </div>
                       </div>
                     </div>
@@ -5215,7 +5215,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                       ))}
                       <button type="button" onClick={() => setVendorForm(f => ({ ...f, contacts: [...f.contacts, { personName: "", role: "", contactNumber: "", email: "" }] }))}
-                        style={{ background: "#1a6ab1", border: "none", borderRadius: 8, padding: "7px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                        style={{ background: "#1a6ab1", border: "none", borderRadius: 8, padding: "7px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                         + Add Contact
                       </button>
                     </div>
@@ -5231,23 +5231,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={st.body}>
                       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                         <div style={{ flexShrink: 0, width: 120 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1a6ab1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>📄 Document Reference</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a6ab1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>📄 Document Reference</div>
                           <label style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 120, borderRadius: 10, cursor: "pointer", border: vendorDocPreview ? "2px solid #93c5fd" : "2px dashed #93c5fd", background: vendorDocPreview ? "#f0f7ff" : "#f8fbff", overflow: "hidden", position: "relative" }}>
                             <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleVendorDoc} />
                             {vendorDocPreview ? <img src={vendorDocPreview} alt="doc" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 32, opacity: 0.35 }}>📎</span>}
                             {vendorOcrLoading && (
                               <div style={{ position: "absolute", inset: 0, background: "rgba(15,76,129,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                <div style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>Reading…</div>
+                                <div style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>Reading…</div>
                                 <div style={{ width: 72, height: 5, background: "rgba(255,255,255,.3)", borderRadius: 4, overflow: "hidden" }}>
                                   <div style={{ height: "100%", width: `${vendorOcrProgress}%`, background: "#7dd3fc", borderRadius: 4, transition: "width .3s" }} />
                                 </div>
-                                <div style={{ fontSize: 10, color: "#bae6fd" }}>{vendorOcrProgress}%</div>
+                                <div style={{ fontSize: 12, color: "#bae6fd" }}>{vendorOcrProgress}%</div>
                               </div>
                             )}
                           </label>
-                          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, textAlign: "center", lineHeight: 1.4 }}>Click to upload<br/>passbook / doc</div>
+                          <div style={{ fontSize: 12, color: "#374151", marginTop: 4, textAlign: "center", lineHeight: 1.4 }}>Click to upload<br/>passbook / doc</div>
                           {vendorDocFile && !vendorOcrLoading && (
-                            <button style={{ marginTop: 6, width: "100%", background: "#e0f2fe", border: "1px solid #93c5fd", borderRadius: 6, padding: "4px 0", fontSize: 10, fontWeight: 700, color: "#0369a1", cursor: "pointer", fontFamily: "inherit" }} onClick={() => runVendorOcr(vendorDocFile)}>🔄 Re-process</button>
+                            <button style={{ marginTop: 6, width: "100%", background: "#e0f2fe", border: "1px solid #93c5fd", borderRadius: 6, padding: "4px 0", fontSize: 12, fontWeight: 700, color: "#0369a1", cursor: "pointer", fontFamily: "inherit" }} onClick={() => runVendorOcr(vendorDocFile)}>🔄 Re-process</button>
                           )}
                         </div>
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -5257,7 +5257,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={fld}><label style={lbl}>IFSC Code</label><input style={inp} placeholder="IFSC Code" value={vf.ifscCode} onChange={e => setF("ifscCode", e.target.value)} /></div>
                           </div>
                           <div style={fld}>
-                            <label style={lbl}>Combined Bank Details <span style={{ color: "#94a3b8", fontWeight: 400 }}>(auto-filled)</span></label>
+                            <label style={lbl}>Combined Bank Details <span style={{ color: "#374151", fontWeight: 400 }}>(auto-filled)</span></label>
                             <textarea style={{ ...inp, minHeight: 56, resize: "vertical" }} placeholder="Bank Name | A/C No: … | IFSC: …" value={vf.bankDetails} onChange={e => setF("bankDetails", e.target.value)} />
                           </div>
                         </div>
@@ -5287,7 +5287,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           style={{ ...inp, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
                         />
                       </div>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer", marginTop: 4 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#1e293b", cursor: "pointer", marginTop: 4 }}>
                         <input type="checkbox" checked={vf.vendorPaysReturnShipping} onChange={e => setF("vendorPaysReturnShipping", e.target.checked)} />
                         Yes, Vendor Pays For Return Shipping Charges
                       </label>
@@ -5340,12 +5340,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <button key={t.key} onClick={() => setVendorStatusTab(t.key)}
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                        padding: "8px 16px", fontSize: 13, fontWeight: active ? 700 : 500,
+                        padding: "8px 16px", fontSize: 14, fontWeight: active ? 700 : 500,
                         color: active ? "#1a6ab1" : "#64748b",
                         borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent",
                         marginBottom: -2 }}>
                       {t.label}
-                      <span style={{ marginLeft: 6, fontSize: 11, background: active ? "#dbeafe" : "#f1f5f9",
+                      <span style={{ marginLeft: 6, fontSize: 13, background: active ? "#dbeafe" : "#f1f5f9",
                         color: active ? "#1d4ed8" : "#64748b", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
                         {count}
                       </span>
@@ -5356,9 +5356,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               <div style={{ ...s.mBody, overflowY: "auto", flex: 1 }}>
                 {vpLoading ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Loading…</div>
+                  <div style={{ textAlign: "center", padding: 40, color: "#374151" }}>Loading…</div>
                 ) : displayed.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>No vendors in this category</div>
+                  <div style={{ textAlign: "center", padding: 40, color: "#374151" }}>No vendors in this category</div>
                 ) : displayed.map(v => {
                   const cfg = STATUS_CFG[v.status] || STATUS_CFG.PENDING_APPROVAL;
                   const isPending = v.status === "PENDING_APPROVAL";
@@ -5368,24 +5368,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                             <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>{v.name}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "2px 10px",
+                            <span style={{ fontSize: 13, fontWeight: 700, borderRadius: 20, padding: "2px 10px",
                               background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", gap: 4 }}>
                               <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
                               {cfg.label}
                             </span>
                           </div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                          <div style={{ fontSize: 13, color: "#374151" }}>
                             {v.category && <span style={{ marginRight: 12 }}>📦 {v.category}</span>}
                             {v.email && <span style={{ marginRight: 12 }}>✉️ {v.email}</span>}
                             {v.phoneNumber && <span>📞 {v.phoneNumber}</span>}
                           </div>
-                          {v.bankDetails && <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>🏦 {v.bankDetails}</div>}
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Submitted: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
+                          {v.bankDetails && <div style={{ fontSize: 13, color: "#1e293b", marginTop: 4 }}>🏦 {v.bankDetails}</div>}
+                          <div style={{ fontSize: 13, color: "#374151", marginTop: 4 }}>Submitted: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
                         </div>
                         {isVP && isPending && (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 16 }}>
                             <button
-                              style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                              style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => {
                                 const r = await api.approveVendor(v.id);
                                 if (r.success) {
@@ -5398,7 +5398,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               ✅ Approve
                             </button>
                             <button
-                              style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                              style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => {
                                 const r = await api.rejectVendor(v.id);
                                 if (r.success) {
@@ -5437,7 +5437,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Engineer's reference info for procurement */}
               {assignModal.materialRequired && (
                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
+                  <div style={{ fontSize: 12, color: "#1e293b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
                   <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
                 </div>
               )}
@@ -5449,7 +5449,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       onClick={() => setAssignForm(f => ({ ...f, pwjType: f.pwjType === val ? "" : val }))}
                       style={{ flex: 1, border: `2px solid ${assignForm.pwjType === val ? col : "#e2e8f0"}`, borderRadius: 10, padding: "10px 6px", cursor: "pointer", background: assignForm.pwjType === val ? col : "#fff", transition: "all .15s", textAlign: "center" }}>
                       <div style={{ fontWeight: 800, fontSize: 15, color: assignForm.pwjType === val ? "#fff" : "#1e293b" }}>{val}</div>
-                      <div style={{ fontSize: 10, color: assignForm.pwjType === val ? "rgba(255,255,255,0.85)" : "#475569", marginTop: 2 }}>{desc}</div>
+                      <div style={{ fontSize: 12, color: assignForm.pwjType === val ? "rgba(255,255,255,0.85)" : "#475569", marginTop: 2 }}>{desc}</div>
                     </button>
                   ))}
                 </div>
@@ -5487,7 +5487,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (
                         <div style={{ position: "absolute", top: "100%", left: 0, right: assignForm.vendors.length > 1 ? 46 : 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
                           {filtered.length === 0 ? (
-                            <div style={{ padding: "12px 14px", fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
+                            <div style={{ padding: "12px 14px", fontSize: 13, color: "#374151", textAlign: "center" }}>
                               {approvedVendors.length === 0 ? "No approved vendors. Approve vendors from the Vendors tab first." : "No vendors match your search."}
                             </div>
                           ) : filtered.map(v => (
@@ -5497,25 +5497,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const ns = [...assignVendorSearches]; ns[vi] = v.name; setAssignVendorSearches(ns);
                                 const nd = [...showAssignVendorDrops]; nd[vi] = false; setShowAssignVendorDrops(nd);
                               }}
-                              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}
+                              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 14 }}
                               onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
                               onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                             >
                               <span style={{ fontWeight: 600, color: "#0f172a" }}>{v.name}</span>
-                              {v.category && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 8 }}>{v.category}</span>}
+                              {v.category && <span style={{ fontSize: 13, color: "#374151", marginLeft: 8 }}>{v.category}</span>}
                             </div>
                           ))}
                         </div>
                       );
                     })()}
-                    {vendor && <div style={{ marginTop: 4, fontSize: 12, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
+                    {vendor && <div style={{ marginTop: 4, fontSize: 13, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
                   </div>
                 ))}
                 <button type="button" onClick={() => {
                   setAssignForm(f => ({ ...f, vendors: [...f.vendors, ""] }));
                   setAssignVendorSearches(s => [...s, ""]);
                   setShowAssignVendorDrops(d => [...d, false]);
-                }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
                   + Add Vendor
                 </button>
               </div>
@@ -5523,7 +5523,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button style={{ ...s.submitBtn(), flex: 1 }} onClick={submitAssign} disabled={assignLoading}>
                   {assignLoading ? "Saving…" : "💾 Save"}
                 </button>
-                <button style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#475569" }}
+                <button style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }}
                   onClick={() => setAssignModal(null)}>
                   Cancel
                 </button>
@@ -5576,16 +5576,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   {/* Top bar */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ background: typeBg, color: typeColor, borderRadius: 8, padding: "4px 14px", fontWeight: 800, fontSize: 13 }}>{e.pwjType}</span>
+                      <span style={{ background: typeBg, color: typeColor, borderRadius: 8, padding: "4px 14px", fontWeight: 800, fontSize: 14 }}>{e.pwjType}</span>
                       <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{typeName}</span>
-                      <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700 }}>{statusLabel}</span>
+                      <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700 }}>{statusLabel}</span>
                       {isPartiallyIssued && (
-                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: 11, fontWeight: 700, border: "1px solid #fde68a" }}>
+                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700, border: "1px solid #fde68a" }}>
                           ⚠️ Partially Issued
                         </span>
                       )}
                       {isMulti && (
-                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "1px solid #bfdbfe" }}>
+                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 8, padding: "3px 10px", fontSize: 13, fontWeight: 700, border: "1px solid #bfdbfe" }}>
                           📄 {multiCount} Vendors
                         </span>
                       )}
@@ -5596,9 +5596,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 10, padding: "4px 10px", border: "1px solid #e2e8f0" }}>
                           <button onClick={() => setDocViewIndex(i => Math.max(0, i - 1))} disabled={safeIdx === 0}
                             style={{ background: "none", border: "none", cursor: safeIdx === 0 ? "default" : "pointer", color: safeIdx === 0 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>‹</button>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 70, textAlign: "center" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#374151", minWidth: 70, textAlign: "center" }}>
                             {multiDocs[safeIdx].vendor || `PO ${safeIdx + 1}`}<br/>
-                            <span style={{ fontWeight: 500, color: "#94a3b8" }}>{safeIdx + 1} / {multiCount}</span><br/>
+                            <span style={{ fontWeight: 500, color: "#374151" }}>{safeIdx + 1} / {multiCount}</span><br/>
                             {multiDocs.map((doc, di) => {
                               const sub = doc.docStatus || "DRAFT";
                               const st = sub === "DRAFT" ? "DRAFT"
@@ -5607,7 +5607,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               const c = st === "VP_APPROVED" ? "#16a34a" : st === "PENDING_VP_APPROVAL" ? "#d97706" : "#94a3b8";
                               const lbl = st === "VP_APPROVED" ? "✅" : st === "PENDING_VP_APPROVAL" ? "⏳" : "—";
                               return di === safeIdx
-                                ? <span key={di} style={{ fontSize: 11, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : "Draft"}</span>
+                                ? <span key={di} style={{ fontSize: 13, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : "Draft"}</span>
                                 : null;
                             })}
                           </span>
@@ -5615,7 +5615,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             style={{ background: "none", border: "none", cursor: safeIdx === multiCount - 1 ? "default" : "pointer", color: safeIdx === multiCount - 1 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>›</button>
                         </div>
                       )}
-                      <button onClick={() => { setDocModal(null); setDocEditMode(false); setDocViewIndex(0); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+                      <button onClick={() => { setDocModal(null); setDocEditMode(false); setDocViewIndex(0); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#374151" }}>✕</button>
                     </div>
                   </div>
 
@@ -5638,9 +5638,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     const docNum  = docData.docNumber || (isMulti ? multiDocs[safeIdx]?.docNumber : null) || e.docNumber || autoDocNumber(e);
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
                     const terms   = e.pwjType === "PO" ? PO_TERMS : e.pwjType === "WO" ? WO_TERMS : JO_TERMS;
-                    const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
-                    const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 12 };
-                    const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 11, textAlign: "left" };
+                    const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
+                    const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 13 };
+                    const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 13, textAlign: "left" };
                     const fmtCcy  = (n) => `₹ ${Number(n || 0).toFixed(2)}`;
                     const fmtTotal = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const setItem = (i, field, val) => {
@@ -5676,9 +5676,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 19, color: "#111", marginBottom: 6 }}>{typeName}</div>
                               <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 14, alignItems: "center" }}>
-                                <span style={{ color: "#555" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
-                                <span style={{ color: "#555" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docDate}</strong></span>
-                                <span style={{ color: "#555" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{e.projectName}</strong></span>
+                                <span style={{ color: "#111" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                                <span style={{ color: "#111" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docDate}</strong></span>
+                                <span style={{ color: "#111" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{e.projectName}</strong></span>
                               </div>
                             </div>
                           </div>
@@ -5796,15 +5796,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <tr>
                                   <td colSpan={7} style={{ padding: "4px 10px" }}>
                                     <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", vendor: "" }] }))}
-                                      style={{ fontSize: 13, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
+                                      style={{ fontSize: 14, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
                                 </tr>
                               )}
                               {/* Totals */}
                               <tr>
                                 <td colSpan={4} rowSpan={6} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
-                                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Amount in words</div>
-                                  <div style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
+                                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Amount in words</div>
+                                  <div style={{ fontSize: 14, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
                                 </td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
                                 <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
@@ -5818,17 +5818,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         ? <select value={docData[field] || "0"} onChange={ev => {
                                             setField(field, ev.target.value);
                                             if (field === "cgstPct") setField("sgstPct", ev.target.value);
-                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 13, padding: "1px 4px" }}>
+                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 14, padding: "1px 4px" }}>
                                             {["0","2.5","5","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
-                                        : <span style={{ color: "#555" }}>({docData[field] || 0}%)</span>}
+                                        : <span style={{ color: "#111" }}>({docData[field] || 0}%)</span>}
                                     </div>
                                   </td>
                                   <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(val)}</td>
                                 </tr>
                               ))}
                               <tr>
-                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 11 }}>(Rounded off)</span></td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 13 }}>(Rounded off)</span></td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtTotal(totals.total)}</td>
                               </tr>
                             </tbody>
@@ -5864,7 +5864,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
                             {terms.map((t, i) => (
-                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 13 }}>
+                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 14 }}>
                                 <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
                                 <span style={{ color: "#333" }}>{t}</span>
                               </div>
@@ -5875,14 +5875,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
-                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 13 }}>
+                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 14 }}>
                                 <span style={{ fontWeight: 600, minWidth: 70 }}>{lbl} -</span>
                                 {docEditMode
                                   ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1 }} placeholder={lbl} />
                                   : <span>{docData[key] || ""}</span>}
                               </div>
                             ))}
-                            <div style={{ marginTop: 10, fontSize: 13, paddingLeft: 4 }}>
+                            <div style={{ marginTop: 10, fontSize: 14, paddingLeft: 4 }}>
                               <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
                               <div style={{ paddingLeft: 12 }}>- site engineer signed copy along with measurement sheet and DC copy</div>
                               <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
@@ -5891,7 +5891,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                           {/* VP Comments banner */}
                           {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
-                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 13 }}>
+                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 14 }}>
                               <div style={{ fontWeight: 700, color: e.docStatus === "REVISION_REQUESTED" ? "#c2410c" : e.docStatus === "VP_REJECTED" ? "#be123c" : "#166534", marginBottom: 4 }}>
                                 {e.docStatus === "REVISION_REQUESTED" ? "⚠️ VP Revision Request" : e.docStatus === "VP_REJECTED" ? "❌ VP Comments" : "✅ VP Comments"}
                               </div>
@@ -5904,18 +5904,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ fontWeight: 600, marginBottom: 24, whiteSpace: "nowrap" }}>For <strong>{COMPANY_INFO.name}</strong></div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
-                                <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>Approved By</div>
+                                <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Approved By</div>
                                 {e.docStatus === "VP_APPROVED"
                                   ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 13 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
                               </div>
                               <div>
-                                <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>Procurement Executive</div>
+                                <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Procurement Executive</div>
                                 {e.docStatus === "VP_APPROVED"
                                   ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 13 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
                               </div>
                             </div>
                           </div>
@@ -5940,7 +5940,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", gap: 24, flexWrap: "wrap" }}>
                                 {/* Delivered Date */}
                                 <div style={{ flex: "0 0 auto" }}>
-                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                                     📅 Delivered Date
                                   </div>
                                   {canEdit ? (
@@ -5951,9 +5951,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                           const today = new Date().toISOString().split("T")[0];
                                           setEngDeliveredDate(ev.target.value > today ? today : ev.target.value);
                                         }}
-                                        style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
+                                        style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
                                       <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
-                                        style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                         {engDateSaving ? "Saving…" : "💾 Save"}
                                       </button>
                                     </div>
@@ -5965,16 +5965,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 </div>
                                 {/* Remarks */}
                                 <div style={{ flex: 1, minWidth: 220 }}>
-                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                                     📝 Remarks
                                   </div>
                                   {canEdit ? (
                                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                                       <textarea value={engRemarks} onChange={ev => setEngRemarks(ev.target.value)}
                                         placeholder="Add remarks…" rows={2}
-                                        style={{ flex: 1, border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#eff6ff", resize: "vertical" }} />
+                                        style={{ flex: 1, border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#eff6ff", resize: "vertical" }} />
                                       <button onClick={saveEngRemarks} disabled={engRemarksSaving}
-                                        style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                         {engRemarksSaving ? "Saving…" : "💾 Save"}
                                       </button>
                                     </div>
@@ -6007,7 +6007,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       const logEntries = (e.siteRemarks || "").split("\n").filter(Boolean);
                       return (
                         <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                             🏗️ Remarks for Site Team
                           </div>
                           {logEntries.length > 0 && (
@@ -6016,11 +6016,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const m = line.match(/^\[(.+?)\]\s*(.*)/);
                                 return m ? (
                                   <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
-                                    <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                                    <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
                                   </div>
                                 ) : (
-                                  <div key={i} style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>{line}</div>
+                                  <div key={i} style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{line}</div>
                                 );
                               })}
                             </div>
@@ -6029,15 +6029,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                               <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
                                 placeholder="Add a new remark for the site team…" rows={2}
-                                style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
+                                style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
                               <button onClick={saveSiteRemarks} disabled={siteRemarksSaving || !siteRemarks.trim()}
-                                style={{ background: siteRemarks.trim() ? "linear-gradient(135deg,#7e22ce,#a855f7)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: siteRemarks.trim() ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: siteRemarks.trim() ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                style={{ background: siteRemarks.trim() ? "linear-gradient(135deg,#7e22ce,#a855f7)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: siteRemarks.trim() ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: siteRemarks.trim() ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                 {siteRemarksSaving ? "Saving…" : "💾 Add"}
                               </button>
                             </div>
                           ) : (
                             !logEntries.length && (
-                              <div style={{ fontSize: 14, color: "#94a3b8" }}>No remarks for site team yet.</div>
+                              <div style={{ fontSize: 14, color: "#374151" }}>No remarks for site team yet.</div>
                             )
                           )}
                         </div>
@@ -6047,16 +6047,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Revision notice + actions for Procurement */}
                     {(isAdmin || isProcurement) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
                       <div style={{ margin: "0 24px 0", padding: "14px 18px", background: "#fff7ed", border: "1.5px solid #fed7aa", borderRadius: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                           ⚠️ VP Revision Request
                         </div>
-                        <div style={{ fontSize: 13, color: "#0f172a", lineHeight: 1.6, marginBottom: 12 }}>{e.docComments}</div>
-                        <div style={{ fontSize: 12, color: "#78350f" }}>
+                        <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.6, marginBottom: 12 }}>{e.docComments}</div>
+                        <div style={{ fontSize: 13, color: "#78350f" }}>
                           Edit the entry as needed, then resubmit for VP approval.
                         </div>
                         <button
                           onClick={() => { setDocModal(null); openAssign(e); }}
-                          style={{ marginTop: 10, background: "linear-gradient(135deg,#c2410c,#f97316)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ marginTop: 10, background: "linear-gradient(135deg,#c2410c,#f97316)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                           ✏️ Edit Vendor / PWJ Type
                         </button>
                       </div>
@@ -6072,7 +6072,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             placeholder="Comments (optional) — pricing concerns, revision needed…"
                             value={vpCommentMap[commentKey] || ""}
                             onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
-                            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
+                            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
                           />
                           <div style={{ display: "flex", gap: 10 }}>
                             <button onClick={() => { (isMulti ? handleSubDocApprove(e.id, safeIdx) : handleDocApprove(e.id)); setDocModal(null); }}
@@ -6093,7 +6093,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
                         isProcurement && e.pwjIssued ? (
                           <button disabled title="PWJ issued — editing locked"
-                            style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#94a3b8", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
+                            style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
                             🔒 Locked
                           </button>
                         ) : (
@@ -6109,7 +6109,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {docSaving ? "Saving…" : "💾 Save"}
                         </button>
                         <button onClick={() => setDocEditMode(false)}
-                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "#64748b", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                           Cancel
                         </button>
                       </>)}
@@ -6159,7 +6159,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               showToast(r.message || "Revoke failed", "error");
                             }
                           }}
-                          style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                          style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
                           ↩ Revoke Approval
                         </button>
                       )}
@@ -6171,7 +6171,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </button>
                       )}
                       <button onClick={() => { setDocModal(null); setEngDocFile(null); }}
-                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#475569" }}>
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }}>
                         Close
                       </button>
                     </div>
@@ -6192,28 +6192,28 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Document Approvals</div>
-                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending · sorted by latest request</div>
+                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending · sorted by latest request</div>
                 </div>
-                <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#64748b", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#374151", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
               {/* Search */}
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8", pointerEvents: "none" }}>🔍</span>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#374151", pointerEvents: "none" }}>🔍</span>
                 <input
                   autoFocus
                   placeholder="Search by project, doc number, vendor, material…"
                   value={docApprovalSearch}
                   onChange={e => setDocApprovalSearch(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 12px 9px 34px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#0f172a", boxSizing: "border-box" }}
                 />
                 {docApprovalSearch && (
-                  <button onClick={() => setDocApprovalSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                  <button onClick={() => setDocApprovalSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#374151", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
                 )}
               </div>
             </div>
             <div style={{ overflowY: "auto", flex: 1, padding: "16px 28px" }}>
               {pendingDocsLoading ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Loading…</div>
+                <div style={{ textAlign: "center", padding: 60, color: "#374151" }}>Loading…</div>
               ) : (() => {
                 const q = docApprovalSearch.trim().toLowerCase();
                 const sorted = [...pendingDocs].sort((a, b) => new Date(b.updatedAt || b.timestamp || 0) - new Date(a.updatedAt || a.timestamp || 0));
@@ -6225,7 +6225,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   (d.raisedBy || "").toLowerCase().includes(q)
                 ) : sorted;
                 if (filtered.length === 0) return (
-                  <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 15 }}>
+                  <div style={{ textAlign: "center", padding: 60, color: "#374151", fontSize: 15 }}>
                     {q ? `No results for "${docApprovalSearch}"` : "No documents pending approval"}
                   </div>
                 );
@@ -6252,27 +6252,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <div key={doc.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, marginBottom: 14, overflow: "hidden" }}>
                       <div style={{ background: "#f8fafc", padding: "14px 22px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
-                        <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>{doc.pwjType}</span>
+                        <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                        <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 13 }}>{doc.pwjType}</span>
                         <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{doc.docNumber}</span>
-                        <span style={{ fontSize: 12, color: "#64748b" }}>· {doc.projectName}</span>
-                        {relTime && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2 }}>· {relTime}</span>}
-                        <span style={{ marginLeft: "auto", background: "#eff6ff", color: "#1d4ed8", borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+                        <span style={{ fontSize: 13, color: "#374151" }}>· {doc.projectName}</span>
+                        {relTime && <span style={{ fontSize: 13, color: "#374151", marginLeft: 2 }}>· {relTime}</span>}
+                        <span style={{ marginLeft: "auto", background: "#eff6ff", color: "#1d4ed8", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>
                           {pendingSubDocs.length}/{multiDocs.length} vendor POs pending
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, color: "#475569", padding: "8px 22px", borderBottom: "1px solid #f1f5f9" }}>{doc.materialRequired}</div>
+                      <div style={{ fontSize: 13, color: "#1e293b", padding: "8px 22px", borderBottom: "1px solid #f1f5f9" }}>{doc.materialRequired}</div>
                       {pendingSubDocs.map(subDoc => {
                         const commentKey = `${doc.id}_${subDoc.idx}`;
                         return (
                           <div key={subDoc.idx} style={{ padding: "14px 22px", borderBottom: "1px solid #f8fafc" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                               <div>
-                                <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
-                                <span style={{ fontSize: 11, color: "#f59e0b", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
+                                <span style={{ fontSize: 13, color: "#f59e0b", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
                               </div>
                               <button onClick={() => { openDocModal(doc); setDocViewIndex(subDoc.idx); }}
-                                style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>
+                                style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1e293b", fontFamily: "inherit" }}>
                                 👁 Preview
                               </button>
                             </div>
@@ -6281,11 +6281,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               placeholder="Comments (optional) — pricing concerns, revision needed…"
                               value={vpCommentMap[commentKey] || ""}
                               onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
-                              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
                             />
                             <div style={{ display: "flex", gap: 8 }}>
-                              <button onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✅ Approve</button>
-                              <button onClick={() => handleSubDocReject(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>❌ Not Approved</button>
+                              <button onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✅ Approve</button>
+                              <button onClick={() => handleSubDocReject(doc.id, subDoc.idx)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>❌ Not Approved</button>
                             </div>
                           </div>
                         );
@@ -6299,35 +6299,35 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
-                          <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>{doc.pwjType}</span>
+                          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                          <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 13 }}>{doc.pwjType}</span>
                           <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{doc.docNumber}</span>
-                          <span style={{ fontSize: 12, color: "#64748b" }}>· {typeName}</span>
-                          {relTime && <span style={{ fontSize: 11, color: "#94a3b8" }}>· {relTime}</span>}
+                          <span style={{ fontSize: 13, color: "#374151" }}>· {typeName}</span>
+                          {relTime && <span style={{ fontSize: 13, color: "#374151" }}>· {relTime}</span>}
                         </div>
-                        <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600, marginBottom: 2 }}>{doc.materialRequired}</div>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>{doc.projectName} · Vendor: <strong>{doc.vendor}</strong></div>
-                        {doc.quantity && <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Qty: {doc.quantity} {doc.unit} · Raised by: {doc.raisedBy}</div>}
+                        <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 600, marginBottom: 2 }}>{doc.materialRequired}</div>
+                        <div style={{ fontSize: 13, color: "#374151" }}>{doc.projectName} · Vendor: <strong>{doc.vendor}</strong></div>
+                        {doc.quantity && <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>Qty: {doc.quantity} {doc.unit} · Raised by: {doc.raisedBy}</div>}
                       </div>
-                      <button onClick={() => openDocModal(doc)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "inherit", marginLeft: 16, flexShrink: 0 }}>
+                      <button onClick={() => openDocModal(doc)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1e293b", fontFamily: "inherit", marginLeft: 16, flexShrink: 0 }}>
                         👁 Preview
                       </button>
                     </div>
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".04em" }}>Comments / Notes (optional)</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".04em" }}>Comments / Notes (optional)</div>
                       <textarea
                         rows={2}
                         placeholder="Add comments for Procurement — e.g. pricing concerns, revision needed, approved as-is…"
                         value={vpCommentMap[doc.id] || ""}
                         onChange={ev => setVpCommentMap(m => ({ ...m, [doc.id]: ev.target.value }))}
-                        style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box" }}
+                        style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box" }}
                       />
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => handleDocApprove(doc.id)} style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <button onClick={() => handleDocApprove(doc.id)} style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                         ✅ Approve
                       </button>
-                      <button onClick={() => handleDocReject(doc.id)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <button onClick={() => handleDocReject(doc.id)} style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 8, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                         ❌ Not Approved
                       </button>
                     </div>
@@ -6349,7 +6349,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)", padding: "24px 32px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Manage Users</div>
-                <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{allUsers.length} team member{allUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
+                <div style={{ fontSize: 14, color: "#374151", marginTop: 3 }}>{allUsers.length} team member{allUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
               </div>
               <button onClick={() => setUserMgmtModal(false)}
                 style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 36, height: 36, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>×</button>
@@ -6357,20 +6357,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
             {/* ── Add user form ── */}
             <div style={{ padding: "20px 32px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"],["Email","email","email"],["Phone","phone","tel"],["Designation","designation","text"]].map(([label, key, type]) => (
                   <div key={key}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</div>
                     <input type={type} placeholder={label} value={newUserForm[key]}
                       onChange={e => setNewUserForm(f => ({ ...f, [key]: e.target.value }))}
-                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
+                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
                   </div>
                 ))}
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 5 }}>Role</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Role</div>
                   <select value={newUserForm.role} onChange={e => setNewUserForm(f => ({ ...f, role: e.target.value }))}
-                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", cursor: "pointer" }}>
+                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", cursor: "pointer" }}>
                     <option value="ENGINEER">Engineer</option>
                     <option value="PROCUREMENT">Procurement</option>
                     <option value="ADMIN">Admin</option>
@@ -6382,7 +6382,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 <div style={{ paddingTop: 16 }}>
                   <button onClick={submitNewUser}
-                    style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "8px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", height: 36 }}>
+                    style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "8px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", height: 36 }}>
                     + Add
                   </button>
                 </div>
@@ -6392,14 +6392,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Table header ── */}
             <div style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 1.2fr 100px 120px", gap: 0, padding: "10px 32px", background: "#f8fafc", borderBottom: "1.5px solid #e2e8f0", flexShrink: 0 }}>
               {["", "Member", "Role", "Contact", "Joined", "Actions"].map((h, i) => (
-                <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</div>
+                <div key={i} style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</div>
               ))}
             </div>
 
             {/* ── Users list ── */}
             <div style={{ overflowY: "auto", flex: 1 }}>
               {userMgmtLoading ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "#94a3b8", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "#374151", gap: 10 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e2e8f0", borderTopColor: "#6366f1", animation: "acct-spin 0.7s linear infinite" }} />
                   Loading members…
                 </div>
@@ -6412,7 +6412,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   CEO:         "linear-gradient(135deg,#ef4444,#dc2626)",
                   OH:          "linear-gradient(135deg,#ec4899,#be185d)",
                 };
-                const rm = ROLE_META[u.role] || { label: u.role, color: "#475569", bg: "#f1f5f9" };
+                const rm = ROLE_META[u.role] || { label: u.role, color: "#1e293b", bg: "#f1f5f9" };
                 const isSelf = u.id === user.id;
                 const canRemove = !isSelf && (isVP || u.role !== "VP");
                 const initials = (u.fullName || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
@@ -6424,7 +6424,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     onMouseLeave={e => e.currentTarget.style.background = ""}>
 
                     {/* Avatar */}
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>
                       {initials}
                     </div>
 
@@ -6442,10 +6442,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           style={{ ...inp, fontWeight: 600, fontSize: 14, color: "#0f172a", width: "auto", maxWidth: 180 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
                           onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
-                        {isSelf && <span style={{ fontSize: 10, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>You</span>}
+                        {isSelf && <span style={{ fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>You</span>}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2 }}>
-                        <span style={{ fontSize: 12, color: "#cbd5e1" }}>@</span>
+                        <span style={{ fontSize: 13, color: "#374151" }}>@</span>
                         <input type="text" defaultValue={u.username || ""} placeholder="username"
                           onBlur={async e => {
                             const val = e.target.value.trim();
@@ -6454,9 +6454,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, username: val } : x)); showToast("Username updated ✅"); }
                             else { showToast(r.message || "Failed", "error"); e.target.value = u.username || ""; }
                           }}
-                          style={{ ...inp, fontSize: 12, color: "#94a3b8", width: 120 }}
+                          style={{ ...inp, fontSize: 13, color: "#374151", width: 120 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
-                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }} />
+                          onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }} />
                       </div>
                     </div>
 
@@ -6471,12 +6471,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val || null } : x)); showToast("Designation updated ✅"); }
                             else showToast(r.message || "Failed", "error");
                           }}
-                          style={{ border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 13, fontWeight: 600, color: "#0f172a", width: "100%", maxWidth: 200 }}
+                          style={{ border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 14, fontWeight: 600, color: "#0f172a", width: "100%", maxWidth: 200 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
                           onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
                       ) : (
                         <>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color }} />
                             {rm.label}
                           </span>
@@ -6489,9 +6489,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val } : x)); showToast("Designation set ✅"); e.target.value = ""; }
                                 else showToast(r.message || "Failed", "error");
                               }}
-                              style={{ border: "1px solid transparent", borderRadius: 6, padding: "2px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 11, color: "#94a3b8", width: "100%", maxWidth: 200 }}
+                              style={{ border: "1px solid transparent", borderRadius: 6, padding: "2px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 13, color: "#374151", width: "100%", maxWidth: 200 }}
                               onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
-                              onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }} />
+                              onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }} />
                           )}
                         </>
                       )}
@@ -6499,7 +6499,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                     {/* Contact */}
                     <div style={{ minWidth: 0 }}>
-                      {u.email && <div style={{ fontSize: 12, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>}
+                      {u.email && <div style={{ fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>}
                       <input type="tel" defaultValue={u.phone || ""} placeholder="Add phone"
                         onBlur={async e => {
                           const val = e.target.value.trim();
@@ -6508,19 +6508,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, phone: val || null } : x)); showToast("Phone updated ✅"); }
                           else showToast(r.message || "Failed", "error");
                         }}
-                        style={{ ...inp, fontSize: 12, color: u.phone ? "#475569" : "#cbd5e1", marginTop: 2, width: "100%", maxWidth: 140 }}
+                        style={{ ...inp, fontSize: 13, color: u.phone ? "#475569" : "#cbd5e1", marginTop: 2, width: "100%", maxWidth: 140 }}
                         onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
                         onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = u.phone ? "#475569" : "#cbd5e1"; }} />
                     </div>
 
                     {/* Joined */}
-                    <div style={{ fontSize: 12, color: "#94a3b8" }}>{fmtDate(u.createdAt)}</div>
+                    <div style={{ fontSize: 13, color: "#374151" }}>{fmtDate(u.createdAt)}</div>
 
                     {/* Actions */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
                       {isAdmin && (
                         <button onClick={() => { setPwdModal({ id: u.id, username: u.username }); setNewPwd(""); }}
-                          style={{ background: "#f5f3ff", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
+                          style={{ background: "#f5f3ff", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: 13, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
                           onMouseEnter={e => e.currentTarget.style.background = "#ede9fe"}
                           onMouseLeave={e => e.currentTarget.style.background = "#f5f3ff"}>
                           🔑 Pwd
@@ -6528,7 +6528,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       )}
                       {canRemove && (
                         <button onClick={() => deactivateUser(u.id, u.username)}
-                          style={{ background: "#fff1f2", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
+                          style={{ background: "#fff1f2", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 13, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
                           title={`Remove ${u.fullName}`}
                           onMouseEnter={e => e.currentTarget.style.background = "#ffe4e6"}
                           onMouseLeave={e => e.currentTarget.style.background = "#fff1f2"}>
@@ -6573,11 +6573,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={() => { setPwdModal(null); setNewPwd(""); }}
-                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 22px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 22px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
                 Cancel
               </button>
               <button onClick={submitChangePassword} disabled={pwdLoading}
-                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 24px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: pwdLoading ? .7 : 1 }}>
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 24px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: pwdLoading ? .7 : 1 }}>
                 {pwdLoading ? "Saving…" : "🔑 Update Password"}
               </button>
             </div>
@@ -6589,19 +6589,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {/* ─── MULTI-ENTRY FLOATING BAR ─── */}
       {selectedIds.size > 0 && (
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 500, background: "linear-gradient(135deg,#0f172a,#1e3a5f)", borderRadius: 14, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,.35)" }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
+          <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
           {(isAdmin || isProcurement) && (
             <button onClick={async () => {
                 setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocPwjType("PO");
                 try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
                 setGenDocModal(true);
               }}
-              style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
               📄 Generate PO / WO / JO
             </button>
           )}
           <button onClick={() => setSelectedIds(new Set())}
-            style={{ background: "rgba(255,255,255,.12)", border: "none", borderRadius: 8, padding: "7px 12px", color: "#cbd5e1", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ background: "rgba(255,255,255,.12)", border: "none", borderRadius: 8, padding: "7px 12px", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             Clear
           </button>
         </div>
@@ -6628,7 +6628,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📄 Generate Document(s)</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginTop: 2 }}>{selected.length} {selected.length === 1 ? "item" : "items"} selected</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,.7)", marginTop: 2 }}>{selected.length} {selected.length === 1 ? "item" : "items"} selected</div>
                 </div>
                 <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
               </div>
@@ -6636,7 +6636,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ overflowY: "auto", flex: 1, padding: "20px 24px" }}>
                 {/* Doc Type */}
                 <div style={{ marginBottom: 18 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>Doc Type</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>Doc Type</label>
                   <div style={{ display: "flex", gap: 10 }}>
                     {["PO","WO","JO"].map(t => (
                       <button key={t} onClick={() => setGenDocPwjType(t)}
@@ -6649,8 +6649,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                 {/* Vendor selection — applies to all items automatically */}
                 <div style={{ marginBottom: 18, background: "#f8fafc", borderRadius: 10, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
-                    Vendor <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>— applies to all {selected.length} item(s)</span>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
+                    Vendor <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#374151" }}>— applies to all {selected.length} item(s)</span>
                   </label>
                   <select value={genDocApplyAll}
                     onChange={ev => {
@@ -6660,7 +6660,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       selected.forEach(e => { map[e.id] = val; });
                       setGenDocItemVendors(map);
                     }}
-                    style={{ width: "100%", border: `1.5px solid ${genDocApplyAll ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 13, fontFamily: "inherit", outline: "none", background: genDocApplyAll ? "#f0fdf4" : "#fff" }}>
+                    style={{ width: "100%", border: `1.5px solid ${genDocApplyAll ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: genDocApplyAll ? "#f0fdf4" : "#fff" }}>
                     <option value="">— Select vendor —</option>
                     {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
                   </select>
@@ -6668,7 +6668,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                 {/* Summary */}
                 {allAssigned && docCount > 0 && (
-                  <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                  <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: 14, color: "#166534", fontWeight: 600 }}>
                     ✅ 1 {genDocPwjType} will be created for <strong>{genDocApplyAll}</strong> with {selected.length} line item(s)
                   </div>
                 )}
@@ -6676,9 +6676,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Footer */}
               <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
-                <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                 <button onClick={submitGenDoc} disabled={genDocSaving || !allAssigned}
-                  style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 13, cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
+                  style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
                   {genDocSaving ? "Creating…" : "Create & Open Doc"}
                 </button>
               </div>
@@ -6693,26 +6693,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const statusBg    = vv.status === "APPROVED" ? "#dcfce7"  : vv.status === "REJECTED" ? "#fee2e2"  : "#fef9c3";
         const Row = ({ label, value }) => value ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-            <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+            <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
           </div>
         ) : null;
         const DocLink = ({ label, url }) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
             {url
               ? <a href={`${BACKEND_BASE}${url}`} target="_blank" rel="noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: 12, fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: 13, fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
                   📎 View Document
                 </a>
-              : <span style={{ fontSize: 12, color: "#cbd5e1" }}>Not uploaded</span>
+              : <span style={{ fontSize: 13, color: "#374151" }}>Not uploaded</span>
             }
           </div>
         );
         const SectionHead = ({ icon, title }) => (
           <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8, padding: "10px 0 6px", borderBottom: "1.5px solid #e2eaf5", marginTop: 8 }}>
             <span style={{ fontSize: 15 }}>{icon}</span>
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#334155" }}>{title}</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{title}</span>
           </div>
         );
         let contacts = [];
@@ -6726,12 +6726,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{vv.name}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.75)", marginTop: 3 }}>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,.75)", marginTop: 3 }}>
                     {vv.category || "—"} {vv.vendorCode ? `· Code: ${vv.vendorCode}` : ""}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, background: statusBg, color: statusColor, borderRadius: 20, padding: "4px 14px" }}>{vv.status || "PENDING"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, background: statusBg, color: statusColor, borderRadius: 20, padding: "4px 14px" }}>{vv.status || "PENDING"}</span>
                   <button onClick={() => setViewVendor(null)}
                     style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
@@ -6813,10 +6813,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <Row label="Return Fees"                value={vv.returnFees} />
                   <Row label="Vendor Pays Return Shipping" value={vv.vendorPaysReturnShipping ? "Yes" : null} />
                   <div style={{ gridColumn: "1/-1" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>Vendor Policies</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>Vendor Policies</div>
                     {vv.listVendorPolicies
-                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 13, color: "#1e293b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontFamily: "inherit", lineHeight: 1.7 }}>{vv.listVendorPolicies}</pre>
-                      : <span style={{ fontSize: 13, color: "#cbd5e1" }}>Not specified</span>}
+                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "#1e293b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontFamily: "inherit", lineHeight: 1.7 }}>{vv.listVendorPolicies}</pre>
+                      : <span style={{ fontSize: 14, color: "#374151" }}>Not specified</span>}
                   </div>
                 </div>
               </div>
@@ -6830,9 +6830,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {addVendorPage && (isAdmin || isVP) && (() => {
         const avf = addVendorForm;
         const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
-        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
+        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
         const sel = { ...inp };
-        const lbl = { fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4, display: "block" };
+        const lbl = { fontSize: 13.5, fontWeight: 600, color: "#1e293b", marginBottom: 4, display: "block" };
         const fld = { display: "flex", flexDirection: "column" };
         const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 };
         const grid3 = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 };
@@ -6842,7 +6842,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{title}</div>
           </div>
         );
-        const subHead = (title) => <div style={{ fontSize: 12.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, marginTop: 18, paddingBottom: 6, borderBottom: "1px solid #e2eaf5" }}>{title}</div>;
+        const subHead = (title) => <div style={{ fontSize: 13.5, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, marginTop: 18, paddingBottom: 6, borderBottom: "1px solid #e2eaf5" }}>{title}</div>;
 
         const autoVendorCode = () => "VND-" + Date.now().toString(36).toUpperCase();
 
@@ -6952,8 +6952,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         };
 
         const F = { fontFamily: "'Inter','Plus Jakarta Sans',sans-serif" };
-        const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "#0f172a", transition: "border-color .15s" };
-        const lbl2 = { fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
+        const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "#0f172a", transition: "border-color .15s" };
+        const lbl2 = { fontSize: 13, fontWeight: 700, color: "#374151", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
         const fld2 = { display: "flex", flexDirection: "column" };
         const card = { background: "#fff", borderRadius: 16, padding: "28px 32px", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04)" };
         const secTitle = (icon, title, color) => (
@@ -6962,11 +6962,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", ...F }}>{title}</div>
           </div>
         );
-        const divider = (label) => <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginTop: 22, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}><span>{label}</span><div style={{ flex: 1, height: 1, background: "#f1f5f9" }} /></div>;
+        const divider = (label) => <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", letterSpacing: 1, textTransform: "uppercase", marginTop: 22, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}><span>{label}</span><div style={{ flex: 1, height: 1, background: "#f1f5f9" }} /></div>;
         const attachBtn = (uploading, label = "📎 Attach") => ({
           display: "inline-flex", alignItems: "center", gap: 6, background: uploading ? "#f1f5f9" : "#eff6ff",
           border: "1.5px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", cursor: uploading ? "default" : "pointer",
-          fontSize: 12, color: "#2563eb", fontWeight: 700, whiteSpace: "nowrap", ...F,
+          fontSize: 13, color: "#2563eb", fontWeight: 700, whiteSpace: "nowrap", ...F,
         });
 
         return (
@@ -6977,9 +6977,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: editVendorId ? "#3b82f6" : "#f59e0b" }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>{editVendorId ? "Edit Vendor" : "New Vendor Registration"}</span>
-                {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
+                {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 13, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
               </div>
-              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
             </div>
 
             {/* ── Body: sidebar + content ── */}
@@ -6987,10 +6987,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Left nav */}
               <div style={{ width: 220, background: "#fff", borderRight: "1px solid #e2e8f0", flexShrink: 0, padding: "24px 16px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#cbd5e1", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, paddingLeft: 12, ...F }}>Sections</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, paddingLeft: 12, ...F }}>Sections</div>
                 {NAV.map(n => (
                   <button key={n.id} onClick={() => scrollTo(n.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", width: "100%", ...F, fontSize: 13, fontWeight: 600, color: "#475569", transition: "background .15s" }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", width: "100%", ...F, fontSize: 14, fontWeight: 600, color: "#1e293b", transition: "background .15s" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}>
                     <span style={{ fontSize: 16 }}>{n.icon}</span> {n.label}
@@ -6998,7 +6998,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ))}
                 <div style={{ flex: 1 }} />
                 <div style={{ padding: "16px 14px", background: "#f8fafc", borderRadius: 10, marginTop: 8 }}>
-                  <div style={{ fontSize: 11, color: "#94a3b8", ...F, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 13, color: "#374151", ...F, lineHeight: 1.6 }}>
                     {editVendorId ? "Changes will update the vendor record immediately." : <>Saved as <strong>Draft</strong>. Pending VP approval before vendor is activated.</>}
                   </div>
                 </div>
@@ -7058,7 +7058,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             onChange={e => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.map((it, j) => j === ii ? e.target.value : it) } : x))} />
                           {ps.items.length > 1 && (
                             <button type="button" onClick={() => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x))}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 12 }}>✕</button>
+                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 13 }}>✕</button>
                           )}
                         </div>
                       ))}
@@ -7066,12 +7066,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Remove row */}
                     {avf.productServices.length > 1 && (
                       <button type="button" onClick={() => setF("productServices", avf.productServices.filter((_, i) => i !== pi))}
-                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 12, marginTop: 18, flexShrink: 0 }}>✕</button>
+                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 13, marginTop: 18, flexShrink: 0 }}>✕</button>
                     )}
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("productServices", [...avf.productServices, { category: "", items: [""] }])}
-                  style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", color: "#15803d", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", width: "100%" }}>+ Add Category</button>
+                  style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", color: "#15803d", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit", width: "100%" }}>+ Add Category</button>
 
                 {/* Contact Details */}
                 {subHead("Owner Details")}
@@ -7091,7 +7091,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
 
                 {subHead("b) SPOC Details")}
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", marginBottom: 12, cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#1e293b", marginBottom: 12, cursor: "pointer" }}>
                   <input type="checkbox" checked={avf.spocSameAsCustomer}
                     onChange={e => {
                       const checked = e.target.checked;
@@ -7122,7 +7122,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("contacts", [...avf.contacts, { personName: "", email: "", contactNumber: "" }])}
-                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>+ Add Contact</button>
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>+ Add Contact</button>
 
                 {subHead("Registered Address")}
                 <div style={{ ...grid2, marginBottom: 10 }}>
@@ -7165,7 +7165,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             onClick={() => setF("vendorType", selected
                               ? avf.vendorType.filter(t => t !== code)
                               : [...(avf.vendorType || []), code])}
-                            style={{ border: `2px solid ${selected ? "#7c3aed" : "#dbe6f3"}`, borderRadius: 8, padding: "7px 14px", background: selected ? "#f5f3ff" : "#fff", color: selected ? "#7c3aed" : "#64748b", fontWeight: selected ? 700 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            style={{ border: `2px solid ${selected ? "#7c3aed" : "#dbe6f3"}`, borderRadius: 8, padding: "7px 14px", background: selected ? "#f5f3ff" : "#fff", color: selected ? "#7c3aed" : "#64748b", fontWeight: selected ? 700 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                             {selected ? "✓ " : ""}{label}
                           </button>
                         );
@@ -7177,7 +7177,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {subHead("Vendor Portfolio")}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
                   <span style={{ ...lbl, marginBottom: 0 }}>Portfolio Document</span>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f5f3ff", border: "1px dashed #a78bfa", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#7c3aed", fontWeight: 600 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f5f3ff", border: "1px dashed #a78bfa", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 14, color: "#7c3aed", fontWeight: 600 }}>
                     {avf.portfolioDocUploading ? "⏳ Uploading…" : "📁 Attach"}
                     <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
                       disabled={avf.portfolioDocUploading}
@@ -7192,7 +7192,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       }} />
                   </label>
                   {avf.portfolioDocUrl && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: 14 }}>
                       <a href={BACKEND_BASE + avf.portfolioDocUrl} target="_blank" rel="noreferrer"
                         style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "none" }}>
                         📄 {avf.portfolioDocUrl.split("/").pop()}
@@ -7219,11 +7219,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("socialMedia", [...avf.socialMedia, ""])}
-                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", marginBottom: 16 }}>+ Add Social Media</button>
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", marginBottom: 16 }}>+ Add Social Media</button>
 
                 <div style={{ ...fld, marginBottom: 6 }}>
                   <label style={lbl}>Catalogues / Documents</label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, color: "#15803d", fontWeight: 600, alignSelf: "flex-start" }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, color: "#15803d", fontWeight: 600, alignSelf: "flex-start" }}>
                     📎 Attach Catalogue
                     <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
                       onChange={async e => {
@@ -7238,10 +7238,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                     {avf.catalogues.map((url, ci) => (
-                      <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 6, padding: "4px 10px", fontSize: 12 }}>
+                      <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 6, padding: "4px 10px", fontSize: 13 }}>
                         <span>📄 {url.split("/").pop()}</span>
                         <button type="button" onClick={() => setF("catalogues", avf.catalogues.filter((_, i) => i !== ci))}
-                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -7275,7 +7275,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <input style={inp} value={avf[key]} onChange={e => setF(key, e.target.value.toUpperCase())} placeholder={placeholder} maxLength={maxLen} />
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 1 }}>
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 12, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {avf[uploadKey] ? "🔍 Reading…" : "📎 Attach & Scan"}
                           <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
                             disabled={avf[uploadKey]}
@@ -7302,11 +7302,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }} />
                         </label>
                         {avf[docKey] && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 13 }}>
                             <a href={BACKEND_BASE + avf[docKey]} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf[docKey].split("/").pop()}</a>
                             <button type="button" onClick={() => setF(docKey, "")}
-                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
                           </div>
                         )}
                       </div>
@@ -7323,7 +7323,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {["Yes", "No"].map(opt => (
                           <button key={opt} type="button"
                             onClick={() => setF("msmeRegistered", opt)}
-                            style={{ border: `2px solid ${avf.msmeRegistered === opt ? "#0d9488" : "#e2eaf5"}`, borderRadius: 8, padding: "7px 22px", background: avf.msmeRegistered === opt ? "#f0fdfa" : "#fff", color: avf.msmeRegistered === opt ? "#0d9488" : "#64748b", fontWeight: avf.msmeRegistered === opt ? 700 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            style={{ border: `2px solid ${avf.msmeRegistered === opt ? "#0d9488" : "#e2eaf5"}`, borderRadius: 8, padding: "7px 22px", background: avf.msmeRegistered === opt ? "#f0fdfa" : "#fff", color: avf.msmeRegistered === opt ? "#0d9488" : "#64748b", fontWeight: avf.msmeRegistered === opt ? 700 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                             {avf.msmeRegistered === opt ? "✓ " : ""}{opt}
                           </button>
                         ))}
@@ -7331,7 +7331,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                     {avf.msmeRegistered === "Yes" && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 12, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {avf.msmeDocUploading ? "⏳ Uploading…" : "📎 Attach Certificate"}
                           <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
                             disabled={avf.msmeDocUploading}
@@ -7347,11 +7347,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }} />
                         </label>
                         {avf.msmeDocUrl && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 13 }}>
                             <a href={BACKEND_BASE + avf.msmeDocUrl} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf.msmeDocUrl.split("/").pop()}</a>
                             <button type="button" onClick={() => setF("msmeDocUrl", "")}
-                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
                           </div>
                         )}
                       </div>
@@ -7367,17 +7367,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {/* Passbook upload + OCR */}
                 <div style={{ display: "flex", gap: 20, alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ flexShrink: 0 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
                     <label style={{ display: "block", width: 130, height: 100, border: "2px dashed #93c5fd", borderRadius: 10, cursor: "pointer", overflow: "hidden", background: "#f8fafc", position: "relative" }}>
                       {avf.bankDocUrl
                         ? <img src={BACKEND_BASE + avf.bankDocUrl} alt="passbook" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4 }}>
                             <span style={{ fontSize: 24 }}>🏦</span>
-                            <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
+                            <span style={{ fontSize: 12, color: "#374151", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
                           </div>
                       }
                       {(avf.bankDocUploading || avf.bankOcrLoading) && (
-                        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#1a6ab1", fontWeight: 700 }}>
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#1a6ab1", fontWeight: 700 }}>
                           {avf.bankDocUploading ? "⏳ Uploading…" : "🔍 Reading…"}
                         </div>
                       )}
@@ -7386,7 +7386,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </label>
                     {avf.bankDocUrl && !avf.bankDocUploading && (
                       <button type="button" onClick={() => setF("bankDocUrl", "")}
-                        style={{ marginTop: 6, background: "none", border: "none", color: "#dc2626", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕ Remove</button>
+                        style={{ marginTop: 6, background: "none", border: "none", color: "#dc2626", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>✕ Remove</button>
                     )}
                   </div>
 
@@ -7407,7 +7407,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                     <div style={fld}>
                       <label style={lbl}>Combined Bank Details (auto-filled)</label>
-                      <textarea style={{ ...inp, minHeight: 70, resize: "vertical", background: "#f8fafc", color: "#64748b" }}
+                      <textarea style={{ ...inp, minHeight: 70, resize: "vertical", background: "#f8fafc", color: "#374151" }}
                         value={avf.bankName || avf.accountNumber || avf.ifscCode
                           ? `${avf.bankName || ""}${avf.accountNumber ? " | A/C No: " + avf.accountNumber : ""}${avf.ifscCode ? " | IFSC: " + avf.ifscCode : ""}`
                           : avf.bankDetails}
@@ -7423,16 +7423,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Fixed bottom action bar ── */}
             <div style={{ background: "#fff", borderTop: "1px solid #e2e8f0", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
               <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }}
-                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F }}>
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F }}>
                 {editVendorId ? "Cancel" : "Discard"}
               </button>
               <button onClick={() => submitDraft(false)} disabled={addVendorLoading}
-                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
                 {addVendorLoading ? "Saving…" : editVendorId ? "💾 Save Changes" : "💾 Save as Draft"}
               </button>
               {editVendorId && editVendorStatus !== "APPROVED" && (
                 <button onClick={() => submitDraft(true)} disabled={addVendorLoading}
-                  style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                  style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
                   {addVendorLoading ? "Saving…" : "📤 Send for Approval"}
                 </button>
               )}
