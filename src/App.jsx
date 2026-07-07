@@ -3589,8 +3589,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* ★ ACTION COLUMN */}
                     <td style={s.td} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        {/* Engineer edit button — own entries only, locked once OH approves (PROCEED) */}
-                        {isEngineer && row.raisedBy === (user?.fullName || user?.username) && (
+                        {/* Engineer / PM edit button — own entries only, locked once OH approves (PROCEED) */}
+                        {(isEngineer || isProjectManager) && row.raisedBy === (user?.fullName || user?.username) && (
                           row.approvalStatus === "PROCEED" ? (
                             <button
                               disabled
@@ -4663,8 +4663,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   );
                 })()}
               </div>
-              {/* Edit button inside detail modal for engineer (locked when PROCEED) */}
-              {isEngineer && detailRow.raisedBy === (user?.fullName || user?.username) && (
+              {/* Edit button inside detail modal for engineer/PM (locked when PROCEED) */}
+              {(isEngineer || isProjectManager) && detailRow.raisedBy === (user?.fullName || user?.username) && (
                 detailRow.approvalStatus === "PROCEED" ? (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
                     🔒 This entry has been OH approved and can no longer be edited.
@@ -5935,7 +5935,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <>
                           {/* Delivered Date + Remarks — editable for Engineer/PM, read-only for all others */}
                           {(() => {
-                            const canEdit = isEngineer || isProjectManager;
+                            const canEdit = isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username));
                             return (
                               <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", gap: 24, flexWrap: "wrap" }}>
                                 {/* Delivered Date */}
@@ -5992,11 +5992,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
                               files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
                               uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
-                              canUpload={isEngineer} onUpload={uploadEngFiles} />
+                              canUpload={isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
                             <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
                               files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
                               uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
-                              canUpload={isEngineer} onUpload={uploadEngFiles} />
+                              canUpload={isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
                           </div>
                         </>
                       );
