@@ -3473,7 +3473,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })()}
                   </th>
                   {[
-                    ["#","id"],["Created / Updated","updatedAt"],["Raised By","raisedBy"],
+                    ["#","id"],["Created","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Item","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
@@ -3506,10 +3506,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     <td style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                      <div>{fmtDateTime(row.createdAt || row.timestamp)}</div>
-                      {row.updatedAt && row.updatedAt !== (row.createdAt || row.timestamp) && (
-                        <div style={{ fontSize: 11, color: "#374151", marginTop: 2 }}>Upd: {fmtDateTime(row.updatedAt)}</div>
-                      )}
+                      {fmtDate(row.createdAt || row.timestamp)}
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
