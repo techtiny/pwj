@@ -107,8 +107,8 @@ export default function HRSection({ user }) {
             <button key={t.key} onClick={() => setTab(t.key)}
               style={{
                 border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                padding: "14px 22px", fontSize: 13.5, fontWeight: active ? 600 : 500,
-                color: active ? "#0f172a" : "#94a3b8",
+                padding: "14px 26px", fontSize: 17, fontWeight: active ? 700 : 600,
+                color: "#000",
                 borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                 marginBottom: -1, letterSpacing: 0.1, whiteSpace: "nowrap",
               }}>

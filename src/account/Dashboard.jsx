@@ -67,16 +67,16 @@ function shorten(name) {
   return name && name.length > 16 ? name.substring(0, 15) + '…' : name;
 }
 
-function KpiCard({ icon: Icon, gradient, label, value, sub, subColor }) {
+function KpiCard({ icon: Icon, label, value, sub, subColor, valueColor }) {
   return (
     <div className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ width: 52, height: 52, borderRadius: 14, background: gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={22} color="white" />
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={20} color="#6366f1" />
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: subColor || '#94a3b8', marginTop: 3 }}>{sub}</div>}
+        <div style={{ fontSize: 20, fontWeight: 800, color: valueColor || '#0f172a', lineHeight: 1.2 }}>{value}</div>
+        {sub && <div style={{ fontSize: 12, color: subColor || '#94a3b8', marginTop: 3 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -135,10 +135,10 @@ export default function AccountDashboard() {
     <div className="page-content">
       {/* KPI Row */}
       <div className="grid grid-4" style={{ marginBottom: 24 }}>
-        <KpiCard icon={FolderKanban} gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" label="Total Projects" value={totalProjects} sub={`${activeProjects} active · ${completedProjects} completed`} />
-        <KpiCard icon={IndianRupee}  gradient="linear-gradient(135deg,#10b981,#059669)" label="Total Quote Value" value={formatLakh(totalQuote)} sub={`Budget (80%): ${formatLakh(totalBudget)}`} />
-        <KpiCard icon={Activity}     gradient="linear-gradient(135deg,#f59e0b,#d97706)" label="Total Spent" value={formatLakh(totalSpent)} sub={`${budgetUsedPct}% of budget · ${formatLakh(totalCollection)} collected`} subColor={budgetUsedPct > 90 ? '#ef4444' : '#94a3b8'} />
-        <KpiCard icon={isHealthy ? TrendingUp : TrendingDown} gradient={isHealthy ? 'linear-gradient(135deg,#3b82f6,#1d4ed8)' : 'linear-gradient(135deg,#ef4444,#dc2626)'} label="Avg Profit Margin" value={`${avgProfitMargin}%`} sub={`Est. profit: ${formatLakh(profitAmt)} · Target: 20%`} subColor={isHealthy ? '#94a3b8' : '#ef4444'} />
+        <KpiCard icon={FolderKanban} label="Total Projects" value={totalProjects} sub={`${activeProjects} active · ${completedProjects} completed`} />
+        <KpiCard icon={IndianRupee}  label="Total Quote Value" value={formatLakh(totalQuote)} sub={`Budget (80%): ${formatLakh(totalBudget)}`} />
+        <KpiCard icon={Activity}     label="Total Spent" value={formatLakh(totalSpent)} sub={`${budgetUsedPct}% of budget · ${formatLakh(totalCollection)} collected`} subColor={budgetUsedPct > 90 ? '#ef4444' : '#94a3b8'} />
+        <KpiCard icon={isHealthy ? TrendingUp : TrendingDown} label="Avg Profit Margin" value={`${avgProfitMargin}%`} valueColor={isHealthy ? '#059669' : '#dc2626'} sub={`Est. profit: ${formatLakh(profitAmt)} · Target: 20%`} subColor={isHealthy ? '#94a3b8' : '#ef4444'} />
       </div>
 
       {/* Portfolio Health */}
@@ -151,8 +151,8 @@ export default function AccountDashboard() {
           <div style={{ display: 'flex', gap: 20 }}>
             {[{ label: 'Collected', pct: collectionPct, color: '#10b981' }, { label: 'Spent', pct: budgetUsedPct, color: '#6366f1' }].map(({ label, pct, color }) => (
               <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color }}>{pct}%</div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color }}>{pct}%</div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>{label}</div>
               </div>
             ))}
           </div>
@@ -188,7 +188,7 @@ export default function AccountDashboard() {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', maxWidth: 200, justifyContent: 'flex-end' }}>
               {BAR_CATS.map(({ key, color, label }) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b' }}>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748b' }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} /> {label}
                 </div>
               ))}
@@ -197,8 +197,8 @@ export default function AccountDashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={projectBars} margin={{ top: 4, right: 8, left: 0, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="shortName" tick={{ fontSize: 10, fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => formatLakh(v)} axisLine={false} tickLine={false} width={52} />
+              <XAxis dataKey="shortName" tick={{ fontSize: 11, fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => formatLakh(v)} axisLine={false} tickLine={false} width={52} />
               <Tooltip content={<BarTooltip />} />
               {BAR_CATS.map(({ key, color, label }, i) => (
                 <Bar key={key} dataKey={key} stackId="a" fill={color} name={label} radius={i === BAR_CATS.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
@@ -232,7 +232,7 @@ export default function AccountDashboard() {
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
                       <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>{entry.name}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{formatLakh(entry.value)}</span>
-                      <span style={{ fontSize: 11, color: '#94a3b8', width: 38, textAlign: 'right' }}>{pct}%</span>
+                      <span style={{ fontSize: 12, color: '#94a3b8', width: 38, textAlign: 'right' }}>{pct}%</span>
                     </div>
                   );
                 })}
@@ -264,8 +264,8 @@ export default function AccountDashboard() {
                     <Icon size={16} color={cfg.color} />
                     <span style={{ fontSize: 12, fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{pct}% of portfolio</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{count}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{pct}% of portfolio</div>
                 </div>
               );
             })}

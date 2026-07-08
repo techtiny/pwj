@@ -174,8 +174,8 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Project Collections</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Track payment collections by stage</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Project Collections</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Track payment collections by stage</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={triggerAlerts} disabled={triggering}
@@ -213,7 +213,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
             { label: 'Stages',           value: collections.length,  color: '#f59e0b' },
           ].map(k => (
             <div key={k.label} className="card" style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{k.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: k.color }}>{k.value}</div>
             </div>
           ))}
@@ -250,7 +250,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
               )},
             ].map(({ label, node }) => (
               <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>{label}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', whiteSpace: 'nowrap' }}>{label}</div>
                 {node}
               </div>
             ))}

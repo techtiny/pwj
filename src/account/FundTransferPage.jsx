@@ -126,7 +126,7 @@ export default function FundTransferPage({ isCeo = false }) {
         ].map(({ label, value }) => (
           <div key={label} className="card" style={{ padding: 20 }}>
             <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>{value}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>{value}</div>
           </div>
         ))}
       </div>
