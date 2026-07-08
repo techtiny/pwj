@@ -4925,7 +4925,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       onChange={e => setCreateForm(f => ({ ...f, onBehalf: e.target.value }))}>
                       <option value="">— Raising for yourself —</option>
                       {allUsers
-                        .filter(u => u.active !== false && (u.role === "ENGINEER" || u.role === "PROJECT_MANAGER") && !u.isTestAccount && u.username !== "techtiny")
+                        .filter(u => u.active !== false && (u.role === "ENGINEER" || u.role === "PROJECT_MANAGER") && !u.isTestAccount && !["techtiny","test_engineer","test_pm","happizo"].includes(u.username))
                         .sort((a, b) => (a.fullName || a.username).localeCompare(b.fullName || b.username))
                         .map(u => (
                           <option key={u.id} value={u.fullName || u.username}>
