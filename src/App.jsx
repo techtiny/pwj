@@ -380,6 +380,12 @@ function fmtDateDash(val) {
   return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
 }
 
+function fmtDateTime(val) {
+  if (!val) return "—";
+  const iso = typeof val === "string" && !val.endsWith("Z") && !val.includes("+") ? val + "Z" : val;
+  return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+}
+
 // Small red notification badge — shows a pending-approval count on tabs/tiles
 function CountBadge({ count }) {
   if (!count) return null;
@@ -3467,7 +3473,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })()}
                   </th>
                   {[
-                    ["#","id"],["Last Activity","updatedAt"],["Raised By","raisedBy"],
+                    ["#","id"],["Created / Updated","updatedAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Item","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
@@ -3500,7 +3506,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     <td style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
-                      {fmtDate(row.updatedAt || row.timestamp)}
+                      <div>{fmtDateTime(row.createdAt || row.timestamp)}</div>
+                      {row.updatedAt && row.updatedAt !== (row.createdAt || row.timestamp) && (
+                        <div style={{ fontSize: 11, color: "#374151", marginTop: 2 }}>Upd: {fmtDateTime(row.updatedAt)}</div>
+                      )}
                     </td>
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
@@ -4579,7 +4588,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={s.grid2}>
                 <div style={s.divider}>📋 Request Details</div>
                 {[
-                  ["Timestamp", fmtDate(detailRow.timestamp)],
+                  ["Created At", fmtDateTime(detailRow.createdAt || detailRow.timestamp)],
+                  ["Last Updated", detailRow.updatedAt && detailRow.updatedAt !== (detailRow.createdAt || detailRow.timestamp) ? fmtDateTime(detailRow.updatedAt) : null],
                   ["Raised By", detailRow.raisedBy],
                   ["Project", detailRow.projectName],
                   ["BOQ No.", detailRow.boqNo],
@@ -4590,7 +4600,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
                   ["Dependency", detailRow.dependency],
-                ].map(([l, v]) => (
+                ].filter(([, v]) => v !== null).map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
                     <div style={s.dVal}>{v || "—"}</div>
