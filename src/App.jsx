@@ -1442,7 +1442,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [approvalLoading, setApprovalLoading] = useState(false);
 
   // Create form
-  const [createForm, setCreateForm] = useState({ raisedBy: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
+  const [createForm, setCreateForm] = useState({ raisedBy: "", onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
 
   // VP vendor approvals
   const [vpPendingModal, setVpPendingModal] = useState(false);
@@ -1766,7 +1766,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     setCreateLoading(true);
     try {
       const userName = user.fullName || user.username;
-      const body = { ...createForm, raisedBy: userName, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
+      const canOnBehalf = isVP || isOH || isAdmin || isProcurement;
+      const effectiveRaisedBy = (canOnBehalf && createForm.onBehalf) ? createForm.onBehalf : userName;
+      const { onBehalf, ...formData } = createForm;
+      const body = { ...formData, raisedBy: effectiveRaisedBy, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
       if (editingEntry) {
         // Update existing entry
         const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status, pwjIssued: editingEntry.pwjIssued });
@@ -1778,7 +1781,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         } else showToast(res.message, "error");
       } else {
         // Create new entry
-        const res = await api.createEntry(body, userName);
+        const res = await api.createEntry(body, effectiveRaisedBy);
         if (res.success) {
           showToast("Entry created!");
           setCreateModal(false);
@@ -3163,7 +3166,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {mainTab === "entries" && !isCeo && (
               <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
                 setEditingEntry(null);
-                setCreateForm({ raisedBy: user.fullName || user.username, projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
+                setCreateForm({ raisedBy: user.fullName || user.username, onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
                 setCreateModal(true);
                 fetchManagedProjects();
               }}>
@@ -4914,6 +4917,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={s.mBody}>
               <div style={s.grid2}>
+                {/* 0. On-Behalf — visible only to VP, OH, Admin, Procurement when creating new entries */}
+                {!editingEntry && (isVP || isOH || isAdmin || isProcurement) && (
+                  <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
+                    <label style={s.label}>On-Behalf Of</label>
+                    <select style={s.select2} value={createForm.onBehalf}
+                      onChange={e => setCreateForm(f => ({ ...f, onBehalf: e.target.value }))}>
+                      <option value="">— Raising for yourself —</option>
+                      {allUsers
+                        .filter(u => u.active !== false && (u.role === "ENGINEER" || u.role === "PROJECT_MANAGER") && !u.isTestAccount && u.username !== "techtiny")
+                        .sort((a, b) => (a.fullName || a.username).localeCompare(b.fullName || b.username))
+                        .map(u => (
+                          <option key={u.id} value={u.fullName || u.username}>
+                            {u.fullName || u.username} ({u.role === "ENGINEER" ? "Site Engineer" : "Project Manager"})
+                          </option>
+                        ))}
+                    </select>
+                    {createForm.onBehalf && (
+                      <div style={{ fontSize: 12, color: "#059669", marginTop: 4, fontWeight: 500 }}>
+                        ✅ This PR will be raised on behalf of {createForm.onBehalf}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* 1. Project Name */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>Project Name <span style={{color:"#ef4444"}}>*</span></label>
