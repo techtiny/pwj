@@ -5772,8 +5772,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 return (
                                   <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
                                     <td style={{ ...tdSt, textAlign: "center", fontWeight: 600 }}>{i + 1}</td>
-                                    <td style={tdSt}>
-                                      {docEditMode ? <input value={row.item} onChange={ev => setItem(i, "item", ev.target.value)} style={inpSt} placeholder="Item description" /> : row.item || ""}
+                                    <td style={{ ...tdSt, minWidth: 180 }}>
+                                      {docEditMode
+                                        ? <textarea
+                                            value={row.item}
+                                            onChange={ev => { setItem(i, "item", ev.target.value); ev.target.style.height = "auto"; ev.target.style.height = ev.target.scrollHeight + "px"; }}
+                                            onFocus={ev => { ev.target.style.height = "auto"; ev.target.style.height = ev.target.scrollHeight + "px"; }}
+                                            style={{ ...inpSt, resize: "none", overflow: "hidden", minHeight: 32, lineHeight: 1.45 }}
+                                            placeholder="Item description"
+                                            rows={1}
+                                          />
+                                        : <span style={{ whiteSpace: "pre-wrap" }}>{row.item || ""}</span>}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
                                       {docEditMode ? <input list="unit-list" value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", width: 70 }} placeholder="—" autoComplete="off" /> : row.unit || ""}
