@@ -63,15 +63,15 @@ export default function HRDashboard({ user }) {
     : checkinTargets;
 
   const card     = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px" };
-  const secTitle = { fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 };
-  const secSub   = { fontSize: 13, color: "#374151", marginBottom: 14 };
-  const badge    = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" });
+  const secTitle = { fontSize: 17, fontWeight: 700, color: "#0f172a", marginBottom: 4 };
+  const secSub   = { fontSize: 15, color: "#374151", marginBottom: 14 };
+  const badge    = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" });
   const statCard = (accent) => ({
     background: "#fff", borderRadius: 12, padding: "18px 22px",
     flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}`,
   });
-  const th = { padding: "8px 12px", textAlign: "left", fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, background: "#f8fafc", whiteSpace: "nowrap" };
-  const td = { padding: "10px 12px", fontSize: 14, color: "#1e293b", verticalAlign: "middle" };
+  const th = { padding: "8px 12px", textAlign: "left", fontSize: 15, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, background: "#f8fafc", whiteSpace: "nowrap" };
+  const td = { padding: "10px 12px", fontSize: 16, color: "#1e293b", verticalAlign: "middle" };
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
@@ -86,27 +86,27 @@ export default function HRDashboard({ user }) {
         display: "flex", alignItems: "center", gap: 20,
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,.4)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
             {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6 }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", marginBottom: 6 }}>
             Good {greeting}, {user?.fullName?.split(" ")[0]}
           </div>
           {today?.checkInTime ? (
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,.55)" }}>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,.55)" }}>
               Checked in at {fmtTime(today.checkInTime)}
               {today.checkOutTime
                 ? ` · Checked out at ${fmtTime(today.checkOutTime)} · ${fmtHours(today.totalMinutes)}`
                 : " · Still working"}
             </div>
           ) : (
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,.35)" }}>Not checked in yet today</div>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,.35)" }}>Not checked in yet today</div>
           )}
         </div>
         <div className="hr-hero-icon" style={{
           width: 56, height: 56, borderRadius: 14,
           background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30,
         }}>
           {today?.checkInTime && !today?.checkOutTime ? "🏢" : today?.checkOutTime ? "🏠" : "⏰"}
         </div>
@@ -122,8 +122,8 @@ export default function HRDashboard({ user }) {
             { label: "Leave Approved",  value: leaveSummary?.approved  ?? "—", accent: "#1e3a5f" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{k.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: "#374151" }}>{k.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -135,14 +135,14 @@ export default function HRDashboard({ user }) {
           <div style={secTitle}>My Recent Leave Requests</div>
           <div style={secSub}>Latest 5 leave applications</div>
           {recentLeaves.length === 0 ? (
-            <div style={{ color: "#374151", fontSize: 14, textAlign: "center", padding: "20px 0" }}>No leave requests yet</div>
+            <div style={{ color: "#374151", fontSize: 16, textAlign: "center", padding: "20px 0" }}>No leave requests yet</div>
           ) : recentLeaves.map(l => {
             const s = LEAVE_STATUS[l.status] || LEAVE_STATUS.PENDING;
             return (
               <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{l.leaveType} Leave</div>
-                  <div style={{ fontSize: 13, color: "#374151" }}>{fmtDate(l.fromDate)} → {fmtDate(l.toDate)} · {l.totalDays}d</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{l.leaveType} Leave</div>
+                  <div style={{ fontSize: 15, color: "#374151" }}>{fmtDate(l.fromDate)} → {fmtDate(l.toDate)} · {l.totalDays}d</div>
                 </div>
                 <span style={badge(s)}>{s.label}</span>
               </div>
@@ -155,10 +155,10 @@ export default function HRDashboard({ user }) {
       {isAdmin && incomplete.length > 0 && (
         <div className="hr-needs-review" style={{ ...card, marginBottom: 20, border: "1px solid #fca5a5", borderLeft: "4px solid #dc2626" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 18 }}>⚠️</span>
+            <span style={{ fontSize: 20 }}>⚠️</span>
             <div>
               <div style={{ ...secTitle, color: "#dc2626", marginBottom: 0 }}>Needs Review — Missing Check-Out</div>
-              <div style={{ fontSize: 13, color: "#ef4444" }}>
+              <div style={{ fontSize: 15, color: "#ef4444" }}>
                 {incomplete.length} record{incomplete.length > 1 ? "s" : ""} auto-marked Absent — employee checked in but never checked out
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function HRDashboard({ user }) {
                     <td style={{ ...td, fontWeight: 600, color: "#0f172a" }}>{a.fullName}</td>
                     <td style={td}>{fmtDate(a.workDate)}</td>
                     <td style={td}>{fmtTime(a.checkInTime)}</td>
-                    <td style={{ ...td, fontSize: 13, color: "#374151", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <td style={{ ...td, fontSize: 15, color: "#374151", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {a.checkInAddress || "—"}
                     </td>
                   </tr>
@@ -186,7 +186,7 @@ export default function HRDashboard({ user }) {
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: "#374151" }}>
+          <div style={{ marginTop: 10, fontSize: 15, color: "#374151" }}>
             Go to <strong>All Attendance</strong> tab to correct check-in / check-out times.
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function HRDashboard({ user }) {
               <div style={secSub}>
                 {checkedInCount} checked in · {checkinTargets.length - checkedInCount} not yet · {checkinTargets.length} total
                 {pendingPermissions.length > 0 && (
-                  <span style={{ marginLeft: 10, background: "#f3e8ff", color: "#7c3aed", borderRadius: 5, padding: "2px 9px", fontSize: 13, fontWeight: 700 }}>
+                  <span style={{ marginLeft: 10, background: "#f3e8ff", color: "#7c3aed", borderRadius: 5, padding: "2px 9px", fontSize: 15, fontWeight: 700 }}>
                     {pendingPermissions.length} permission{pendingPermissions.length > 1 ? "s" : ""} pending
                   </span>
                 )}
@@ -218,7 +218,7 @@ export default function HRDashboard({ user }) {
                   <button key={f.key} onClick={() => setAttFilter(f.key)}
                     style={{ border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "5px 13px",
                       background: active ? "#7c3aed" : "#fff", color: active ? "#fff" : "#000",
-                      fontWeight: active ? 600 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                      fontWeight: active ? 600 : 500, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>
                     {f.label}
                   </button>
                 );
