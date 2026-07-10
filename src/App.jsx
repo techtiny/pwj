@@ -2691,7 +2691,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const parsed = JSON.parse(e.docData || "{}");
       if (parsed?.multiVendor && Array.isArray(parsed.docs)) {
         const subDoc = parsed.docs[Math.min(docViewIndex, parsed.docs.length - 1)];
-        entryToRender = { ...e, vendor: subDoc.vendor, docData: JSON.stringify(subDoc) };
+        const sub = subDoc.docStatus || "DRAFT";
+        const resolvedStatus = sub === "DRAFT" ? "DRAFT" : (sub === "PENDING_VP_APPROVAL" && e.docStatus === "VP_APPROVED") ? "VP_APPROVED" : sub;
+        entryToRender = { ...e, vendor: subDoc.vendor, docData: JSON.stringify(subDoc), docStatus: resolvedStatus };
         vendorToRender = approvedVendors.find(av => av.name === subDoc.vendor) || docModal.vendor;
       }
     } catch {}
@@ -5947,14 +5949,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
                                 <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Approved By</div>
-                                {e.docStatus === "VP_APPROVED"
+                                {activeDocStatus === "VP_APPROVED"
                                   ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
                               </div>
                               <div>
                                 <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Procurement Executive</div>
-                                {e.docStatus === "VP_APPROVED"
+                                {activeDocStatus === "VP_APPROVED"
                                   ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
                                 <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
