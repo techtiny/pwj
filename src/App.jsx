@@ -430,6 +430,21 @@ function parseDocData(entry) {
   return base;
 }
 
+// Counts individual pending doc-approval items — a multi-vendor entry contributes
+// one item per vendor sub-doc still PENDING_VP_APPROVAL, not one per entry — so this
+// matches what the pending-approvals list actually renders row by row.
+function countPendingDocItems(list) {
+  return (list || []).reduce((sum, d) => {
+    try {
+      const pd = JSON.parse(d.docData || "{}");
+      if (pd.multiVendor && Array.isArray(pd.docs)) {
+        return sum + pd.docs.filter(sd => sd.docStatus === "PENDING_VP_APPROVAL").length;
+      }
+    } catch {}
+    return sum + 1;
+  }, 0);
+}
+
 function autoDocNumber(entry) {
   const now = new Date();
   const m = now.getMonth() + 1;
@@ -1625,7 +1640,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
         setEntries(d.content);
         setTotal(d.totalElements);
         setTotalPages(d.totalPages);
-        setStats({ total: d.totalElements, closed: d.totalClosed, open: d.totalOpen, proceed: d.totalProceed, hold: d.totalHold, notApproved: d.totalNotApproved, dependencyCounts: d.dependencyCounts || {} });
+        // "Total" must stay constant regardless of the active status filter (OPEN/CLOSED
+        // toggle) — totalClosed/totalOpen are already status-filter-invariant counts,
+        // unlike totalElements which shrinks to match whichever status is selected.
+        setStats({ total: (d.totalClosed || 0) + (d.totalOpen || 0), closed: d.totalClosed, open: d.totalOpen, proceed: d.totalProceed, hold: d.totalHold, notApproved: d.totalNotApproved, dependencyCounts: d.dependencyCounts || {} });
       } else { setError(res.message); }
     } catch { if (fetchSeqRef.current === seq) setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
     finally { if (fetchSeqRef.current === seq) setLoading(false); }
@@ -1656,7 +1674,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       }
       if (isVP) {
         const [docs, vendors] = await Promise.all([api.getPendingDocApprovals(), api.getPendingVendors()]);
-        if (docs.success)    setPendingDocCount(docs.data.length);
+        if (docs.success)    setPendingDocCount(countPendingDocItems(docs.data));
         if (vendors.success) setPendingVendorCount(vendors.data.length);
       }
     } catch {}
@@ -2296,12 +2314,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (r.success) {
       // Also approve any clubbed secondary entries
       const entry = pendingDocs.find(d => d.id === id) || entries.find(x => x.id === id);
-      try {
-        const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
-        for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
-      } catch {}
-      setPendingDocs(d => d.filter(x => x.id !== id));
-      setPendingDocCount(c => Math.max(0, c - 1));
+      let clubbedIds = [];
+      try { clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || []; } catch {}
+      for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
+      const resolvedIds = new Set([id, ...clubbedIds]);
+      const resolved = pendingDocs.filter(x => resolvedIds.has(x.id));
+      setPendingDocs(d => d.filter(x => !resolvedIds.has(x.id)));
+      setPendingDocCount(c => Math.max(0, c - countPendingDocItems(resolved)));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
       showToast("Document approved ✅");
@@ -2314,12 +2333,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (r.success) {
       // Also reject any clubbed secondary entries
       const entry = pendingDocs.find(d => d.id === id) || entries.find(x => x.id === id);
-      try {
-        const clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || [];
-        for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
-      } catch {}
-      setPendingDocs(d => d.filter(x => x.id !== id));
-      setPendingDocCount(c => Math.max(0, c - 1));
+      let clubbedIds = [];
+      try { clubbedIds = JSON.parse(entry?.docData || "{}").clubbedEntryIds || []; } catch {}
+      for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
+      const resolvedIds = new Set([id, ...clubbedIds]);
+      const resolved = pendingDocs.filter(x => resolvedIds.has(x.id));
+      setPendingDocs(d => d.filter(x => !resolvedIds.has(x.id)));
+      setPendingDocCount(c => Math.max(0, c - countPendingDocItems(resolved)));
       setVpCommentMap(m => { const c = { ...m }; delete c[id]; return c; });
       fetchEntries();
       showToast(comment ? "Revision requested — Procurement notified" : "Document rejected");
@@ -2355,6 +2375,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         else showToast(r.message || "Failed", "error");
       } else {
         setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
+        setPendingDocCount(c => Math.max(0, c - 1));
         showToast(`PO for ${parsed.docs[subIdx].vendor} approved ✅`);
       }
       fetchEntries();
@@ -2384,7 +2405,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const r = await api.rejectDoc(entryId, comment);
       if (r.success) {
         const stillPending = newDocs.some(d => d.docStatus === "PENDING_VP_APPROVAL");
-        if (stillPending) setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
+        if (stillPending) { setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x)); setPendingDocCount(c => Math.max(0, c - 1)); }
         else { setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1)); }
         showToast(`PO for ${parsed.docs[subIdx].vendor} rejected`);
       } else showToast(r.message || "Failed", "error");
@@ -6236,7 +6257,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Document Approvals</div>
-                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>{pendingDocs.length} document{pendingDocs.length !== 1 ? "s" : ""} pending · sorted by latest request</div>
+                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>{countPendingDocItems(pendingDocs)} document{countPendingDocItems(pendingDocs) !== 1 ? "s" : ""} pending · sorted by latest request</div>
                 </div>
                 <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#374151", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
