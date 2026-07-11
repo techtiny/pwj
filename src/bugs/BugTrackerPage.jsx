@@ -158,6 +158,24 @@ export default function BugTrackerPage({ user }) {
     finally { setSaving(false); }
   };
 
+  // Paste a screenshot (Ctrl+V / Cmd+V) directly into the form — attaches the same
+  // way as the file picker below, just via clipboard instead of browsing for a file.
+  const handlePasteScreenshot = (ev) => {
+    const items = ev.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        const ext = item.type.split("/")[1] || "png";
+        const pasted = new File([blob], `pasted-screenshot-${Date.now()}.${ext}`, { type: item.type });
+        setFile(pasted);
+        ev.preventDefault();
+        break;
+      }
+    }
+  };
+
   // ── Inline table handlers (pass actorUsername for audit log) ──────────────
   const handleStatusChange = async (id, status) => {
     setBusyId(id);
@@ -320,7 +338,7 @@ export default function BugTrackerPage({ user }) {
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>Report a Bug</div>
-          <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
+          <form onSubmit={handleSubmit} onPaste={handlePasteScreenshot} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={LBL}>Title *</label>
               <input type="text" style={INP(errors.title)} placeholder="Short summary of the issue"
@@ -348,7 +366,7 @@ export default function BugTrackerPage({ user }) {
             </div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" }}>
-                Attachment <span style={{ color: "#0f172a", fontWeight: 400 }}>(optional — screenshot, image or PDF, max 20MB)</span>
+                Attachment <span style={{ color: "#0f172a", fontWeight: 400 }}>(optional — screenshot, image or PDF, max 20MB. Click to browse, or paste a screenshot with Ctrl+V / Cmd+V anywhere in this form)</span>
               </label>
               <label style={{
                 display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
@@ -357,7 +375,7 @@ export default function BugTrackerPage({ user }) {
                 fontSize: 13, fontWeight: 500,
               }}>
                 <span style={{ fontSize: 18 }}>📎</span>
-                <span>{file ? file.name : "Click to attach a screenshot or file"}</span>
+                <span>{file ? file.name : "Click to attach, or paste a screenshot (Ctrl+V)"}</span>
                 <input type="file" accept="image/*,application/pdf,.doc,.docx" style={{ display: "none" }}
                   onChange={e => setFile(e.target.files[0] || null)} />
                 {file && (
