@@ -1628,6 +1628,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [engRemarksSaving, setEngRemarksSaving]         = useState(false);
   const [siteRemarks, setSiteRemarks]                   = useState("");
   const [siteRemarksSaving, setSiteRemarksSaving]       = useState(false);
+  // PR clarity flow — Procurement asks Site Team a question / Site Team replies
+  const [prClarifyNote, setPrClarifyNote]               = useState("");
+  const [prClarifySaving, setPrClarifySaving]           = useState(false);
+  const [prReplyNote, setPrReplyNote]                   = useState("");
+  const [prReplySaving, setPrReplySaving]               = useState(false);
 
   // ── Fetch data ──
   const fetchSeqRef = useRef(0);
@@ -2870,6 +2875,53 @@ function Dashboard({ user, onLogout: handleLogout }) {
     finally { setSiteRemarksSaving(false); }
   };
 
+  // ── PR Clarity flow ──────────────────────────────────────────────────
+  // Procurement sends a PR back to Site Team for clarification. Works at any
+  // point after OH approval — only dependency + siteRemarks change, approvalStatus
+  // (the OH decision) is left untouched.
+  const sendToSiteTeam = async () => {
+    if (!detailRow || !prClarifyNote.trim()) return;
+    const name = user.fullName || user.username || "Procurement";
+    const now = new Date();
+    const fmtNow = now.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+    const newEntry = `[${fmtNow} · ${name}] ${prClarifyNote.trim()}`;
+    const existing = detailRow.siteRemarks;
+    const combined = existing ? `${existing}\n${newEntry}` : newEntry;
+    setPrClarifySaving(true);
+    try {
+      const r = await api.procurementUpdate(detailRow.id, { siteRemarks: combined, dependency: "Site team" });
+      if (r.success) {
+        setDetailRow(d => ({ ...d, siteRemarks: combined, dependency: "Site team" }));
+        setEntries(es => es.map(x => x.id === detailRow.id ? { ...x, siteRemarks: combined, dependency: "Site team" } : x));
+        setPrClarifyNote("");
+        showToast("Sent to Site Team for clarification ✅");
+      } else showToast(r.message || "Failed to save", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setPrClarifySaving(false); }
+  };
+
+  // Site Team replies and sends the PR back to Procurement.
+  const sendBackToProcurement = async () => {
+    if (!detailRow || !prReplyNote.trim()) return;
+    const name = user.fullName || user.username || "Site Team";
+    const now = new Date();
+    const fmtNow = now.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+    const newEntry = `[${fmtNow} · ${name}] ${prReplyNote.trim()}`;
+    const existing = detailRow.siteRemarks;
+    const combined = existing ? `${existing}\n${newEntry}` : newEntry;
+    setPrReplySaving(true);
+    try {
+      const r = await api.procurementUpdate(detailRow.id, { siteRemarks: combined, dependency: "Procurement" });
+      if (r.success) {
+        setDetailRow(d => ({ ...d, siteRemarks: combined, dependency: "Procurement" }));
+        setEntries(es => es.map(x => x.id === detailRow.id ? { ...x, siteRemarks: combined, dependency: "Procurement" } : x));
+        setPrReplyNote("");
+        showToast("Sent back to Procurement ✅");
+      } else showToast(r.message || "Failed to save", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setPrReplySaving(false); }
+  };
+
   // ── User Management ──
   const openUserMgmt = async () => {
     setUserMgmtModal(true);
@@ -3638,6 +3690,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </span>
                       ) : (
                         <span style={{ color: "#374151" }}>—</span>
+                      )}
+                      {row.siteRemarks && (
+                        <span title="Remarks available — click to view" onClick={() => setDetailRow(row)}
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 6, width: 22, height: 22, borderRadius: "50%", background: "#f5f3ff", border: "1px solid #ddd6fe", color: "#7c3aed", fontSize: 12, cursor: "pointer", verticalAlign: "middle" }}>
+                          💬
+                        </span>
                       )}
                     </td>
                     {/* ★ ACTION COLUMN */}
@@ -4718,6 +4776,51 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   );
                 })()}
               </div>
+
+              {/* PR Clarity flow — Procurement asks Site Team for clarification.
+                  Available on any PR at any stage, including newly created ones and
+                  ones already OH-approved; never changes approvalStatus. */}
+              {(isAdmin || isProcurement) && (
+                detailRow.dependency === "Site team" ? (
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#f5f3ff", borderRadius: 8, border: "1px solid #ddd6fe", fontSize: 13, color: "#5b21b6" }}>
+                    🏗️ Awaiting clarification from Site Team.
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={s.divider}>🏗️ Ask Site Team for Clarification</div>
+                    <textarea
+                      rows={2}
+                      placeholder="What do you need clarified? This sends the PR back to Site Team…"
+                      value={prClarifyNote}
+                      onChange={e => setPrClarifyNote(e.target.value)}
+                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                    />
+                    <button onClick={sendToSiteTeam} disabled={prClarifySaving || !prClarifyNote.trim()}
+                      style={{ ...s.submitBtn("linear-gradient(135deg,#6d28d9,#8b5cf6)"), opacity: (prClarifySaving || !prClarifyNote.trim()) ? 0.6 : 1 }}>
+                      {prClarifySaving ? "Sending…" : "🔁 Send to Site Team"}
+                    </button>
+                  </div>
+                )
+              )}
+
+              {/* PR Clarity flow — Site Team replies and sends the PR back to Procurement */}
+              {(isEngineer || isProjectManager) && detailRow.raisedBy === (user?.fullName || user?.username) && detailRow.dependency === "Site team" && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={s.divider}>💬 Reply to Procurement</div>
+                  <textarea
+                    rows={2}
+                    placeholder="Answer Procurement's question — this sends the PR back to them…"
+                    value={prReplyNote}
+                    onChange={e => setPrReplyNote(e.target.value)}
+                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                  />
+                  <button onClick={sendBackToProcurement} disabled={prReplySaving || !prReplyNote.trim()}
+                    style={{ ...s.submitBtn("linear-gradient(135deg,#0369a1,#0ea5e9)"), opacity: (prReplySaving || !prReplyNote.trim()) ? 0.6 : 1 }}>
+                    {prReplySaving ? "Sending…" : "↩ Send back to Procurement"}
+                  </button>
+                </div>
+              )}
+
               {/* Edit button inside detail modal for engineer/PM (locked when PROCEED) */}
               {(isEngineer || isProjectManager) && detailRow.raisedBy === (user?.fullName || user?.username) && (
                 detailRow.approvalStatus === "PROCEED" ? (
