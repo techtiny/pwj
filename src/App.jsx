@@ -4,7 +4,7 @@ import AccountSection from "./account/AccountSection";
 import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
-import { TodayAttendanceCard } from "./hr/AttendancePage";
+import { AttendanceIconButton } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 
@@ -1362,14 +1362,10 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
   ].filter(m => m.visible);
 
   return (
-    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
+    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 16px 40px" }}>
       <div style={{ marginBottom: 32, textAlign: "center", padding: "0 8px" }}>
         <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
         <div style={{ fontSize: 14, color: "#374151", marginTop: 8 }}>Select a module to get started</div>
-      </div>
-
-      <div className="home-attendance" style={{ width: "100%", maxWidth: 520, marginBottom: 24 }}>
-        <TodayAttendanceCard user={user} style={{ maxWidth: "100%" }} />
       </div>
 
       <div className="home-module-grid" style={{
@@ -3331,6 +3327,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <FileCheck size={20} strokeWidth={2} /> Doc Approvals
               <CountBadge count={pendingDocCount} />
             </button>
+          )}
+
+          {/* Attendance check-in/out — right side of this same row, Home tab only */}
+          {mainTab === "home" && (
+            <div style={{ marginLeft: "auto" }}>
+              <AttendanceIconButton user={user} compact />
+            </div>
           )}
         </div>
 

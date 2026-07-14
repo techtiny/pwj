@@ -147,6 +147,90 @@ export function TodayAttendanceCard({ user, style }) {
   );
 }
 
+/** Compact version — no card, just Check In and Check Out shown as two
+ * separate icons with labels, each clickable directly. Pass `compact` to get
+ * a horizontal pill (icon beside label) sized to sit inline in a nav bar row. */
+export function AttendanceIconButton({ user, compact = false }) {
+  const [today, setToday]     = useState(null);
+  const [loading, setLoading] = useState(false);
+  const username = user?.username;
+
+  const load = useCallback(async () => {
+    if (!username) return;
+    try {
+      const r = await attendanceApi.getToday(username);
+      setToday(r.data?.data);
+    } catch (e) { console.error(e); }
+  }, [username]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const checkedIn  = !!today?.checkInTime;
+  const checkedOut = !!today?.checkOutTime;
+
+  const doAction = async (apiFn, label) => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { lat, lng, accuracy } = await getLocation();
+      const address = await reverseGeocode(lat, lng);
+      const accuracyNote = accuracy > 200
+        ? `\n\n⚠️ Low GPS accuracy (±${Math.round(accuracy)}m). Move outdoors for a better signal, then try again.`
+        : "";
+      if (accuracyNote && !window.confirm(`📍 ${address}${accuracyNote}\n\nProceed anyway?`)) return;
+      const r = await apiFn({ username, lat, lng, address });
+      if (r.data?.success) await load();
+      else alert(r.data?.message || `${label} failed`);
+    } catch (e) { alert(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const IconBtn = ({ done, active, disabled, onClick, emoji, label }) => compact ? (
+    <button onClick={onClick} disabled={disabled || loading} title={label}
+      style={{
+        border: "none", background: "none", cursor: (disabled || loading) ? "default" : "pointer", fontFamily: "inherit",
+        padding: "14px 14px", fontSize: 14.5, fontWeight: 700,
+        color: done ? "#166534" : active ? "#dc2626" : "#94a3b8",
+        display: "flex", alignItems: "center", gap: 7, opacity: (disabled && !done) ? 0.7 : 1,
+      }}>
+      <span style={{
+        width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+        background: done ? "#dcfce7" : active ? "#fee2e2" : "#f1f5f9",
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+      }}>
+        {loading && active ? "…" : done ? "✓" : emoji}
+      </span>
+      {label}
+    </button>
+  ) : (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <button onClick={onClick} disabled={disabled || loading} title={label}
+        style={{
+          width: 48, height: 48, borderRadius: "50%", border: "none",
+          cursor: (disabled || loading) ? "default" : "pointer",
+          background: done ? "#1e3a5f" : active ? "linear-gradient(135deg,#dc2626,#ef4444)" : "#e2e8f0",
+          color: done || active ? "#fff" : "#64748b",
+          fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(15,23,42,.14)", opacity: (disabled && !done) ? 0.6 : 1, fontFamily: "inherit",
+        }}>
+        {loading && active ? "…" : done ? "✓" : emoji}
+      </button>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#000" }}>{label}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: compact ? 0 : 18 }}>
+      <IconBtn emoji="🏢" label="Check In" done={checkedIn}
+        active={!checkedIn} disabled={checkedIn}
+        onClick={() => doAction(attendanceApi.checkIn, "Check-in")} />
+      <IconBtn emoji="🏠" label="Check Out" done={checkedOut}
+        active={checkedIn && !checkedOut} disabled={!checkedIn || checkedOut}
+        onClick={() => doAction(attendanceApi.checkOut, "Check-out")} />
+    </div>
+  );
+}
+
 const Tooltip = ({ tooltip }) => {
   if (!tooltip) return null;
   return (
