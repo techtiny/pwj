@@ -24,7 +24,6 @@ export default function HRDashboard({ user }) {
   const [recentLeaves, setLeaves]   = useState([]);
   const [todayAll, setTodayAll]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
-  const [incomplete, setIncomplete]   = useState([]);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [attFilter, setAttFilter]     = useState("all"); // all | permissions-today
   const isAdmin     = ["ADMIN","CEO","VP","OH"].includes(user?.role);
@@ -40,7 +39,6 @@ export default function HRDashboard({ user }) {
     if (isAdmin) {
       attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
       usersApi.getAll().then(r => setAllUsers(r.data?.data || [])).catch(() => {});
-      attendanceApi.getIncomplete().then(r => setIncomplete(r.data?.data || [])).catch(() => {});
       leaveApi.pending().then(r => setPendingLeaves(r.data?.data || [])).catch(() => {});
     }
   }, [user?.username]);
@@ -148,47 +146,6 @@ export default function HRDashboard({ user }) {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Needs Review — past records with missing check-out (auto-marked Absent) */}
-      {isAdmin && incomplete.length > 0 && (
-        <div className="hr-needs-review" style={{ ...card, marginBottom: 20, border: "1px solid #fca5a5", borderLeft: "4px solid #dc2626" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 20 }}>⚠️</span>
-            <div>
-              <div style={{ ...secTitle, color: "#dc2626", marginBottom: 0 }}>Needs Review — Missing Check-Out</div>
-              <div style={{ fontSize: 15, color: "#ef4444" }}>
-                {incomplete.length} record{incomplete.length > 1 ? "s" : ""} auto-marked Absent — employee checked in but never checked out
-              </div>
-            </div>
-          </div>
-          <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["Employee", "Date", "Check-In", "Location"].map(h => (
-                    <th key={h} style={{ ...th, background: "#fef2f2" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {incomplete.map(a => (
-                  <tr key={a.id} style={{ borderBottom: "1px solid #fee2e2" }}>
-                    <td style={{ ...td, fontWeight: 600, color: "#0f172a" }}>{a.fullName}</td>
-                    <td style={td}>{fmtDate(a.workDate)}</td>
-                    <td style={td}>{fmtTime(a.checkInTime)}</td>
-                    <td style={{ ...td, fontSize: 15, color: "#374151", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {a.checkInAddress || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 10, fontSize: 15, color: "#374151" }}>
-            Go to <strong>All Attendance</strong> tab to correct check-in / check-out times.
-          </div>
         </div>
       )}
 

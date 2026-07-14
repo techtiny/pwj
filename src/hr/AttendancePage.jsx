@@ -172,6 +172,8 @@ export default function AttendancePage({ user, adminView = false }) {
   const [allRec, setAllRec]   = useState([]);
   const [summary, setSummary] = useState(null);
   const [tooltip, setTooltip] = useState(null);
+  const [subTab, setSubTab]   = useState("all");
+  const [incomplete, setIncomplete] = useState([]);
 
   const [filterName, setFilterName]     = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -212,7 +214,14 @@ export default function AttendancePage({ user, adminView = false }) {
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { load(); if (adminView) loadAll(); }, [load, loadAll, adminView]);
+  const loadIncomplete = useCallback(async () => {
+    try {
+      const r = await attendanceApi.getIncomplete();
+      setIncomplete(r.data?.data || []);
+    } catch (e) { console.error(e); }
+  }, []);
+
+  useEffect(() => { load(); if (adminView) { loadAll(); loadIncomplete(); } }, [load, loadAll, loadIncomplete, adminView]);
 
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
@@ -278,6 +287,7 @@ export default function AttendancePage({ user, adminView = false }) {
       });
       setEditRec(null);
       await loadAll();
+      if (adminView) await loadIncomplete();
     } catch (e) {
       alert("Failed to save. Please try again.");
     } finally {
@@ -296,6 +306,29 @@ export default function AttendancePage({ user, adminView = false }) {
         <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Team Attendance</div>
         <div style={{ fontSize: 13, color: "#374151", marginBottom: 16 }}>Engineers, Project Managers, Admin &amp; Procurement · {filteredRec.length} of {allRec.length} records</div>
 
+        {/* Sub-tabs */}
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
+          {[
+            { key: "all",           label: "All Records" },
+            { key: "needs-review",  label: `Needs Review — Missing Check-In/Out${incomplete.length ? ` (${incomplete.length})` : ""}` },
+          ].map(t => {
+            const active = subTab === t.key;
+            return (
+              <button key={t.key} onClick={() => setSubTab(t.key)}
+                style={{
+                  border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+                  padding: "10px 18px", fontSize: 14.5, fontWeight: active ? 700 : 600,
+                  color: t.key === "needs-review" && incomplete.length > 0 ? (active ? "#dc2626" : "#991b1b") : "#000",
+                  borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
+                  marginBottom: -1, whiteSpace: "nowrap",
+                }}>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {subTab === "all" && (<>
         {/* Filter bar */}
         <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
@@ -363,6 +396,54 @@ export default function AttendancePage({ user, adminView = false }) {
             </tbody>
           </table>
         </div>
+        </>)}
+
+        {subTab === "needs-review" && (
+          <div className="hr-needs-review" style={{ background: "#fff", borderRadius: 12, border: "1px solid #fca5a5", borderLeft: "4px solid #dc2626", padding: "18px 22px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#dc2626" }}>Needs Review — Missing Check-Out</div>
+                <div style={{ fontSize: 15, color: "#ef4444" }}>
+                  {incomplete.length} record{incomplete.length !== 1 ? "s" : ""} auto-marked Absent — employee checked in but never checked out
+                </div>
+              </div>
+            </div>
+            <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {["Employee", "Date", "Check-In", "Location", "Edit"].map(h => (
+                      <th key={h} style={{ ...TH, background: "#fef2f2" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomplete.map(a => (
+                    <tr key={a.id} style={{ borderBottom: "1px solid #fee2e2" }}>
+                      <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{a.fullName}</td>
+                      <td style={TD()}>{fmtDate(a.workDate)}</td>
+                      <td style={TD()}>{fmtTime(a.checkInTime)}</td>
+                      <td style={TD({ maxWidth: 220 })}><LocCell text={a.checkInAddress} maxWidth={220} /></td>
+                      <td style={TD()}>
+                        <button onClick={() => openEdit(a)}
+                          style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                          ✏️ Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {incomplete.length === 0 && (
+                    <tr><td colSpan={5} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+                      🎉 No missing check-outs to review
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <Tooltip tooltip={tooltip} />
 
         {/* Edit modal */}

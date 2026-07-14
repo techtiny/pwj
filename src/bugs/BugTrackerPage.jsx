@@ -270,24 +270,24 @@ export default function BugTrackerPage({ user }) {
   });
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontWeight: 700, fontSize: 12, color: "#475569",
+    fontWeight: 700, fontSize: 17, color: "#000",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
   };
   const TD = (extra = {}) => ({
-    padding: "12px 14px", color: "#0f172a",
-    borderBottom: "1px solid #f1f5f9", fontSize: 14, fontWeight: 500,
+    padding: "12px 14px", color: "#000",
+    borderBottom: "1px solid #f1f5f9", fontSize: 17, fontWeight: 500,
     verticalAlign: "middle", ...extra,
   });
   const INP = (err) => ({
     border: `1.5px solid ${err ? "#ef4444" : "#e2e8f0"}`, borderRadius: 8,
-    padding: "10px 13px", fontSize: 14, fontFamily: "inherit",
-    outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a",
+    padding: "10px 13px", fontSize: 17, fontFamily: "inherit",
+    outline: "none", width: "100%", boxSizing: "border-box", color: "#000",
     background: "#fff",
   });
-  const LBL = { fontSize: 13, fontWeight: 500, color: "#0f172a", marginBottom: 5, display: "block" };
-  const badge = (cfg) => ({ background: cfg.bg, color: cfg.color, borderRadius: 5, padding: "3px 10px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" });
-  const selectSm = { border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff", cursor: "pointer" };
+  const LBL = { fontSize: 17, fontWeight: 500, color: "#000", marginBottom: 5, display: "block" };
+  const badge = (cfg) => ({ background: cfg.bg, color: cfg.color, borderRadius: 5, padding: "3px 10px", fontSize: 17, fontWeight: 600, whiteSpace: "nowrap" });
+  const selectSm = { border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 17, fontFamily: "inherit", outline: "none", color: "#000", background: "#fff", cursor: "pointer" };
 
   const usersByUsername = useMemo(() => {
     const map = {};
@@ -300,7 +300,7 @@ export default function BugTrackerPage({ user }) {
     return { ...selectSm, background: cfg.bg, color: cfg.color, fontWeight: 700, border: "none" };
   };
 
-  const MLBL = { fontSize: 11, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5 };
+  const MLBL = { fontSize: 17, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5 };
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -315,8 +315,8 @@ export default function BugTrackerPage({ user }) {
           { label: "Closed",      value: counts.Closed,         accent: "#94a3b8" },
         ].map(k => (
           <div key={k.label} style={statCard(k.accent)}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#0f172a" }}>{k.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: "#000" }}>{k.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#000", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
           </div>
         ))}
       </div>
@@ -324,12 +324,12 @@ export default function BugTrackerPage({ user }) {
       {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>Bug Tracker</div>
-          <div style={{ fontSize: 12, color: "#0f172a", marginTop: 2 }}>Report issues and track their resolution</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: "#000" }}>Bug Tracker</div>
+          <div style={{ fontSize: 17, color: "#000", marginTop: 2 }}>Report issues and track their resolution</div>
         </div>
         <button
           onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setErrors({}); }}
-          style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 17, cursor: "pointer", fontFamily: "inherit" }}>
           + Report Bug
         </button>
       </div>
@@ -337,13 +337,13 @@ export default function BugTrackerPage({ user }) {
       {/* New bug form */}
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>Report a Bug</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "#000", marginBottom: 18 }}>Report a Bug</div>
           <form onSubmit={handleSubmit} onPaste={handlePasteScreenshot} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={LBL}>Title *</label>
-              <input type="text" style={INP(errors.title)} placeholder="Short summary of the issue"
+              <input type="text" style={{ ...INP(errors.title), fontSize: 19, fontWeight: 600 }} placeholder="Short summary of the issue"
                 value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-              {errors.title && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.title}</div>}
+              {errors.title && <div style={{ fontSize: 17, color: "#ef4444", marginTop: 3 }}>{errors.title}</div>}
             </div>
             <div>
               <label style={LBL}>Module / Page</label>
@@ -362,17 +362,17 @@ export default function BugTrackerPage({ user }) {
               <textarea style={{ ...INP(errors.description), resize: "vertical", minHeight: 90 }}
                 placeholder="Steps to reproduce, expected vs actual behaviour, etc."
                 value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              {errors.description && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
+              {errors.description && <div style={{ fontSize: 17, color: "#ef4444", marginTop: 3 }}>{errors.description}</div>}
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" }}>
-                Attachment <span style={{ color: "#0f172a", fontWeight: 400 }}>(optional — screenshot, image or PDF, max 20MB. Click to browse, or paste a screenshot with Ctrl+V / Cmd+V anywhere in this form)</span>
+              <label style={{ fontSize: 17, fontWeight: 600, color: "#000", marginBottom: 5, display: "block" }}>
+                Attachment <span style={{ color: "#000", fontWeight: 400 }}>(optional — screenshot, image or PDF, max 20MB. Click to browse, or paste a screenshot with Ctrl+V / Cmd+V anywhere in this form)</span>
               </label>
               <label style={{
                 display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
                 border: "1.5px dashed #cbd5e1", borderRadius: 8, padding: "10px 14px",
-                background: file ? "#f0fdf4" : "#f8fafc", color: file ? "#059669" : "#0f172a",
-                fontSize: 13, fontWeight: 500,
+                background: file ? "#f0fdf4" : "#f8fafc", color: file ? "#059669" : "#000",
+                fontSize: 17, fontWeight: 500,
               }}>
                 <span style={{ fontSize: 18 }}>📎</span>
                 <span>{file ? file.name : "Click to attach, or paste a screenshot (Ctrl+V)"}</span>
@@ -386,11 +386,11 @@ export default function BugTrackerPage({ user }) {
             </div>
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 10 }}>
               <button type="submit" disabled={saving}
-                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 17, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Submitting…" : "Submit Bug Report"}
               </button>
               <button type="button" onClick={() => setShowForm(false)}
-                style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "#000", fontWeight: 600, fontSize: 17, cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
             </div>
@@ -401,41 +401,41 @@ export default function BugTrackerPage({ user }) {
       {/* Filter bar */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#0f172a", marginBottom: 4, display: "block" }}>Status</label>
-          <select style={{ ...INP(), minWidth: 140, width: "auto" }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <label style={{ fontSize: 19, fontWeight: 500, color: "#000", marginBottom: 4, display: "block" }}>Status</label>
+          <select style={{ ...INP(), minWidth: 140, width: "auto", fontSize: 19 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">All Statuses</option>
             {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#0f172a", marginBottom: 4, display: "block" }}>Severity</label>
-          <select style={{ ...INP(), minWidth: 140, width: "auto" }} value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
+          <label style={{ fontSize: 19, fontWeight: 500, color: "#000", marginBottom: 4, display: "block" }}>Severity</label>
+          <select style={{ ...INP(), minWidth: 140, width: "auto", fontSize: 19 }} value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
             <option value="">All Severities</option>
             {SEVERITIES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#0f172a", marginBottom: 4, display: "block" }}>Module</label>
-          <select style={{ ...INP(), minWidth: 150, width: "auto" }} value={filterModule} onChange={e => setFilterModule(e.target.value)}>
+          <label style={{ fontSize: 19, fontWeight: 500, color: "#000", marginBottom: 4, display: "block" }}>Module</label>
+          <select style={{ ...INP(), minWidth: 150, width: "auto", fontSize: 19 }} value={filterModule} onChange={e => setFilterModule(e.target.value)}>
             <option value="">All Modules</option>
             {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#0f172a", marginBottom: 4, display: "block" }}>Assigned To</label>
-          <select style={{ ...INP(), minWidth: 160, width: "auto" }} value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}>
+          <label style={{ fontSize: 19, fontWeight: 500, color: "#000", marginBottom: 4, display: "block" }}>Assigned To</label>
+          <select style={{ ...INP(), minWidth: 160, width: "auto", fontSize: 19 }} value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}>
             <option value="">Anyone</option>
             {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#0f172a", marginBottom: 4, display: "block" }}>Search</label>
-          <input type="text" style={INP()} placeholder="Search title or description…"
+          <label style={{ fontSize: 19, fontWeight: 500, color: "#000", marginBottom: 4, display: "block" }}>Search</label>
+          <input type="text" style={{ ...INP(), fontSize: 19 }} placeholder="Search title or description…"
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {hasFilters && (
           <button onClick={clearFilters}
-            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#000", fontWeight: 600, fontSize: 19, cursor: "pointer", fontFamily: "inherit" }}>
             Clear Filters
           </button>
         )}
@@ -444,14 +444,14 @@ export default function BugTrackerPage({ user }) {
       {/* Bugs table */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: 52, textAlign: "center", color: "#0f172a", fontSize: 15 }}>Loading…</div>
+          <div style={{ padding: 52, textAlign: "center", color: "#000", fontSize: 17 }}>Loading…</div>
         ) : bugs.length === 0 ? (
-          <div style={{ padding: 52, textAlign: "center", color: "#0f172a", fontSize: 15 }}>
+          <div style={{ padding: 52, textAlign: "center", color: "#000", fontSize: 17 }}>
             {hasFilters ? "No bugs match the selected filters." : 'No bugs reported yet. Click "+ Report Bug" to get started.'}
           </div>
         ) : (
           <div className="table-scroll-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 17 }}>
               <thead>
                 <tr>
                   {["Bug #", "Title", "Module", "Severity", "Status", "Reported By", "Assigned To", "Attachment", "Created / Updated", ...(isManager ? ["Action"] : [])].map(h => (
@@ -467,15 +467,15 @@ export default function BugTrackerPage({ user }) {
                   const wasUpdated = b.updatedAt && b.createdAt && b.updatedAt !== b.createdAt;
                   return (
                     <tr key={b.id} style={{ cursor: "pointer" }} onClick={() => openView(b)}>
-                      <td style={TD({ color: "#1e3a5f", fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" })} onClick={e => e.stopPropagation()}>#{b.id}</td>
+                      <td style={TD({ color: "#1e3a5f", fontWeight: 700, fontSize: 17, whiteSpace: "nowrap" })} onClick={e => e.stopPropagation()}>#{b.id}</td>
                       <td style={TD({ maxWidth: 260 })}>
-                        <div style={{ fontWeight: 700, color: "#1e3a5f", textDecoration: "underline", textDecorationColor: "#cbd5e1" }}>{b.title}</div>
-                        <div style={{ fontSize: 12, color: "#0f172a", marginTop: 2, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={b.description}>
+                        <div style={{ fontWeight: 700, fontSize: 19, color: "#1e3a5f", textDecoration: "underline", textDecorationColor: "#cbd5e1" }}>{b.title}</div>
+                        <div style={{ fontSize: 17, color: "#000", marginTop: 2, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={b.description}>
                           {b.description}
                         </div>
                       </td>
                       <td style={TD()} onClick={e => e.stopPropagation()}>
-                        <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>{b.module}</span>
+                        <span style={{ background: "#f1f5f9", color: "#000", borderRadius: 5, padding: "2px 8px", fontSize: 17, fontWeight: 600 }}>{b.module}</span>
                       </td>
                       <td style={TD()} onClick={e => e.stopPropagation()}>
                         {isManager ? (
@@ -500,7 +500,7 @@ export default function BugTrackerPage({ user }) {
                       <td style={TD({ whiteSpace: "nowrap" })}>
                         <div>{b.reportedByName || b.reportedBy}</div>
                         {usersByUsername[b.reportedBy]?.role && (
-                          <div style={{ fontSize: 12, color: "#0f172a", marginTop: 1 }}>
+                          <div style={{ fontSize: 17, color: "#000", marginTop: 1 }}>
                             {ROLE_LABELS[usersByUsername[b.reportedBy].role] || usersByUsername[b.reportedBy].role}
                           </div>
                         )}
@@ -513,7 +513,7 @@ export default function BugTrackerPage({ user }) {
                             {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
                           </select>
                         ) : (
-                          b.assignedToName || <span style={{ color: "#0f172a" }}>—</span>
+                          b.assignedToName || <span style={{ color: "#000" }}>—</span>
                         )}
                       </td>
                       <td style={TD()}>
@@ -524,15 +524,15 @@ export default function BugTrackerPage({ user }) {
                                   style={{ width: 56, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0", display: "block" }} />
                               </a>
                             : <a href={attachmentFullUrl(b.attachmentUrl)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                                style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                                style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 17, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
                                 📄 View
                               </a>
-                          : <span style={{ color: "#0f172a" }}>—</span>}
+                          : <span style={{ color: "#000" }}>—</span>}
                       </td>
-                      <td style={TD({ whiteSpace: "nowrap", color: "#0f172a" })}>
+                      <td style={TD({ whiteSpace: "nowrap", color: "#000" })}>
                         <div>{fmtDateTime(b.createdAt)}</div>
                         {wasUpdated && (
-                          <div style={{ fontSize: 12, color: "#0f172a", marginTop: 2 }}>
+                          <div style={{ fontSize: 17, color: "#000", marginTop: 2 }}>
                             Updated: {fmtDateTime(b.updatedAt)}
                           </div>
                         )}
@@ -541,11 +541,11 @@ export default function BugTrackerPage({ user }) {
                         <td style={TD()} onClick={e => e.stopPropagation()}>
                           <div style={{ display: "flex", gap: 6 }}>
                             <button onClick={() => openEdit(b)} disabled={isBusy}
-                              style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#2563eb", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
+                              style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 17, fontWeight: 600, color: "#2563eb", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
                               Edit
                             </button>
                             <button onClick={() => handleDelete(b.id)} disabled={isBusy}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
+                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 17, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
                               Delete
                             </button>
                           </div>
@@ -570,22 +570,22 @@ export default function BugTrackerPage({ user }) {
             {/* Modal header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#000", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
                   Bug #{viewBug.id}
                 </div>
                 {editMode ? (
                   <>
-                    <input style={INP(editErrors.title)} value={editForm.title}
+                    <input style={{ ...INP(editErrors.title), fontSize: 20, fontWeight: 600 }} value={editForm.title}
                       onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                       placeholder="Bug title" />
-                    {editErrors.title && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{editErrors.title}</div>}
+                    {editErrors.title && <div style={{ fontSize: 17, color: "#ef4444", marginTop: 3 }}>{editErrors.title}</div>}
                   </>
                 ) : (
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}>{viewBug.title}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "#000", lineHeight: 1.35 }}>{viewBug.title}</div>
                 )}
               </div>
               <button onClick={closeModal}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#0f172a", lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#000", lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
 
             {/* Fields grid */}
@@ -596,7 +596,7 @@ export default function BugTrackerPage({ user }) {
                   ? <select style={INP()} value={editForm.module} onChange={e => setEditForm(f => ({ ...f, module: e.target.value }))}>
                       {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
-                  : <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600 }}>{viewBug.module}</span>}
+                  : <span style={{ background: "#f1f5f9", color: "#000", borderRadius: 5, padding: "3px 10px", fontSize: 17, fontWeight: 600 }}>{viewBug.module}</span>}
               </div>
               <div>
                 <div style={MLBL}>Severity</div>
@@ -612,26 +612,26 @@ export default function BugTrackerPage({ user }) {
               </div>
               <div>
                 <div style={MLBL}>Assigned To</div>
-                <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 13 }}>
-                  {viewBug.assignedToName || <span style={{ color: "#0f172a" }}>Unassigned</span>}
+                <div style={{ fontWeight: 600, color: "#000", fontSize: 17 }}>
+                  {viewBug.assignedToName || <span style={{ color: "#000" }}>Unassigned</span>}
                 </div>
               </div>
               <div>
                 <div style={MLBL}>Reported By</div>
-                <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 13 }}>{viewBug.reportedByName || viewBug.reportedBy}</div>
+                <div style={{ fontWeight: 600, color: "#000", fontSize: 17 }}>{viewBug.reportedByName || viewBug.reportedBy}</div>
                 {usersByUsername[viewBug.reportedBy]?.role && (
-                  <div style={{ fontSize: 12, color: "#0f172a", marginTop: 1 }}>
+                  <div style={{ fontSize: 17, color: "#000", marginTop: 1 }}>
                     {ROLE_LABELS[usersByUsername[viewBug.reportedBy].role] || usersByUsername[viewBug.reportedBy].role}
                   </div>
                 )}
               </div>
               <div>
                 <div style={MLBL}>Created</div>
-                <div style={{ fontSize: 12, color: "#0f172a" }}>{fmtDateTime(viewBug.createdAt)}</div>
+                <div style={{ fontSize: 17, color: "#000" }}>{fmtDateTime(viewBug.createdAt)}</div>
                 {viewBug.updatedAt && viewBug.updatedAt !== viewBug.createdAt && (
                   <>
                     <div style={{ ...MLBL, marginTop: 8 }}>Last Updated</div>
-                    <div style={{ fontSize: 12, color: "#0f172a" }}>{fmtDateTime(viewBug.updatedAt)}</div>
+                    <div style={{ fontSize: 17, color: "#000" }}>{fmtDateTime(viewBug.updatedAt)}</div>
                   </>
                 )}
               </div>
@@ -645,10 +645,10 @@ export default function BugTrackerPage({ user }) {
                   <textarea style={{ ...INP(editErrors.description), resize: "vertical", minHeight: 100 }}
                     value={editForm.description}
                     onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
-                  {editErrors.description && <div style={{ fontSize: 12, color: "#ef4444", marginTop: 3 }}>{editErrors.description}</div>}
+                  {editErrors.description && <div style={{ fontSize: 17, color: "#ef4444", marginTop: 3 }}>{editErrors.description}</div>}
                 </>
               ) : (
-                <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap", background: "#f8fafc", borderRadius: 8, padding: "12px 14px" }}>
+                <div style={{ fontSize: 17, color: "#000", lineHeight: 1.65, whiteSpace: "pre-wrap", background: "#f8fafc", borderRadius: 8, padding: "12px 14px" }}>
                   {viewBug.description}
                 </div>
               )}
@@ -664,7 +664,7 @@ export default function BugTrackerPage({ user }) {
                         style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid #e2e8f0", display: "block" }} />
                     </a>
                   : <a href={attachmentFullUrl(viewBug.attachmentUrl)} target="_blank" rel="noreferrer"
-                      style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 17, display: "inline-flex", alignItems: "center", gap: 6 }}>
                       📄 View Attachment
                     </a>}
               </div>
@@ -675,11 +675,11 @@ export default function BugTrackerPage({ user }) {
               {editMode ? (
                 <>
                   <button onClick={handleEditSave} disabled={editSaving}
-                    style={{ border: "none", borderRadius: 8, padding: "9px 22px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", opacity: editSaving ? 0.7 : 1 }}>
+                    style={{ border: "none", borderRadius: 8, padding: "9px 22px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 17, cursor: "pointer", fontFamily: "inherit", opacity: editSaving ? 0.7 : 1 }}>
                     {editSaving ? "Saving…" : "Save Changes"}
                   </button>
                   <button onClick={() => { setEditMode(false); setEditErrors({}); }}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", background: "#fff", color: "#000", fontWeight: 600, fontSize: 17, cursor: "pointer", fontFamily: "inherit" }}>
                     Cancel
                   </button>
                 </>
@@ -687,12 +687,12 @@ export default function BugTrackerPage({ user }) {
                 <>
                   {isManager && (
                     <button onClick={() => openEdit(viewBug)}
-                      style={{ border: "none", borderRadius: 8, padding: "9px 22px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ border: "none", borderRadius: 8, padding: "9px 22px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 17, cursor: "pointer", fontFamily: "inherit" }}>
                       Edit
                     </button>
                   )}
                   <button onClick={closeModal}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", background: "#fff", color: "#000", fontWeight: 600, fontSize: 17, cursor: "pointer", fontFamily: "inherit" }}>
                     Close
                   </button>
                 </>
@@ -701,11 +701,11 @@ export default function BugTrackerPage({ user }) {
 
             {/* Comments / Activity log */}
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 14 }}>Activity & Comments</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#000", marginBottom: 14 }}>Activity & Comments</div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16, maxHeight: 320, overflowY: "auto" }}>
                 {comments.length === 0
-                  ? <div style={{ color: "#0f172a", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No activity yet.</div>
+                  ? <div style={{ color: "#000", fontSize: 17, textAlign: "center", padding: "20px 0" }}>No activity yet.</div>
                   : comments.map(c => {
                       const cfg = COMMENT_TYPE_CFG[c.type] || COMMENT_TYPE_CFG.COMMENT;
                       return (
@@ -714,8 +714,8 @@ export default function BugTrackerPage({ user }) {
                             {cfg.icon}
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13.5, color: "#0f172a", lineHeight: 1.5 }}>{c.commentText}</div>
-                            <div style={{ fontSize: 12, color: "#0f172a", marginTop: 2 }}>
+                            <div style={{ fontSize: 17, color: "#000", lineHeight: 1.5 }}>{c.commentText}</div>
+                            <div style={{ fontSize: 17, color: "#000", marginTop: 2 }}>
                               {fmtDateTime(c.createdAt)}
                             </div>
                           </div>
@@ -734,11 +734,11 @@ export default function BugTrackerPage({ user }) {
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
                   style={{ ...INP(), resize: "none", flex: 1, padding: "8px 12px" }} />
                 <button onClick={handleAddComment} disabled={commentSaving || !commentText.trim()}
-                  style={{ border: "none", borderRadius: 8, padding: "8px 16px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-end", opacity: commentSaving || !commentText.trim() ? 0.5 : 1 }}>
+                  style={{ border: "none", borderRadius: 8, padding: "8px 16px", background: "#1e3a5f", color: "#fff", fontWeight: 600, fontSize: 17, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-end", opacity: commentSaving || !commentText.trim() ? 0.5 : 1 }}>
                   {commentSaving ? "…" : "Send"}
                 </button>
               </div>
-              <div style={{ fontSize: 12, color: "#0f172a", marginTop: 4 }}>Press Enter to send, Shift+Enter for new line</div>
+              <div style={{ fontSize: 17, color: "#000", marginTop: 4 }}>Press Enter to send, Shift+Enter for new line</div>
             </div>
 
           </div>
