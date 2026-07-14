@@ -6,6 +6,7 @@ import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { TodayAttendanceCard } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
+import AiAssistant from "./assistant/AiAssistant";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -3347,17 +3348,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           />
         )}
 
-        {mainTab === "chatbot" && (
-          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#4f46e5,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(124,58,237,0.35)" }}>
-              <Bot size={32} color="#fff" strokeWidth={1.8} />
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Happizo Chat Bot</div>
-              <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>Coming soon — AI-powered assistant for instant answers & support</div>
-            </div>
-          </div>
-        )}
+        {mainTab === "chatbot" && <AiAssistant user={user} />}
 
         {mainTab === "operations" && (
           <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
