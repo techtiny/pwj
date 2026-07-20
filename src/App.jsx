@@ -5735,6 +5735,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
               // docNum is resolved inside the inner IIFE (after docData) so it can use docData.docNumber
               // For multi-vendor: derive per-sub-doc status and overall partial status
               const activeDocStatus = isMulti ? (() => {
+                // Revoke is entry-wide (the backend has no per-vendor revoke) — a stale
+                // sub-doc status must never keep this locked as "VP_APPROVED" once revoked.
+                if (e.docStatus === "REVOKED") return "REVOKED";
                 const sub = multiDocs[safeIdx]?.docStatus || "DRAFT";
                 if (sub === "DRAFT") return "DRAFT";
                 if (sub === "PENDING_VP_APPROVAL" && e.docStatus === "VP_APPROVED") return "VP_APPROVED";
@@ -5776,13 +5779,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <span style={{ fontWeight: 500, color: "#374151" }}>{safeIdx + 1} / {multiCount}</span><br/>
                             {multiDocs.map((doc, di) => {
                               const sub = doc.docStatus || "DRAFT";
-                              const st = sub === "DRAFT" ? "DRAFT"
+                              const st = e.docStatus === "REVOKED" ? "REVOKED"
+                                : sub === "DRAFT" ? "DRAFT"
                                 : sub === "PENDING_VP_APPROVAL" && e.docStatus === "VP_APPROVED" ? "VP_APPROVED"
                                 : sub;
-                              const c = st === "VP_APPROVED" ? "#16a34a" : st === "PENDING_VP_APPROVAL" ? "#d97706" : "#94a3b8";
-                              const lbl = st === "VP_APPROVED" ? "✅" : st === "PENDING_VP_APPROVAL" ? "⏳" : "—";
+                              const c = st === "VP_APPROVED" ? "#16a34a" : st === "PENDING_VP_APPROVAL" ? "#d97706" : st === "REVOKED" ? "#7c3aed" : "#94a3b8";
+                              const lbl = st === "VP_APPROVED" ? "✅" : st === "PENDING_VP_APPROVAL" ? "⏳" : st === "REVOKED" ? "↩" : "—";
                               return di === safeIdx
-                                ? <span key={di} style={{ fontSize: 13, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : "Draft"}</span>
+                                ? <span key={di} style={{ fontSize: 13, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : st === "REVOKED" ? "Revoked" : "Draft"}</span>
                                 : null;
                             })}
                           </span>
