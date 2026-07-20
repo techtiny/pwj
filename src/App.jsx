@@ -2301,8 +2301,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const r = await api.updateEntry(e.id, body);
       if (r.success) {
         let updated = { ...e, ...r.data };
-        // Auto-resubmit for VP approval if saving after a revision request
-        if (e.docStatus === "REVISION_REQUESTED") {
+        // Auto-resubmit for VP approval if saving after a revision request or a VP revoke
+        if (e.docStatus === "REVISION_REQUESTED" || e.docStatus === "REVOKED") {
           const sr = await api.submitDoc(e.id);
           if (sr.success) {
             updated = { ...updated, docStatus: "PENDING_VP_APPROVAL", dependency: sr.data.dependency };
@@ -4665,7 +4665,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} />}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>
@@ -6304,8 +6304,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         activeDocStatus !== "PENDING_VP_APPROVAL" &&
                         activeDocStatus !== "VP_APPROVED" && (
                           <button onClick={sendDocForApproval} disabled={docLoading}
-                            style={{ background: activeDocStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                            {docLoading ? "Sending…" : isMulti ? `🚀 Send PO ${safeIdx + 1} for VP Approval` : activeDocStatus === "REVISION_REQUESTED" ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
+                            style={{ background: (activeDocStatus === "REVISION_REQUESTED" || activeDocStatus === "REVOKED") ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                            {docLoading ? "Sending…" : isMulti ? `🚀 Send PO ${safeIdx + 1} for VP Approval` : (activeDocStatus === "REVISION_REQUESTED" || activeDocStatus === "REVOKED") ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
                           </button>
                         )}
                       {activeDocStatus === "VP_APPROVED" && !isEngineer && (

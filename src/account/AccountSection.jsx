@@ -5,6 +5,7 @@ import AccountProjects from "./ProjectsPage";
 import AccountExpenses from "./ExpensePage";
 import AccountTransfers from "./FundTransferPage";
 import CollectionPage from "./CollectionPage";
+import PaymentsPage from "./PaymentsPage";
 
 const EXPENSE_CATS = [
   { key: "material",      label: "Material",      color: "#10b981" },
@@ -14,7 +15,7 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false }) {
   const [tab, setTab]     = useState("dashboard");
   const [expCat, setExpCat] = useState("material");
 
@@ -23,6 +24,7 @@ export default function AccountSection({ isCeo = false }) {
     { key: "projects",    label: "Project-wise" },
     { key: "expenses",    label: "Expenses"     },
     { key: "transfers",   label: "Fund Transfer"},
+    { key: "payments",    label: "Send for Payment"},
   ];
 
   return (
@@ -72,6 +74,7 @@ export default function AccountSection({ isCeo = false }) {
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
         {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
+        {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} /></div>}
       </div>
     </div>
   );

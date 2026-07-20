@@ -33,6 +33,11 @@ export const expenseItemsApi = {
   delete: (id) => api.delete(`/expenses/${id}`),
   getTrackedRefs: (projectId) => api.get(`/expenses/${projectId}/tracked-refs`),
   moveCategory:   (id, category) => api.patch(`/expenses/${id}/move`, { category }),
+  setEligibility: (id, eligible) => api.patch(`/expenses/${id}/eligibility`, { eligible }),
+  sendForPayment: (items) => api.post('/expenses/send-for-payment', { items }),
+  getSentForPayment: () => api.get('/expenses/sent-for-payment'),
+  setOhApproval: (id, status, revisedAmount) => api.patch(`/expenses/${id}/oh-approval`, { status, revisedAmount }),
+  setVpApproval: (id, status) => api.patch(`/expenses/${id}/vp-approval`, { status }),
 };
 
 export const projectsApi = {

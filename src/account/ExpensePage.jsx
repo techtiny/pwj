@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, Save } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, Save, Send } from 'lucide-react';
 import { projectsApi, pwjDocsApi, expenseItemsApi, vendorsApi } from './accountApi';
 import api from './accountApi';
 
@@ -52,7 +52,7 @@ function defaultCatForDocType(pwjType) {
 
 const GST_OPTIONS = ['0', '5', '12', '18', '28'];
 const PAY_OPTIONS = ['', 'PO', 'WO', 'JO', 'JW', 'CHEQUE', 'NEFT', 'UPI'];
-const NCOL = 21;
+const NCOL = 24;
 
 const EMPTY_ROW = {
   _new: true, description: '', partyName: '', monthYear: '', refNo: '',
@@ -85,6 +85,20 @@ function computeGst(gross, pct) {
   const g = n(gross), p = n(pct);
   const gstAmt = +(g * p / 100).toFixed(2);
   return { gstAmt, total: +(g + gstAmt).toFixed(2) };
+}
+
+const PAYMENT_STATUS_CFG = {
+  NOT_SENT:          { label: 'Not Sent',  color: '#64748b', bg: '#f1f5f9' },
+  PART_PAYMENT_SENT: { label: 'Part Sent', color: '#b45309', bg: '#fef3c7' },
+  FULL_PAYMENT_SENT: { label: 'Full Sent', color: '#15803d', bg: '#dcfce7' },
+};
+function PaymentStatusBadge({ status }) {
+  const cfg = PAYMENT_STATUS_CFG[status] || PAYMENT_STATUS_CFG.NOT_SENT;
+  return (
+    <span style={{ padding: '2px 7px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: 9.5, whiteSpace: 'nowrap' }}>
+      {cfg.label}
+    </span>
+  );
 }
 
 function makeAutoRow(doc) {
@@ -125,6 +139,10 @@ export default function ExpensePage({ category }) {
   const [trackedRefs, setTrackedRefs]         = useState(new Set());
   const [vendors, setVendors]                 = useState([]);
   const [vendorOpen, setVendorOpen]           = useState({});
+  const [selectedForPayment, setSelectedForPayment] = useState(new Set());
+  const [sendModalOpen, setSendModalOpen]     = useState(false);
+  const [sendChoices, setSendChoices]         = useState({});
+  const [sendSubmitting, setSendSubmitting]   = useState(false);
   const savingRef  = useRef({});
   const newRowsRef = useRef([]);
 
@@ -187,6 +205,7 @@ export default function ExpensePage({ category }) {
       setSummary(sr.data);
       setEditData({});
       setDirty({});
+      setSelectedForPayment(new Set());
       setLoadedProjectId(selectedProject.id);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [selectedProject, apiCat]);
@@ -280,6 +299,53 @@ export default function ExpensePage({ category }) {
     await api.delete(`/expenses/${id}`);
     await refreshTrackedRefs();
     loadItems();
+  }
+
+  async function toggleEligibility(id, eligible) {
+    try {
+      await api.patch(`/expenses/${id}/eligibility`, { eligible });
+      loadItems();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to update eligibility');
+    }
+  }
+
+  function toggleSelectForPayment(id) {
+    setSelectedForPayment(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function openSendModal() {
+    if (selectedForPayment.size === 0) return;
+    const choices = {};
+    selectedForPayment.forEach(id => { choices[id] = { paymentType: 'FULL', amount: '' }; });
+    setSendChoices(choices);
+    setSendModalOpen(true);
+  }
+
+  async function submitSendForPayment() {
+    const payloadItems = [...selectedForPayment].map(id => {
+      const choice = sendChoices[id] || { paymentType: 'FULL' };
+      return {
+        id,
+        paymentType: choice.paymentType,
+        amount: choice.paymentType === 'PART' ? n(choice.amount) : undefined,
+      };
+    });
+    setSendSubmitting(true);
+    try {
+      await api.post('/expenses/send-for-payment', { items: payloadItems });
+      setSendModalOpen(false);
+      setSelectedForPayment(new Set());
+      loadItems();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Send for payment failed');
+    } finally {
+      setSendSubmitting(false);
+    }
   }
 
   async function moveExistingRow(id, newCategory) {
@@ -582,6 +648,29 @@ export default function ExpensePage({ category }) {
         {/* Remarks */}
         <td style={TD}><CI v={gv('remarks')} on={v => sv('remarks', v)} /></td>
 
+        {/* Eligible for Payment */}
+        <td style={{ ...TD, textAlign: 'center' }}>
+          {isNew ? (
+            <span style={{ fontSize: 9.5, color: '#94a3b8', fontStyle: 'italic' }} title="Save this row first">Save first</span>
+          ) : (
+            <input type="checkbox" checked={!!item.eligibleForPayment}
+              onChange={e => toggleEligibility(item.id, e.target.checked)}
+              style={{ cursor: 'pointer' }} title="Mark eligible for payment" />
+          )}
+        </td>
+        {/* Payment Status */}
+        <td style={{ ...TD, textAlign: 'center' }}>
+          {!isNew && <PaymentStatusBadge status={item.paymentStatus} />}
+        </td>
+        {/* Select for "Send for Payment" */}
+        <td style={{ ...TD, textAlign: 'center' }}>
+          {!isNew && item.eligibleForPayment && item.paymentStatus !== 'FULL_PAYMENT_SENT' && (
+            <input type="checkbox" checked={selectedForPayment.has(item.id)}
+              onChange={() => toggleSelectForPayment(item.id)}
+              style={{ cursor: 'pointer' }} title="Select for Send for Payment" />
+          )}
+        </td>
+
         {/* Actions */}
         <td style={{ ...TD, textAlign: 'center', minWidth: 90 }}>
           <div style={{ display: 'flex', gap: 3, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -687,6 +776,10 @@ export default function ExpensePage({ category }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {statusBadge}
+          <button className="btn btn-sm" onClick={openSendModal} disabled={selectedForPayment.size === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: selectedForPayment.size === 0 ? 'default' : 'pointer', opacity: selectedForPayment.size === 0 ? 0.5 : 1 }}>
+            <Send size={13} /> Send for Payment{selectedForPayment.size > 0 ? ` (${selectedForPayment.size})` : ''}
+          </button>
           <button className="btn btn-primary btn-sm" onClick={addNewRow} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
             <Plus size={13} /> Add Row
           </button>
@@ -714,7 +807,7 @@ export default function ExpensePage({ category }) {
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total paid</td>
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total balance due as per PWJ</td>
               <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total balance due as per actuals</td>
-              <td colSpan={3} style={TD} />
+              <td colSpan={6} style={TD} />
             </tr>
 
             {/* Row 2: Financial year + summary values */}
@@ -735,7 +828,7 @@ export default function ExpensePage({ category }) {
               <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalPaid)}</td>
               <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.balanceAsPwj)}</td>
               <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.balanceAsActual)}</td>
-              <td colSpan={3} style={TD} />
+              <td colSpan={6} style={TD} />
             </tr>
 
             {/* Row 3: Column group headers */}
@@ -751,6 +844,9 @@ export default function ExpensePage({ category }) {
               <th colSpan={2} style={{ ...TH_GRP, background: '#4c1d95' }}>Balance to be paid</th>
               <th rowSpan={2} style={{ ...TH_SUB, minWidth: 100, textAlign: 'left', padding: '5px 8px' }}>Paid to</th>
               <th rowSpan={2} style={{ ...TH_SUB, minWidth: 100, textAlign: 'left', padding: '5px 8px' }}>Remarks, if any</th>
+              <th rowSpan={2} style={{ ...TH_SUB, width: 60 }}>Eligible</th>
+              <th rowSpan={2} style={{ ...TH_SUB, width: 84 }}>Payment Status</th>
+              <th rowSpan={2} style={{ ...TH_SUB, width: 50 }}>Select</th>
               <th rowSpan={2} style={{ ...TH_SUB, width: 90 }}></th>
             </tr>
 
@@ -794,7 +890,7 @@ export default function ExpensePage({ category }) {
                     <td style={{ ...TD, textAlign: 'right', color: '#10b981' }}>{fmt(liveTotal.totalPaid)}</td>
                     <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(liveTotal.balanceAsPwj)}</td>
                     <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(liveTotal.balanceAsActual)}</td>
-                    <td colSpan={3} style={TD} />
+                    <td colSpan={6} style={TD} />
                   </tr>
                 )}
               </>
@@ -802,6 +898,63 @@ export default function ExpensePage({ category }) {
           </tbody>
         </table>
       </div>
+
+      {sendModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => !sendSubmitting && setSendModalOpen(false)}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 20, width: 560, maxHeight: '80vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Send for Payment</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+              Choose Full or Part payment for each entry. Part payments are capped at the remaining PO value.
+            </div>
+            {[...selectedForPayment].map(id => {
+              const item = items.find(i => i.id === id);
+              if (!item) return null;
+              const remaining = n(item.pwjTotalPayable) - n(item.sentAmount);
+              const choice = sendChoices[id] || { paymentType: 'FULL', amount: '' };
+              return (
+                <div key={id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12.5, color: '#0f172a' }}>{item.description || '(no description)'}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                    {item.partyName} · Ref {item.refNo || '—'} · Not yet sent {fmt(remaining)}
+                    {item.refNo && item.poBalanceRemaining != null && (
+                      <> · PO balance {fmt(item.poBalanceRemaining)}</>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
+                      <input type="radio" checked={choice.paymentType === 'FULL'}
+                        onChange={() => setSendChoices(p => ({ ...p, [id]: { ...choice, paymentType: 'FULL' } }))} />
+                      Full ({fmt(remaining)})
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
+                      <input type="radio" checked={choice.paymentType === 'PART'}
+                        onChange={() => setSendChoices(p => ({ ...p, [id]: { ...choice, paymentType: 'PART' } }))} />
+                      Part
+                    </label>
+                    {choice.paymentType === 'PART' && (
+                      <input type="number" placeholder="Amount" value={choice.amount}
+                        onChange={e => setSendChoices(p => ({ ...p, [id]: { ...choice, amount: e.target.value } }))}
+                        style={{ width: 110, padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+              <button onClick={() => setSendModalOpen(false)} disabled={sendSubmitting}
+                style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: 12.5, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={submitSendForPayment} disabled={sendSubmitting}
+                style={{ padding: '7px 14px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: sendSubmitting ? 'default' : 'pointer', opacity: sendSubmitting ? 0.6 : 1 }}>
+                {sendSubmitting ? 'Sending…' : 'Confirm & Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
