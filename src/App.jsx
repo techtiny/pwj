@@ -2530,6 +2530,49 @@ function Dashboard({ user, onLogout: handleLogout }) {
     } finally { setGenDocSaving(false); }
   };
 
+  // Pulls a clubbed secondary entry back out of its primary's document, making it an
+  // independent, reassignable PR again. Doesn't touch the primary's item rows/PDF — those
+  // still need a manual edit if the removed item should also disappear from the document.
+  const unclubEntry = async (secondaryId) => {
+    const sec = entries.find(e => e.id === secondaryId);
+    if (!sec) return;
+    let secData; try { secData = JSON.parse(sec.docData || "{}"); } catch { secData = {}; }
+    const primaryId = secData.clubbedWithId;
+    if (!primaryId) return;
+    const primary = entries.find(e => e.id === primaryId);
+
+    if (!window.confirm(
+      `Unclub entry #${secondaryId} from PO #${primaryId}?\n\nIt becomes an independent PR again, ready to be assigned to a vendor on its own. ` +
+      `This does NOT remove its line item from PO #${primaryId}'s document — edit that document afterward if you also want it off the paperwork.`
+    )) return;
+
+    try {
+      const { clubbedWithId, ...secRest } = secData;
+      const secR = await api.updateEntry(secondaryId, {
+        raisedBy: sec.raisedBy, projectName: sec.projectName,
+        approvalStatus: sec.approvalStatus, status: sec.status,
+        boqNo: sec.boqNo || null, materialRequired: sec.materialRequired,
+        pwjIssued: false, docStatus: "DRAFT",
+        docData: JSON.stringify(secRest),
+      });
+      if (!secR.success) { showToast(secR.message || "Unclub failed", "error"); return; }
+
+      if (primary) {
+        let primData; try { primData = JSON.parse(primary.docData || "{}"); } catch { primData = {}; }
+        const newClubbed = (primData.clubbedEntryIds || []).filter(id => id !== secondaryId);
+        await api.updateEntry(primaryId, {
+          raisedBy: primary.raisedBy, projectName: primary.projectName,
+          approvalStatus: primary.approvalStatus, status: primary.status,
+          boqNo: primary.boqNo || null, materialRequired: primary.materialRequired,
+          docData: JSON.stringify({ ...primData, clubbedEntryIds: newClubbed }),
+        });
+      }
+
+      showToast(`Entry #${secondaryId} unclubbed ✅ — edit PO #${primaryId}'s document if you also want its line item removed`, "success");
+      fetchEntries();
+    } catch { showToast("Network error while unclubbing", "error"); }
+  };
+
   const buildDocHtml = (e, v) => {
     const ru = allUsers.find(u => u.fullName === e.raisedBy || u.username === e.raisedBy) || null;
     const raisedByContact = [ru?.fullName || e.raisedBy, ru?.phone].filter(Boolean).join("\n");
@@ -3752,10 +3795,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
-                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                              onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
-                              📎 Clubs #{clubbedWithId}
-                            </button>;
+                            return <>
+                              <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                                onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
+                                📎 Clubs #{clubbedWithId}
+                              </button>
+                              <button title="Unclub — pull this PR back out as an independent entry"
+                                style={{ background: "#fff", border: "1.5px solid #c4b5fd", borderRadius: 7, padding: "5px 8px", color: "#7c3aed", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                                onClick={() => unclubEntry(row.id)}>
+                                ✂️ Unclub
+                              </button>
+                            </>;
                           }
                           const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
                           const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
@@ -3806,8 +3856,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           try {
                             const dd = JSON.parse(row.docData || "{}");
                             if (Array.isArray(dd.clubbedEntryIds) && dd.clubbedEntryIds.length > 0) return (
-                              <div style={{ fontSize: 12, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
-                                📎 Clubs #{dd.clubbedEntryIds.join(", #")}
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
+                                📎 Clubs
+                                {dd.clubbedEntryIds.map((cid, ci) => (
+                                  <span key={cid} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                                    {ci > 0 && ","}
+                                    #{cid}
+                                    {(isAdmin || isProcurement) && (
+                                      <button title={`Unclub entry #${cid}`}
+                                        style={{ border: "none", background: "none", color: "#7c3aed", cursor: "pointer", padding: "0 1px", fontSize: 11, lineHeight: 1 }}
+                                        onClick={() => unclubEntry(cid)}>
+                                        ✂️
+                                      </button>
+                                    )}
+                                  </span>
+                                ))}
                               </div>
                             );
                           } catch {}
