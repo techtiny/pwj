@@ -2535,10 +2535,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // still need a manual edit if the removed item should also disappear from the document.
   const unclubEntry = async (secondaryId) => {
     const sec = entries.find(e => e.id === secondaryId);
-    if (!sec) return;
+    if (!sec) { showToast(`Entry #${secondaryId} isn't loaded in the current view — clear filters/search and try again`, "error"); return; }
     let secData; try { secData = JSON.parse(sec.docData || "{}"); } catch { secData = {}; }
     const primaryId = secData.clubbedWithId;
-    if (!primaryId) return;
+    if (!primaryId) { showToast(`Entry #${secondaryId} has no clubbing pointer — it may already be unclubbed`, "error"); return; }
     const primary = entries.find(e => e.id === primaryId);
 
     if (!window.confirm(
