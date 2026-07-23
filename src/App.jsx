@@ -253,6 +253,16 @@ const api = {
     body: JSON.stringify({ htmlContent }),
   }).then(r => r.json()),
   toggleVendorEmail: (id) => fetch(`${API_BASE}/entries/${id}/toggle-vendor-email`, { method: "PATCH" }).then(r => r.json()),
+  updateVisibility: (id, visibility) => fetch(`${API_BASE}/entries/${id}/visibility`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visibility }),
+  }).then(r => r.json()),
+  updateSharedEngineers: (id, engineers) => fetch(`${API_BASE}/entries/${id}/shared-engineers`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ engineers }),
+  }).then(r => r.json()),
   triggerBackup: () => fetch(`${REPORT_BASE}/trigger-backup`, { method: "POST" }).then(r => r.json()),
   downloadBackup: () => fetch(`${REPORT_BASE}/download-backup`),
   restoreBackup: (file) => { const fd = new FormData(); fd.append("file", file); return fetch(`${REPORT_BASE}/restore`, { method: "POST", body: fd }).then(r => r.json()); },
@@ -1470,7 +1480,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [approvalLoading, setApprovalLoading] = useState(false);
 
   // Create form
-  const [createForm, setCreateForm] = useState({ raisedBy: "", onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
+  const [createForm, setCreateForm] = useState({ raisedBy: "", onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN", visibility: "PRIVATE", sharedWithEngineers: [] });
 
   // VP vendor approvals
   const [vpPendingModal, setVpPendingModal] = useState(false);
@@ -1849,6 +1859,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       pwjType: row.pwjType || "",
       approvalStatus: row.approvalStatus || "NOT_APPROVED",
       status: row.status || "OPEN",
+      visibility: row.visibility || "PRIVATE",
+      sharedWithEngineers: row.sharedWithEngineers ? Array.from(row.sharedWithEngineers) : [],
     });
     setEditingEntry(row);
     setCreateModal(true);
@@ -2051,20 +2063,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const vendors = assignForm.vendors.filter(v => v.trim());
       const firstVendor = vendors[0] || null;
+      let existingDocs = [];
+      try {
+        const parsed = JSON.parse(assignModal.docData || "{}");
+        if (parsed.multiVendor && Array.isArray(parsed.docs)) existingDocs = parsed.docs;
+      } catch {}
+      const findExistingDoc = (v, i) => existingDocs.find(d => d.vendor === v) || existingDocs[i];
       let docData = null;
       if (vendors.length > 1) {
-        let existingDocs = [];
-        try {
-          const parsed = JSON.parse(assignModal.docData || "{}");
-          if (parsed.multiVendor && Array.isArray(parsed.docs)) existingDocs = parsed.docs;
-        } catch {}
         docData = JSON.stringify({
           multiVendor: true,
           docs: vendors.map((v, i) => ({
-            ...(existingDocs[i] || { items: [{ item: "", unit: "", qty: "", rate: "" }] }),
+            ...(findExistingDoc(v, i) || { items: [{ item: "", unit: "", qty: "", rate: "" }] }),
             vendor: v,
           }))
         });
+      } else if (existingDocs.length > 0) {
+        // Collapsing from multi-vendor back to a single vendor: keep that vendor's
+        // previously entered items/rates instead of silently discarding docData.
+        const survivor = (firstVendor && findExistingDoc(firstVendor, 0)) || existingDocs[0];
+        const { vendor, docStatus, ...rest } = survivor;
+        docData = JSON.stringify(rest);
       }
       const r = await api.procurementUpdate(assignModal.id, {
         vendor:  firstVendor,
@@ -3303,7 +3322,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {mainTab === "entries" && !isCeo && (
               <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
                 setEditingEntry(null);
-                setCreateForm({ raisedBy: user.fullName || user.username, onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN" });
+                setCreateForm({ raisedBy: user.fullName || user.username, onBehalf: "", projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "", unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN", visibility: "PRIVATE", sharedWithEngineers: [] });
                 setCreateModal(true);
                 fetchManagedProjects();
               }}>
@@ -3645,7 +3664,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.createdAt || row.timestamp)}
                     </td>
-                    <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>{row.raisedBy}</td>
+                    <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
+                      {row.raisedBy}
+                      {isEngineer && row.raisedBy !== (user?.fullName || user?.username) && (
+                        <span title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
+                      )}
+                    </td>
                     <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
                     <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
@@ -4891,6 +4915,64 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </button>
                 )
               )}
+
+              {/* Visibility controls — raiser, Admin or Procurement can share this PR with other engineers */}
+              {(isAdmin || isProcurement || detailRow.raisedBy === (user?.fullName || user?.username)) && (
+                <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 13, color: "#334155" }}>
+                      {detailRow.visibility === "ENGINEERS"
+                        ? "👁️ Shared — visible to ALL engineers"
+                        : (detailRow.sharedWithEngineers || []).length > 0
+                          ? "👁️ Shared with " + detailRow.sharedWithEngineers.length + " specific engineer" + (detailRow.sharedWithEngineers.length > 1 ? "s" : "")
+                          : "🔒 Private — visible only to " + detailRow.raisedBy}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const next = detailRow.visibility === "ENGINEERS" ? "PRIVATE" : "ENGINEERS";
+                        const r = await api.updateVisibility(detailRow.id, next);
+                        if (r.success) {
+                          setDetailRow(r.data);
+                          setEntries(prev => prev.map(e => e.id === r.data.id ? r.data : e));
+                          showToast(next === "ENGINEERS" ? "Shared with all engineers" : "Made private again");
+                        } else showToast(r.message || "Update failed", "error");
+                      }}
+                      style={{ border: "1.5px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#0f172a", whiteSpace: "nowrap" }}>
+                      {detailRow.visibility === "ENGINEERS" ? "Unshare from All" : "Share with All Engineers"}
+                    </button>
+                  </div>
+                  {detailRow.visibility !== "ENGINEERS" && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 6 }}>…or share with specific engineers</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 100, overflowY: "auto" }}>
+                        {allUsers
+                          .filter(u => u.role === "ENGINEER" && u.active !== false && u.fullName !== detailRow.raisedBy)
+                          .map(u => {
+                            const name = u.fullName || u.username;
+                            const checked = (detailRow.sharedWithEngineers || []).includes(name);
+                            return (
+                              <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#374151", cursor: "pointer", background: checked ? "#eef5fb" : "#fff", border: "1px solid #e2e8f0", padding: "3px 9px", borderRadius: 20 }}>
+                                <input type="checkbox" checked={checked}
+                                  onChange={async e => {
+                                    const cur = new Set(detailRow.sharedWithEngineers || []);
+                                    if (e.target.checked) cur.add(name); else cur.delete(name);
+                                    const engineers = Array.from(cur);
+                                    const r = await api.updateSharedEngineers(detailRow.id, engineers);
+                                    if (r.success) {
+                                      setDetailRow(r.data);
+                                      setEntries(prev => prev.map(en => en.id === r.data.id ? r.data : en));
+                                    } else showToast(r.message || "Update failed", "error");
+                                  }} />
+                                {name}
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Approve button inside detail modal */}
               {isOH && (
                 detailRow.approvalStatus === "PROCEED"
@@ -5265,6 +5347,37 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
                 </div>
               </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 14, color: "#374151", cursor: "pointer" }}>
+                <input type="checkbox"
+                  checked={createForm.visibility === "ENGINEERS"}
+                  onChange={e => setCreateForm(f => ({ ...f, visibility: e.target.checked ? "ENGINEERS" : "PRIVATE" }))} />
+                Share this PR with ALL engineers (visible beyond just the raiser)
+              </label>
+              {createForm.visibility !== "ENGINEERS" && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    …or share with specific engineers only
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 110, overflowY: "auto", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
+                    {allUsers
+                      .filter(u => u.role === "ENGINEER" && u.active !== false && u.fullName !== (user.fullName || user.username))
+                      .map(u => {
+                        const name = u.fullName || u.username;
+                        const checked = (createForm.sharedWithEngineers || []).includes(name);
+                        return (
+                          <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#374151", cursor: "pointer", background: checked ? "#eef5fb" : "transparent", padding: "3px 8px", borderRadius: 20 }}>
+                            <input type="checkbox" checked={checked}
+                              onChange={e => setCreateForm(f => {
+                                const cur = f.sharedWithEngineers || [];
+                                return { ...f, sharedWithEngineers: e.target.checked ? [...cur, name] : cur.filter(n => n !== name) };
+                              })} />
+                            {name}
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
               <button style={{ ...s.submitBtn(), marginTop: 8, opacity: createLoading ? 0.7 : 1, cursor: createLoading ? "not-allowed" : "pointer" }} onClick={submitCreate} disabled={createLoading}>
                 {createLoading ? "⏳ Saving…" : editingEntry ? "💾 Save Changes" : "✅ Create Entry"}
               </button>
