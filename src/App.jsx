@@ -6511,7 +6511,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
                         </button>
                       )}
-                      {activeDocStatus === "VP_APPROVED" && isVP && (
+                      {(activeDocStatus === "VP_APPROVED" || e.pwjIssued) && isVP && (
                         <button
                           title="Revoke VP approval — document returns to Draft for procurement to re-edit and resubmit"
                           onClick={async () => {
@@ -6519,7 +6519,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (reason === null) return; // cancelled
                             const r = await api.revokeDoc(e.id, reason);
                             if (r.success) {
-                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "REVOKED", approvedAt: null } : x));
+                              setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "REVOKED", approvedAt: null, pwjIssued: false } : x));
                               setDocModal(null);
                               showToast("Approval revoked — document reset to Draft");
                             } else {
