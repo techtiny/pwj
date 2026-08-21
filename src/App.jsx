@@ -6517,6 +6517,30 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           onClick={async () => {
                             const reason = window.prompt("Reason for revoking approval (optional):");
                             if (reason === null) return; // cancelled
+                            if (isMulti) {
+                              // Per-vendor PO — backend has no per-vendor revoke, so patch just this
+                              // sub-doc's status back to Draft instead of the entry-wide revoke endpoint.
+                              const parsed = JSON.parse(e.docData || "{}");
+                              const newDocs = multiDocs.map((d, i) => i === safeIdx
+                                ? { ...d, docStatus: "DRAFT", vpApprovedAt: null, revokeReason: reason || null }
+                                : d);
+                              const newDocData = JSON.stringify({ ...parsed, docs: newDocs });
+                              const saveR = await api.updateEntry(e.id, {
+                                raisedBy: e.raisedBy, projectName: e.projectName,
+                                approvalStatus: e.approvalStatus, status: e.status,
+                                boqNo: e.boqNo, materialRequired: e.materialRequired,
+                                vendor: e.vendor, pwjType: e.pwjType, pwjIssued: !!e.pwjIssued,
+                                docData: newDocData, docNumber: e.docNumber || null,
+                              });
+                              if (saveR.success) {
+                                setEntries(es => es.map(x => x.id === e.id ? { ...x, docData: newDocData } : x));
+                                setDocModal(m => ({ ...m, entry: { ...m.entry, docData: newDocData } }));
+                                showToast(`PO for ${multiDocs[safeIdx].vendor || "vendor"} revoked — reset to Draft`);
+                              } else {
+                                showToast(saveR.message || "Revoke failed", "error");
+                              }
+                              return;
+                            }
                             const r = await api.revokeDoc(e.id, reason);
                             if (r.success) {
                               setEntries(es => es.map(x => x.id === e.id ? { ...x, docStatus: "REVOKED", approvedAt: null, pwjIssued: false } : x));
