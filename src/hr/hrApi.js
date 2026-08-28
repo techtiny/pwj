@@ -73,6 +73,15 @@ export const projectsApi = {
   getActive: () => axios.get(`${PROJECTS_BASE}/active`),
 };
 
+export const salaryApi = {
+  getStructures: ()                     => api.get('/salary/structures'),
+  saveStructure: (data)                 => api.post('/salary/structure', data),
+  getHistory:    (userId)               => api.get(`/salary/structure/${userId}/history`),
+  getSheet:      (year, month)          => api.get('/salary/sheet', { params: { year, month } }),
+  adjust:        (userId, year, month, data) =>
+    api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
+};
+
 export const usersApi = {
   getAll:     () => axios.get(USERS_BASE),
   getExited:  () => axios.get(`${USERS_BASE}/exited`),

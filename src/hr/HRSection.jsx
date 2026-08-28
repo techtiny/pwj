@@ -5,6 +5,7 @@ import LeavePage from "./LeavePage";
 import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
 import EmployeeExitPage from "./EmployeeExitPage";
+import SalaryPage from "./SalaryPage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
@@ -24,6 +25,7 @@ export default function HRSection({ user }) {
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
     ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
     ...(canViewExits ? [{ key: "employees",    label: "Employee Exit"   }] : []),
+    ...(canViewExits ? [{ key: "salary",       label: "Salary"          }] : []),
   ];
 
   const [tab, setTab] = useState("dashboard");
@@ -129,6 +131,7 @@ export default function HRSection({ user }) {
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}
       {tab === "employees"      && <EmployeeExitPage user={user} />}
+      {tab === "salary"         && <SalaryPage user={user} />}
     </div>
   );
 }
