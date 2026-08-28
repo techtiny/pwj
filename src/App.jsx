@@ -141,6 +141,7 @@ const VENDOR_BASE   = `${BACKEND_BASE}/api/v1/vendors`;
 const AUTH_BASE     = `${BACKEND_BASE}/api/v1/auth`;
 const PROJECT_BASE  = `${BACKEND_BASE}/api/v1/projects`;
 const REPORT_BASE   = `${BACKEND_BASE}/api/v1/report`;
+const EXPENSE_BASE  = `${BACKEND_BASE}/api/expenses`;
 
 const getSessionToken = () => {
   try { return JSON.parse(localStorage.getItem("pwj_user"))?.token || ""; } catch { return ""; }
@@ -246,6 +247,19 @@ const api = {
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   revokeDoc:  (id, reason)  => fetch(`${API_BASE}/entries/${id}/doc-revoke`,  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
+  getPwjPaymentAvailability: (pwjEntryId) =>
+    fetch(`${EXPENSE_BASE}/pwj-entry/${pwjEntryId}/payment-availability`)
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null),
+  sendPwjForPayment: (pwjEntryId, amount, remarks) =>
+    fetch(`${EXPENSE_BASE}/send-pwj-for-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "" }),
+    }).then(async r => {
+      const data = await r.json().catch(() => null);
+      return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to send for payment" };
+    }),
   getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`, { headers: userHeaders() }).then(r => r.json()),
   sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
     method: "POST",
@@ -1461,6 +1475,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Modals
   const [detailRow, setDetailRow]         = useState(null);
   const [approvalModal, setApprovalModal] = useState(null); // { entry }
+  const [sendPaymentModal, setSendPaymentModal] = useState(null); // { entry }
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentRemarks, setPaymentRemarks] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentAvail, setPaymentAvail] = useState(null); // "loading" | "error" | { poValue, alreadySent, available, resolved }
+
+  useEffect(() => {
+    if (!sendPaymentModal) { setPaymentAvail(null); return; }
+    let cancelled = false;
+    setPaymentAvail("loading");
+    api.getPwjPaymentAvailability(sendPaymentModal.entry.id)
+      .then(d => { if (!cancelled) setPaymentAvail(d && typeof d === "object" ? d : "error"); });
+    return () => { cancelled = true; };
+  }, [sendPaymentModal]);
   const [createModal, setCreateModal]     = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [editingEntry, setEditingEntry]   = useState(null); // holds entry being edited by engineer
@@ -3841,6 +3869,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
+                        {isProcurement && (row.pwjIssued || row.docStatus === "VP_APPROVED") && (() => {
+                          const isMultiRow = (() => { try { return !!JSON.parse(row.docData || "{}").multiVendor; } catch { return false; } })();
+                          if (isMultiRow) return null; // per-vendor amounts live in docData — send from a single-vendor doc instead
+                          return (
+                            <button style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              onClick={() => { setPaymentAmount(""); setPaymentRemarks(""); setSendPaymentModal({ entry: row }); }}>
+                              💰 Send for Payment
+                            </button>
+                          );
+                        })()}
                         {(isEngineer || isVP || isOH || isCeo || isProjectManager) && row.docStatus && (() => {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
@@ -4752,7 +4790,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} />}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>
@@ -5059,6 +5097,99 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {approvalLoading ? "Saving…" : `Confirm ${APPROVAL_META[approvalForm.approvalStatus]?.label}`}
               </button>
               </>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SEND FOR PAYMENT MODAL (Procurement) ─── */}
+      {sendPaymentModal && (
+        <div style={s.overlay} onClick={() => !paymentLoading && setSendPaymentModal(null)}>
+          <div style={s.modalBox(440)} onClick={e => e.stopPropagation()}>
+            <div style={s.mHeader}>
+              <div>
+                <div style={s.mTitle}>Send for Payment</div>
+                <div style={s.mSub}>Entry #{sendPaymentModal.entry.id} · {sendPaymentModal.entry.materialRequired}</div>
+              </div>
+              <button style={s.closeBtn} onClick={() => setSendPaymentModal(null)}>✕</button>
+            </div>
+            <div style={s.mBody}>
+              <div style={s.formGroup}>
+                <label style={s.label}>Vendor</label>
+                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                  {sendPaymentModal.entry.vendor || "—"}
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>PWJ Doc Number</label>
+                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                  {sendPaymentModal.entry.docNumber || "—"}
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Project</label>
+                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                  {sendPaymentModal.entry.projectName || "—"}
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Amount Available to Send</label>
+                <div style={{ ...s.input, background: "#f0fdfa", color: "#0f766e", fontWeight: 700, cursor: "default", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span>
+                    {paymentAvail === "loading" ? "Checking…"
+                      : !paymentAvail || paymentAvail === "error" ? "—"
+                      : `₹ ${Number(paymentAvail.available || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  </span>
+                  {paymentAvail && paymentAvail !== "loading" && paymentAvail !== "error" && (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b", whiteSpace: "nowrap" }}>
+                      PO ₹{Number(paymentAvail.poValue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} · already sent ₹{Number(paymentAvail.alreadySent || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                </div>
+                {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved === false && (
+                  <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>
+                    Couldn’t resolve the PO total here — the amount cap is still enforced on submit.
+                  </div>
+                )}
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Amount to Send *</label>
+                <input type="number" min="0" step="0.01" style={s.input} placeholder="Enter amount"
+                  value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} autoFocus />
+                {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved !== false
+                  && paymentAmount && Number(paymentAmount) > Number(paymentAvail.available || 0) && (
+                  <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>
+                    Exceeds amount available (₹{Number(paymentAvail.available || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                  </div>
+                )}
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Remarks</label>
+                <textarea style={s.textarea} placeholder="Add a note for the Accounts team (optional)…"
+                  value={paymentRemarks} onChange={e => setPaymentRemarks(e.target.value)} />
+              </div>
+              <button style={s.submitBtn("linear-gradient(135deg,#0f766e,#14b8a6)")}
+                disabled={paymentLoading || !paymentAmount || Number(paymentAmount) <= 0
+                  || (paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved !== false
+                      && Number(paymentAmount) > Number(paymentAvail.available || 0))}
+                onClick={async () => {
+                  setPaymentLoading(true);
+                  try {
+                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks);
+                    if (r.success) {
+                      showToast("Sent for payment ✅");
+                      setSendPaymentModal(null);
+                    } else {
+                      showToast(r.message || "Failed to send for payment", "error");
+                    }
+                  } catch {
+                    showToast("Network error", "error");
+                  } finally {
+                    setPaymentLoading(false);
+                  }
+                }}>
+                {paymentLoading ? "Sending…" : "Send for Payment"}
+              </button>
             </div>
           </div>
         </div>

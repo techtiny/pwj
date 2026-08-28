@@ -187,6 +187,7 @@ export default function HRDashboard({ user }) {
               <thead>
                 <tr>
                   <th style={th}>#</th>
+                  <th style={th}>Emp No</th>
                   <th style={th}>Name</th>
                   <th style={th}>Designation</th>
                   <th style={th}>Check In</th>
@@ -198,7 +199,7 @@ export default function HRDashboard({ user }) {
               <tbody>
                 {displayTargets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ ...td, textAlign: "center", color: "#374151", padding: "24px 0" }}>
+                    <td colSpan={8} style={{ ...td, textAlign: "center", color: "#374151", padding: "24px 0" }}>
                       {attFilter === "permissions-today" ? "No approved permissions for today" : "Loading team data…"}
                     </td>
                   </tr>
@@ -209,6 +210,7 @@ export default function HRDashboard({ user }) {
                   return (
                     <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...td, color: "#374151", width: 36 }}>{i + 1}</td>
+                      <td style={{ ...td, color: "#475569", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
                       <td style={{ ...td, fontWeight: 600, color: "#0f172a" }}>{u.fullName}</td>
                       <td style={{ ...td, color: "#374151" }}>{u.designation || ROLE_LABELS[u.role] || u.role}</td>
                       <td style={td}>{hasIn ? fmtTime(a.checkInTime) : <span style={{ color: "#374151" }}>—</span>}</td>

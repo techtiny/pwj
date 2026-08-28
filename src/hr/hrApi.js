@@ -74,8 +74,19 @@ export const projectsApi = {
 };
 
 export const usersApi = {
-  getAll: () => axios.get(USERS_BASE),
+  getAll:     () => axios.get(USERS_BASE),
+  getExited:  () => axios.get(`${USERS_BASE}/exited`),
+  markExit:   (id, data) => axios.post(`${USERS_BASE}/${id}/exit`, data),
+  reinstate:  (id) => axios.post(`${USERS_BASE}/${id}/reinstate`),
 };
+
+export const EXIT_TYPES = [
+  { value: 'RESIGNED',   label: 'Resigned' },
+  { value: 'TERMINATED', label: 'Terminated' },
+  { value: 'ABSCONDED',  label: 'Absconded' },
+  { value: 'RETIRED',    label: 'Retired' },
+  { value: 'OTHER',      label: 'Other' },
+];
 
 export function fmtTime(dt) {
   if (!dt) return '—';

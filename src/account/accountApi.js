@@ -37,7 +37,9 @@ export const expenseItemsApi = {
   sendForPayment: (items) => api.post('/expenses/send-for-payment', { items }),
   getSentForPayment: () => api.get('/expenses/sent-for-payment'),
   setOhApproval: (id, status, revisedAmount) => api.patch(`/expenses/${id}/oh-approval`, { status, revisedAmount }),
+  setAdminApproval: (id, status) => api.patch(`/expenses/${id}/admin-approval`, { status }),
   setVpApproval: (id, status) => api.patch(`/expenses/${id}/vp-approval`, { status }),
+  setDeductions: (id, tdsPercent, gstDeducted) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, gstDeducted }),
 };
 
 export const projectsApi = {

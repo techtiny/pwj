@@ -134,3 +134,26 @@
 
 /* Spin animation */
 @keyframes acct-spin { to { transform: rotate(360deg); } }
+
+/* ── Send for Payment tab — match the procurement dashboard's larger scale & colour ── */
+.acct-wrap .pay-dash table { font-size: 16px; }
+.acct-wrap .pay-dash thead th {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  letter-spacing: 0.5px;
+  padding: 12px 14px !important;
+}
+.acct-wrap .pay-dash tbody td {
+  font-size: 15px !important;
+  font-weight: 500;
+  color: #0f172a !important;
+  padding: 12px 14px !important;
+}
+.acct-wrap .pay-dash tbody tr:nth-child(even) { background: #f8fafc; }
+.acct-wrap .pay-dash .card { border-radius: 12px; border: 1px solid #e2e8f0; }
+.acct-wrap .pay-dash .pay-kpi-label { font-size: 13px !important; }
+.acct-wrap .pay-dash .pay-kpi-value { font-size: 26px !important; }
+.acct-wrap .pay-dash .pay-section-title { font-size: 18px !important; }
+.acct-wrap .pay-dash select,
+.acct-wrap .pay-dash input { font-size: 14px !important; }

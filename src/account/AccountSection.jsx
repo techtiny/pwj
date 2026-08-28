@@ -15,7 +15,7 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false, isOH = false, isVP = false }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false }) {
   const [tab, setTab]     = useState("dashboard");
   const [expCat, setExpCat] = useState("material");
 
@@ -74,7 +74,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
         {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
-        {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} /></div>}
+        {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} /></div>}
       </div>
     </div>
   );

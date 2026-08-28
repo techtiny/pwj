@@ -4,12 +4,14 @@ import AttendancePage from "./AttendancePage";
 import LeavePage from "./LeavePage";
 import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
+import EmployeeExitPage from "./EmployeeExitPage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
   const canViewReimbursement = ["CEO", "VP", "OH"].includes(user?.role);
+  const canViewExits = ["ADMIN", "VP", "CEO", "OH"].includes(user?.role);
 
   const tabs = [
     { key: "dashboard",      label: "Dashboard" },
@@ -21,6 +23,7 @@ export default function HRSection({ user }) {
     ...(canViewReimbursement ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
     ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
+    ...(canViewExits ? [{ key: "employees",    label: "Employee Exit"   }] : []),
   ];
 
   const [tab, setTab] = useState("dashboard");
@@ -125,6 +128,7 @@ export default function HRSection({ user }) {
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}
+      {tab === "employees"      && <EmployeeExitPage user={user} />}
     </div>
   );
 }
