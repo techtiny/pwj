@@ -1291,6 +1291,13 @@ export default function PWJTracker() {
 
 // ─── HOME DASHBOARD ───
 function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
+  // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
+  // open …/#<module> in a new tab or window (session is shared via localStorage).
+  const modClick = (e, key) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    e.preventDefault();
+    onNavigate(key);
+  };
   const modules = [
     {
       key: "entries",
@@ -1399,37 +1406,50 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
         width: "100%",
         maxWidth: 960,
       }}>
-        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action }) => (
-          <button key={key} onClick={() => action ? action() : onNavigate(key)}
-            style={{
-              position: "relative",
-              background: "#fff",
-              border: "1.5px solid #e2e8f0",
-              borderRadius: 20,
-              padding: "32px 24px",
-              cursor: "pointer",
-              textAlign: "center",
-              fontFamily: "inherit",
-              transition: "transform .18s, box-shadow .18s",
-              boxShadow: "0 2px 12px rgba(15,23,42,.07)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 16,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${shadow}`; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; }}
-          >
-            <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
-              <Icon size={32} color="#fff" strokeWidth={1.8} />
-            </div>
-            <div>
-              <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
-              <div className="mod-desc" style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{desc}</div>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
-          </button>
-        ))}
+        {modules.map(({ key, label, desc, icon: Icon, gradient, shadow, action }) => {
+          const cardStyle = {
+            width: "100%", boxSizing: "border-box",
+            background: "#fff",
+            border: "1.5px solid #e2e8f0",
+            borderRadius: 20,
+            padding: "32px 24px",
+            cursor: "pointer",
+            textAlign: "center",
+            textDecoration: "none",
+            fontFamily: "inherit",
+            transition: "transform .18s, box-shadow .18s",
+            boxShadow: "0 2px 12px rgba(15,23,42,.07)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 16,
+          };
+          const hoverIn  = e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${shadow}`; };
+          const hoverOut = e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; };
+          const inner = (
+            <>
+              <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
+                <Icon size={32} color="#fff" strokeWidth={1.8} />
+              </div>
+              <div>
+                <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
+                <div className="mod-desc" style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{desc}</div>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
+            </>
+          );
+          // Route modules are real links to …/#<key> — Ctrl/⌘/middle/Shift-click opens a
+          // new tab natively; a plain click navigates in place.
+          return action ? (
+            <button key={key} onClick={() => action()} style={cardStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+              {inner}
+            </button>
+          ) : (
+            <a key={key} href={`#${key}`} onClick={e => modClick(e, key)} style={cardStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+              {inner}
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -1470,7 +1490,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [sortDir, setSortDir]         = useState("desc");
   const PAGE_SIZE = 15;
 
-  const [mainTab, setMainTab] = useState("home");
+  // ── Module routing via URL hash — lets each browser tab hold its own
+  //    module (e.g. …/#hr) while every tab shares the one login session ──
+  const allowedTabs = useMemo(() => {
+    const t = new Set(["home", "entries", "hr", "operations", "chatbot"]);
+    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) t.add("vendors");
+    if (isAdmin || isVP || isOH || isCeo || isProjectManager) { t.add("projects"); t.add("account"); }
+    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) t.add("sales");
+    if (isAdmin || isVP || isOH || isCeo) t.add("bugs");
+    return t;
+  }, [isAdmin, isProcurement, isVP, isOH, isCeo, isProjectManager]);
+
+  const readTabFromHash = useCallback(() => {
+    const h = (typeof window !== "undefined" ? window.location.hash : "").replace(/^#\/?/, "").toLowerCase();
+    return allowedTabs.has(h) ? h : "home";
+  }, [allowedTabs]);
+
+  const [mainTab, setMainTab] = useState(readTabFromHash);
+
+  // hash → state (deep link, browser back/forward, editing the URL)
+  useEffect(() => {
+    const onHash = () => setMainTab(readTabFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [readTabFromHash]);
+
+  // state → hash + per-tab data load + tab title (so each browser tab is identifiable)
+  useEffect(() => {
+    const desired = mainTab === "home" ? "" : "#" + mainTab;
+    if ((window.location.hash || "") !== desired) {
+      // pushState so the browser Back button walks modules; hashchange stays in sync either way
+      window.history.pushState(null, "", desired || window.location.pathname + window.location.search);
+    }
+    if (mainTab === "vendors") loadVendorsTab();
+    if (mainTab === "projects") fetchManagedProjects();
+    const LABEL = { entries: "Procurement", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", hr: "HR", operations: "Operations", chatbot: "Chat Bot", bugs: "Bug Tracker" };
+    document.title = mainTab === "home" ? "Happizo CloudDesk" : `${LABEL[mainTab] || mainTab} · Happizo CloudDesk`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainTab]);
 
   // Modals
   const [detailRow, setDetailRow]         = useState(null);
@@ -3432,11 +3489,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             user={user}
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
-            onNavigate={key => {
-              setMainTab(key);
-              if (key === "vendors") loadVendorsTab();
-              if (key === "projects") fetchManagedProjects();
-            }}
+            onNavigate={key => setMainTab(key)}
             onManageUsers={openUserMgmt}
           />
         )}
