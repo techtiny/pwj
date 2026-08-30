@@ -129,6 +129,23 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
   }
 
+  async function handleDelete(item) {
+    if (!window.confirm(
+      `Delete this Send for Payment entry?\n\n` +
+      `${item.partyName || '—'} · ${fmt(item.sentAmount)}${item.refNo ? ` · ${item.refNo}` : ''}\n\n` +
+      `This permanently removes the payment record. It does not touch the PWJ document.`
+    )) return;
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try {
+      await expenseItemsApi.delete(item.id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Could not delete entry');
+    } finally {
+      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
+    }
+  }
+
   async function handleDeduction(item, patch) {
     const tdsPercent = patch.tdsPercent !== undefined ? patch.tdsPercent
       : (item.tdsPercent != null ? Number(item.tdsPercent) : null);
@@ -403,6 +420,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th>OH Approval</th>
                   <th>Admin Approval</th>
                   <th>VP Approval</th>
+                  {(isAdmin || isVP) && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -521,6 +539,16 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                           <span style={{ fontSize: 10.5, color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting Admin</span>
                         )}
                       </td>
+
+                      {(isAdmin || isVP) && (
+                        <td>
+                          <button disabled={isBusy} onClick={() => handleDelete(it)}
+                            title="Delete this Send for Payment entry"
+                            style={{ ...btn('#fee2e2'), color: '#b91c1c' }}>
+                            Delete
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
