@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Send, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { expenseItemsApi } from './accountApi';
+import { expenseItemsApi, fundManagementApi } from './accountApi';
 
 const PAYMENT_STATUS_CFG = {
   PART_PAYMENT_SENT: { label: 'Part Sent', color: '#b45309', bg: '#fef3c7' },
@@ -77,15 +77,20 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   const [customFrom, setCustomFrom]       = useState(todayStr());
   const [customTo, setCustomTo]           = useState(todayStr());
 
+  const [funding, setFunding] = useState(null); // { fundingInUse, allFunded, totalShortfall, projects: [...] }
+
   const load = useCallback(() => {
     setLoading(true);
     expenseItemsApi.getSentForPayment()
       .then(r => setItems(r.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+    fundManagementApi.paymentFunding().then(r => setFunding(r.data || null)).catch(() => setFunding(null));
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const fundingBlocked = !!(funding && funding.fundingInUse && !funding.allFunded);
 
   async function handleOhDecision(item, status) {
     setBusy(p => ({ ...p, [item.id]: true }));
@@ -255,6 +260,11 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   // Generate today's bank payment file — pipe-delimited .txt, header + one line per approved transfer.
   function exportBankPayment() {
     if (approvedToday.length === 0) return;
+    if (fundingBlocked) {
+      const short = (funding.projects || []).filter(p => !p.funded).map(p => `${p.projectName} (short ${fmt(p.shortfall)})`).join(', ');
+      alert(`Bank transfer not eligible — some projects are underfunded:\n\n${short}\n\nSettle the transfers in Fund Management → Payment Funding first.`);
+      return;
+    }
     const clean = v => String(v ?? '').replace(/[|\r\n]+/g, ' ').trim();
     const header = HEADERS.join('|');
     const lines = approvedToday.map(it => [
@@ -354,22 +364,35 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
         ))}
       </div>
 
+      {fundingBlocked && (
+        <div className="card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <div style={{ fontSize: 13, color: '#7f1d1d' }}>
+            <b>Bank transfer not eligible — shortfall {fmt(funding.totalShortfall)}.</b>{' '}
+            {(funding.projects || []).filter(p => !p.funded).map(p => `${p.projectName} (short ${fmt(p.shortfall)})`).join(', ')}.
+            {' '}Move fund in <b>Fund Management → Payment Funding</b>, then generate the bank file.
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="card" style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
           <div className="pay-section-title" style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Payment History</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={exportBankPayment} disabled={approvedToday.length === 0}
+            <button onClick={exportBankPayment} disabled={approvedToday.length === 0 || fundingBlocked}
               title={approvedToday.length === 0
                 ? 'No VP-approved entries sent for payment today'
+                : fundingBlocked
+                ? `Underfunded — settle transfers in Fund Management → Payment Funding (shortfall ${fmt(funding.totalShortfall)})`
                 : `Generate today's bank payment file (${approvedToday.length} ${approvedToday.length === 1 ? 'transfer' : 'transfers'})`}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #1d4ed8', borderRadius: 8,
                 padding: '7px 12px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
-                background: approvedToday.length === 0 ? '#f1f5f9' : '#2563eb',
-                color: approvedToday.length === 0 ? '#94a3b8' : '#fff',
-                borderColor: approvedToday.length === 0 ? '#cbd5e1' : '#1d4ed8',
-                cursor: approvedToday.length === 0 ? 'not-allowed' : 'pointer',
+                background: (approvedToday.length === 0 || fundingBlocked) ? '#f1f5f9' : '#2563eb',
+                color: (approvedToday.length === 0 || fundingBlocked) ? '#94a3b8' : '#fff',
+                borderColor: (approvedToday.length === 0 || fundingBlocked) ? '#cbd5e1' : '#1d4ed8',
+                cursor: (approvedToday.length === 0 || fundingBlocked) ? 'not-allowed' : 'pointer',
               }}>
               <Send size={14} /> Bank Payment{approvedToday.length > 0 ? ` (${approvedToday.length})` : ''}
             </button>
