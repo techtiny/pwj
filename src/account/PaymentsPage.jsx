@@ -3,14 +3,6 @@ import { Send, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { expenseItemsApi } from './accountApi';
 
-const CATEGORY_LABELS = {
-  MATERIAL:      { label: 'Material',      color: '#10b981', bg: '#d1fae5' },
-  LABOUR:        { label: 'Labour',        color: '#3b82f6', bg: '#dbeafe' },
-  SUBCONTRACT:   { label: 'Sub-Contract',  color: '#8b5cf6', bg: '#ede9fe' },
-  CONSULTANTS:   { label: 'Consultants',   color: '#f59e0b', bg: '#fef3c7' },
-  MISCELLANEOUS: { label: 'Miscellaneous', color: '#64748b', bg: '#f1f5f9' },
-};
-
 const PAYMENT_STATUS_CFG = {
   PART_PAYMENT_SENT: { label: 'Part Sent', color: '#b45309', bg: '#fef3c7' },
   FULL_PAYMENT_SENT: { label: 'Full Sent', color: '#15803d', bg: '#dcfce7' },
@@ -58,6 +50,9 @@ const TDS_OPTIONS = [1, 2, 10];
 
 const PAYMENT_AGAINST_LABEL = { PO: 'PO', WO: 'WO', JO: 'JO', VENDOR_INVOICE: 'Vendor Invoice' };
 const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINST_LABEL[s.trim()] || s.trim()).filter(Boolean).join(', ') : '—');
+
+const STAGE_LABEL = { ADVANCE: 'Advance', STAGE_1: 'Stage 1', STAGE_2: 'Stage 2', STAGE_3: 'Stage 3', FINAL: 'Final' };
+const fmtStage = v => (v ? (STAGE_LABEL[v] || v) : '—');
 
 // Remarks carried into the dashboard cell and both exports: the free-text note (if any),
 // plus the Project ID and the Ref No (PO/WO document number). " / " separated so it
@@ -152,10 +147,11 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   async function handleDeduction(item, patch) {
     const tdsPercent = patch.tdsPercent !== undefined ? patch.tdsPercent
       : (item.tdsPercent != null ? Number(item.tdsPercent) : null);
-    const gstDeducted = patch.gstDeducted !== undefined ? patch.gstDeducted : !!item.gstDeducted;
+    const deductionAmount = patch.deductionAmount !== undefined ? patch.deductionAmount
+      : (item.deductionAmount != null ? Number(item.deductionAmount) : null);
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      await expenseItemsApi.setDeductions(item.id, tdsPercent, gstDeducted);
+      await expenseItemsApi.setDeductions(item.id, tdsPercent, deductionAmount);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'Could not save deductions');
@@ -407,9 +403,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                 <tr>
                   <th>#</th>
                   <th>Project</th>
-                  <th>Category</th>
                   <th>Party</th>
                   <th>Ref No</th>
+                  <th>Stage</th>
                   <th>Payment Against</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Amount Sent</th>
@@ -418,9 +414,8 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th>Remarks</th>
                   <th title="TDS rate applied on Amount Sent">TDS %</th>
                   <th style={{ textAlign: 'right' }} title="Amount Sent × TDS %">TDS Amt</th>
-                  <th title="Deduct GST portion?">GST</th>
-                  <th style={{ textAlign: 'right' }} title="Amount Sent × GST %">GST Amt</th>
-                  <th style={{ textAlign: 'right' }} title="Amount Sent − TDS Amt − GST Amt">Approved Value</th>
+                  <th style={{ textAlign: 'right' }} title="Manual deduction — Admin / VP / OH">Deduction</th>
+                  <th style={{ textAlign: 'right' }} title="Amount Sent − TDS Amt − Deduction">Approved Value</th>
                   <th>OH Approval</th>
                   <th>Admin Approval</th>
                   <th>VP Approval</th>
@@ -429,7 +424,6 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
               </thead>
               <tbody>
                 {filtered.map((it, i) => {
-                  const cat = CATEGORY_LABELS[it.category] || CATEGORY_LABELS.MISCELLANEOUS;
                   const status = PAYMENT_STATUS_CFG[it.paymentStatus] || PAYMENT_STATUS_CFG.PART_PAYMENT_SENT;
                   const isBusy = !!busy[it.id];
                   const ohPending = (it.ohApprovalStatus || 'PENDING') === 'PENDING';
@@ -437,24 +431,19 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   const vpEligible = it.adminApprovalStatus === 'APPROVED' && (it.vpApprovalStatus || 'PENDING') === 'PENDING';
                   const btn = (bg) => ({ border: 'none', borderRadius: 5, padding: '3px 8px', fontSize: 10.5, fontWeight: 700, color: '#fff', background: bg, cursor: isBusy ? 'default' : 'pointer', opacity: isBusy ? 0.6 : 1 });
                   const selStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', background: '#fff' };
-                  const canEditDeductions = (isOH || isAdmin) && (it.vpApprovalStatus || 'PENDING') !== 'APPROVED';
+                  const canEditDeductions = (isOH || isAdmin || isVP) && (it.vpApprovalStatus || 'PENDING') !== 'APPROVED';
                   const tdsAmt = it.tdsAmount != null ? Number(it.tdsAmount)
                     : (it.tdsPercent ? Number(it.sentAmount || 0) * Number(it.tdsPercent) / 100 : 0);
-                  const gstAmt = it.gstDeductionAmount != null ? Number(it.gstDeductionAmount)
-                    : (it.gstDeducted ? Number(it.sentAmount || 0) * (Number(it.gstPercent) || 18) / 100 : 0);
+                  const deductionAmt = Number(it.deductionAmount || 0);
                   const apprVal = it.approvedValue != null ? Number(it.approvedValue)
-                    : (Number(it.sentAmount || 0) - tdsAmt - gstAmt);
+                    : (Number(it.sentAmount || 0) - tdsAmt - deductionAmt);
                   return (
                     <tr key={it.id}>
                       <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
                       <td style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
-                      <td>
-                        <span style={{ padding: '2px 8px', borderRadius: 100, background: cat.bg, color: cat.color, fontSize: 10, fontWeight: 700 }}>
-                          {cat.label}
-                        </span>
-                      </td>
                       <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
                       <td style={{ fontSize: 12, color: '#64748b' }}>{it.refNo || '—'}</td>
+                      <td style={{ fontSize: 12, color: '#334155' }}>{fmtStage(it.paymentStage)}</td>
                       <td style={{ fontSize: 12, color: '#334155' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</td>
                       <td>
                         <span style={{ padding: '2px 8px', borderRadius: 100, background: status.bg, color: status.color, fontSize: 10, fontWeight: 700 }}>
@@ -481,21 +470,23 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       </td>
                       {/* TDS Amt */}
                       <td style={{ textAlign: 'right', fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
-                      {/* GST */}
-                      <td>
+                      {/* Deduction — manual, Admin / VP / OH */}
+                      <td style={{ textAlign: 'right' }}>
                         {canEditDeductions ? (
-                          <select style={selStyle} disabled={isBusy}
-                            value={it.gstDeducted ? 'yes' : 'no'}
-                            onChange={e => handleDeduction(it, { gstDeducted: e.target.value === 'yes' })}>
-                            <option value="no">No</option>
-                            <option value="yes">Yes</option>
-                          </select>
+                          <input type="number" min="0" step="0.01" disabled={isBusy}
+                            defaultValue={it.deductionAmount != null ? it.deductionAmount : ''}
+                            placeholder="0"
+                            onBlur={e => {
+                              const v = e.target.value === '' ? null : Number(e.target.value);
+                              if (v !== (it.deductionAmount != null ? Number(it.deductionAmount) : null)) {
+                                handleDeduction(it, { deductionAmount: v });
+                              }
+                            }}
+                            style={{ ...selStyle, width: 84, textAlign: 'right' }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.gstDeducted ? 'Yes' : 'No'}</span>
+                          <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
                         )}
                       </td>
-                      {/* GST Amt */}
-                      <td style={{ textAlign: 'right', fontSize: 12, color: '#b45309' }}>{gstAmt ? fmt(gstAmt) : '—'}</td>
                       {/* Approved Value */}
                       <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
 
