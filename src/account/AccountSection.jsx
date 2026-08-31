@@ -6,6 +6,7 @@ import AccountExpenses from "./ExpensePage";
 import AccountTransfers from "./FundTransferPage";
 import CollectionPage from "./CollectionPage";
 import PaymentsPage from "./PaymentsPage";
+import FundManagementPage from "./FundManagementPage";
 
 const EXPENSE_CATS = [
   { key: "material",      label: "Material",      color: "#10b981" },
@@ -24,6 +25,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "projects",    label: "Project-wise" },
     { key: "expenses",    label: "Expenses"     },
     { key: "transfers",   label: "Fund Transfer"},
+    { key: "fund-mgmt",   label: "Fund Management"},
     { key: "payments",    label: "Send for Payment"},
   ];
 
@@ -74,6 +76,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
         {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
+        {tab === "fund-mgmt"   && <div className="page-content"><FundManagementPage /></div>}
         {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} /></div>}
       </div>
     </div>

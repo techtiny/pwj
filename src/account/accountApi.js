@@ -74,6 +74,12 @@ export const fundTransferApi = {
   delete:     (id)       => api.delete(`/fund-transfers/${id}`),
 };
 
+export const fundManagementApi = {
+  list:   (direction) => api.get('/fund-management', { params: direction ? { direction } : {} }),
+  create: (data)      => api.post('/fund-management', data),
+  delete: (id)        => api.delete(`/fund-management/${id}`),
+};
+
 export const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '₹0';
   return new Intl.NumberFormat('en-IN', {
