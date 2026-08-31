@@ -56,6 +56,9 @@ const payableAmount = it => (it.approvedValue != null && it.approvedValue !== ''
 
 const TDS_OPTIONS = [1, 2, 10];
 
+const PAYMENT_AGAINST_LABEL = { PO: 'PO', WO: 'WO', JO: 'JO', VENDOR_INVOICE: 'Vendor Invoice' };
+const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINST_LABEL[s.trim()] || s.trim()).filter(Boolean).join(', ') : '—');
+
 // Remarks carried into the dashboard cell and both exports: the free-text note (if any),
 // plus the Project ID and the Ref No (PO/WO document number). " / " separated so it
 // survives the pipe-delimited bank file.
@@ -407,6 +410,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th>Category</th>
                   <th>Party</th>
                   <th>Ref No</th>
+                  <th>Payment Against</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Amount Sent</th>
                   <th style={{ textAlign: 'right' }}>Due Amount</th>
@@ -451,6 +455,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       </td>
                       <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
                       <td style={{ fontSize: 12, color: '#64748b' }}>{it.refNo || '—'}</td>
+                      <td style={{ fontSize: 12, color: '#334155' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</td>
                       <td>
                         <span style={{ padding: '2px 8px', borderRadius: 100, background: status.bg, color: status.color, fontSize: 10, fontWeight: 700 }}>
                           {status.label}

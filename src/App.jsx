@@ -251,11 +251,11 @@ const api = {
     fetch(`${EXPENSE_BASE}/pwj-entry/${pwjEntryId}/payment-availability`)
       .then(r => (r.ok ? r.json() : null))
       .catch(() => null),
-  sendPwjForPayment: (pwjEntryId, amount, remarks) =>
+  sendPwjForPayment: (pwjEntryId, amount, remarks, paymentMadeAgainst) =>
     fetch(`${EXPENSE_BASE}/send-pwj-for-payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "" }),
+      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "" }),
     }).then(async r => {
       const data = await r.json().catch(() => null);
       return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to send for payment" };
@@ -1535,6 +1535,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [sendPaymentModal, setSendPaymentModal] = useState(null); // { entry }
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRemarks, setPaymentRemarks] = useState("");
+  const [paymentAgainstSel, setPaymentAgainstSel] = useState([]); // subset of PO/WO/JO/VENDOR_INVOICE
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentAvail, setPaymentAvail] = useState(null); // "loading" | "error" | { poValue, alreadySent, available, resolved }
 
@@ -3927,7 +3928,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           if (isMultiRow) return null; // per-vendor amounts live in docData — send from a single-vendor doc instead
                           return (
                             <button style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                              onClick={() => { setPaymentAmount(""); setPaymentRemarks(""); setSendPaymentModal({ entry: row }); }}>
+                              onClick={() => { setPaymentAmount(""); setPaymentRemarks(""); setPaymentAgainstSel(row.pwjType ? [row.pwjType] : []); setSendPaymentModal({ entry: row }); }}>
                               💰 Send for Payment
                             </button>
                           );
@@ -5217,6 +5218,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 )}
               </div>
               <div style={s.formGroup}>
+                <label style={s.label}>Payment made against</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[["PO", "PO"], ["WO", "WO"], ["JO", "JO"], ["VENDOR_INVOICE", "Vendor Invoice"]].map(([val, lbl]) => {
+                    const on = paymentAgainstSel.includes(val);
+                    return (
+                      <label key={val}
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: "pointer",
+                          border: `1.5px solid ${on ? "#0f766e" : "#e2e8f0"}`, background: on ? "#f0fdfa" : "#fff",
+                          color: on ? "#0f766e" : "#334155", fontSize: 13, fontWeight: 600 }}>
+                        <input type="checkbox" checked={on}
+                          onChange={() => setPaymentAgainstSel(sel => on ? sel.filter(x => x !== val) : [...sel, val])} />
+                        {lbl}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={s.formGroup}>
                 <label style={s.label}>Remarks</label>
                 <textarea style={s.textarea} placeholder="Add a note for the Accounts team (optional)…"
                   value={paymentRemarks} onChange={e => setPaymentRemarks(e.target.value)} />
@@ -5228,7 +5247,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 onClick={async () => {
                   setPaymentLoading(true);
                   try {
-                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks);
+                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel.join(","));
                     if (r.success) {
                       showToast("Sent for payment ✅");
                       setSendPaymentModal(null);
