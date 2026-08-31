@@ -21,6 +21,7 @@ export default function FundManagementPage() {
   const [dir, setDir] = useState('INFLOW'); // INFLOW | OUTFLOW
   const [projects, setProjects] = useState([]);
   const [rows, setRows] = useState([]);
+  const [balances, setBalances] = useState({}); // projectId -> { inflow, outflow, available }
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -37,13 +38,24 @@ export default function FundManagementPage() {
     projectsApi.getAll().then(r => setProjects(r.data || [])).catch(() => setProjects([]));
   }, []);
 
+  const loadBalances = useCallback(() => {
+    fundManagementApi.balances()
+      .then(r => {
+        const map = {};
+        (r.data || []).forEach(b => { map[b.projectId] = b; });
+        setBalances(map);
+      })
+      .catch(() => setBalances({}));
+  }, []);
+
   const load = useCallback(() => {
     setLoading(true);
     fundManagementApi.list(dir)
       .then(r => setRows(r.data || []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  }, [dir]);
+    loadBalances();
+  }, [dir, loadBalances]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -181,6 +193,14 @@ export default function FundManagementPage() {
                 <input style={{ ...inputS, marginTop: 6 }} placeholder="Type the new Source Type"
                   value={form.customParty} onChange={e => setForm(f => ({ ...f, customParty: e.target.value }))} autoFocus />
               )}
+              {!isInflow && form.projectId && form.projectId !== ADD_CUSTOM && (
+                <div style={{ fontSize: 12, marginTop: 6, color: (balances[form.projectId]?.available ?? 0) >= 0 ? '#0f766e' : '#dc2626' }}>
+                  Available: <b>{fmt(balances[form.projectId]?.available ?? 0)}</b>
+                  <span style={{ color: '#94a3b8', fontWeight: 500 }}>
+                    {'  '}(in {fmt(balances[form.projectId]?.inflow ?? 0)} · out {fmt(balances[form.projectId]?.outflow ?? 0)})
+                  </span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -221,6 +241,7 @@ export default function FundManagementPage() {
                 <th style={th}>Date</th>
                 <th style={th}>{partyLabel}</th>
                 <th style={{ ...th, textAlign: 'right' }}>Amount</th>
+                {!isInflow && <th style={{ ...th, textAlign: 'right' }} title="Inflow received for this project − Outflow paid to it">Available</th>}
                 <th style={th}>{modeLabel}</th>
                 <th style={th}>Remarks</th>
                 <th style={{ ...th, textAlign: 'right' }}></th>
@@ -228,9 +249,9 @@ export default function FundManagementPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td style={td} colSpan={6}>Loading…</td></tr>
+                <tr><td style={td} colSpan={isInflow ? 6 : 7}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={6}>No {isInflow ? 'inflow' : 'outflow'} entries yet.</td></tr>
+                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={isInflow ? 6 : 7}>No {isInflow ? 'inflow' : 'outflow'} entries yet.</td></tr>
               ) : rows.map(r => (
                 <tr key={r.id}>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.movementDate)}</td>
@@ -239,6 +260,12 @@ export default function FundManagementPage() {
                     {r.projectId && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
                   </td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: isInflow ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.amount)}</td>
+                  {!isInflow && (
+                    <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700,
+                      color: r.projectId == null ? '#94a3b8' : (balances[r.projectId]?.available ?? 0) >= 0 ? '#0f766e' : '#dc2626' }}>
+                      {r.projectId == null ? '—' : fmt(balances[r.projectId]?.available ?? 0)}
+                    </td>
+                  )}
                   <td style={td}>{r.mode || '—'}</td>
                   <td style={{ ...td, color: '#475569', maxWidth: 280, whiteSpace: 'pre-wrap' }}>{r.remarks || '—'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
@@ -255,7 +282,7 @@ export default function FundManagementPage() {
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                   <td style={td} colSpan={2}>Total</td>
                   <td style={{ ...td, textAlign: 'right', color: isInflow ? '#16a34a' : '#dc2626' }}>{fmt(totalShown)}</td>
-                  <td style={td} colSpan={3}></td>
+                  <td style={td} colSpan={isInflow ? 3 : 4}></td>
                 </tr>
               </tfoot>
             )}

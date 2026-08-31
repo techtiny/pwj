@@ -75,9 +75,10 @@ export const fundTransferApi = {
 };
 
 export const fundManagementApi = {
-  list:   (direction) => api.get('/fund-management', { params: direction ? { direction } : {} }),
-  create: (data)      => api.post('/fund-management', data),
-  delete: (id)        => api.delete(`/fund-management/${id}`),
+  list:     (direction) => api.get('/fund-management', { params: direction ? { direction } : {} }),
+  balances: ()          => api.get('/fund-management/balances'),
+  create:   (data)      => api.post('/fund-management', data),
+  delete:   (id)        => api.delete(`/fund-management/${id}`),
 };
 
 export const formatCurrency = (amount) => {
