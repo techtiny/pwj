@@ -380,6 +380,7 @@ export default function AttendancePage({ user, adminView = false }) {
   };
 
   if (adminView) {
+    const isViewOnly = user?.role === "PROJECT_MANAGER";
     const FILTER_INP = {
       border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
       fontSize: 14, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff",
@@ -448,7 +449,7 @@ export default function AttendancePage({ user, adminView = false }) {
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }} className="table-scroll-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
-              <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status","Edit"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
+              <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status", ...(isViewOnly ? [] : ["Edit"])].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {filteredRec.map(a => {
@@ -463,17 +464,19 @@ export default function AttendancePage({ user, adminView = false }) {
                     <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkOutAddress} /></td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
                     <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
-                    <td style={TD()}>
-                      <button onClick={() => openEdit(a)}
-                        style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                        ✏️ Edit
-                      </button>
-                    </td>
+                    {!isViewOnly && (
+                      <td style={TD()}>
+                        <button onClick={() => openEdit(a)}
+                          style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                          ✏️ Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filteredRec.length === 0 && (
-                <tr><td colSpan={9} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+                <tr><td colSpan={isViewOnly ? 8 : 9} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
                   {hasFilters ? "No records match the selected filters." : "No records"}
                 </td></tr>
               )}
@@ -497,7 +500,7 @@ export default function AttendancePage({ user, adminView = false }) {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Employee", "Date", "Check-In", "Location", "Edit"].map(h => (
+                    {["Employee", "Date", "Check-In", "Location", ...(isViewOnly ? [] : ["Edit"])].map(h => (
                       <th key={h} style={{ ...TH, background: "#fef2f2" }}>{h}</th>
                     ))}
                   </tr>
@@ -509,16 +512,18 @@ export default function AttendancePage({ user, adminView = false }) {
                       <td style={TD()}>{fmtDate(a.workDate)}</td>
                       <td style={TD()}>{fmtTime(a.checkInTime)}</td>
                       <td style={TD({ maxWidth: 220 })}><LocCell text={a.checkInAddress} maxWidth={220} /></td>
-                      <td style={TD()}>
-                        <button onClick={() => openEdit(a)}
-                          style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                          ✏️ Edit
-                        </button>
-                      </td>
+                      {!isViewOnly && (
+                        <td style={TD()}>
+                          <button onClick={() => openEdit(a)}
+                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                            ✏️ Edit
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {incomplete.length === 0 && (
-                    <tr><td colSpan={5} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+                    <tr><td colSpan={isViewOnly ? 4 : 5} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
                       🎉 No missing check-outs to review
                     </td></tr>
                   )}

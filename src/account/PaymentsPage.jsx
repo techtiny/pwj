@@ -46,8 +46,6 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 const payableAmount = it => (it.approvedValue != null && it.approvedValue !== ''
   ? Number(it.approvedValue) : Number(it.sentAmount || 0));
 
-const TDS_OPTIONS = [1, 2, 10];
-
 const PAYMENT_AGAINST_LABEL = { PO: 'PO', WO: 'WO', JO: 'JO', VENDOR_INVOICE: 'Vendor Invoice' };
 const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINST_LABEL[s.trim()] || s.trim()).filter(Boolean).join(', ') : '—');
 
@@ -68,7 +66,6 @@ const remarkText = it => {
 export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = false }) {
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ohEdits, setOhEdits] = useState({}); // id -> revised amount string
   const [busy, setBusy]       = useState({});  // id -> true while an approval call is in flight
 
   const [filterProject, setFilterProject] = useState('');
@@ -95,11 +92,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   async function handleOhDecision(item, status) {
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      const raw = ohEdits[item.id];
-      const revisedAmount = raw !== undefined && raw !== '' && Number(raw) !== Number(item.sentAmount)
-        ? Number(raw) : undefined;
-      await expenseItemsApi.setOhApproval(item.id, status, revisedAmount);
-      setOhEdits(p => { const c = { ...p }; delete c[item.id]; return c; });
+      await expenseItemsApi.setOhApproval(item.id, status);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'OH approval failed');
@@ -132,6 +125,18 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
   }
 
+  async function handleVpRevise(item) {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try {
+      await expenseItemsApi.reviseAtVp(item.id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Sending back for revision failed');
+    } finally {
+      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
+    }
+  }
+
   async function handleDelete(item) {
     if (!window.confirm(
       `Delete this Send for Payment entry?\n\n` +
@@ -144,22 +149,6 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'Could not delete entry');
-    } finally {
-      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
-    }
-  }
-
-  async function handleDeduction(item, patch) {
-    const tdsPercent = patch.tdsPercent !== undefined ? patch.tdsPercent
-      : (item.tdsPercent != null ? Number(item.tdsPercent) : null);
-    const deductionAmount = patch.deductionAmount !== undefined ? patch.deductionAmount
-      : (item.deductionAmount != null ? Number(item.deductionAmount) : null);
-    setBusy(p => ({ ...p, [item.id]: true }));
-    try {
-      await expenseItemsApi.setDeductions(item.id, tdsPercent, deductionAmount);
-      load();
-    } catch (e) {
-      alert(e.response?.data?.error || 'Could not save deductions');
     } finally {
       setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
     }
@@ -218,18 +207,6 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   // Beneficiary account / IFSC / email / mobile come from the matched Vendor record (see backend enrichBeneficiary).
   function exportExcel() {
     if (approvedForExport.length === 0) return;
-    const rowFor = it => [
-      'N',                                    // Transaction Type — NEFT by default
-      it.benAccountNumber || '',               // Beneficiary Account Number (from Vendor)
-      Number(payableAmount(it).toFixed(2)),     // Instrument Amount — Approved Value after deductions
-      it.partyName || '',                     // Beneficiary Name
-      '',                                     // Beneficiary Code
-      remarkText(it),                         // Remarks — note + Project ID + PO value
-      it.benIfscCode || '',                   // IFSC Code (from Vendor)
-      it.benEmail || '',                     // Ben Email ID (from Vendor)
-      it.benMobile || '',                     // Ben Mobile No (from Vendor)
-    ];
-
     const groups = new Map(); // 'YYYY-MM-DD' -> entries
     [...approvedForExport]
       .sort((a, b) => new Date(a.sentAt || 0) - new Date(b.sentAt || 0))
@@ -241,7 +218,33 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
 
     const wb = XLSX.utils.book_new();
     for (const [date, items] of groups) {
-      const aoa = [HEADERS, MANDATORY, ...items.map(rowFor)];
+      // Merge multiple entries to the same beneficiary into a single row — one combined
+      // Instrument Amount per Beneficiary Name — then a grand-total row at the end.
+      const byBeneficiary = new Map();
+      items.forEach(it => {
+        const key = (it.benAccountNumber && it.benAccountNumber.trim()) || `party:${it.partyName || ''}`;
+        if (!byBeneficiary.has(key)) byBeneficiary.set(key, []);
+        byBeneficiary.get(key).push(it);
+      });
+      const mergedRows = [...byBeneficiary.values()].map(group => {
+        const first = group[0];
+        const totalAmt = group.reduce((sum, it) => sum + payableAmount(it), 0);
+        const combinedRemarks = group.map(remarkText).filter(Boolean).join(' | ');
+        return [
+          'N',
+          first.benAccountNumber || '',
+          Number(totalAmt.toFixed(2)),
+          first.partyName || '',
+          '',
+          combinedRemarks,
+          first.benIfscCode || '',
+          first.benEmail || '',
+          first.benMobile || '',
+        ];
+      });
+      const aoa = [HEADERS, MANDATORY, ...mergedRows];
+      const grandTotal = mergedRows.reduce((sum, row) => sum + row[2], 0);
+      aoa.push(['', '', Number(grandTotal.toFixed(2)), 'GRAND TOTAL', '', '', '', '', '']);
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [{ wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 14 }];
       XLSX.utils.book_append_sheet(wb, ws, String(date).slice(0, 31));
@@ -267,17 +270,33 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
     const clean = v => String(v ?? '').replace(/[|\r\n]+/g, ' ').trim();
     const header = HEADERS.join('|');
-    const lines = approvedToday.map(it => [
-      'N',                            // Transaction Type — NEFT by default
-      clean(it.benAccountNumber),     // Beneficiary Account Number (from Vendor)
-      String(payableAmount(it)),      // Instrument Amount — Approved Value after deductions
-      clean(it.partyName),            // Beneficiary Name
-      '',                             // Beneficiary Code
-      clean(remarkText(it)),          // Remarks — note + Project ID + PO value
-      clean(it.benIfscCode),          // IFSC Code (from Vendor)
-      clean(it.benEmail),             // Ben Email ID (from Vendor)
-      clean(it.benMobile),            // Ben Mobile No (from Vendor)
-    ].join('|'));
+
+    // Merge multiple entries to the same beneficiary account into a single transfer line —
+    // a bank instruction can only move one lump sum to one account. Falls back to Party
+    // name when the account number is blank.
+    const groups = new Map();
+    approvedToday.forEach(it => {
+      const key = (it.benAccountNumber && it.benAccountNumber.trim()) || `party:${it.partyName || ''}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(it);
+    });
+
+    const lines = [...groups.values()].map(group => {
+      const first = group[0];
+      const totalAmt = group.reduce((sum, it) => sum + payableAmount(it), 0);
+      const combinedRemarks = group.map(remarkText).filter(Boolean).join(' | ');
+      return [
+        'N',                            // Transaction Type — NEFT by default
+        clean(first.benAccountNumber),  // Beneficiary Account Number (from Vendor)
+        String(totalAmt),               // Instrument Amount — summed Approved Value across the group
+        clean(first.partyName),         // Beneficiary Name
+        '',                             // Beneficiary Code
+        clean(combinedRemarks),         // Remarks — every merged entry's note + Project ID + PO value
+        clean(first.benIfscCode),       // IFSC Code (from Vendor)
+        clean(first.benEmail),          // Ben Email ID (from Vendor)
+        clean(first.benMobile),         // Ben Mobile No (from Vendor)
+      ].join('|');
+    });
     const content = [header, ...lines].join('\r\n') + '\r\n';
 
     const now = new Date();
@@ -435,10 +454,10 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th style={{ textAlign: 'right' }}>Due Amount</th>
                   <th>Sent At</th>
                   <th>Remarks</th>
-                  <th title="TDS rate applied on Amount Sent">TDS %</th>
+                  <th title="TDS rate applied on Amount Sent — set on the TDS tab">TDS %</th>
                   <th style={{ textAlign: 'right' }} title="Amount Sent × TDS %">TDS Amt</th>
-                  <th style={{ textAlign: 'right' }} title="Manual deduction — Admin / VP / OH">Deduction</th>
-                  <th style={{ textAlign: 'right' }} title="Amount Sent − TDS Amt − Deduction">Approved Value</th>
+                  <th style={{ textAlign: 'right' }} title="Manual deduction — set on the TDS tab">Deduction</th>
+                  <th style={{ textAlign: 'right' }} title="Amount Sent − TDS Amt − GST Amt − Deduction">Approved Value</th>
                   <th>OH Approval</th>
                   <th>Admin Approval</th>
                   <th>VP Approval</th>
@@ -453,8 +472,6 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   const adminEligible = it.ohApprovalStatus === 'APPROVED' && (it.adminApprovalStatus || 'PENDING') === 'PENDING';
                   const vpEligible = it.adminApprovalStatus === 'APPROVED' && (it.vpApprovalStatus || 'PENDING') === 'PENDING';
                   const btn = (bg) => ({ border: 'none', borderRadius: 5, padding: '3px 8px', fontSize: 10.5, fontWeight: 700, color: '#fff', background: bg, cursor: isBusy ? 'default' : 'pointer', opacity: isBusy ? 0.6 : 1 });
-                  const selStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', background: '#fff' };
-                  const canEditDeductions = (isOH || isAdmin || isVP) && (it.vpApprovalStatus || 'PENDING') !== 'APPROVED';
                   const tdsAmt = it.tdsAmount != null ? Number(it.tdsAmount)
                     : (it.tdsPercent ? Number(it.sentAmount || 0) * Number(it.tdsPercent) / 100 : 0);
                   const deductionAmt = Number(it.deductionAmount || 0);
@@ -478,37 +495,15 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDateTime(it.sentAt)}</td>
                       <td style={{ fontSize: 12, color: '#475569', maxWidth: 240, whiteSpace: 'pre-wrap' }}>{remarkText(it) || '—'}</td>
 
-                      {/* TDS % */}
+                      {/* TDS % — read-only; set from the TDS tab */}
                       <td>
-                        {canEditDeductions ? (
-                          <select style={selStyle} disabled={isBusy}
-                            value={it.tdsPercent != null ? String(Number(it.tdsPercent)) : ''}
-                            onChange={e => handleDeduction(it, { tdsPercent: e.target.value === '' ? null : Number(e.target.value) })}>
-                            <option value="">—</option>
-                            {TDS_OPTIONS.map(p => <option key={p} value={p}>{p}%</option>)}
-                          </select>
-                        ) : (
-                          <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
-                        )}
+                        <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
                       </td>
                       {/* TDS Amt */}
                       <td style={{ textAlign: 'right', fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
-                      {/* Deduction — manual, Admin / VP / OH */}
+                      {/* Deduction — read-only; set from the TDS tab */}
                       <td style={{ textAlign: 'right' }}>
-                        {canEditDeductions ? (
-                          <input type="number" min="0" step="0.01" disabled={isBusy}
-                            defaultValue={it.deductionAmount != null ? it.deductionAmount : ''}
-                            placeholder="0"
-                            onBlur={e => {
-                              const v = e.target.value === '' ? null : Number(e.target.value);
-                              if (v !== (it.deductionAmount != null ? Number(it.deductionAmount) : null)) {
-                                handleDeduction(it, { deductionAmount: v });
-                              }
-                            }}
-                            style={{ ...selStyle, width: 84, textAlign: 'right' }} />
-                        ) : (
-                          <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
-                        )}
+                        <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
                       </td>
                       {/* Approved Value */}
                       <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
@@ -516,15 +511,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       {/* OH Approval */}
                       <td style={{ minWidth: 150 }}>
                         {isOH && ohPending ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <input type="number" placeholder="Amount"
-                              value={ohEdits[it.id] !== undefined ? ohEdits[it.id] : it.sentAmount}
-                              onChange={e => setOhEdits(p => ({ ...p, [it.id]: e.target.value }))}
-                              style={{ width: 90, padding: '3px 6px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 11 }} />
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
-                              <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
-                            </div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
+                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
                           </div>
                         ) : (
                           <ApprovalBadge status={it.ohApprovalStatus} />
@@ -551,6 +540,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button disabled={isBusy} onClick={() => handleVpDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
                             <button disabled={isBusy} onClick={() => handleVpDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
+                            <button disabled={isBusy} onClick={() => handleVpRevise(it)} style={btn('#b45309')} title="Send back to Admin to adjust TDS/Deduction">Revise</button>
                           </div>
                         ) : it.adminApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.vpApprovalStatus} />

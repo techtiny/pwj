@@ -9,7 +9,7 @@ import SalaryPage from "./SalaryPage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
-  const canViewAll  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
+  const canViewAll  = ["VP", "OH", "ADMIN", "CEO", "PROJECT_MANAGER"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
   const canViewReimbursement = ["CEO", "VP", "OH"].includes(user?.role);
   const canViewExits = ["ADMIN", "VP", "CEO", "OH"].includes(user?.role);

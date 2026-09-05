@@ -62,6 +62,17 @@
 .acct-wrap tbody tr:hover { background: #f8fafc; }
 .acct-wrap tbody tr:last-child td { border-bottom: none; }
 
+/* Send for Payment dashboard: vertical column dividers instead of horizontal row lines */
+.pay-dash thead th,
+.pay-dash tbody td {
+  border-bottom: none;
+  border-right: 1px solid #e2e8f0;
+}
+.pay-dash thead th:last-child,
+.pay-dash tbody td:last-child {
+  border-right: none;
+}
+
 /* Form */
 .acct-wrap .form-group { margin-bottom: 16px; }
 .acct-wrap .form-label {

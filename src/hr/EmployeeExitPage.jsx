@@ -13,6 +13,8 @@ const ROLE_LABELS = {
 
 const EXIT_TYPE_LABEL = Object.fromEntries(EXIT_TYPES.map((t) => [t.value, t.label]));
 
+const HIDDEN_ROLES = ["VP", "OH"];
+
 const card = {
   background: "#fff",
   border: "1px solid #e2e8f0",
@@ -60,8 +62,8 @@ export default function EmployeeExitPage({ user }) {
       usersApi.getAll().catch(() => ({ data: { data: [] } })),
       usersApi.getExited().catch(() => ({ data: { data: [] } })),
     ]);
-    setActive((a.data?.data || []).filter((u) => !u.exited));
-    setExited(x.data?.data || []);
+    setActive((a.data?.data || []).filter((u) => !u.exited && !HIDDEN_ROLES.includes(u.role)));
+    setExited((x.data?.data || []).filter((u) => !HIDDEN_ROLES.includes(u.role)));
     setLoading(false);
   }, []);
 

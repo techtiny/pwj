@@ -538,13 +538,15 @@ function calcTotals(items, cgstPct, sgstPct, igstPct) {
 
 // ─── ROLE HELPERS ──────────────────────────────────────────────────
 const ROLE_META = {
-  ADMIN:           { label: "Admin",           color: "#7c3aed", bg: "#ede9fe" },
-  ENGINEER:        { label: "Engineer",        color: "#0369a1", bg: "#e0f2fe" },
-  PROCUREMENT:     { label: "Procurement",     color: "#065f46", bg: "#d1fae5" },
-  VP:              { label: "VP",              color: "#b45309", bg: "#fef3c7" },
-  OH:              { label: "OH",              color: "#be185d", bg: "#fce7f3" },
-  CEO:             { label: "CEO",             color: "#dc2626", bg: "#fee2e2" },
-  PROJECT_MANAGER: { label: "Project Manager", color: "#0f766e", bg: "#ccfbf1" },
+  ADMIN:                     { label: "Admin",                       color: "#7c3aed", bg: "#ede9fe" },
+  ENGINEER:                  { label: "Engineer",                    color: "#0369a1", bg: "#e0f2fe" },
+  PROCUREMENT:               { label: "Procurement",                 color: "#065f46", bg: "#d1fae5" },
+  VP:                        { label: "VP",                          color: "#b45309", bg: "#fef3c7" },
+  OH:                        { label: "OH",                          color: "#be185d", bg: "#fce7f3" },
+  CEO:                       { label: "CEO",                         color: "#dc2626", bg: "#fee2e2" },
+  PROJECT_MANAGER:           { label: "Project Manager",             color: "#0f766e", bg: "#ccfbf1" },
+  PROCUREMENT_ENGINEER:      { label: "Procurement Engineer",        color: "#9333ea", bg: "#f3e8ff" },
+  COSTING_PLANNING_ENGINEER: { label: "Costing & Planning Engineer", color: "#0d9488", bg: "#ccfbf1" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -1290,7 +1292,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, onNavigate, onManageUsers }) {
+function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, onNavigate, onManageUsers }) {
   // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
   // open …/#<module> in a new tab or window (session is shared via localStorage).
   const modClick = (e, key) => {
@@ -1315,7 +1317,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Building2,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager,
+      visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer,
     },
     {
       key: "projects",
@@ -1457,13 +1459,15 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
 
 // ─── DASHBOARD (always mounted when user is set — no conditional hooks) ───
 function Dashboard({ user, onLogout: handleLogout }) {
-  const isAdmin          = user?.role === "ADMIN";
-  const isProcurement    = user?.role === "PROCUREMENT";
-  const isEngineer       = user?.role === "ENGINEER";
-  const isVP             = user?.role === "VP";
-  const isOH             = user?.role === "OH";
-  const isCeo            = user?.role === "CEO";
-  const isProjectManager = user?.role === "PROJECT_MANAGER";
+  const isAdmin                    = user?.role === "ADMIN";
+  const isProcurement              = user?.role === "PROCUREMENT";
+  const isEngineer                 = user?.role === "ENGINEER";
+  const isVP                       = user?.role === "VP";
+  const isOH                       = user?.role === "OH";
+  const isCeo                      = user?.role === "CEO";
+  const isProjectManager           = user?.role === "PROJECT_MANAGER";
+  const isProcurementEngineer      = user?.role === "PROCUREMENT_ENGINEER";
+  const isCostingPlanningEngineer  = user?.role === "COSTING_PLANNING_ENGINEER";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
@@ -1494,7 +1498,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   //    module (e.g. …/#hr) while every tab shares the one login session ──
   const allowedTabs = useMemo(() => {
     const t = new Set(["home", "entries", "hr", "operations", "chatbot"]);
-    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) t.add("vendors");
+    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer) t.add("vendors");
     if (isAdmin || isVP || isOH || isCeo || isProjectManager) { t.add("projects"); t.add("account"); }
     if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) t.add("sales");
     if (isAdmin || isVP || isOH || isCeo) t.add("bugs");
@@ -1602,6 +1606,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [assignLoading, setAssignLoading] = useState(false);
   const [userMgmtModal, setUserMgmtModal] = useState(false);
   const [allUsers, setAllUsers]           = useState([]);
+  // Manage Users list intentionally excludes VP/OH — they're approval roles, not
+  // tracked as regular employees in this employee-details view.
+  const visibleUsers = useMemo(() => allUsers.filter(u => u.role !== "VP" && u.role !== "OH"), [allUsers]);
   const [userMgmtLoading, setUserMgmtLoading] = useState(false);
   const [newUserForm, setNewUserForm]     = useState({ username: "", password: "", fullName: "", email: "", phone: "", designation: "", role: "ENGINEER" });
   const [docModal, setDocModal]           = useState(null);   // { entry, vendor }
@@ -1791,6 +1798,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const [docs, vendors] = await Promise.all([api.getPendingDocApprovals(), api.getPendingVendors()]);
         if (docs.success)    setPendingDocCount(countPendingDocItems(docs.data));
         if (vendors.success) setPendingVendorCount(vendors.data.length);
+      } else if (isAdmin) {
+        const vendors = await api.getPendingVendors();
+        if (vendors.success) setPendingVendorCount(vendors.data.length);
       }
     } catch {}
   }, [isAdmin, isOH, isVP, isCeo]);
@@ -1900,9 +1910,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const userName = user.fullName || user.username;
       const canOnBehalf = isVP || isOH || isAdmin || isProcurement;
-      const effectiveRaisedBy = (canOnBehalf && createForm.onBehalf) ? createForm.onBehalf : userName;
+      const isOnBehalf = canOnBehalf && !!createForm.onBehalf;
+      const effectiveRaisedBy = isOnBehalf ? createForm.onBehalf : userName;
       const { onBehalf, ...formData } = createForm;
-      const body = { ...formData, raisedBy: effectiveRaisedBy, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
+      const body = { ...formData, raisedBy: effectiveRaisedBy, raisedByProxy: isOnBehalf ? userName : null, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
       if (editingEntry) {
         // Update existing entry
         const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status, pwjIssued: editingEntry.pwjIssued });
@@ -3491,6 +3502,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             user={user}
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
+            isProcurementEngineer={isProcurementEngineer} isCostingPlanningEngineer={isCostingPlanningEngineer}
             onNavigate={key => setMainTab(key)}
             onManageUsers={openUserMgmt}
           />
@@ -3797,10 +3809,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* Status */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span style={s.badge(STATUS_META[row.status])}>
-                        <span style={s.dot(STATUS_META[row.status]?.dot || "#94a3b8")} />
-                        {row.status}
-                      </span>
+                      {(() => {
+                        const issuedStale = (() => {
+                          if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
+                          const issuedAt = (() => { try { return JSON.parse(row.docData || "{}").vpApprovedAt || row.approvedAt; } catch { return row.approvedAt; } })();
+                          if (!issuedAt) return false;
+                          return new Date(issuedAt).toISOString().split("T")[0] !== new Date().toISOString().split("T")[0];
+                        })();
+                        const meta = issuedStale ? { bg: "#dc2626", color: "#fff", dot: "#fff" } : STATUS_META[row.status];
+                        return (
+                          <span style={s.badge(meta)}>
+                            <span style={s.dot(meta?.dot || "#94a3b8")} />
+                            {row.status}
+                          </span>
+                        );
+                      })()}
                     </td>
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
@@ -4054,7 +4077,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   Vendor Management
                   <span style={{ marginLeft: 10, fontSize: 14, fontWeight: 500, color: "#1e293b" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
-                {isAdmin && (
+                {(isAdmin || isProcurement || isProcurementEngineer) && (
                   <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
                     onClick={() => { setAddVendorForm(BLANK_VENDOR_FORM); setAddVendorPage(true); }}>
                     ➕ Add Vendor
@@ -4162,7 +4185,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                             👁 View
                           </button>
-                          {isVP && isPending && (<>
+                          {(isVP || isAdmin) && isPending && (<>
                             <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
                               onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
                             <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
@@ -4845,7 +4868,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} />}
+        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} userName={user.fullName || user.username} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>
@@ -4894,6 +4917,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 )}
                 <div style={s.divider}>🏭 Procurement & Status</div>
+                {detailRow.raisedByProxy && (
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <div style={s.dLabel}>Raised On Behalf</div>
+                    <div style={s.dVal}>{detailRow.raisedByProxy} raised this on behalf of {detailRow.raisedBy}</div>
+                  </div>
+                )}
                 {[
                   ["Vendor", detailRow.vendor],
                   ["PWJ Issued", detailRow.pwjIssued ? "Yes" : "No"],
@@ -5230,19 +5259,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <div style={s.formGroup}>
                 <label style={s.label}>Payment made against</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {[["PO", "PO"], ["WO", "WO"], ["JO", "JO"], ["VENDOR_INVOICE", "Vendor Invoice"]].map(([val, lbl]) => {
-                    const on = paymentAgainstSel === val;
-                    return (
-                      <label key={val}
-                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: "pointer",
-                          border: `1.5px solid ${on ? "#0f766e" : "#e2e8f0"}`, background: on ? "#f0fdfa" : "#fff",
-                          color: on ? "#0f766e" : "#334155", fontSize: 13, fontWeight: 600 }}>
-                        <input type="radio" name="paymentMadeAgainst" checked={on}
-                          onChange={() => setPaymentAgainstSel(val)} />
-                        {lbl}
-                      </label>
-                    );
-                  })}
+                  {(() => {
+                    const docType = sendPaymentModal.entry?.pwjType;
+                    const options = ["PO", "WO", "JO"].includes(docType)
+                      ? [[docType, docType], ["VENDOR_INVOICE", "Vendor Invoice"]]
+                      : [["VENDOR_INVOICE", "Vendor Invoice"]];
+                    return options.map(([val, lbl]) => {
+                      const on = paymentAgainstSel === val;
+                      return (
+                        <label key={val}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: "pointer",
+                            border: `1.5px solid ${on ? "#0f766e" : "#e2e8f0"}`, background: on ? "#f0fdfa" : "#fff",
+                            color: on ? "#0f766e" : "#334155", fontSize: 13, fontWeight: 600 }}>
+                          <input type="radio" name="paymentMadeAgainst" checked={on}
+                            onChange={() => setPaymentAgainstSel(val)} />
+                          {lbl}
+                        </label>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
               <div style={s.formGroup}>
@@ -5946,7 +5981,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {v.bankDetails && <div style={{ fontSize: 13, color: "#1e293b", marginTop: 4 }}>🏦 {v.bankDetails}</div>}
                           <div style={{ fontSize: 13, color: "#374151", marginTop: 4 }}>Submitted: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
                         </div>
-                        {isVP && isPending && (
+                        {(isVP || isAdmin) && isPending && (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 16 }}>
                             <button
                               style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
@@ -6389,7 +6424,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
                                 <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
                               </tr>
-                              {[["CGST","cgstPct",totals.cgst],["SGST","sgstPct",totals.sgst],["IGST","igstPct",totals.igst]].map(([label, field, val]) => (
+                              {[["CGST","cgstPct",totals.cgst,["0","0.25","6","9","14"]],["SGST","sgstPct",totals.sgst,["0","0.25","6","9","14"]],["IGST","igstPct",totals.igst,["0","5","12","18","28"]]].map(([label, field, val, options]) => (
                                 <tr key={label}>
                                   <td style={{ ...tdSt }}>
                                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
@@ -6399,7 +6434,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                             setField(field, ev.target.value);
                                             if (field === "cgstPct") setField("sgstPct", ev.target.value);
                                           }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 14, padding: "1px 4px" }}>
-                                            {["0","2.5","5","9","14","18"].map(v => <option key={v} value={v}>{v}%</option>)}
+                                            {options.map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
                                         : <span style={{ color: "#111" }}>({docData[field] || 0}%)</span>}
                                     </div>
@@ -6953,7 +6988,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)", padding: "24px 32px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Manage Users</div>
-                <div style={{ fontSize: 14, color: "#374151", marginTop: 3 }}>{allUsers.length} team member{allUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
+                <div style={{ fontSize: 14, color: "#374151", marginTop: 3 }}>{visibleUsers.length} team member{visibleUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
               </div>
               <button onClick={() => setUserMgmtModal(false)}
                 style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 36, height: 36, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>×</button>
@@ -6982,6 +7017,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <option value="OH">OH</option>
                     <option value="CEO">CEO</option>
                     <option value="PROJECT_MANAGER">Project Manager</option>
+                    <option value="PROCUREMENT_ENGINEER">Procurement Engineer</option>
+                    <option value="COSTING_PLANNING_ENGINEER">Costing & Planning Engineer</option>
                   </select>
                 </div>
                 <div style={{ paddingTop: 16 }}>
@@ -7007,7 +7044,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e2e8f0", borderTopColor: "#6366f1", animation: "acct-spin 0.7s linear infinite" }} />
                   Loading members…
                 </div>
-              ) : allUsers.map((u) => {
+              ) : visibleUsers.map((u) => {
                 const AVATAR_GRAD = {
                   VP:          "linear-gradient(135deg,#f59e0b,#d97706)",
                   ADMIN:       "linear-gradient(135deg,#8b5cf6,#7c3aed)",
@@ -7431,7 +7468,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
 
       {/* ─── ADD VENDOR FULL PAGE ─── */}
-      {addVendorPage && (isAdmin || isVP) && (() => {
+      {addVendorPage && (isAdmin || isVP || isProcurement || isProcurementEngineer) && (() => {
         const avf = addVendorForm;
         const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
         const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };

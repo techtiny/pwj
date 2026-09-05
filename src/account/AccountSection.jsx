@@ -6,6 +6,8 @@ import AccountExpenses from "./ExpensePage";
 import AccountTransfers from "./FundTransferPage";
 import CollectionPage from "./CollectionPage";
 import PaymentsPage from "./PaymentsPage";
+import TdsPage from "./TdsPage";
+import GstPage from "./GstPage";
 import FundManagementPage from "./FundManagementPage";
 
 const EXPENSE_CATS = [
@@ -16,7 +18,7 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "" }) {
   const [tab, setTab]     = useState("dashboard");
   const [expCat, setExpCat] = useState("material");
 
@@ -27,6 +29,8 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "transfers",   label: "Fund Transfer"},
     { key: "fund-mgmt",   label: "Fund Management"},
     { key: "payments",    label: "Send for Payment"},
+    { key: "tds",         label: "TDS"},
+    { key: "gst",         label: "GST"},
   ];
 
   return (
@@ -78,6 +82,8 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
         {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
         {tab === "fund-mgmt"   && <div className="page-content"><FundManagementPage /></div>}
         {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} /></div>}
+        {tab === "tds"         && <div className="page-content"><TdsPage isAdmin={isAdmin} /></div>}
+        {tab === "gst"         && <div className="page-content"><GstPage isAdmin={isAdmin} userName={userName} /></div>}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
@@ -39,7 +39,22 @@ export const expenseItemsApi = {
   setOhApproval: (id, status, revisedAmount) => api.patch(`/expenses/${id}/oh-approval`, { status, revisedAmount }),
   setAdminApproval: (id, status) => api.patch(`/expenses/${id}/admin-approval`, { status }),
   setVpApproval: (id, status) => api.patch(`/expenses/${id}/vp-approval`, { status }),
-  setDeductions: (id, tdsPercent, deductionAmount) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, deductionAmount }),
+  reviseAtVp: (id) => api.patch(`/expenses/${id}/vp-revise`),
+  setDeductions: (id, tdsPercent, deductionAmount, gstDeducted) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, deductionAmount, gstDeducted }),
+  setTdsFiling: (id, invoiceNo, tdsPaidDate, tdsFiled, remarks) => api.patch(`/expenses/${id}/tds-filing`, { invoiceNo, tdsPaidDate, tdsFiled, remarks }),
+  setGstFiling: (id, gstInvoiceNo, gstInputStatus, gstInputDate, gstPaidToVendorDate, gstPaidStatus, gstRemarks) =>
+    api.patch(`/expenses/${id}/gst-filing`, { gstInvoiceNo, gstInputStatus, gstInputDate, gstPaidToVendorDate, gstPaidStatus, gstRemarks }),
+};
+
+export const gstImportApi = {
+  upload: (file, userName) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/v1/gst-import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data', ...(userName ? { 'X-User-Name': userName } : {}) },
+    });
+  },
+  history: () => api.get('/v1/gst-import/history'),
 };
 
 export const projectsApi = {
