@@ -359,7 +359,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               : "Record and track your out-of-pocket expenses"}
           </div>
         </div>
-        {(!isApprover || title === "Reimbursement") && (
+        {(!isApprover || title === "Reimbursement" || user?.role === "ADMIN") && (
           <button
             onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); setErrors({}); }}
             className="pc-header-btn"
@@ -370,7 +370,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
       </div>
 
       {/* New request form */}
-      {showForm && (!isApprover || title === "Reimbursement") && (
+      {showForm && (!isApprover || title === "Reimbursement" || user?.role === "ADMIN") && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 620 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>New {title} Request</div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
