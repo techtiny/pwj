@@ -33,6 +33,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   const [form, setForm]             = useState(EMPTY_FORM);
   const [errors, setErrors]         = useState({});
   const [saving, setSaving]         = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState(null); // Reimbursement only — receipt/invoice
   const [viewTab, setViewTab]       = useState(defaultTab);
   const [commentMap, setCommentMap]       = useState({});
   const [tallyCommentMap, setTallyMap]    = useState({});
@@ -103,12 +104,14 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
     try {
-      const r = await pettyCashApi.create({ ...form, username, amount: Number(form.amount) });
+      const attachmentUrl = attachmentFile ? await uploadDocument(attachmentFile) : null;
+      const r = await pettyCashApi.create({ ...form, username, amount: Number(form.amount), ...(attachmentUrl ? { attachmentUrl } : {}) });
       if (r.data?.success) {
         await load();
         if (isApprover) await loadAll();
         setShowForm(false);
         setForm(EMPTY_FORM);
+        setAttachmentFile(null);
         setErrors({});
       } else {
         alert(r.data?.message || "Failed to create entry");
@@ -431,6 +434,16 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               </select>
             </div>
 
+            {title === "Reimbursement" && (
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={LBL}>Attachment (receipt/invoice)</label>
+                <input type="file" accept="image/*,application/pdf"
+                  onChange={e => setAttachmentFile(e.target.files?.[0] || null)}
+                  style={{ ...INP(), padding: "8px 12px" }} />
+                {attachmentFile && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 4 }}>{attachmentFile.name}</div>}
+              </div>
+            )}
+
             <div style={{ gridColumn: "1/-1" }}>
               <label style={LBL}>Description *</label>
               <textarea style={{ ...INP(errors.description), resize: "vertical", minHeight: 72 }}
@@ -445,7 +458,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: selectedProjectBlocked ? "#94a3b8" : "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 15, cursor: selectedProjectBlocked ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Submitting…" : "Submit Request"}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); setErrors({}); }}
+              <button type="button" onClick={() => { setShowForm(false); setErrors({}); setAttachmentFile(null); }}
                 style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
