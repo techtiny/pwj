@@ -172,7 +172,10 @@ const api = {
   validateSession: () =>
     fetch(`${AUTH_BASE}/validate`, {
       headers: { "X-Session-Token": getSessionToken() },
-    }).then(r => r.json()),
+    }).then(async r => {
+      const body = await r.json().catch(() => ({}));
+      return { ...body, httpStatus: r.status };
+    }),
   getEntries: (params) => {
     const q = new URLSearchParams(params).toString();
     return fetch(`${API_BASE}/entries?${q}`, { headers: userHeaders() }).then(r => r.json());
@@ -1244,6 +1247,11 @@ export default function PWJTracker() {
           setLogoutMessage("Another user signed in on this browser. You have been signed out.");
           setUser(null);
           // Do NOT remove localStorage — it belongs to the new user who just logged in.
+        } else if (newSession?.username && newSession.token && newSession.token !== userRef.current.token) {
+          // Same user re-logged in on another tab of this same browser (e.g. resolved a
+          // "signed in elsewhere" prompt with force login) — the DB session token moved,
+          // so silently adopt it here too instead of getting kicked on the next poll.
+          setUser(newSession);
         }
       } catch {}
     };
@@ -1262,7 +1270,11 @@ export default function PWJTracker() {
       lastCheckRef.current = now;
       try {
         const res = await api.validateSession();
-        if (!res.success) {
+        // Only a genuine 401 (token no longer matches — someone else logged in, or this
+        // session was explicitly ended) means "log out". Any other failure — a transient
+        // 5xx, a DB hiccup, a malformed response — is not proof the session is invalid,
+        // so leave the user logged in and just retry on the next poll.
+        if (res.httpStatus === 401) {
           doLogout("This account was signed in from another device. You have been signed out.");
         }
       } catch {} // network errors don't log out
