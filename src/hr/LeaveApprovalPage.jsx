@@ -224,7 +224,12 @@ export default function LeaveApprovalPage({ user }) {
                       <div><span style={{ color: "#374151" }}>Type: </span><strong style={{ color: l.leaveType === "PERMISSION" ? "#7c3aed" : "#0f172a" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
                       <div><span style={{ color: "#374151" }}>Date: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
                       {l.leaveType === "PERMISSION" ? (
-                        <div><span style={{ color: "#374151" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
+                        <>
+                          <div><span style={{ color: "#374151" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
+                          {l.fromTime && l.toTime && (
+                            <div><span style={{ color: "#374151" }}>Away: </span><strong style={{ color: "#0f172a" }}>{l.fromTime} – {l.toTime}</strong></div>
+                          )}
+                        </>
                       ) : (
                         <>
                           <div><span style={{ color: "#374151" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>

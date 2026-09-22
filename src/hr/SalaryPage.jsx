@@ -2,6 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { salaryApi, fmtDate } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+// Payroll cycle: 26th of the selected month through the 25th of the following month.
+function cycleLabel(year, month) {
+  const start = new Date(year, month - 1, 26);
+  const end = new Date(year, month, 25);
+  const fmt = (d) => `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+  return `${fmt(start)} – ${fmt(end)}`;
+}
 const inr = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const inr0 = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
@@ -159,26 +166,32 @@ export default function SalaryPage({ user }) {
       {view === "sheet" ? (
         <div style={{ ...card, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
-            Salary Sheet — {MONTHS[month - 1]} {year}
+            Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   <th style={th}>Emp No</th><th style={th}>Name</th><th style={th}>Designation</th>
-                  <th style={thR}>Days</th><th style={thR}>Leave</th><th style={thR}>LOP</th><th style={thR}>Work Days</th>
-                  <th style={thR}>Fixed Gross</th><th style={thR}>Fixed Ded</th><th style={thR}>Fixed Take Home</th><th style={thR}>Fixed CTC</th>
-                  <th style={thR}>Gross</th><th style={thR}>Basic</th><th style={thR}>HRA</th><th style={thR}>Other</th>
-                  <th style={thR}>PF</th><th style={thR}>PT</th><th style={thR}>Total Ded</th><th style={thR}>Take Home</th><th style={thR}>CTC</th>
+                  <th style={thR} title="Actual day count of the 26th–25th payroll cycle">Days</th>
+                  <th style={thR}>Leave Days</th><th style={thR}>Free CL</th><th style={thR}>LOP Days</th>
+                  <th style={thR}>Extra WD</th><th style={thR}>Working Days</th>
+                  <th style={thR}>Fixed Gross</th><th style={thR}>Fixed Basic</th><th style={thR}>Fixed HRA</th>
+                  <th style={thR}>Fixed Other</th><th style={thR}>Fixed PF</th><th style={thR}>Fixed PT</th>
+                  <th style={thR}>Fixed Total Ded</th><th style={thR}>Fixed Take Home</th>
+                  <th style={thR}>Fixed Employer</th><th style={thR}>Fixed CTC</th>
+                  <th style={thR}>Gross</th><th style={thR}>Basic</th><th style={thR}>HRA</th><th style={thR}>Other Allow</th>
+                  <th style={thR}>PF</th><th style={thR}>PT</th><th style={thR}>Total Ded</th><th style={thR}>Take Home</th>
+                  <th style={thR}>Employer</th><th style={thR}>CTC</th>
                   <th style={th}>Remarks</th>
                   {canManage && <th style={th}>Adjust</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={td} colSpan={canManage ? 22 : 21}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={canManage ? 31 : 30}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 22 : 21}>
+                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 31 : 30}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : sheet.map((r) => (
@@ -188,11 +201,19 @@ export default function SalaryPage({ user }) {
                     <td style={td}>{r.designation}</td>
                     <td style={tdR}>{r.daysInMonth}</td>
                     <td style={tdR}>{r.leaveDays}</td>
+                    <td style={tdR}>{r.freeCasualLeave}</td>
                     <td style={{ ...tdR, color: Number(r.lopDays) > 0 ? "#b91c1c" : "#64748b" }}>{r.lopDays}</td>
+                    <td style={tdR}>{r.extraWorkingDays}</td>
                     <td style={{ ...tdR, fontWeight: 700 }}>{r.workingDays}</td>
                     <td style={tdR}>{inr0(r.fixedGross)}</td>
+                    <td style={tdR}>{inr0(r.fixedBasic)}</td>
+                    <td style={tdR}>{inr0(r.fixedHra)}</td>
+                    <td style={tdR}>{inr0(r.fixedOther)}</td>
+                    <td style={tdR}>{inr0(r.fixedPf)}</td>
+                    <td style={tdR}>{inr0(r.fixedPt)}</td>
                     <td style={tdR}>{inr0(r.fixedTotalDed)}</td>
                     <td style={tdR}>{inr0(r.fixedTakeHome)}</td>
+                    <td style={tdR}>{inr0(r.fixedEmployer)}</td>
                     <td style={tdR}>{inr0(r.fixedCtc)}</td>
                     <td style={{ ...tdR, fontWeight: 700, color: "#0f766e" }}>{inr(r.gross)}</td>
                     <td style={tdR}>{inr0(r.basic)}</td>
@@ -202,6 +223,7 @@ export default function SalaryPage({ user }) {
                     <td style={tdR}>{inr0(r.pt)}</td>
                     <td style={tdR}>{inr0(r.totalDed)}</td>
                     <td style={{ ...tdR, fontWeight: 800, color: "#0f172a" }}>{inr(r.takeHome)}</td>
+                    <td style={tdR}>{inr0(r.employer)}</td>
                     <td style={tdR}>{inr0(r.ctc)}</td>
                     <td style={{ ...td, whiteSpace: "normal", maxWidth: 220, fontSize: 12, color: "#475569" }}>{r.remarks}</td>
                     {canManage && (
@@ -215,16 +237,17 @@ export default function SalaryPage({ user }) {
               {sheet.length > 0 && (
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
-                    <td style={td} colSpan={7}>Total ({sheet.length})</td>
+                    <td style={td} colSpan={9}>Total ({sheet.length})</td>
                     <td style={tdR}>{inr0(totals.fixedGross)}</td>
-                    <td style={td}></td>
+                    <td style={td} colSpan={6}></td>
                     <td style={tdR}>{inr0(totals.fixedTakeHome)}</td>
+                    <td style={td}></td>
                     <td style={tdR}>{inr0(totals.fixedCtc)}</td>
                     <td style={tdR}>{inr0(totals.gross)}</td>
-                    <td style={td} colSpan={3}></td>
-                    <td style={td} colSpan={2}></td>
+                    <td style={td} colSpan={5}></td>
                     <td style={tdR}>{inr0(totals.totalDed)}</td>
                     <td style={tdR}>{inr0(totals.takeHome)}</td>
+                    <td style={td}></td>
                     <td style={tdR}>{inr0(totals.ctc)}</td>
                     <td style={td} colSpan={canManage ? 2 : 1}></td>
                   </tr>

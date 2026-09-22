@@ -552,8 +552,14 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               </thead>
               <tbody>
                 {displayList.map((entry, i) => {
-                  const s      = STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
+                  // Reimbursement: VP/CEO/OH can submit but never approve (any entry, not just
+                  // their own) — only Admin approves Reimbursement. Doesn't apply to Petty Cash.
+                  const isReimbursement = title === "Reimbursement";
+                  const s = isReimbursement && entry.status === "PENDING"
+                    ? { ...STATUS_CFG.PENDING, label: "Submitted" }
+                    : STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
                   const isMine = entry.username === username;
+                  const canApprove = isApprover && !(isReimbursement && ["VP", "CEO", "OH"].includes(user?.role));
                   const isProc = processing === entry.id + "approve" || processing === entry.id + "reject";
                   const proof  = proofState[entry.id] || {};
 
@@ -675,7 +681,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           )}
 
                           {/* Approve / Reject on PENDING */}
-                          {isApprover && entry.status === "PENDING" && (
+                          {canApprove && entry.status === "PENDING" && (
                             <>
                               <input
                                 placeholder="Comment"

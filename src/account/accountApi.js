@@ -98,6 +98,14 @@ export const fundManagementApi = {
   delete:         (id)        => api.delete(`/fund-management/${id}`),
 };
 
+// Planned Inflow / Planned Outflow — forecasted movements, separate from Actual Inflow/Outflow
+// above. Payment Funding is computed only from fundManagementApi (Actual), never from these.
+export const plannedFundApi = {
+  list:   (direction) => api.get('/fund-management/planned', { params: direction ? { direction } : {} }),
+  create: (data)       => api.post('/fund-management/planned', data),
+  delete: (id)         => api.delete(`/fund-management/planned/${id}`),
+};
+
 export const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '₹0';
   return new Intl.NumberFormat('en-IN', {

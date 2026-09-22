@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, Trash2, X, ArrowDownLeft, ArrowUpRight, Scale } from 'lucide-react';
-import { fundManagementApi, projectsApi } from './accountApi';
+import { Plus, Trash2, X, ArrowDownLeft, ArrowUpRight, Scale, CalendarClock } from 'lucide-react';
+import { fundManagementApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
 
 const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = d => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
@@ -9,16 +9,24 @@ const today = () => new Date().toISOString().slice(0, 10);
 const RECEIPT_MODES = ['Bank Transfer / NEFT', 'RTGS', 'UPI', 'Cheque', 'Cash', 'Card', 'Adjustment'];
 const PAYMENT_MODES = ['Bank Transfer / NEFT', 'RTGS', 'UPI', 'Cheque', 'Cash', 'Card', 'Adjustment'];
 
+const SOURCE_TYPES = [
+  { value: 'LOAN', label: 'Loan' },
+  { value: 'CLIENT_PAYMENT', label: 'Client Payment' },
+  { value: 'REFUND', label: 'Refund' },
+  { value: 'OTHER', label: 'Other' },
+];
+const sourceTypeLabel = v => SOURCE_TYPES.find(s => s.value === v)?.label || v || '—';
+
 const ADD_CUSTOM = '__ADD_CUSTOM__';
 
 const inputS = { border: '1px solid #cbd5e1', borderRadius: 8, padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', background: '#fff' };
 const th = { padding: '11px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', whiteSpace: 'nowrap' };
 const td = { padding: '11px 14px', fontSize: 13.5, borderBottom: '1px solid #eef2f7', color: '#0f172a' };
 
-const EMPTY = { movementDate: today(), party: '', projectId: '', customParty: '', amount: '', mode: '', remarks: '' };
+const EMPTY = { movementDate: today(), party: '', projectId: '', customParty: '', amount: '', mode: '', sourceType: '', referenceNo: '', remarks: '' };
 
 export default function FundManagementPage() {
-  const [view, setView] = useState('INFLOW'); // INFLOW | OUTFLOW | FUNDING
+  const [view, setView] = useState('INFLOW'); // INFLOW | OUTFLOW | PLANNED_INFLOW | PLANNED_OUTFLOW | FUNDING
   const [projects, setProjects] = useState([]);
   const [rows, setRows] = useState([]);
   const [balances, setBalances] = useState({}); // projectId -> { inflow, outflow, available }
@@ -30,13 +38,19 @@ export default function FundManagementPage() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [xfer, setXfer] = useState(null); // { toProjectId, toName, shortfall }
+  const [pwjDocs, setPwjDocs] = useState([]); // Planned Outflow — docs for the selected project
+  const [docSearchOpen, setDocSearchOpen] = useState(false);
 
   const isFunding = view === 'FUNDING';
-  const dir = isFunding ? 'INFLOW' : view;
-  const isInflow = view === 'INFLOW';
-  const partyLabel = isInflow ? 'Source Type' : 'Paid To (Project)';
+  const isPlanned = view === 'PLANNED_INFLOW' || view === 'PLANNED_OUTFLOW';
+  const dir = isFunding ? 'INFLOW' : (isPlanned ? (view === 'PLANNED_INFLOW' ? 'INFLOW' : 'OUTFLOW') : view);
+  const isInflow = view === 'INFLOW' || view === 'PLANNED_INFLOW';
+  const api = isPlanned ? plannedFundApi : fundManagementApi;
+  const partyLabel = isPlanned && isInflow ? 'Source / Description' : (isInflow ? 'Source Type' : 'Paid To (Project)');
   const modeLabel = isInflow ? 'Mode of Receipt' : 'Mode of Payment';
   const modes = isInflow ? RECEIPT_MODES : PAYMENT_MODES;
+  const viewLabel = view === 'INFLOW' ? 'Actual Inflow' : view === 'OUTFLOW' ? 'Actual Outflow'
+    : view === 'PLANNED_INFLOW' ? 'Planned Inflow' : view === 'PLANNED_OUTFLOW' ? 'Planned Outflow' : 'Payment Funding';
 
   useEffect(() => {
     projectsApi.getAll().then(r => setProjects(r.data || [])).catch(() => setProjects([]));
@@ -59,14 +73,20 @@ export default function FundManagementPage() {
   const load = useCallback(() => {
     if (isFunding) { setLoading(true); loadFunding(); loadBalances(); setLoading(false); return; }
     setLoading(true);
-    fundManagementApi.list(dir)
+    api.list(dir)
       .then(r => setRows(r.data || []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
     loadBalances();
-  }, [dir, isFunding, loadBalances, loadFunding]);
+  }, [dir, isFunding, api, loadBalances, loadFunding]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Planned Outflow: fetch the selected project's PO/WO/JO docs to pick a Reference No. from.
+  useEffect(() => {
+    if (view !== 'PLANNED_OUTFLOW' || !form.projectId || form.projectId === ADD_CUSTOM) { setPwjDocs([]); return; }
+    pwjDocsApi.getDocs(form.projectId).then(r => setPwjDocs(r.data || [])).catch(() => setPwjDocs([]));
+  }, [view, form.projectId]);
 
   const projectNames = useMemo(() => new Set(projects.map(p => p.name)), [projects]);
 
@@ -77,10 +97,12 @@ export default function FundManagementPage() {
   }, [rows, projectNames, isInflow]);
 
   const totalShown = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const colCount = (isInflow ? 6 : 7) + (isPlanned ? 2 : 0);
 
   function openForm() {
     setForm({ ...EMPTY, movementDate: today() });
     setError('');
+    setDocSearchOpen(false);
     setShowForm(true);
   }
 
@@ -88,6 +110,7 @@ export default function FundManagementPage() {
     setError('');
     const amount = Number(form.amount);
     if (!(amount > 0)) { setError('Enter an amount greater than zero'); return; }
+    if (isPlanned && !form.sourceType) { setError('Select a Source Type'); return; }
 
     const payload = {
       direction: dir,
@@ -97,6 +120,7 @@ export default function FundManagementPage() {
       remarks: form.remarks || null,
       projectId: null,
       party: '',
+      ...(isPlanned ? { sourceType: form.sourceType, referenceNo: form.referenceNo || null } : {}),
     };
 
     if (isInflow) {
@@ -120,7 +144,7 @@ export default function FundManagementPage() {
 
     setSaving(true);
     try {
-      await fundManagementApi.create(payload);
+      await api.create(payload);
       setShowForm(false);
       setForm(EMPTY);
       load();
@@ -135,7 +159,7 @@ export default function FundManagementPage() {
     if (!window.confirm('Delete this entry?')) return;
     setBusyId(id);
     try {
-      await fundManagementApi.delete(id);
+      await api.delete(id);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'Could not delete');
@@ -157,12 +181,18 @@ export default function FundManagementPage() {
 
       {/* View toggle + Add */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 8, padding: 3 }}>
-          {[['INFLOW', 'Inflow', <ArrowDownLeft size={14} key="i" />], ['OUTFLOW', 'Outflow', <ArrowUpRight size={14} key="o" />], ['FUNDING', 'Payment Funding', <Scale size={14} key="f" />]].map(([k, l, ic]) => (
+        <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 8, padding: 3, flexWrap: 'wrap' }}>
+          {[
+            ['INFLOW', 'Actual Inflow', <ArrowDownLeft size={14} key="i" />, '#16a34a'],
+            ['PLANNED_INFLOW', 'Planned Inflow', <CalendarClock size={14} key="pi" />, '#0d9488'],
+            ['OUTFLOW', 'Actual Outflow', <ArrowUpRight size={14} key="o" />, '#dc2626'],
+            ['PLANNED_OUTFLOW', 'Planned Outflow', <CalendarClock size={14} key="po" />, '#b45309'],
+            ['FUNDING', 'Payment Funding', <Scale size={14} key="f" />, '#7c3aed'],
+          ].map(([k, l, ic, accent]) => (
             <button key={k} onClick={() => { setView(k); setShowForm(false); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: view === k ? 700 : 500,
                 padding: '7px 16px', borderRadius: 6,
-                background: view === k ? (k === 'INFLOW' ? '#16a34a' : k === 'OUTFLOW' ? '#dc2626' : '#7c3aed') : 'transparent',
+                background: view === k ? accent : 'transparent',
                 color: view === k ? '#fff' : '#475569' }}>
               {ic}{l}
             </button>
@@ -171,7 +201,7 @@ export default function FundManagementPage() {
         {!isFunding && (
           <button onClick={openForm}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: '#0369a1', cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Plus size={15} /> Add {isInflow ? 'Inflow' : 'Outflow'}
+            <Plus size={15} /> Add {viewLabel}
           </button>
         )}
         {!isFunding && (
@@ -189,7 +219,7 @@ export default function FundManagementPage() {
       {!isFunding && showForm && (
         <div className="card" style={{ padding: 18, marginBottom: 16, border: '1.5px solid #bae6fd' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>New {isInflow ? 'Inflow' : 'Outflow'} entry</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>New {viewLabel} entry</div>
             <button onClick={() => setShowForm(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={18} /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
@@ -233,6 +263,52 @@ export default function FundManagementPage() {
               <datalist id="fund-mode-list">{modes.map(m => <option key={m} value={m} />)}</datalist>
             </div>
 
+            {isPlanned && (
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Source Type</label>
+                <select style={inputS} value={form.sourceType} onChange={e => setForm(f => ({ ...f, sourceType: e.target.value }))}>
+                  <option value="">— Select —</option>
+                  {SOURCE_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            {isPlanned && !isInflow && (
+              <div style={{ position: 'relative' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Reference No. (PWJ Doc Number)</label>
+                <input style={inputS} placeholder={form.projectId ? 'Search PO/WO/JO doc number…' : 'Select a project first'}
+                  disabled={!form.projectId}
+                  value={form.referenceNo}
+                  onFocus={() => setDocSearchOpen(true)}
+                  onChange={e => { setForm(f => ({ ...f, referenceNo: e.target.value })); setDocSearchOpen(true); }} />
+                {docSearchOpen && form.referenceNo && pwjDocs.length > 0 && (() => {
+                  const q = form.referenceNo.trim().toLowerCase();
+                  const matches = pwjDocs.filter(d => (d.docNumber || '').toLowerCase().includes(q)).slice(0, 8);
+                  if (matches.length === 0) return null;
+                  return (
+                    <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.1)', marginTop: 4, maxHeight: 200, overflowY: 'auto' }}>
+                      {matches.map(d => (
+                        <div key={d.docNumber} onClick={() => { setForm(f => ({ ...f, referenceNo: d.docNumber })); setDocSearchOpen(false); }}
+                          style={{ padding: '8px 12px', fontSize: 12.5, cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                          onMouseDown={e => e.preventDefault()}>
+                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{d.docNumber}</div>
+                          <div style={{ color: '#64748b' }}>{d.pwjType} · {d.vendor || '—'} · {d.materialRequired || ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {isPlanned && isInflow && (
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Reference No. (Invoice No.)</label>
+                <input style={inputS} placeholder="Enter the Invoice No."
+                  value={form.referenceNo} onChange={e => setForm(f => ({ ...f, referenceNo: e.target.value }))} />
+              </div>
+            )}
+
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Remarks</label>
               <input style={inputS} placeholder="Optional note"
@@ -261,15 +337,17 @@ export default function FundManagementPage() {
                 <th style={{ ...th, textAlign: 'right' }}>Amount</th>
                 {!isInflow && <th style={{ ...th, textAlign: 'right' }} title="Inflow received for this project − Outflow paid to it">Available</th>}
                 <th style={th}>{modeLabel}</th>
+                {isPlanned && <th style={th}>Source Type</th>}
+                {isPlanned && <th style={th}>Reference No.</th>}
                 <th style={th}>Remarks</th>
                 <th style={{ ...th, textAlign: 'right' }}></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td style={td} colSpan={isInflow ? 6 : 7}>Loading…</td></tr>
+                <tr><td style={td} colSpan={colCount}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={isInflow ? 6 : 7}>No {isInflow ? 'inflow' : 'outflow'} entries yet.</td></tr>
+                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={colCount}>No {viewLabel.toLowerCase()} entries yet.</td></tr>
               ) : rows.map(r => (
                 <tr key={r.id}>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.movementDate)}</td>
@@ -285,6 +363,8 @@ export default function FundManagementPage() {
                     </td>
                   )}
                   <td style={td}>{r.mode || '—'}</td>
+                  {isPlanned && <td style={td}>{sourceTypeLabel(r.sourceType)}</td>}
+                  {isPlanned && <td style={td}>{r.referenceNo || '—'}</td>}
                   <td style={{ ...td, color: '#475569', maxWidth: 280, whiteSpace: 'pre-wrap' }}>{r.remarks || '—'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     <button disabled={busyId === r.id} onClick={() => del(r.id)}
@@ -300,7 +380,7 @@ export default function FundManagementPage() {
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                   <td style={td} colSpan={2}>Total</td>
                   <td style={{ ...td, textAlign: 'right', color: isInflow ? '#16a34a' : '#dc2626' }}>{fmt(totalShown)}</td>
-                  <td style={td} colSpan={isInflow ? 3 : 4}></td>
+                  <td style={td} colSpan={colCount - 3}></td>
                 </tr>
               </tfoot>
             )}

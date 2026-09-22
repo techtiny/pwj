@@ -4,6 +4,7 @@ import { leaveApi, uploadDocument, attachmentFullUrl, fmtDate, leaveTypeLabel } 
 const LEAVE_TYPES = [
   { value: "CASUAL",     label: "Casual Leave (CL)" },
   { value: "SICK",       label: "Sick Leave (SL)" },
+  { value: "HALF_DAY",   label: "Half Day Leave" },
   { value: "PERMISSION", label: "Permission (Short Leave)" },
   { value: "OTHER",      label: "Other" },
 ];
@@ -15,24 +16,45 @@ const STATUS_CFG = {
   CANCELLED: { bg: "#f8fafc", color: "#374151", label: "Cancelled" },
 };
 
-const EMPTY = { leaveType: "CASUAL", fromDate: "", toDate: "", reason: "", permissionHours: "1" };
+const EMPTY = { leaveType: "CASUAL", fromDate: "", toDate: "", reason: "", permissionHours: "", fromTime: "", toTime: "" };
 
 const RESTRICTED_ROLES = ["VP", "CEO", "OH"];
 
 export default function LeavePage({ user }) {
   const canApplyLeave = !RESTRICTED_ROLES.includes(user?.role);
+  const visibleLeaveTypes = LEAVE_TYPES;
+  const emptyForm = EMPTY;
+
   const [leaves, setLeaves]       = useState([]);
   const [summary, setSummary]     = useState(null);
   const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState(EMPTY);
+  const [form, setForm]           = useState(emptyForm);
   const [errors, setErrors]       = useState({});
   const [saving, setSaving]       = useState(false);
   const [file, setFile]           = useState(null);
   const [filterView, setFilterView] = useState("all"); // all | leaves | permissions
 
   const isPermission = form.leaveType === "PERMISSION";
+  const isHalfDay = form.leaveType === "HALF_DAY";
 
   const username = user?.username;
+
+  // From Time / To Time → hours, to 2 decimal places (e.g. 10:00–11:30 = 1.5h).
+  const timeRangeHours = () => {
+    if (!form.fromTime || !form.toTime) return null;
+    const [fh, fm] = form.fromTime.split(":").map(Number);
+    const [th, tm] = form.toTime.split(":").map(Number);
+    const mins = (th * 60 + tm) - (fh * 60 + fm);
+    return mins > 0 ? Math.round((mins / 60) * 100) / 100 : null;
+  };
+
+  // Default To Time to From Time + 2h (the max permission length) — still editable afterward.
+  const plusTwoHours = (t) => {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    const total = Math.min(h * 60 + m + 120, 23 * 60 + 59);
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  };
 
   const load = useCallback(async () => {
     if (!username) return;
@@ -48,6 +70,7 @@ export default function LeavePage({ user }) {
 
   const totalDays = () => {
     if (isPermission) return null;
+    if (isHalfDay) return form.fromDate ? 0.5 : 0;
     if (!form.fromDate || !form.toDate) return 0;
     const diff = (new Date(form.toDate) - new Date(form.fromDate)) / 86400000;
     return diff < 0 ? 0 : diff + 1;
@@ -57,11 +80,19 @@ export default function LeavePage({ user }) {
     const e = {};
     if (!form.fromDate) e.fromDate = "Required";
     if (!isPermission) {
-      if (!form.toDate) e.toDate = "Required";
-      if (form.fromDate && form.toDate && form.toDate < form.fromDate) e.toDate = "Must be after from date";
+      if (!isHalfDay) {
+        if (!form.toDate) e.toDate = "Required";
+        if (form.fromDate && form.toDate && form.toDate < form.fromDate) e.toDate = "Must be after from date";
+      }
     }
-    if (isPermission && (!form.permissionHours || Number(form.permissionHours) < 1)) {
-      e.permissionHours = "Enter valid hours (1–8)";
+    if (isPermission) {
+      if (!form.fromTime || !form.toTime) {
+        e.permissionHours = "Select both From Time and To Time";
+      } else {
+        const hrs = timeRangeHours();
+        if (hrs === null || hrs <= 0) e.permissionHours = "To Time must be after From Time";
+        else if (hrs > 2) e.permissionHours = "Permission must be 2 hours or less";
+      }
     }
     if (!form.reason.trim()) e.reason = "Please provide a reason";
     return e;
@@ -79,11 +110,13 @@ export default function LeavePage({ user }) {
         ...form,
         username,
         attachmentUrl,
-        toDate: isPermission ? form.fromDate : form.toDate,
-        permissionHours: isPermission ? String(form.permissionHours) : undefined,
+        toDate: (isPermission || isHalfDay) ? form.fromDate : form.toDate,
+        permissionHours: isPermission ? String(timeRangeHours()) : undefined,
+        fromTime: isPermission ? form.fromTime : undefined,
+        toTime: isPermission ? form.toTime : undefined,
       };
       const r = await leaveApi.apply(payload);
-      if (r.data?.success) { await load(); setShowForm(false); setForm(EMPTY); setFile(null); }
+      if (r.data?.success) { await load(); setShowForm(false); setForm(emptyForm); setFile(null); }
       else alert(r.data?.message || "Failed");
     } catch (err) { alert(err.response?.data?.message || "Failed"); }
     finally { setSaving(false); }
@@ -145,7 +178,7 @@ export default function LeavePage({ user }) {
         <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>My Leaves &amp; Permissions</div>
         <button
           disabled={!canApplyLeave}
-          onClick={() => { if (canApplyLeave) { setShowForm(true); setForm(EMPTY); setErrors({}); } }}
+          onClick={() => { if (canApplyLeave) { setShowForm(true); setForm(emptyForm); setErrors({}); } }}
           title={!canApplyLeave ? "Leave applications are not applicable for VP, CEO and OH roles" : ""}
           style={{ border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
             background: canApplyLeave ? "#1e3a5f" : "#e2e8f0",
@@ -180,7 +213,7 @@ export default function LeavePage({ user }) {
       {showForm && canApplyLeave && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 560 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>
-            {isPermission ? "New Permission Request" : "New Leave Application"}
+            {isPermission ? "New Permission Request" : isHalfDay ? "New Half Day Leave" : "New Leave Application"}
           </div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
 
@@ -188,8 +221,8 @@ export default function LeavePage({ user }) {
             <div>
               <label style={LBL}>Type</label>
               <select style={INP()} value={form.leaveType}
-                onChange={e => setForm(f => ({ ...f, leaveType: e.target.value, toDate: "", permissionHours: "1" }))}>
-                {LEAVE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                onChange={e => setForm(f => ({ ...f, leaveType: e.target.value, toDate: "", permissionHours: "", fromTime: "", toTime: "" }))}>
+                {visibleLeaveTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
 
@@ -199,7 +232,7 @@ export default function LeavePage({ user }) {
                 {isPermission ? (
                   <>
                     <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>Hours</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{form.permissionHours || "—"}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{timeRangeHours() ?? "—"}</div>
                   </>
                 ) : (
                   <>
@@ -210,8 +243,8 @@ export default function LeavePage({ user }) {
               </div>
             </div>
 
-            {/* Date fields — Permission: single date; Leave: from + to */}
-            {isPermission ? (
+            {/* Date fields — Permission / Half Day: single date; Leave: from + to */}
+            {(isPermission || isHalfDay) ? (
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={LBL}>Date *</label>
                 <input style={INP(errors.fromDate)} type="date" value={form.fromDate}
@@ -235,31 +268,23 @@ export default function LeavePage({ user }) {
               </>
             )}
 
-            {/* Hours — only for Permission */}
+            {/* From Time / To Time — only for Permission, must work out to 2 hours or less */}
             {isPermission && (
-              <div style={{ gridColumn: "1/-1" }}>
-                <label style={LBL}>Hours Required *</label>
-                <div className="hr-perm-hours" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {[1, 2, 3, 4].map(h => (
-                    <button key={h} type="button"
-                      onClick={() => setForm(f => ({ ...f, permissionHours: String(h) }))}
-                      style={{
-                        border: form.permissionHours === String(h) ? "none" : "1.5px solid #e2e8f0",
-                        borderRadius: 8, padding: "8px 22px", fontWeight: 700, fontSize: 14,
-                        background: form.permissionHours === String(h) ? "#1e3a5f" : "#fff",
-                        color: form.permissionHours === String(h) ? "#fff" : "#374151",
-                        cursor: "pointer", fontFamily: "inherit",
-                      }}>
-                      {h}h
-                    </button>
-                  ))}
-                  <input type="number" min={1} max={8} placeholder="Custom"
-                    value={[1,2,3,4].includes(Number(form.permissionHours)) ? "" : form.permissionHours}
-                    onChange={e => setForm(f => ({ ...f, permissionHours: e.target.value }))}
-                    style={{ ...INP(errors.permissionHours), width: 90, boxSizing: "border-box" }} />
+              <>
+                <div>
+                  <label style={LBL}>From Time *</label>
+                  <input style={INP(errors.permissionHours)} type="time" value={form.fromTime}
+                    onChange={e => { const ft = e.target.value; setForm(f => ({ ...f, fromTime: ft, toTime: plusTwoHours(ft) })); }} />
                 </div>
-                {errors.permissionHours && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.permissionHours}</div>}
-              </div>
+                <div>
+                  <label style={LBL}>To Time *</label>
+                  <input style={INP(errors.permissionHours)} type="time" value={form.toTime}
+                    onChange={e => setForm(f => ({ ...f, toTime: e.target.value }))} />
+                </div>
+                {errors.permissionHours && (
+                  <div style={{ gridColumn: "1/-1", fontSize: 13, color: "#ef4444", marginTop: -8 }}>{errors.permissionHours}</div>
+                )}
+              </>
             )}
 
             <div style={{ gridColumn: "1/-1" }}>
@@ -341,7 +366,12 @@ export default function LeavePage({ user }) {
                           <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{leaveTypeLabel(l.leaveType)}</td>
                           <td style={TD()}>
                             {isPerm
-                              ? fmtDate(l.fromDate)
+                              ? <>
+                                  {fmtDate(l.fromDate)}
+                                  {l.fromTime && l.toTime && (
+                                    <div style={{ fontSize: 13, color: "#374151" }}>{l.fromTime} → {l.toTime}</div>
+                                  )}
+                                </>
                               : l.fromDate === l.toDate
                                 ? fmtDate(l.fromDate)
                                 : `${fmtDate(l.fromDate)} → ${fmtDate(l.toDate)}`}

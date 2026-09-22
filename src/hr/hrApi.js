@@ -124,6 +124,7 @@ const LEAVE_TYPE_LABELS = {
   CASUAL:     'Casual Leave (CL)',
   SICK:       'Sick Leave (SL)',
   PERMISSION: 'Permission',
+  HALF_DAY:   'Half Day Leave',
   OTHER:      'Other',
 };
 
