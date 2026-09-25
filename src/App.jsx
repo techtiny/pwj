@@ -3325,6 +3325,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-hright button { padding: 5px 8px !important; font-size: 10px !important; }
           .app-statsrow > div { min-width: 88px !important; }
         }
+        /* Phone/tablet landscape: compact the entries table enough that every column fits in
+           one view instead of needing the horizontal scroll it falls back to on narrower screens. */
+        @media (max-width: 1024px) and (orientation: landscape) {
+          .app-tablewrap { margin: 0 8px 14px !important; }
+          .app-tablewrap table { font-size: 11px !important; }
+          .app-tablewrap th { padding: 6px 5px !important; font-size: 10.5px !important; letter-spacing: 0.2px !important; }
+          .app-tablewrap td { padding: 6px 5px !important; font-size: 11px !important; }
+          .app-tablewrap td button { padding: 3px 6px !important; font-size: 10px !important; }
+          .app-tablewrap td .cell-badge { font-size: 10px !important; padding: 2px 6px !important; }
+          .app-tablewrap td.cell-trunc-lg { max-width: 90px !important; }
+          .app-tablewrap td.cell-trunc-sm { max-width: 60px !important; }
+        }
         .doc-modal-footer {
           max-height: 42vh;
           overflow-y: auto;
@@ -3780,11 +3792,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
                       {row.raisedBy}
                       {isEngineer && row.raisedBy !== (user?.fullName || user?.username) && (
-                        <span title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
+                        <span className="cell-badge" title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
                       )}
                     </td>
-                    <td style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
-                    <td style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
+                    <td className="cell-trunc-lg" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
+                    <td className="cell-trunc-lg" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
                       {parseImageRefs(row.imageReference).length > 0 && (
                         <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 14, cursor: "pointer" }}>🖼️</span>
@@ -3793,11 +3805,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Vendor — hidden for Engineer */}
                     {!isEngineer && (
-                      <td style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                      <td className="cell-trunc-sm" style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
                     {/* OH Approval */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span style={s.badge(APPROVAL_META[row.approvalStatus])}>
+                      <span className="cell-badge" style={s.badge(APPROVAL_META[row.approvalStatus])}>
                         <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
                         {APPROVAL_META[row.approvalStatus]?.label || "—"}
                       </span>
@@ -3836,7 +3848,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         })();
                         const meta = issuedStale ? { bg: "#dc2626", color: "#fff", dot: "#fff" } : STATUS_META[row.status];
                         return (
-                          <span style={s.badge(meta)}>
+                          <span className="cell-badge" style={s.badge(meta)}>
                             <span style={s.dot(meta?.dot || "#94a3b8")} />
                             {row.status}
                           </span>
@@ -3869,7 +3881,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : row.dependency ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap" }}>
+                        <span className="cell-badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap" }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
                           {row.dependency}
                         </span>
@@ -3905,7 +3917,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                         {isOH && (
                           row.approvalStatus === "PROCEED"
-                            ? <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
+                            ? <span className="cell-badge" style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
                             : canApprove(row) && (
                               <button style={s.approveBtn}
                                 onClick={() => {
