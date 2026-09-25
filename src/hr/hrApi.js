@@ -25,6 +25,13 @@ export async function uploadDocument(file) {
   return res.data?.data; // e.g. "/api/v1/upload/document/{uuid}.pdf"
 }
 
+export async function uploadImage(file) {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await axios.post(`${UPLOAD_BASE}/image`, form);
+  return res.data?.data; // e.g. "/api/v1/upload/image/{uuid}.jpg"
+}
+
 export function attachmentFullUrl(path) {
   if (!path) return null;
   return (import.meta.env.VITE_API_BASE_URL || '') + path;
@@ -86,6 +93,19 @@ export const holidayApi = {
   list:   ()       => api.get('/holidays'),
   add:    (data)    => api.post('/holidays', data),
   delete: (id)      => api.delete(`/holidays/${id}`),
+};
+
+export const employeeApi = {
+  list:        ()               => api.get('/employees'),
+  get:         (id)             => api.get(`/employees/${id}`),
+  updatePhoto: (id, photoUrl)   => api.patch(`/employees/${id}/photo`, { photoUrl }),
+  link:        (id, username)   => api.patch(`/employees/${id}/link`, { username }),
+  stats:       (id, range)      => api.get(`/employees/${id}/stats`, { params: { range } }),
+};
+
+export const performanceApi = {
+  history: (employeeId)                          => api.get(`/employees/${employeeId}/remarks`),
+  upsert:  (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
 };
 
 export const usersApi = {

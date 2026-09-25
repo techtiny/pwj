@@ -5,6 +5,7 @@ import LeavePage from "./LeavePage";
 import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
 import EmployeeExitPage from "./EmployeeExitPage";
+import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import HolidaysPage from "./HolidaysPage";
 
@@ -30,6 +31,7 @@ export default function HRSection({ user }) {
     ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
     ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
+    ...(canViewExits ? [{ key: "employee-master", label: "Employee Profiles" }] : []),
     ...(canViewExits ? [{ key: "employees",    label: "Employee Exit"   }] : []),
     ...(canViewExits ? [{ key: "salary",       label: "Salary"          }] : []),
   ];
@@ -137,6 +139,7 @@ export default function HRSection({ user }) {
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}
+      {tab === "employee-master" && <EmployeesPage user={user} />}
       {tab === "employees"      && <EmployeeExitPage user={user} />}
       {tab === "salary"         && <SalaryPage user={user} />}
     </div>
