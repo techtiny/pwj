@@ -2,6 +2,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
 const EXCLUDED_USERNAMES = new Set(["techtiny", "techtinyproc", "tec123", "shobana"]);
+// Attendance records don't carry employeeNumber, and usernames can differ from what's shown
+// as the display name — so also match by full name (EMP0009 Shobana, EMP0019 techtinyproc)
+// to make sure these two stay excluded regardless of their actual username.
+const EXCLUDED_FULLNAMES = new Set(["shobana", "techtinyproc"]);
 
 function toDateTimeLocal(dt) {
   if (!dt) return "";
@@ -294,7 +298,8 @@ export default function AttendancePage({ user, adminView = false }) {
   const loadAll = useCallback(async () => {
     try {
       const r = await attendanceApi.getFieldStaff();
-      setAllRec((r.data?.data || []).filter(a => !EXCLUDED_USERNAMES.has(a.username?.toLowerCase())));
+      setAllRec((r.data?.data || []).filter(a =>
+        !EXCLUDED_USERNAMES.has(a.username?.toLowerCase()) && !EXCLUDED_FULLNAMES.has(a.fullName?.toLowerCase())));
     } catch (e) { console.error(e); }
   }, []);
 

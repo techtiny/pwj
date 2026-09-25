@@ -3,6 +3,9 @@ import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from ".
 
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
 const EXCLUDED_USERNAMES = ["techtinyproc", "shobana", "techtinyadmin", "happizo"];
+// Matched by employee number, not username — usernames can differ from what's shown as the
+// display name, so this is the reliable way to keep specific test/admin accounts out of view.
+const EXCLUDED_EMP_NOS = ["EMP0009", "EMP0019"];
 const ROLE_LABELS = {
   ENGINEER: "Site Engineer",
   PROJECT_MANAGER: "PM",
@@ -44,7 +47,8 @@ export default function HRDashboard({ user }) {
   }, [user?.username]);
 
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
-  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_") && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()));
+  const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_")
+    && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()) && !EXCLUDED_EMP_NOS.includes(u.employeeNumber));
   const checkedInCount  = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime).length;
 
   const pendingPermissions = pendingLeaves.filter(l => l.leaveType === "PERMISSION");
