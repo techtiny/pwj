@@ -444,6 +444,7 @@ function parseDocData(entry) {
     deliveryAddress: "", contactDetails: "", kindAttn: "", kindAttnSalutation: "", msme: "", panNumber: "", gstNumber: "",
     vendorAddress1: "", vendorAddress2: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
+    advanceAmount: "", finalDueDays: "", finalPct: "", finalAmount: "",
     vendorInvoices: [], deliveryDocs: [],
     signatureEnabled: false, signatureUrl: "",
   };

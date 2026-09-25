@@ -55,18 +55,18 @@ export const leaveApi = {
 };
 
 export const pettyCashApi = {
-  create:     (data)           => api.post('/petty-cash', data),
-  getMyEntries: (username)     => api.get(`/petty-cash/my/${username}`),
-  getPending: ()               => api.get('/petty-cash/pending'),
-  getAll:     ()               => api.get('/petty-cash/all'),
+  create:     (data)                      => api.post('/petty-cash', data),
+  getMyEntries: (username, requestType = 'PETTY_CASH') => api.get(`/petty-cash/my/${username}`, { params: { requestType } }),
+  getPending: (requestType = 'PETTY_CASH') => api.get('/petty-cash/pending', { params: { requestType } }),
+  getAll:     (requestType = 'PETTY_CASH') => api.get('/petty-cash/all', { params: { requestType } }),
   approve:         (id, data)  => api.put(`/petty-cash/${id}/approve`, data),
   reject:          (id, data)  => api.put(`/petty-cash/${id}/reject`, data),
   markTransferred:    (id)        => api.put(`/petty-cash/${id}/mark-transferred`),
   submitProof:        (id, data)  => api.put(`/petty-cash/${id}/submit-proof`, data),  // data: { username, proofUrls: [] }
-  getProofReview:     ()          => api.get('/petty-cash/proof-review'),
+  getProofReview:     (requestType = 'PETTY_CASH') => api.get('/petty-cash/proof-review', { params: { requestType } }),
   verifyProof:        (id, data)  => api.put(`/petty-cash/${id}/verify-proof`, data),  // data: { verifiedBy, tallyComment }
   delete:             (id, u)     => api.delete(`/petty-cash/${id}?username=${u}`),
-  getSummary:         (username)  => api.get(`/petty-cash/summary/${username}`),
+  getSummary:         (username, requestType = 'PETTY_CASH') => api.get(`/petty-cash/summary/${username}`, { params: { requestType } }),
 };
 
 export const projectsApi = {

@@ -25,6 +25,7 @@ const fmtINR = (v) =>
 
 export default function PettyCashPage({ user, title = "Petty Cash", defaultTab = "mine" }) {
   const isApprover = ["ADMIN", "CEO", "VP", "OH"].includes(user?.role);
+  const requestType = title === "Reimbursement" ? "REIMBURSEMENT" : "PETTY_CASH";
 
   const [entries, setEntries]       = useState([]);
   const [allEntries, setAll]        = useState([]);
@@ -52,17 +53,17 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   const load = useCallback(async () => {
     if (!username) return;
     const [myRes, sumRes] = await Promise.all([
-      pettyCashApi.getMyEntries(username).catch(() => ({ data: { data: [] } })),
-      pettyCashApi.getSummary(username).catch(() => ({ data: { data: {} } })),
+      pettyCashApi.getMyEntries(username, requestType).catch(() => ({ data: { data: [] } })),
+      pettyCashApi.getSummary(username, requestType).catch(() => ({ data: { data: {} } })),
     ]);
     setEntries(myRes.data?.data || []);
     setSummary(sumRes.data?.data);
-  }, [username]);
+  }, [username, requestType]);
 
   const loadAll = useCallback(async () => {
-    const r = await pettyCashApi.getAll().catch(() => ({ data: { data: [] } }));
+    const r = await pettyCashApi.getAll(requestType).catch(() => ({ data: { data: [] } }));
     setAll(r.data?.data || []);
-  }, []);
+  }, [requestType]);
 
   useEffect(() => {
     load();
@@ -105,7 +106,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     setSaving(true);
     try {
       const attachmentUrl = attachmentFile ? await uploadDocument(attachmentFile) : null;
-      const r = await pettyCashApi.create({ ...form, username, amount: Number(form.amount), ...(attachmentUrl ? { attachmentUrl } : {}) });
+      const r = await pettyCashApi.create({ ...form, username, requestType, amount: Number(form.amount), ...(attachmentUrl ? { attachmentUrl } : {}) });
       if (r.data?.success) {
         await load();
         if (isApprover) await loadAll();
@@ -546,7 +547,9 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                   {[
                     ...(viewTab === "all" ? ["Employee"] : []),
                     "Date", "Project", "Category", "Description", "Amount",
-                    "Status", "Receipt", "Proof", "Action",
+                    "Status", "Receipt",
+                    ...(title === "Reimbursement" ? [] : ["Proof"]),
+                    "Action",
                   ].map(h => <th key={h} style={TH}>{h}</th>)}
                 </tr>
               </thead>
@@ -555,7 +558,10 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                   // Reimbursement: VP/CEO/OH can submit but never approve (any entry, not just
                   // their own) — only Admin approves Reimbursement. Doesn't apply to Petty Cash.
                   const isReimbursement = title === "Reimbursement";
-                  const s = isReimbursement && entry.status === "PENDING"
+                  // Only entries actually raised by VP/CEO/OH show "Submitted" — everyone else's
+                  // Reimbursement follows the normal Petty-Cash-style approval workflow/timeline.
+                  const raisedByExecRole = ["VP", "CEO", "OH"].includes(entry.raisedByRole);
+                  const s = isReimbursement && raisedByExecRole && entry.status === "PENDING"
                     ? { ...STATUS_CFG.PENDING, label: "Submitted" }
                     : STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
                   const isMine = entry.username === username;
@@ -625,7 +631,9 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           : <span style={{ color: "#374151" }}>—</span>}
                       </td>
 
-                      {/* Proof (multi-doc, post-transfer) */}
+                      {/* Proof (multi-doc, post-transfer) — Reimbursement already attaches the
+                          receipt at request time, so no separate post-transfer proof step. */}
+                      {title !== "Reimbursement" && (
                       <td data-label="Proof" style={TD({ minWidth: 160 })}>
                         {entry.proofUrl || entry.proofUrls ? (
                           <ProofCell entry={entry} />
@@ -669,6 +677,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           </span>
                         )}
                       </td>
+                      )}
 
                       {/* Action */}
                       <td data-label="Action" style={TD()}>

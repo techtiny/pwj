@@ -11,10 +11,11 @@ export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO", "PROJECT_MANAGER"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
-  const canViewReimbursement = ["CEO", "VP", "OH"].includes(user?.role);
-  // Reimbursement tab itself is open to Engineers too, but they still default to "My Entries"
-  // (only canViewReimbursement above decides the Petty Cash tab's default of "all" vs "mine").
-  const canViewReimbursementTab = canViewReimbursement || user?.role === "ENGINEER";
+  const canViewReimbursement = ["CEO", "VP", "OH", "ADMIN"].includes(user?.role);
+  // Reimbursement tab itself is open to every Engineer-type role too (ENGINEER,
+  // PROCUREMENT_ENGINEER, COSTING_PLANNING_ENGINEER, ...), but they still default to
+  // "My Entries" (only canViewReimbursement above decides Petty Cash's default "all" vs "mine").
+  const canViewReimbursementTab = canViewReimbursement || (user?.role || "").includes("ENGINEER");
   const canViewExits = ["ADMIN", "VP", "CEO", "OH"].includes(user?.role);
 
   const tabs = [
