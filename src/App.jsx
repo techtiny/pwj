@@ -1282,7 +1282,16 @@ export default function PWJTracker() {
         // 5xx, a DB hiccup, a malformed response — is not proof the session is invalid,
         // so leave the user logged in and just retry on the next poll.
         if (res.httpStatus === 401) {
-          doLogout("This account was signed in from another device. You have been signed out.");
+          // A single 401 could still be a one-off blip (a proxy hiccup, a momentary DB read
+          // glitch) rather than an actual second login — confirm with one more check a couple
+          // seconds later before actually kicking the user. A real takeover still fails this
+          // recheck too, so genuine conflicts are still caught almost immediately.
+          await new Promise(r => setTimeout(r, 2500));
+          if (loggingOutRef.current) return;
+          const recheck = await api.validateSession();
+          if (recheck.httpStatus === 401) {
+            doLogout("This account was signed in from another device. You have been signed out.");
+          }
         }
       } catch {} // network errors don't log out
     };
