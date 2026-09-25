@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { salaryApi, fmtDate } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-// Payroll cycle: 26th of the selected month through the 25th of the following month.
+// Payroll cycle: 26th of the previous month through the 25th of the selected month
+// (e.g. selecting September means the Aug 26 – Sep 25 cycle).
 function cycleLabel(year, month) {
-  const start = new Date(year, month - 1, 26);
-  const end = new Date(year, month, 25);
+  const end = new Date(year, month - 1, 25);
+  const start = new Date(year, month - 2, 26);
   const fmt = (d) => `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
   return `${fmt(start)} – ${fmt(end)}`;
 }
