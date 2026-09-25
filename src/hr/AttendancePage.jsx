@@ -580,6 +580,7 @@ export default function AttendancePage({ user, adminView = false }) {
             { label: "Present",  value: summary.presentDays, accent: "#059669" },
             { label: "Half Day", value: summary.halfDays,    accent: "#d97706" },
             { label: "Total",    value: summary.totalDays,   accent: "#1e3a5f" },
+            { label: "Holidays", value: summary.holidayDays, accent: "#7c3aed" },
             { label: "Absent",   value: summary.absentDays,  accent: "#dc2626" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>

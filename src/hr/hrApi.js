@@ -82,6 +82,12 @@ export const salaryApi = {
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
 };
 
+export const holidayApi = {
+  list:   ()       => api.get('/holidays'),
+  add:    (data)    => api.post('/holidays', data),
+  delete: (id)      => api.delete(`/holidays/${id}`),
+};
+
 export const usersApi = {
   getAll:     () => axios.get(USERS_BASE),
   getExited:  () => axios.get(`${USERS_BASE}/exited`),

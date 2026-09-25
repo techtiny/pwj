@@ -6,6 +6,7 @@ import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
 import EmployeeExitPage from "./EmployeeExitPage";
 import SalaryPage from "./SalaryPage";
+import HolidaysPage from "./HolidaysPage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
@@ -24,6 +25,7 @@ export default function HRSection({ user }) {
       { key: "attendance",   label: "Attendance" },
       { key: "leaves",       label: "My Leaves" },
     ]),
+    { key: "holidays",       label: "Holidays" },
     { key: "petty-cash",     label: "Petty Cash" },
     ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
     ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
@@ -130,6 +132,7 @@ export default function HRSection({ user }) {
       {tab === "dashboard"      && <HRDashboard user={user} />}
       {tab === "attendance"     && <AttendancePage user={user} />}
       {tab === "leaves"         && <LeavePage user={user} />}
+      {tab === "holidays"       && <HolidaysPage user={user} />}
       {tab === "petty-cash"     && <PettyCashPage user={user} title="Petty Cash" defaultTab={canViewReimbursement ? "all" : "mine"} />}
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
