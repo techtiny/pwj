@@ -841,9 +841,12 @@ const APPROVAL_META = {
   HOLD:         { label: "Hold",         bg: "#fef3c7", color: "#d97706", dot: "#f59e0b" },
   NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
 };
-// Mobile only: these 3 columns stay pinned in place (position:sticky) while the rest of the
-// entries table scrolls underneath them — see the .app-tablewrap .freeze-* rules below.
-const FREEZE_COL_CLASS = { "#": "freeze-col freeze-1", "Project": "freeze-col freeze-2", "Status": "freeze-col freeze-3" };
+// Mobile only: everything through "Item" stays pinned in place (position:sticky) while the
+// rest of the entries table (Req Date onward) scrolls underneath — see the .freeze-* rules below.
+const FREEZE_COL_CLASS = {
+  "#": "freeze-col freeze-2", "Created": "freeze-col freeze-3", "Raised By": "freeze-col freeze-4",
+  "Project": "freeze-col freeze-5", "Item": "freeze-col freeze-6",
+};
 const DEPENDENCY_COLOR = { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" };
 const DEPENDENCY_NAMES = ["OH Approval", "VP Approval", "Procurement", "Site team", "Vendor", "DIP"];
 const DEPENDENCY_META = {
@@ -3339,14 +3342,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-tablewrap td .cell-badge { font-size: 10px !important; padding: 2px 6px !important; }
           .app-tablewrap td.cell-trunc-lg { max-width: 90px !important; }
           .app-tablewrap td.cell-trunc-sm { max-width: 60px !important; }
-          /* Freeze #, Project, Status in place while the rest of the table scrolls underneath —
-             they don't need to be adjacent columns; sticky just pins each at a fixed offset. */
-          .app-tablewrap .freeze-col { position: sticky !important; z-index: 2; box-sizing: border-box; }
+          /* Freeze Select through Item in place while Req Date onward scrolls underneath. */
+          .app-tablewrap .freeze-col { position: sticky !important; z-index: 2; box-sizing: border-box; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
           .app-tablewrap th.freeze-col { z-index: 3; }
           .app-tablewrap td.freeze-col { background: #fff !important; }
-          .app-tablewrap .freeze-1 { left: 0; width: 38px !important; min-width: 38px !important; max-width: 38px !important; }
-          .app-tablewrap .freeze-2 { left: 38px; width: 90px !important; }
-          .app-tablewrap .freeze-3 { left: 128px; width: 70px !important; min-width: 70px !important; box-shadow: 3px 0 6px -3px rgba(15,23,42,.15); }
+          .app-tablewrap .freeze-1 { left: 0;   width: 32px !important; min-width: 32px !important; max-width: 32px !important; }
+          .app-tablewrap .freeze-2 { left: 32px;  width: 34px !important; min-width: 34px !important; max-width: 34px !important; }
+          .app-tablewrap .freeze-3 { left: 66px;  width: 64px !important; min-width: 64px !important; max-width: 64px !important; }
+          .app-tablewrap .freeze-4 { left: 130px; width: 80px !important; min-width: 80px !important; max-width: 80px !important; }
+          .app-tablewrap .freeze-5 { left: 210px; width: 90px !important; }
+          .app-tablewrap .freeze-6 { left: 300px; width: 90px !important; box-shadow: 3px 0 6px -3px rgba(15,23,42,.15); }
         }
         /* Narrow portrait phones: squeeze further — there just isn't 1024px-worth of columns'
            room otherwise, so this is as tight as the text can go and stay legible. */
@@ -3358,9 +3363,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-tablewrap td .cell-badge { font-size: 8.5px !important; padding: 1px 5px !important; gap: 3px !important; }
           .app-tablewrap td.cell-trunc-lg { max-width: 58px !important; }
           .app-tablewrap td.cell-trunc-sm { max-width: 40px !important; }
-          .app-tablewrap .freeze-1 { width: 30px !important; min-width: 30px !important; max-width: 30px !important; }
-          .app-tablewrap .freeze-2 { left: 30px; width: 58px !important; }
-          .app-tablewrap .freeze-3 { left: 88px; width: 55px !important; min-width: 55px !important; }
+          .app-tablewrap .freeze-1 { width: 24px !important; min-width: 24px !important; max-width: 24px !important; }
+          .app-tablewrap .freeze-2 { left: 24px;  width: 26px !important; min-width: 26px !important; max-width: 26px !important; }
+          .app-tablewrap .freeze-3 { left: 50px;  width: 48px !important; min-width: 48px !important; max-width: 48px !important; }
+          .app-tablewrap .freeze-4 { left: 98px;  width: 58px !important; min-width: 58px !important; max-width: 58px !important; }
+          .app-tablewrap .freeze-5 { left: 156px; width: 58px !important; }
+          .app-tablewrap .freeze-6 { left: 214px; width: 58px !important; }
         }
         .doc-modal-footer {
           max-height: 42vh;
@@ -3766,7 +3774,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <table style={s.table}>
               <thead>
                 <tr>
-                  <th style={{ ...s.th, width: 36, textAlign: "center" }}>
+                  <th className="freeze-col freeze-1" style={{ ...s.th, width: 36, textAlign: "center" }}>
                     {(() => {
                       const firstSel = selectedIds.size > 0 ? entries.find(e => selectedIds.has(e.id)) : null;
                       const eligible = entries.filter(e => canSelectEntry(e) && (!firstSel || e.projectName === firstSel.projectName));
@@ -3805,23 +3813,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     const isEligible = canSelectEntry(row) && (!firstSel || row.projectName === firstSel.projectName || selectedIds.has(row.id));
                     return (
                   <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#f0f4ff" : idx % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer", opacity: (!isEligible && selectedIds.size > 0) ? 0.45 : 1 }}>
-                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                    <td className="freeze-col freeze-1" style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.has(row.id)}
                         disabled={!isEligible}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td className="freeze-col freeze-1" style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
+                    <td className="freeze-col freeze-2" style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td className="freeze-col freeze-3" style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.createdAt || row.timestamp)}
                     </td>
-                    <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
+                    <td className="freeze-col freeze-4" style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
                       {row.raisedBy}
                       {isEngineer && row.raisedBy !== (user?.fullName || user?.username) && (
                         <span className="cell-badge" title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
                       )}
                     </td>
-                    <td className="cell-trunc-lg freeze-col freeze-2" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
-                    <td className="cell-trunc-lg" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
+                    <td className="cell-trunc-lg freeze-col freeze-5" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
+                    <td className="cell-trunc-lg freeze-col freeze-6" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
                       {parseImageRefs(row.imageReference).length > 0 && (
                         <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 14, cursor: "pointer" }}>🖼️</span>
@@ -3863,7 +3871,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
-                    <td className="freeze-col freeze-3" style={s.td} onClick={() => setDetailRow(row)}>
+                    <td style={s.td} onClick={() => setDetailRow(row)}>
                       {(() => {
                         const issuedStale = (() => {
                           if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
