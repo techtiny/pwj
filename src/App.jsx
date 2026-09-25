@@ -3337,16 +3337,48 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-tablewrap td.cell-trunc-lg { max-width: 90px !important; }
           .app-tablewrap td.cell-trunc-sm { max-width: 60px !important; }
         }
-        /* Narrow portrait phones: squeeze further — there just isn't 1024px-worth of columns'
-           room otherwise, so this is as tight as the text can go and stay legible. */
-        @media (max-width: 480px) {
-          .app-tablewrap table { font-size: 9.5px !important; }
-          .app-tablewrap th { padding: 5px 3px !important; font-size: 9px !important; letter-spacing: 0 !important; }
-          .app-tablewrap td { padding: 5px 3px !important; font-size: 9.5px !important; }
-          .app-tablewrap td button { padding: 2px 4px !important; font-size: 8.5px !important; }
-          .app-tablewrap td .cell-badge { font-size: 8.5px !important; padding: 1px 5px !important; gap: 3px !important; }
-          .app-tablewrap td.cell-trunc-lg { max-width: 58px !important; }
-          .app-tablewrap td.cell-trunc-sm { max-width: 40px !important; }
+        /* Portrait phones: there's no font size that fits 13 columns side-by-side in ~360-430px,
+           so instead turn each row into a card — every field stacked as a label:value line, all
+           visible at a glance with zero horizontal scroll. Landscape keeps the compact <table>
+           above, which has enough width to actually work as a table. */
+        @media (max-width: 768px) and (orientation: portrait) {
+          .pr-table thead { display: none !important; }
+          .pr-table tbody tr {
+            display: block !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            margin: 0 8px 12px !important;
+            padding: 12px 14px !important;
+            background: #fff !important;
+          }
+          .pr-table td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            padding: 7px 0 !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            font-size: 13px !important;
+            max-width: none !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            white-space: normal !important;
+            gap: 10px;
+          }
+          .pr-table td:last-child { border-bottom: none !important; }
+          .pr-table td::before {
+            content: attr(data-label);
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #94a3b8 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            min-width: 84px;
+            flex-shrink: 0;
+          }
+          .pr-table td[data-label="Action"] { flex-direction: column !important; align-items: stretch !important; }
+          .pr-table td[data-label="Action"]::before { margin-bottom: 8px; }
+          .pr-table td.pr-empty-row { display: block !important; text-align: center !important; border-bottom: none !important; }
+          .pr-table td.pr-empty-row::before { content: none !important; }
         }
         .doc-modal-footer {
           max-height: 42vh;
@@ -3749,7 +3781,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {/* ─── TABLE ─── */}
         <div style={s.tableWrap} className="app-tablewrap">
           <div style={{ overflowX: "auto" }}>
-            <table style={s.table}>
+            <table style={s.table} className="pr-table">
               <thead>
                 <tr>
                   <th style={{ ...s.th, width: 36, textAlign: "center" }}>
@@ -3783,43 +3815,43 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={20} style={s.emptyRow}>Loading entries…</td></tr>
+                  <tr><td className="pr-empty-row" colSpan={20} style={s.emptyRow}>Loading entries…</td></tr>
                 ) : entries.length === 0 ? (
-                  <tr><td colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
+                  <tr><td className="pr-empty-row" colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
                 ) : entries.map((row, idx) => {
                     const firstSel = selectedIds.size > 0 ? entries.find(e => selectedIds.has(e.id)) : null;
                     const isEligible = canSelectEntry(row) && (!firstSel || row.projectName === firstSel.projectName || selectedIds.has(row.id));
                     return (
                   <tr key={row.id} style={{ background: selectedIds.has(row.id) ? "#f0f4ff" : idx % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer", opacity: (!isEligible && selectedIds.size > 0) ? 0.45 : 1 }}>
-                    <td style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                    <td data-label="Select" style={{ ...s.td, textAlign: "center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.has(row.id)}
                         disabled={!isEligible}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
+                    <td data-label="#" style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td data-label="Created" style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.createdAt || row.timestamp)}
                     </td>
-                    <td style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
+                    <td data-label="Raised By" style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
                       {row.raisedBy}
                       {isEngineer && row.raisedBy !== (user?.fullName || user?.username) && (
                         <span className="cell-badge" title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
                       )}
                     </td>
-                    <td className="cell-trunc-lg" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
-                    <td className="cell-trunc-lg" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
+                    <td data-label="Project" className="cell-trunc-lg" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
+                    <td data-label="Item" className="cell-trunc-lg" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
                       {parseImageRefs(row.imageReference).length > 0 && (
                         <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 14, cursor: "pointer" }}>🖼️</span>
                       )}
                     </td>
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
+                    <td data-label="Req Date" style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
                     {/* Vendor — hidden for Engineer */}
                     {!isEngineer && (
-                      <td className="cell-trunc-sm" style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
+                      <td data-label="Vendor" className="cell-trunc-sm" style={{ ...s.td, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.vendor} onClick={() => setDetailRow(row)}>{row.vendor || "—"}</td>
                     )}
                     {/* OH Approval */}
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
+                    <td data-label="OH Approval" style={s.td} onClick={() => setDetailRow(row)}>
                       <span className="cell-badge" style={s.badge(APPROVAL_META[row.approvalStatus])}>
                         <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
                         {APPROVAL_META[row.approvalStatus]?.label || "—"}
@@ -3827,7 +3859,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
-                      <td style={s.td} onClick={e => e.stopPropagation()}>
+                      <td data-label="PWJ" style={s.td} onClick={e => e.stopPropagation()}>
                         {(isAdmin || isProcurement) ? (
                           <button
                             title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
@@ -3845,11 +3877,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       </td>
                     )}
                     {/* Delivered Date */}
-                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "#1e293b" }} onClick={() => setDetailRow(row)}>
+                    <td data-label="Delivered" style={{ ...s.td, whiteSpace: "nowrap", color: "#1e293b" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
-                    <td style={s.td} onClick={() => setDetailRow(row)}>
+                    <td data-label="Status" style={s.td} onClick={() => setDetailRow(row)}>
                       {(() => {
                         const issuedStale = (() => {
                           if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
@@ -3867,7 +3899,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       })()}
                     </td>
                     {/* Dependency */}
-                    <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
+                    <td data-label="Dependency" style={{ ...s.td }} onClick={e => e.stopPropagation()}>
                       {row.status === "CLOSED" ? (
                         <span style={{ color: "#374151" }}>—</span>
                       ) : isProcurement ? (
@@ -3907,7 +3939,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       )}
                     </td>
                     {/* ★ ACTION COLUMN */}
-                    <td style={s.td} onClick={e => e.stopPropagation()}>
+                    <td data-label="Action" style={s.td} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         {/* Engineer / PM edit button — own entries only, locked once OH approves (PROCEED) */}
                         {(isEngineer || isProjectManager) && row.raisedBy === (user?.fullName || user?.username) && (
