@@ -3311,6 +3311,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-statsrow { padding: 10px 10px 0 !important; gap: 10px !important; flex-direction: column !important; }
           .app-statsrow > div { min-width: unset !important; width: 100% !important; }
           .app-statsrow .stat-val { font-size: 22px !important; }
+          /* Dependency: 6 tiles overflow a single row and get clipped on mobile — wrap into a 3x2 grid instead */
+          .dep-tile-row { flex-wrap: wrap !important; }
+          .dep-tile { flex: 1 1 33.333% !important; min-width: 0 !important; box-sizing: border-box; border-bottom: 1px solid #f1f5f9; }
+          .dep-tile:nth-child(3n) { border-right: none !important; }
+          .dep-tile:nth-last-child(-n+3) { border-bottom: none; }
           .app-filterbar { padding: 10px 12px !important; gap: 8px !important; }
           .app-tablewrap { margin: 0 8px 14px !important; }
           .app-pagination { padding: 10px 12px 18px !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
@@ -3590,12 +3595,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 Dependency
               </span>
             </div>
-            <div style={{ display: "flex" }}>
+            <div className="dep-tile-row" style={{ display: "flex" }}>
               {DEPENDENCY_NAMES.map((name, ci) => {
                 const isActive = dependencyF === name;
                 const accent = DEPENDENCY_COLOR.color;
                 return (
-                  <div key={name}
+                  <div key={name} className="dep-tile"
                     onClick={() => { setDependencyF(isActive ? "" : name); setStatusF(isActive ? "ALL" : "OPEN"); setPage(0); }}
                     style={{
                       flex: 1, padding: "14px 10px", cursor: "pointer", textAlign: "center",
