@@ -3325,9 +3325,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-hright button { padding: 5px 8px !important; font-size: 10px !important; }
           .app-statsrow > div { min-width: 88px !important; }
         }
-        /* Phone/tablet landscape: compact the entries table enough that every column fits in
-           one view instead of needing the horizontal scroll it falls back to on narrower screens. */
-        @media (max-width: 1024px) and (orientation: landscape) {
+        /* Mobile/tablet, any orientation: compact the entries table enough that every column
+           fits in one view instead of needing the horizontal scroll it falls back to otherwise. */
+        @media (max-width: 1024px) {
           .app-tablewrap { margin: 0 8px 14px !important; }
           .app-tablewrap table { font-size: 11px !important; }
           .app-tablewrap th { padding: 6px 5px !important; font-size: 10.5px !important; letter-spacing: 0.2px !important; }
@@ -3336,6 +3336,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
           .app-tablewrap td .cell-badge { font-size: 10px !important; padding: 2px 6px !important; }
           .app-tablewrap td.cell-trunc-lg { max-width: 90px !important; }
           .app-tablewrap td.cell-trunc-sm { max-width: 60px !important; }
+        }
+        /* Narrow portrait phones: squeeze further — there just isn't 1024px-worth of columns'
+           room otherwise, so this is as tight as the text can go and stay legible. */
+        @media (max-width: 480px) {
+          .app-tablewrap table { font-size: 9.5px !important; }
+          .app-tablewrap th { padding: 5px 3px !important; font-size: 9px !important; letter-spacing: 0 !important; }
+          .app-tablewrap td { padding: 5px 3px !important; font-size: 9.5px !important; }
+          .app-tablewrap td button { padding: 2px 4px !important; font-size: 8.5px !important; }
+          .app-tablewrap td .cell-badge { font-size: 8.5px !important; padding: 1px 5px !important; gap: 3px !important; }
+          .app-tablewrap td.cell-trunc-lg { max-width: 58px !important; }
+          .app-tablewrap td.cell-trunc-sm { max-width: 40px !important; }
         }
         .doc-modal-footer {
           max-height: 42vh;
