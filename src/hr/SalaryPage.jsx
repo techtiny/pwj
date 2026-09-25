@@ -365,7 +365,7 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
 
 function AdjustModal({ row, monthLabel, busy, onClose, onSubmit }) {
   const [form, setForm] = useState({
-    extraWorkingDays: row.extraWorkingDays ? String(row.extraWorkingDays) : "",
+    extraWorkingDays: "",
     manualLopDays: "",
     manualWorkingDays: "",
     remarks: row.remarks || "",
@@ -375,10 +375,10 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit }) {
     <Overlay onClose={onClose}>
       <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Adjust — {row.name}</div>
       <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 14px" }}>
-        {monthLabel} · auto: {row.leaveDays} leave day(s){Number(row.unauthorizedDays) > 0 ? `, ${row.unauthorizedDays} unauthorized absence(s)` : ""}, {row.lopDays} LOP, {row.workingDays} working days
+        {monthLabel} · auto: {row.leaveDays} leave day(s){Number(row.unauthorizedDays) > 0 ? `, ${row.unauthorizedDays} unauthorized absence(s)` : ""}, {row.lopDays} LOP, {row.extraWorkingDays} extra WD, {row.workingDays} working days
       </div>
-      <Field label="Extra working days (Sunday / holiday working — adds pay back)">
-        <input type="number" step="0.5" value={form.extraWorkingDays} onChange={(e) => setForm((f) => ({ ...f, extraWorkingDays: e.target.value }))} style={{ ...inputS, width: "100%" }} placeholder="0" />
+      <Field label="Extra working days (override — auto-detected from Sunday/holiday check-in+out)">
+        <input type="number" step="0.5" value={form.extraWorkingDays} onChange={(e) => setForm((f) => ({ ...f, extraWorkingDays: e.target.value }))} style={{ ...inputS, width: "100%" }} placeholder="auto" />
       </Field>
       <Field label="Manual LOP days (override the leave-derived figure)">
         <input type="number" step="0.5" value={form.manualLopDays} onChange={(e) => setForm((f) => ({ ...f, manualLopDays: e.target.value }))} style={{ ...inputS, width: "100%" }} placeholder="auto" />
