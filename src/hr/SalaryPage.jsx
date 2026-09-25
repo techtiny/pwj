@@ -65,7 +65,6 @@ export default function SalaryPage({ user }) {
     const cols = [
       ["Emp No", "employeeNumber"], ["Name", "name"], ["Designation", "designation"],
       ["Days", "daysInMonth"], ["Leave Days", "leaveDays"], ["Free CL", "freeCasualLeave"],
-      ["Unauthorized", "unauthorizedDays"],
       ["LOP Days", "lopDays"], ["Extra WD", "extraWorkingDays"], ["Working Days", "workingDays"],
       ["Fixed Gross", "fixedGross"], ["Fixed Basic", "fixedBasic"], ["Fixed HRA", "fixedHra"],
       ["Fixed Other", "fixedOther"], ["Fixed PF", "fixedPf"], ["Fixed PT", "fixedPt"],
@@ -176,9 +175,7 @@ export default function SalaryPage({ user }) {
                 <tr>
                   <th style={th}>Emp No</th><th style={th}>Name</th><th style={th}>Designation</th>
                   <th style={thR} title="Actual day count of the 26th–25th payroll cycle">Days</th>
-                  <th style={thR}>Leave Days</th><th style={thR}>Free CL</th>
-                  <th style={thR} title="Mon-Sat, no check-in, no leave applied, not a holiday — straight to LOP">Unauthorized</th>
-                  <th style={thR}>LOP Days</th>
+                  <th style={thR}>Leave Days</th><th style={thR}>Free CL</th><th style={thR}>LOP Days</th>
                   <th style={thR}>Extra WD</th><th style={thR}>Working Days</th>
                   <th style={thR}>Fixed Gross</th><th style={thR}>Fixed Basic</th><th style={thR}>Fixed HRA</th>
                   <th style={thR}>Fixed Other</th><th style={thR}>Fixed PF</th><th style={thR}>Fixed PT</th>
@@ -193,9 +190,9 @@ export default function SalaryPage({ user }) {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={td} colSpan={canManage ? 32 : 31}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={canManage ? 31 : 30}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 32 : 31}>
+                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 31 : 30}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : sheet.map((r) => (
@@ -206,7 +203,6 @@ export default function SalaryPage({ user }) {
                     <td style={tdR}>{r.daysInMonth}</td>
                     <td style={tdR}>{r.leaveDays}</td>
                     <td style={tdR}>{r.freeCasualLeave}</td>
-                    <td style={{ ...tdR, color: Number(r.unauthorizedDays) > 0 ? "#b91c1c" : "#64748b", fontWeight: Number(r.unauthorizedDays) > 0 ? 700 : 400 }}>{r.unauthorizedDays}</td>
                     <td style={{ ...tdR, color: Number(r.lopDays) > 0 ? "#b91c1c" : "#64748b" }}>{r.lopDays}</td>
                     <td style={tdR}>{r.extraWorkingDays}</td>
                     <td style={{ ...tdR, fontWeight: 700 }}>{r.workingDays}</td>
@@ -242,7 +238,7 @@ export default function SalaryPage({ user }) {
               {sheet.length > 0 && (
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
-                    <td style={td} colSpan={10}>Total ({sheet.length})</td>
+                    <td style={td} colSpan={9}>Total ({sheet.length})</td>
                     <td style={tdR}>{inr0(totals.fixedGross)}</td>
                     <td style={td} colSpan={6}></td>
                     <td style={tdR}>{inr0(totals.fixedTakeHome)}</td>
@@ -375,7 +371,7 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit }) {
     <Overlay onClose={onClose}>
       <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Adjust — {row.name}</div>
       <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 14px" }}>
-        {monthLabel} · auto: {row.leaveDays} leave day(s){Number(row.unauthorizedDays) > 0 ? `, ${row.unauthorizedDays} unauthorized absence(s)` : ""}, {row.lopDays} LOP, {row.extraWorkingDays} extra WD, {row.workingDays} working days
+        {monthLabel} · auto: {row.leaveDays} leave day(s), {row.lopDays} LOP, {row.extraWorkingDays} extra WD, {row.workingDays} working days
       </div>
       <Field label="Extra working days (override — auto-detected from Sunday/holiday check-in+out)">
         <input type="number" step="0.5" value={form.extraWorkingDays} onChange={(e) => setForm((f) => ({ ...f, extraWorkingDays: e.target.value }))} style={{ ...inputS, width: "100%" }} placeholder="auto" />
