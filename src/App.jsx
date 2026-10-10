@@ -1518,7 +1518,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [dateFrom,   setDateFrom]     = useState("");
   const [dateTo,     setDateTo]       = useState("");
   const [page, setPage]               = useState(0);
-  const [sortBy, setSortBy]           = useState("updatedAt");
+  const [sortBy, setSortBy]           = useState("createdAt");
   const [sortDir, setSortDir]         = useState("desc");
   const PAGE_SIZE = 15;
 
@@ -5110,8 +5110,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 )
               )}
 
-              {/* Visibility controls — raiser, Admin or Procurement can share this PR with other engineers */}
-              {(isAdmin || isProcurement || detailRow.raisedBy === (user?.fullName || user?.username)) && (
+              {/* Visibility controls — only Admin or Procurement can share a PR with other engineers */}
+              {(isAdmin || isProcurement) && (
                 <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 13, color: "#334155" }}>
@@ -5667,6 +5667,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
                 </div>
               </div>
+              {/* Visibility controls — only Admin or Procurement can share a PR with other engineers */}
+              {(isAdmin || isProcurement) && (<>
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 14, color: "#374151", cursor: "pointer" }}>
                 <input type="checkbox"
                   checked={createForm.visibility === "ENGINEERS"}
@@ -5698,6 +5700,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 </div>
               )}
+              </>)}
               <button style={{ ...s.submitBtn(), marginTop: 8, opacity: createLoading ? 0.7 : 1, cursor: createLoading ? "not-allowed" : "pointer" }} onClick={submitCreate} disabled={createLoading}>
                 {createLoading ? "⏳ Saving…" : editingEntry ? "💾 Save Changes" : "✅ Create Entry"}
               </button>
@@ -6527,7 +6530,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>
                                 {e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"}
                               </div>
-                              {(isAdmin || isProcurement || isVP)
+                              {(isAdmin || isProcurement || isVP) && activeDocStatus !== "VP_APPROVED"
                                 ? <input type="date" value={docData.completionDate || ""}
                                     onChange={ev => saveCompletionDateInline(ev.target.value)}
                                     style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
