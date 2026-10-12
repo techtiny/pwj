@@ -12,6 +12,26 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+const CATEGORY_ICON = { POLICY: "📋", SOP: "📘", FORM: "📝", MANUAL: "📖" };
+function categoryIcon(cat) {
+  return CATEGORY_ICON[(cat || "").trim().toUpperCase()] || "📄";
+}
+
+// Groups docs by category into tiles — "Other" for anything uncategorized,
+// always last. Within a category, newest upload first (server already sorts
+// the full list that way, so this just preserves relative order per group).
+function groupByCategory(docs) {
+  const groups = new Map();
+  for (const d of docs) {
+    const key = (d.category || "").trim() || "Other";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(d);
+  }
+  const entries = [...groups.entries()];
+  entries.sort((a, b) => (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : a[0].localeCompare(b[0])));
+  return entries;
+}
+
 export default function CompanyDocumentsPage({ user }) {
   const canManage = ["ADMIN", "VP"].includes(user?.role);
   const [docs, setDocs] = useState([]);
@@ -95,51 +115,56 @@ export default function CompanyDocumentsPage({ user }) {
         </form>
       )}
 
-      <div style={{ ...card, overflow: "hidden" }}>
-        <div style={{ padding: "14px 16px", fontSize: 15, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
-          Documents <span style={{ color: "#94a3b8", fontWeight: 500 }}>· {docs.length}</span>
+      {loading ? (
+        <div style={{ ...card, padding: "16px 18px", color: "#94a3b8" }}>Loading…</div>
+      ) : docs.length === 0 ? (
+        <div style={{ ...card, padding: "16px 18px", color: "#94a3b8" }}>No documents uploaded yet.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 16 }}>
+          {groupByCategory(docs).map(([category, catDocs]) => (
+            <div key={category} style={{ ...card, overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px", fontSize: 15, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{categoryIcon(category)}</span>
+                {category} <span style={{ color: "#94a3b8", fontWeight: 500 }}>· {catDocs.length}</span>
+              </div>
+              <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>S.No</th>
+                      <th style={th}>Title</th>
+                      <th style={th}>Uploaded</th>
+                      <th style={th}></th>
+                      {canManage && <th style={{ ...th, textAlign: "right" }}>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {catDocs.map((d, i) => (
+                      <tr key={d.id}>
+                        <td style={{ ...td, color: "#475569" }}>{i + 1}</td>
+                        <td style={{ ...td, fontWeight: 600 }}>{d.title}</td>
+                        <td style={td}>{fmtDate(d.uploadedAt)}</td>
+                        <td style={td}>
+                          <a href={attachmentFullUrl(d.fileUrl)} target="_blank" rel="noreferrer" style={{ color: "#0369a1", fontWeight: 700, textDecoration: "none" }}>
+                            📄 View
+                          </a>
+                        </td>
+                        {canManage && (
+                          <td style={{ ...td, textAlign: "right" }}>
+                            <button disabled={busy === d.id} onClick={() => remove(d)} style={btn("#fee2e2", "#b91c1c")}>
+                              {busy === d.id ? "Removing…" : "Remove"}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={th}>S.No</th>
-                <th style={th}>Title</th>
-                <th style={th}>Category</th>
-                <th style={th}>Uploaded</th>
-                <th style={th}></th>
-                {canManage && <th style={{ ...th, textAlign: "right" }}>Action</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td style={td} colSpan={canManage ? 6 : 5}>Loading…</td></tr>
-              ) : docs.length === 0 ? (
-                <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 6 : 5}>No documents uploaded yet.</td></tr>
-              ) : docs.map((d, i) => (
-                <tr key={d.id}>
-                  <td style={{ ...td, color: "#475569" }}>{i + 1}</td>
-                  <td style={{ ...td, fontWeight: 600 }}>{d.title}</td>
-                  <td style={td}>{d.category || "—"}</td>
-                  <td style={td}>{fmtDate(d.uploadedAt)}</td>
-                  <td style={td}>
-                    <a href={attachmentFullUrl(d.fileUrl)} target="_blank" rel="noreferrer" style={{ color: "#0369a1", fontWeight: 700, textDecoration: "none" }}>
-                      📄 View
-                    </a>
-                  </td>
-                  {canManage && (
-                    <td style={{ ...td, textAlign: "right" }}>
-                      <button disabled={busy === d.id} onClick={() => remove(d)} style={btn("#fee2e2", "#b91c1c")}>
-                        {busy === d.id ? "Removing…" : "Remove"}
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
