@@ -468,13 +468,17 @@ export default function AttendancePage({ user, adminView = false }) {
                     <td style={TD()}>{fmtTime(a.checkOutTime)}</td>
                     <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkOutAddress} /></td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
-                    <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
+                    <td style={TD()}><span style={badge(s)} title={a.notes || undefined}>{s.label}</span></td>
                     {!isViewOnly && (
                       <td style={TD()}>
-                        <button onClick={() => openEdit(a)}
-                          style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                          ✏️ Edit
-                        </button>
+                        {a.id < 0 ? (
+                          <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>{a.notes}</span>
+                        ) : (
+                          <button onClick={() => openEdit(a)}
+                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                            ✏️ Edit
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -618,7 +622,7 @@ export default function AttendancePage({ user, adminView = false }) {
                     <td style={TD({ maxWidth: 180 })}><LocCell text={a.checkInAddress} maxWidth={180} /></td>
                     <td style={TD()}>{fmtTime(a.checkOutTime)}</td>
                     <td style={TD({ fontWeight: 600 })}>{fmtHours(a.totalMinutes)}</td>
-                    <td style={TD()}><span style={badge(s)}>{s.label}</span></td>
+                    <td style={TD()}><span style={badge(s)} title={a.notes || undefined}>{s.label}</span></td>
                   </tr>
                 );
               })}

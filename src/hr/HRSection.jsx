@@ -7,7 +7,6 @@ import PettyCashPage from "./PettyCashPage";
 import EmployeeExitPage from "./EmployeeExitPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
-import HolidaysPage from "./HolidaysPage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
@@ -20,23 +19,49 @@ export default function HRSection({ user }) {
   const canViewReimbursementTab = canViewReimbursement || (user?.role || "").includes("ENGINEER");
   const canViewExits = ["ADMIN", "VP", "CEO", "OH"].includes(user?.role);
 
-  const tabs = [
-    { key: "dashboard",      label: "Dashboard" },
-    ...(hidePersonal ? [] : [
-      { key: "attendance",   label: "Attendance" },
-      { key: "leaves",       label: "My Leaves" },
-    ]),
-    { key: "holidays",       label: "Holidays" },
-    { key: "petty-cash",     label: "Petty Cash" },
-    ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
-    ...(isApprover  ? [{ key: "approvals",      label: "Leave Approvals" }] : []),
-    ...(canViewAll  ? [{ key: "all-attendance", label: "All Attendance"  }] : []),
-    ...(canViewExits ? [{ key: "employee-master", label: "Employee Profiles" }] : []),
-    ...(canViewExits ? [{ key: "employees",    label: "Employee Exit"   }] : []),
-    ...(canViewExits ? [{ key: "salary",       label: "Salary"          }] : []),
-  ];
+  // Grouped nav: a handful of top-level tabs, each holding the related pages
+  // as sub-tabs (shown as a second pill row only when a group has more than
+  // one). The actual `tab` keys below are unchanged from before grouping, so
+  // every render condition further down still matches as-is.
+  const groups = [
+    { key: "dashboard", label: "Dashboard", tabs: [{ key: "dashboard", label: "Dashboard" }] },
+    {
+      key: "attendance",
+      label: "Attendance",
+      tabs: [
+        ...(hidePersonal ? [] : [{ key: "attendance", label: "My Attendance" }]),
+        ...(canViewAll ? [{ key: "all-attendance", label: "Team Attendance" }] : []),
+      ],
+    },
+    {
+      key: "leave",
+      label: "Leave",
+      tabs: [
+        ...(hidePersonal ? [] : [{ key: "leaves", label: "My Leaves" }]),
+        ...(isApprover ? [{ key: "approvals", label: "Approvals" }] : []),
+      ],
+    },
+    {
+      key: "expenses",
+      label: "Expenses",
+      tabs: [
+        { key: "petty-cash", label: "Petty Cash" },
+        ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
+      ],
+    },
+    ...(canViewExits ? [{
+      key: "people",
+      label: "People",
+      tabs: [
+        { key: "employee-master", label: "Employee Profiles" },
+        { key: "employees",       label: "Employee Exit" },
+        { key: "salary",          label: "Salary" },
+      ],
+    }] : []),
+  ].filter(g => g.tabs.length > 0);
 
   const [tab, setTab] = useState("dashboard");
+  const activeGroup = groups.find(g => g.tabs.some(t => t.key === tab)) || groups[0];
 
   return (
     <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)", fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>
@@ -114,10 +139,10 @@ export default function HRSection({ user }) {
       `}</style>
       {/* Sub-nav — matches main app tab style exactly */}
       <div className="sub-nav" style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px", display: "flex", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        {tabs.map(t => {
-          const active = tab === t.key;
+        {groups.map(g => {
+          const active = activeGroup.key === g.key;
           return (
-            <button key={t.key} onClick={() => setTab(t.key)}
+            <button key={g.key} onClick={() => setTab(g.tabs[0].key)}
               style={{
                 border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
                 padding: "14px 26px", fontSize: 17, fontWeight: active ? 700 : 600,
@@ -125,16 +150,34 @@ export default function HRSection({ user }) {
                 borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                 marginBottom: -1, letterSpacing: 0.1, whiteSpace: "nowrap",
               }}>
-              {t.label}
+              {g.label}
             </button>
           );
         })}
       </div>
 
+      {/* Second-level pills — only shown when the active group has more than one page */}
+      {activeGroup.tabs.length > 1 && (
+        <div className="hr-pill-row" style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 32px", display: "flex", gap: 8 }}>
+          {activeGroup.tabs.map(t => {
+            const active = tab === t.key;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                style={{
+                  border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 15px",
+                  background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
+                  fontWeight: active ? 700 : 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                }}>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {tab === "dashboard"      && <HRDashboard user={user} />}
       {tab === "attendance"     && <AttendancePage user={user} />}
       {tab === "leaves"         && <LeavePage user={user} />}
-      {tab === "holidays"       && <HolidaysPage user={user} />}
       {tab === "petty-cash"     && <PettyCashPage user={user} title="Petty Cash" defaultTab={canViewReimbursement ? "all" : "mine"} />}
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}

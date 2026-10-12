@@ -555,8 +555,8 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
               </thead>
               <tbody>
                 {displayList.map((entry, i) => {
-                  // Reimbursement: VP/CEO/OH can submit but never approve (any entry, not just
-                  // their own) — only Admin approves Reimbursement. Doesn't apply to Petty Cash.
+                  // Reimbursement: only Admin and VP approve — CEO/OH can submit their own
+                  // but have no approval access on any entry. Doesn't apply to Petty Cash.
                   const isReimbursement = title === "Reimbursement";
                   // Only entries actually raised by VP/CEO/OH show "Submitted" — everyone else's
                   // Reimbursement follows the normal Petty-Cash-style approval workflow/timeline.
@@ -565,7 +565,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                     ? { ...STATUS_CFG.PENDING, label: "Submitted" }
                     : STATUS_CFG[entry.status] || STATUS_CFG.PENDING;
                   const isMine = entry.username === username;
-                  const canApprove = isApprover && !(isReimbursement && ["VP", "CEO", "OH"].includes(user?.role));
+                  const canApprove = isApprover && (!isReimbursement || ["ADMIN", "VP"].includes(user?.role));
                   const isProc = processing === entry.id + "approve" || processing === entry.id + "reject";
                   const proof  = proofState[entry.id] || {};
 
@@ -682,15 +682,16 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                       {/* Action */}
                       <td data-label="Action" style={TD()}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {isMine && entry.status === "PENDING" && (
+                          {isMine && entry.status === "PENDING" && !(isReimbursement && raisedByExecRole) && (
                             <button onClick={() => handleDelete(entry.id)}
                               style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
                               Delete
                             </button>
                           )}
 
-                          {/* Approve / Reject on PENDING */}
-                          {canApprove && entry.status === "PENDING" && (
+                          {/* Approve / Reject on PENDING — not needed for Reimbursement entries
+                              raised by VP/OH/CEO; these are self-submitted and need no sign-off. */}
+                          {canApprove && entry.status === "PENDING" && !(isReimbursement && raisedByExecRole) && (
                             <>
                               <input
                                 placeholder="Comment"
@@ -710,7 +711,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           )}
 
                           {/* Mark Cash Transferred on APPROVED */}
-                          {isApprover && entry.status === "APPROVED" && (
+                          {canApprove && entry.status === "APPROVED" && (
                             <button onClick={() => handleMarkTransferred(entry.id)}
                               disabled={processing === entry.id + "transfer"}
                               style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1d4ed8", fontFamily: "inherit", opacity: processing === entry.id + "transfer" ? 0.6 : 1 }}>
@@ -719,7 +720,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                           )}
 
                           {/* Tally & Verify proof — Admin only, on PROOF_SUBMITTED */}
-                          {isApprover && entry.status === "PROOF_SUBMITTED" && (
+                          {canApprove && entry.status === "PROOF_SUBMITTED" && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               <div style={{ fontSize: 13, fontWeight: 700, color: "#854d0e", textTransform: "uppercase", letterSpacing: 0.4 }}>Review Proof</div>
                               <input

@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
+import OperationsSection from "./operations/OperationsSection";
+import HolidaysPage from "./hr/HolidaysPage";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -250,15 +252,15 @@ const api = {
   approveDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-approve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
   revokeDoc:  (id, reason)  => fetch(`${API_BASE}/entries/${id}/doc-revoke`,  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason || "" }) }).then(r => r.json()),
   rejectDoc: (id, comment) => fetch(`${API_BASE}/entries/${id}/doc-reject`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comment: comment || "" }) }).then(r => r.json()),
-  getPwjPaymentAvailability: (pwjEntryId) =>
-    fetch(`${EXPENSE_BASE}/pwj-entry/${pwjEntryId}/payment-availability`)
+  getPwjPaymentAvailability: (pwjEntryId, docNumber) =>
+    fetch(`${EXPENSE_BASE}/pwj-entry/${pwjEntryId}/payment-availability${docNumber ? `?docNumber=${encodeURIComponent(docNumber)}` : ""}`)
       .then(r => (r.ok ? r.json() : null))
       .catch(() => null),
-  sendPwjForPayment: (pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage) =>
+  sendPwjForPayment: (pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber) =>
     fetch(`${EXPENSE_BASE}/send-pwj-for-payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "" }),
+      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "", docNumber: docNumber || "" }),
     }).then(async r => {
       const data = await r.json().catch(() => null);
       return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to send for payment" };
@@ -408,6 +410,17 @@ function fmtDateDash(val) {
   return (!y || !m || !d) ? s : `${d}-${m}-${y}`;
 }
 
+// A doc that's been issued (VP_APPROVED) but neither delivered yet nor issued
+// today — the Status badge shows this in red instead of the normal OPEN
+// yellow. Shared by the Status cell render and the Open-kind filter so the
+// two can never drift apart.
+function isIssuedStale(row) {
+  if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
+  const issuedAt = (() => { try { return JSON.parse(row.docData || "{}").vpApprovedAt || row.approvedAt; } catch { return row.approvedAt; } })();
+  if (!issuedAt) return false;
+  return new Date(issuedAt).toISOString().split("T")[0] !== new Date().toISOString().split("T")[0];
+}
+
 function fmtDateTime(val) {
   if (!val) return "—";
   const iso = typeof val === "string" && !val.endsWith("Z") && !val.includes("+") ? val + "Z" : val;
@@ -551,6 +564,7 @@ const ROLE_META = {
   PROJECT_MANAGER:           { label: "Project Manager",             color: "#0f766e", bg: "#ccfbf1" },
   PROCUREMENT_ENGINEER:      { label: "Procurement Engineer",        color: "#9333ea", bg: "#f3e8ff" },
   COSTING_PLANNING_ENGINEER: { label: "Costing & Planning Engineer", color: "#0d9488", bg: "#ccfbf1" },
+  BILLING_ENGINEER:          { label: "Billing Engineer",            color: "#b45309", bg: "#fef3c7" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -1320,7 +1334,7 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, onNavigate, onManageUsers }) {
+function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onManageUsers }) {
   // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
   // open …/#<module> in a new tab or window (session is shared via localStorage).
   const modClick = (e, key) => {
@@ -1372,7 +1386,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: TrendingUp,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo || isProjectManager || isProcurement,
+      visible: isAdmin || isOH || isBillingEngineer || isVP || isCeo,
     },
     {
       key: "hr",
@@ -1390,7 +1404,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Settings2,
       gradient: "linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)",
       shadow: "rgba(20,184,166,0.35)",
-      visible: true,
+      visible: isOH || isVP || isCeo,
     },
     {
       key: "bugs",
@@ -1408,6 +1422,15 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Bot,
       gradient: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
       shadow: "rgba(124,58,237,0.35)",
+      visible: true,
+    },
+    {
+      key: "happizo-info",
+      label: "Happizo Info",
+      desc: "Company holidays & general information",
+      icon: Info,
+      gradient: "linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)",
+      shadow: "rgba(14,165,233,0.35)",
       visible: true,
     },
     {
@@ -1496,6 +1519,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const isProjectManager           = user?.role === "PROJECT_MANAGER";
   const isProcurementEngineer      = user?.role === "PROCUREMENT_ENGINEER";
   const isCostingPlanningEngineer  = user?.role === "COSTING_PLANNING_ENGINEER";
+  const isBillingEngineer          = user?.role === "BILLING_ENGINEER";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
 
@@ -1510,6 +1534,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Filters
   const [search, setSearch]           = useState("");
   const [statusF, setStatusF]         = useState("ALL");
+  // "Open" rows can look yellow (normal) or red (issued but stale/undelivered —
+  // see isIssuedStale below). This splits that visual distinction into a filter.
+  // Purely client-side (the backend has no column for it) — only filters within
+  // the current page's results, same as every other client-side-only control.
+  const [openKindF, setOpenKindF]     = useState("ALL"); // ALL | NORMAL | STALE
+  const visibleEntries = useMemo(() => {
+    if (openKindF === "ALL") return entries;
+    return entries.filter(row => openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row));
+  }, [entries, openKindF]);
   const [approvalF, setApprovalF]     = useState("ALL");
   const [dependencyF, setDependencyF] = useState("");
   const [projectF, setProjectF]       = useState("");
@@ -1525,10 +1558,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Module routing via URL hash — lets each browser tab hold its own
   //    module (e.g. …/#hr) while every tab shares the one login session ──
   const allowedTabs = useMemo(() => {
-    const t = new Set(["home", "entries", "hr", "operations", "chatbot"]);
+    const t = new Set(["home", "entries", "hr", "chatbot", "happizo-info"]);
     if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer) t.add("vendors");
     if (isAdmin || isVP || isOH || isCeo || isProjectManager) { t.add("projects"); t.add("account"); }
-    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) t.add("sales");
+    if (isAdmin || isOH || isBillingEngineer || isVP || isCeo) t.add("sales");
+    if (isOH || isVP || isCeo) t.add("operations");
     if (isAdmin || isVP || isOH || isCeo) t.add("bugs");
     return t;
   }, [isAdmin, isProcurement, isVP, isOH, isCeo, isProjectManager]);
@@ -1556,7 +1590,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     }
     if (mainTab === "vendors") loadVendorsTab();
     if (mainTab === "projects") fetchManagedProjects();
-    const LABEL = { entries: "Procurement", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", hr: "HR", operations: "Operations", chatbot: "Chat Bot", bugs: "Bug Tracker" };
+    const LABEL = { entries: "Procurement", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", hr: "HR", operations: "Operations", chatbot: "Chat Bot", bugs: "Bug Tracker", "happizo-info": "Happizo Info" };
     document.title = mainTab === "home" ? "Happizo CloudDesk" : `${LABEL[mainTab] || mainTab} · Happizo CloudDesk`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab]);
@@ -1564,7 +1598,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Modals
   const [detailRow, setDetailRow]         = useState(null);
   const [approvalModal, setApprovalModal] = useState(null); // { entry }
-  const [sendPaymentModal, setSendPaymentModal] = useState(null); // { entry }
+  const [sendPaymentModal, setSendPaymentModal] = useState(null); // { entry, docOptions }
+  const [sendPaymentDocNumber, setSendPaymentDocNumber] = useState(""); // selected sub-doc for a multi-vendor/multi-PO entry
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRemarks, setPaymentRemarks] = useState("");
   const [paymentAgainstSel, setPaymentAgainstSel] = useState(""); // one of PO/WO/JO/VENDOR_INVOICE
@@ -1576,10 +1611,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!sendPaymentModal) { setPaymentAvail(null); return; }
     let cancelled = false;
     setPaymentAvail("loading");
-    api.getPwjPaymentAvailability(sendPaymentModal.entry.id)
+    api.getPwjPaymentAvailability(sendPaymentModal.entry.id, sendPaymentDocNumber || undefined)
       .then(d => { if (!cancelled) setPaymentAvail(d && typeof d === "object" ? d : "error"); });
     return () => { cancelled = true; };
-  }, [sendPaymentModal]);
+  }, [sendPaymentModal, sendPaymentDocNumber]);
   const [createModal, setCreateModal]     = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [editingEntry, setEditingEntry]   = useState(null); // holds entry being edited by engineer
@@ -1630,6 +1665,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [assignForm, setAssignForm]       = useState({ vendors: [""], pwjType: "" });
   const [assignVendorSearches, setAssignVendorSearches] = useState([""]);
   const [showAssignVendorDrops, setShowAssignVendorDrops] = useState([false]);
+  // Parallel to assignForm.vendors — true for a slot whose sub-doc is already
+  // VP-approved, so its name/removal is locked in the Assign modal (adding an
+  // "Additional PO" must never let an issued PO be silently dropped/renamed).
+  const [assignVendorLocked, setAssignVendorLocked] = useState([false]);
   const [approvedVendors, setApprovedVendors] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [userMgmtModal, setUserMgmtModal] = useState(false);
@@ -1926,6 +1965,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
     finally { setApprovalLoading(false); }
   };
 
+  // ── Operations module: open the New PWJ Entry modal pre-filled from
+  //    selected BOQ rows. Reuses the exact same create-entry flow (createForm
+  //    state → submitCreate → api.createEntry) as the "New Entry" button, just
+  //    with values handed in instead of blank, so the resulting entry behaves
+  //    identically to one typed in by hand.
+  const handleCreateFromBOQ = (prefill) => {
+    setEditingEntry(null);
+    setCreateForm({
+      raisedBy: user.fullName || user.username, onBehalf: "",
+      projectName: "", boqNo: "", materialRequired: "", specification: "", brand: "",
+      unit: "", quantity: "", vendor: "", pwjType: "", approvalStatus: "PROCEED", status: "OPEN",
+      visibility: "PRIVATE", sharedWithEngineers: [],
+      ...prefill,
+    });
+    setCreateModal(true);
+    fetchManagedProjects();
+  };
+
   // ── Create / Edit submit ──
   const submitCreate = async () => {
     if (!createForm.projectName || !createForm.materialRequired || !createForm.specification) {
@@ -2171,16 +2228,92 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (r.success) setApprovedVendors(r.data);
     } catch {}
     let vendorList = row.vendor ? [row.vendor] : [""];
+    let vendorLocked = [false];
     try {
       const parsed = JSON.parse(row.docData || "{}");
       if (parsed.multiVendor && Array.isArray(parsed.docs) && parsed.docs.length > 0) {
         vendorList = parsed.docs.map(d => d.vendor || "");
+        vendorLocked = parsed.docs.map(d => d.docStatus === "VP_APPROVED");
+      } else if (row.docStatus === "VP_APPROVED") {
+        vendorLocked = [true];
       }
     } catch {}
     setAssignForm({ vendors: vendorList, pwjType: row.pwjType || "" });
     setAssignVendorSearches(vendorList.map(() => ""));
     setShowAssignVendorDrops(vendorList.map(() => false));
+    setAssignVendorLocked(vendorLocked);
     setAssignModal(row);
+  };
+
+  // Normalizes an entry's docData into an array of per-vendor sub-docs — even
+  // when it's still a flat single-vendor doc (not yet multiVendor) — so a
+  // vendor's existing items/rates/docNumber/docStatus can be found/preserved
+  // by name or index regardless of shape.
+  const parseExistingDocs = (entry) => {
+    try {
+      const parsed = JSON.parse(entry.docData || "{}");
+      if (parsed.multiVendor && Array.isArray(parsed.docs)) return parsed.docs;
+      // A flat single-vendor doc has no per-doc docStatus of its own (that
+      // lived at the entry level) — carry it over so this synthetic wrapper
+      // doesn't read back as "DRAFT" once treated as a multi-doc array.
+      if (entry.vendor && Object.keys(parsed).length > 0) return [{ ...parsed, vendor: entry.vendor, docStatus: parsed.docStatus || entry.docStatus }];
+    } catch {}
+    return [];
+  };
+
+  // "PO-2627-0162" + existing additional POs under it → "...0162A", then
+  // "...0162B", etc. — skips any letter already in use.
+  const nextAdditionalPoNumber = (baseNumber, existingDocs) => {
+    if (!baseNumber) return null;
+    const used = new Set(
+      (existingDocs || [])
+        .map(d => d.docNumber || "")
+        .filter(n => n.length === baseNumber.length + 1 && n.startsWith(baseNumber))
+        .map(n => n.slice(-1).toUpperCase())
+    );
+    for (let i = 0; i < 26; i++) {
+      const letter = String.fromCharCode(65 + i);
+      if (!used.has(letter)) return baseNumber + letter;
+    }
+    return baseNumber + "X";
+  };
+
+  // Additional PO under an already-issued entry: no vendor picker — the new
+  // PO reuses the original's vendor/terms/items as a starting template (qty
+  // reset to 0 for the user to fill in) and gets the original's doc number
+  // plus the next free letter. Saved immediately; no Assign modal involved.
+  const addAdditionalPO = async (entry) => {
+    const existingDocs = parseExistingDocs(entry);
+    const original = existingDocs[0];
+    if (!original) { showToast("No existing PO found to copy from", "error"); return; }
+    const baseNumber = original.docNumber || entry.docNumber;
+    const newDoc = {
+      ...original,
+      // Rate always comes from the original base PO's items — qty is the
+      // only thing reset to 0 so the new PO starts from the base pricing.
+      items: (original.items || []).map(it => ({ ...it, rate: it.rate, qty: "0" })),
+      docNumber: nextAdditionalPoNumber(baseNumber, existingDocs),
+      docStatus: "DRAFT",
+      vpApprovedAt: null,
+      revokeReason: undefined,
+      vendorInvoices: [],
+      deliveryDocs: [],
+    };
+    const updatedDocs = [...existingDocs, newDoc];
+    let parsedTop = {};
+    try { parsedTop = JSON.parse(entry.docData || "{}"); } catch {}
+    const newDocData = JSON.stringify({ ...parsedTop, multiVendor: true, docs: updatedDocs });
+    try {
+      const r = await api.procurementUpdate(entry.id, { docData: newDocData });
+      if (r.success) {
+        const updated = { ...entry, ...r.data };
+        showToast("Additional PO created — set quantities and continue ✅");
+        setDocModal({ entry: updated, vendor: null });
+        setDocViewIndex(updatedDocs.length - 1);
+        setDocEditMode(false);
+        fetchEntries();
+      } else showToast(r.message || "Failed to create additional PO", "error");
+    } catch { showToast("Network error", "error"); }
   };
 
   const submitAssign = async () => {
@@ -2189,11 +2322,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const vendors = assignForm.vendors.filter(v => v.trim());
       const firstVendor = vendors[0] || null;
-      let existingDocs = [];
-      try {
-        const parsed = JSON.parse(assignModal.docData || "{}");
-        if (parsed.multiVendor && Array.isArray(parsed.docs)) existingDocs = parsed.docs;
-      } catch {}
+      const existingDocs = parseExistingDocs(assignModal);
       const findExistingDoc = (v, i) => existingDocs.find(d => d.vendor === v) || existingDocs[i];
       let docData = null;
       if (vendors.length > 1) {
@@ -2274,10 +2403,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
         if (!saveR.success) { showToast(saveR.message || "Failed", "error"); return; }
         // Also update entry-level docStatus via submitDoc (idempotent — safe to call multiple times)
         await api.submitDoc(e.id);
+        // Clubbed secondary PRs move in lockstep with the entry's overall doc lifecycle,
+        // regardless of which sub-doc (base PO or an Additional PO) triggered this submit.
+        const clubbedIds = parsed?.clubbedEntryIds || [];
+        for (const linkedId of clubbedIds) await api.submitDoc(linkedId);
+        if (clubbedIds.length > 0) await fetchEntries();
         const updated = { ...e, docData: updatedDocData, docStatus: "PENDING_VP_APPROVAL", dependency: "VP Approval" };
         setDocModal(m => ({ ...m, entry: updated }));
         setEntries(es => es.map(en => en.id === e.id ? updated : en));
-        showToast(`PO ${docViewIndex + 1} (${docs[docViewIndex].vendor}) sent for VP approval ✅`);
+        showToast(`PO ${docViewIndex + 1} (${docs[docViewIndex].vendor}) sent for VP approval ✅${clubbedIds.length > 0 ? ` (+ ${clubbedIds.length} clubbed entr${clubbedIds.length > 1 ? "ies" : "y"})` : ""}`);
       } else {
         const r = await api.submitDoc(e.id);
         if (r.success) {
@@ -2317,7 +2451,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const autoAddr2 = [v?.city, v?.state, v?.zipCode].filter(Boolean).join(", ");
     setDocEditForm({
       ...JSON.parse(JSON.stringify(data)),
-      docNumber:       e.docNumber || autoDocNum,
+      // data.docNumber (the sub-doc's own number, e.g. an Additional PO's
+      // "...0004A") must win over e.docNumber — the entry's top-level field,
+      // which only ever holds the original/base PO's number. Falling back to
+      // e.docNumber only applies to a flat single-doc entry with no per-doc
+      // docNumber of its own yet.
+      docNumber:       data.docNumber || e.docNumber || autoDocNum,
       gstNumber:       data.gstNumber       || v?.gstNumber || "",
       panNumber:       data.panNumber       || v?.panNumber || "",
       msme:            data.msme            || msmeVal,
@@ -2416,6 +2555,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     try {
       const e = docModal.entry;
       const savedTotals = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct, docEditForm.igstPct);
+      if (e.pwjType === "JO" && savedTotals.total > 30000) {
+        showToast(`Job Order amount (₹${Number(savedTotals.total).toLocaleString("en-IN")}) cannot exceed ₹30,000`, "error");
+        return;
+      }
       // For multi-vendor: merge edited sub-doc back into its slot, preserving other vendors' data
       let parsedTop = null;
       try { parsedTop = JSON.parse(e.docData || "{}"); } catch {}
@@ -2441,7 +2584,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
         pwjType:          e.pwjType                     || null,
         pwjIssued:        e.pwjIssued,
         docData:          docDataStr,
-        docNumber:        docEditForm.docNumber          || null,
+        // The entry's top-level docNumber is the base/original PO's identity —
+        // only let the base doc (index 0) update it. Editing an Additional PO
+        // (docViewIndex > 0) must not overwrite it with that sub-doc's own
+        // number; its number already lives correctly in docData.docs[i] above.
+        docNumber:        (!isMultiSave || docViewIndex === 0) ? (docEditForm.docNumber || null) : (e.docNumber || null),
       };
       const r = await api.updateEntry(e.id, body);
       if (r.success) {
@@ -2540,7 +2687,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const allApproved = newDocs.every(d => d.docStatus === "VP_APPROVED");
       if (allApproved) {
         const r = await api.approveDoc(entryId, comment);
-        if (r.success) { setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1)); showToast("All vendor POs approved ✅"); }
+        if (r.success) {
+          // Entry is now fully issued — clubbed secondary PRs move in lockstep with it.
+          const clubbedIds = parsed?.clubbedEntryIds || [];
+          for (const linkedId of clubbedIds) await api.approveDoc(linkedId, comment);
+          setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1));
+          showToast(`All vendor POs approved ✅${clubbedIds.length > 0 ? ` (+ ${clubbedIds.length} clubbed entr${clubbedIds.length > 1 ? "ies" : "y"})` : ""}`);
+        }
         else showToast(r.message || "Failed", "error");
       } else {
         setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x));
@@ -2573,10 +2726,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
       });
       const r = await api.rejectDoc(entryId, comment);
       if (r.success) {
+        // Entry-level docStatus just flipped to VP_REJECTED — clubbed secondary PRs move
+        // in lockstep with it, same as the single-doc reject path.
+        const clubbedIds = parsed?.clubbedEntryIds || [];
+        for (const linkedId of clubbedIds) await api.rejectDoc(linkedId, comment);
         const stillPending = newDocs.some(d => d.docStatus === "PENDING_VP_APPROVAL");
         if (stillPending) { setPendingDocs(d => d.map(x => x.id === entryId ? { ...x, docData: newDocData } : x)); setPendingDocCount(c => Math.max(0, c - 1)); }
         else { setPendingDocs(d => d.filter(x => x.id !== entryId)); setPendingDocCount(c => Math.max(0, c - 1)); }
-        showToast(`PO for ${parsed.docs[subIdx].vendor} rejected`);
+        showToast(`PO for ${parsed.docs[subIdx].vendor} rejected${clubbedIds.length > 0 ? ` (+ ${clubbedIds.length} clubbed entr${clubbedIds.length > 1 ? "ies" : "y"})` : ""}`);
       } else showToast(r.message || "Failed", "error");
       fetchEntries();
     } catch { showToast("Network error", "error"); }
@@ -2653,14 +2810,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
         });
         if (r.success) {
           results.push({ ...primary, vendor, pwjType: genDocPwjType, docData: newDocData });
-          // Tag each secondary entry with clubbedWithId so UI can show which entry it belongs to
+          // Tag each secondary entry with clubbedWithId so UI can show which entry it belongs
+          // to — and give it the SAME vendor/pwjType as the group, not its own (usually blank)
+          // fields. Without this, submitDoc()'s "Vendor and PWJ Type must be assigned" guard
+          // silently fails every clubbed-secondary submit/approve/reject cascade call later.
           for (const sec of groupEntries.slice(1)) {
             const secExisting = parseDocData(sec);
             await api.updateEntry(sec.id, {
               raisedBy: sec.raisedBy, projectName: sec.projectName,
               approvalStatus: sec.approvalStatus, status: sec.status,
               boqNo: sec.boqNo || null, materialRequired: sec.materialRequired,
-              vendor: sec.vendor || null, pwjType: sec.pwjType || null,
+              vendor, pwjType: genDocPwjType,
               pwjIssued: !!sec.pwjIssued, docNumber: sec.docNumber || null,
               docData: JSON.stringify({ ...secExisting, clubbedWithId: primary.id }),
             });
@@ -3412,7 +3572,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={s.hLeft}>
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
-              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : mainTab === "bugs" ? "Happizo Bug Tracker" : "Procurement Tracker"}</div>
+              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : mainTab === "bugs" ? "Happizo Bug Tracker" : mainTab === "happizo-info" ? "Happizo Info" : "Procurement Tracker"}</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
@@ -3575,6 +3735,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             isAdmin={isAdmin} isProcurement={isProcurement}
             isEngineer={isEngineer} isVP={isVP} isOH={isOH} isCeo={isCeo} isProjectManager={isProjectManager}
             isProcurementEngineer={isProcurementEngineer} isCostingPlanningEngineer={isCostingPlanningEngineer}
+            isBillingEngineer={isBillingEngineer}
             onNavigate={key => setMainTab(key)}
             onManageUsers={openUserMgmt}
           />
@@ -3583,20 +3744,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {mainTab === "chatbot" && <AiAssistant user={user} />}
 
         {mainTab === "operations" && (
-          <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#0d9488,#14b8a6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(20,184,166,0.35)" }}>
-              <Settings2 size={32} color="#fff" strokeWidth={1.8} />
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Operations Module</div>
-              <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>Coming soon — Operational workflows & process management</div>
-            </div>
-          </div>
+          <OperationsSection user={user} onCreateFromBOQ={handleCreateFromBOQ} />
         )}
 
         {mainTab === "hr" && <HRSection user={user} />}
 
         {mainTab === "bugs" && <BugTrackerPage user={user} />}
+
+        {mainTab === "happizo-info" && (
+          <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
+            <HolidaysPage user={user} />
+          </div>
+        )}
 
         {mainTab === "entries" && <>
         {/* ─── STATS ─── */}
@@ -3755,6 +3914,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="HOLD">Hold</option>
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
+          <select style={s.sel} value={openKindF} onChange={e => setOpenKindF(e.target.value)} title="Filters within the current page of results">
+            <option value="ALL">Open — Any Color</option>
+            <option value="NORMAL">Open — Yellow</option>
+            <option value="STALE">Open — Red (Stale)</option>
+          </select>
           {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
             <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
               <option value="">All Users</option>
@@ -3770,7 +3934,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             ↺
           </button>
           <button
-            onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setRaisedByF(""); setDependencyF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
+            onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setOpenKindF("ALL"); setRaisedByF(""); setDependencyF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
             style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             ✕ Clear Filters
           </button>
@@ -3796,7 +3960,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })()}
                   </th>
                   {[
-                    ["#","id"],["Created","updatedAt"],["Raised By","raisedBy"],
+                    ["#","id"],["Created","createdAt"],["Raised By","raisedBy"],
                     ["Project","projectName"],["Item","materialRequired"],
                     ["Req Date","dateOfRequirement"],
                     ...(!isEngineer ? [["Vendor","vendor"]] : []),
@@ -3815,9 +3979,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={20} style={s.emptyRow}>Loading entries…</td></tr>
-                ) : entries.length === 0 ? (
+                ) : visibleEntries.length === 0 ? (
                   <tr><td colSpan={20} style={s.emptyRow}>No entries match your filters.</td></tr>
-                ) : entries.map((row, idx) => {
+                ) : visibleEntries.map((row, idx) => {
                     const firstSel = selectedIds.size > 0 ? entries.find(e => selectedIds.has(e.id)) : null;
                     const isEligible = canSelectEntry(row) && (!firstSel || row.projectName === firstSel.projectName || selectedIds.has(row.id));
                     return (
@@ -3882,13 +4046,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Status */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       {(() => {
-                        const issuedStale = (() => {
-                          if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
-                          const issuedAt = (() => { try { return JSON.parse(row.docData || "{}").vpApprovedAt || row.approvedAt; } catch { return row.approvedAt; } })();
-                          if (!issuedAt) return false;
-                          return new Date(issuedAt).toISOString().split("T")[0] !== new Date().toISOString().split("T")[0];
-                        })();
-                        const meta = issuedStale ? { bg: "#dc2626", color: "#fff", dot: "#fff" } : STATUS_META[row.status];
+                        const meta = isIssuedStale(row) ? { bg: "#dc2626", color: "#fff", dot: "#fff" } : STATUS_META[row.status];
                         return (
                           <span className="cell-badge" style={s.badge(meta)}>
                             <span style={s.dot(meta?.dot || "#94a3b8")} />
@@ -3970,15 +4128,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </button>
                             )
                         )}
-                        {(isAdmin || isProcurement) && (
-                          (isProcurement && row.pwjIssued) || (isProcurement && row.docStatus === "VP_APPROVED") ? (
-                            <button
-                              disabled
-                              title={row.docStatus === "VP_APPROVED" ? "VP approved — vendor cannot be changed" : "PWJ issued — editing locked. Contact VP/Admin to make changes."}
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                              🔒 Locked
-                            </button>
-                          ) : isProcurement && row.approvalStatus !== "PROCEED" ? (
+                        {/* Once issued, "Add an Additional PO" lives inside the Doc Issued
+                            modal itself (next to Edit/Send for VP Approval) instead of here. */}
+                        {(isAdmin || isProcurement) && !(row.pwjIssued || row.docStatus === "VP_APPROVED") && (
+                          isProcurement && row.approvalStatus !== "PROCEED" ? (
                             <button
                               disabled
                               title="OH approval pending — vendor can be assigned only after OH approves"
@@ -4009,8 +4162,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </button>
                             </>;
                           }
-                          const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
-                          const lbl = rowPartial ? "Partially Issued ⚠" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
+                          const rowDocs = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) ? p.docs : null; } catch { return null; } })();
+                          const rowIssuedCount = rowDocs ? rowDocs.filter(d => d.docStatus === "VP_APPROVED").length : 0;
+                          const rowPartial = rowDocs && row.docStatus === "VP_APPROVED" && rowDocs.some(d => !d.docStatus || d.docStatus === "DRAFT");
+                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length} ⚠` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : row.docStatus === "REVOKED" ? "linear-gradient(135deg,#6b21a8,#9333ea)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -4020,11 +4175,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           );
                         })()}
                         {isProcurement && (row.pwjIssued || row.docStatus === "VP_APPROVED") && (() => {
-                          const isMultiRow = (() => { try { return !!JSON.parse(row.docData || "{}").multiVendor; } catch { return false; } })();
-                          if (isMultiRow) return null; // per-vendor amounts live in docData — send from a single-vendor doc instead
+                          // Multi-vendor/multi-PO entries (incl. Additional POs) have a per-doc
+                          // value in docData.docs[] — only a VP-approved sub-doc can be sent for
+                          // payment, and the modal lets Procurement pick which one.
+                          let docOptions = null; // null = single-doc entry, unchanged behavior
+                          try {
+                            const parsed = JSON.parse(row.docData || "{}");
+                            if (parsed.multiVendor && Array.isArray(parsed.docs)) {
+                              docOptions = parsed.docs
+                                .filter(d => d.docStatus === "VP_APPROVED")
+                                .map(d => ({ docNumber: d.docNumber, vendor: d.vendor }));
+                            }
+                          } catch {}
+                          if (docOptions && docOptions.length === 0) return null; // nothing issued yet to pay against
                           return (
                             <button style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                              onClick={() => { setPaymentAmount(""); setPaymentRemarks(""); setPaymentStage(""); setPaymentAgainstSel(row.pwjType || ""); setSendPaymentModal({ entry: row }); }}>
+                              onClick={() => {
+                                setPaymentAmount(""); setPaymentRemarks(""); setPaymentStage(""); setPaymentAgainstSel(row.pwjType || "");
+                                setSendPaymentDocNumber(docOptions ? docOptions[0].docNumber : "");
+                                setSendPaymentModal({ entry: row, docOptions });
+                              }}>
                               💰 Send for Payment
                             </button>
                           );
@@ -4038,8 +4208,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               📎 Clubs #{clubbedWithId}
                             </button>;
                           }
-                          const rowPartial = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) && row.docStatus === "VP_APPROVED" && p.docs.some(d => !d.docStatus || d.docStatus === "DRAFT"); } catch { return false; } })();
-                          const lbl = rowPartial ? "Partially Issued" : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
+                          const rowDocs = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) ? p.docs : null; } catch { return null; } })();
+                          const rowIssuedCount = rowDocs ? rowDocs.filter(d => d.docStatus === "VP_APPROVED").length : 0;
+                          const rowPartial = rowDocs && row.docStatus === "VP_APPROVED" && rowDocs.some(d => !d.docStatus || d.docStatus === "DRAFT");
+                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length}` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)";
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -5260,28 +5432,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── SEND FOR PAYMENT MODAL (Procurement) ─── */}
       {sendPaymentModal && (
-        <div style={s.overlay} onClick={() => !paymentLoading && setSendPaymentModal(null)}>
+        <div style={s.overlay} onClick={() => !paymentLoading && (setSendPaymentModal(null), setSendPaymentDocNumber(""))}>
           <div style={s.modalBox(440)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
                 <div style={s.mTitle}>Send for Payment</div>
                 <div style={s.mSub}>Entry #{sendPaymentModal.entry.id} · {sendPaymentModal.entry.materialRequired}</div>
               </div>
-              <button style={s.closeBtn} onClick={() => setSendPaymentModal(null)}>✕</button>
+              <button style={s.closeBtn} onClick={() => { setSendPaymentModal(null); setSendPaymentDocNumber(""); }}>✕</button>
             </div>
             <div style={s.mBody}>
-              <div style={s.formGroup}>
-                <label style={s.label}>Vendor</label>
-                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
-                  {sendPaymentModal.entry.vendor || "—"}
+              {sendPaymentModal.docOptions ? (
+                <div style={s.formGroup}>
+                  <label style={s.label}>PO / Vendor *</label>
+                  <select style={s.input} value={sendPaymentDocNumber} onChange={e => setSendPaymentDocNumber(e.target.value)}>
+                    {sendPaymentModal.docOptions.map(d => (
+                      <option key={d.docNumber} value={d.docNumber}>{d.docNumber} — {d.vendor || "—"}</option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    This PR has multiple POs — only VP-approved ones are listed here.
+                  </div>
                 </div>
-              </div>
-              <div style={s.formGroup}>
-                <label style={s.label}>PWJ Doc Number</label>
-                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
-                  {sendPaymentModal.entry.docNumber || "—"}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div style={s.formGroup}>
+                    <label style={s.label}>Vendor</label>
+                    <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                      {sendPaymentModal.entry.vendor || "—"}
+                    </div>
+                  </div>
+                  <div style={s.formGroup}>
+                    <label style={s.label}>PWJ Doc Number</label>
+                    <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                      {sendPaymentModal.entry.docNumber || "—"}
+                    </div>
+                  </div>
+                </>
+              )}
               <div style={s.formGroup}>
                 <label style={s.label}>Project</label>
                 <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
@@ -5364,10 +5552,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 onClick={async () => {
                   setPaymentLoading(true);
                   try {
-                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage);
+                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined);
                     if (r.success) {
                       showToast("Sent for payment ✅");
                       setSendPaymentModal(null);
+                      setSendPaymentDocNumber("");
                     } else {
                       showToast(r.message || "Failed to send for payment", "error");
                     }
@@ -6132,6 +6321,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <label style={s.label}>Vendor</label>
                 {assignForm.vendors.map((vendor, vi) => (
                   <div key={vi} style={{ position: "relative", marginBottom: 8 }}>
+                    {assignVendorLocked[vi] ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "#f1f5f9", border: "1.5px solid #e2e8f0", borderRadius: 10, color: "#374151", fontSize: 14 }}>
+                        🔒 <span style={{ fontWeight: 600 }}>{vendor || `Vendor ${vi + 1}`}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 12, color: "#64748b" }}>Already issued — PO locked</span>
+                      </div>
+                    ) : (
+                    <>
                     <div style={{ display: "flex", gap: 6 }}>
                       <input
                         type="text"
@@ -6152,6 +6348,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           setAssignForm(f => ({ ...f, vendors: f.vendors.filter((_, i) => i !== vi) }));
                           setAssignVendorSearches(s => s.filter((_, i) => i !== vi));
                           setShowAssignVendorDrops(d => d.filter((_, i) => i !== vi));
+                          setAssignVendorLocked(l => l.filter((_, i) => i !== vi));
                         }} style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>×</button>
                       )}
                     </div>
@@ -6183,12 +6380,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       );
                     })()}
                     {vendor && <div style={{ marginTop: 4, fontSize: 13, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
+                    </>
+                    )}
                   </div>
                 ))}
                 <button type="button" onClick={() => {
                   setAssignForm(f => ({ ...f, vendors: [...f.vendors, ""] }));
                   setAssignVendorSearches(s => [...s, ""]);
                   setShowAssignVendorDrops(d => [...d, false]);
+                  setAssignVendorLocked(l => [...l, false]);
                 }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
                   + Add Vendor
                 </button>
@@ -6243,6 +6443,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 return sub;
               })() : e.docStatus;
               // "Partially Issued" — some sub-docs approved, some still draft/pending
+              const multiIssuedCount = isMulti ? multiDocs.filter(d => d.docStatus === "VP_APPROVED").length : 0;
               const isPartiallyIssued = isMulti && e.docStatus === "VP_APPROVED" &&
                 multiDocs.some(d => (d.docStatus || "DRAFT") === "DRAFT");
               const statusColor = activeDocStatus === "VP_APPROVED" ? "#166534" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#92400e" : activeDocStatus === "VP_REJECTED" ? "#991b1b" : activeDocStatus === "REVOKED" ? "#6b21a8" : "#475569";
@@ -6258,7 +6459,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700 }}>{statusLabel}</span>
                       {isPartiallyIssued && (
                         <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700, border: "1px solid #fde68a" }}>
-                          ⚠️ Partially Issued
+                          ⚠️ Partially Issued — {multiIssuedCount}/{multiDocs.length} issued · {multiDocs.length - multiIssuedCount}/{multiDocs.length} pending
                         </span>
                       )}
                       {isMulti && (
@@ -6623,9 +6824,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       const dd = parseDocData(e);
                       return (
                         <>
-                          {/* Delivered Date + Remarks — editable for Engineer/PM, read-only for all others */}
+                          {/* Delivered Date + Remarks — editable for Engineer/PM/Admin, read-only for all others */}
                           {(() => {
-                            const canEdit = isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username));
+                            const canEdit = isEngineer || isAdmin || (isProjectManager && e.raisedBy === (user?.fullName || user?.username));
                             return (
                               <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", gap: 24, flexWrap: "wrap" }}>
                                 {/* Delivered Date */}
@@ -6677,16 +6878,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               </div>
                             );
                           })()}
-                          {/* Uploaded docs — always visible to all; only engineers can upload */}
+                          {/* Uploaded docs — always visible to all; only engineers/PM(own)/admin can upload */}
                           <div style={{ display: "flex", flexDirection: "column" }}>
                             <EngUploadSection title="Vendor Invoices" icon="🧾" type="invoice"
                               files={engInvoiceFiles} setFiles={setEngInvoiceFiles}
                               uploading={engInvoiceUploading} stored={dd.vendorInvoices || []}
-                              canUpload={isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
+                              canUpload={isEngineer || isAdmin || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
                             <EngUploadSection title="Delivery Documents" icon="🚚" type="delivery"
                               files={engDeliveryFiles} setFiles={setEngDeliveryFiles}
                               uploading={engDeliveryUploading} stored={dd.deliveryDocs || []}
-                              canUpload={isEngineer || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
+                              canUpload={isEngineer || isAdmin || (isProjectManager && e.raisedBy === (user?.fullName || user?.username))} onUpload={uploadEngFiles} />
                           </div>
                         </>
                       );
@@ -6779,6 +6980,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })()}
 
                     <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {/* Raise another PO under this same PR — no vendor picker; copies the
+                          original PO's vendor/terms/items (qty reset to 0) under a new
+                          doc number (original + next letter), ready to fill in and save.
+                          Only the base PO (doc index 0) can spawn an additional PO — an
+                          additional PO itself is not eligible to spawn another one. */}
+                      {(isAdmin || isProcurement) && (e.pwjIssued || e.docStatus === "VP_APPROVED") && (!isMulti || safeIdx === 0) && (
+                        <button onClick={() => addAdditionalPO(e)}
+                          style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          ➕ Additional PO
+                        </button>
+                      )}
                       {/* Edit → Save → Send for VP Approval in order */}
                       {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
                         isProcurement && e.pwjIssued ? (
@@ -6794,10 +7006,24 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )
                       )}
                       {docEditMode && (<>
-                        <button onClick={() => saveDocEdits()} disabled={docSaving}
-                          style={{ background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                          {docSaving ? "Saving…" : "💾 Save"}
-                        </button>
+                        {(() => {
+                          const liveTotal = calcTotals(docEditForm.items, docEditForm.cgstPct, docEditForm.sgstPct, docEditForm.igstPct).total;
+                          const jobOrderOverLimit = e.pwjType === "JO" && liveTotal > 30000;
+                          return (
+                            <>
+                              {jobOrderOverLimit && (
+                                <div style={{ width: "100%", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 14px", color: "#991b1b", fontSize: 13, fontWeight: 600 }}>
+                                  ⚠ Job Order total (₹{Number(liveTotal).toLocaleString("en-IN")}) exceeds the ₹30,000 limit — reduce the amount or switch to a PO/WO before saving.
+                                </div>
+                              )}
+                              <button onClick={() => saveDocEdits()} disabled={docSaving || jobOrderOverLimit}
+                                title={jobOrderOverLimit ? "Job Order amount cannot exceed ₹30,000" : undefined}
+                                style={{ background: jobOrderOverLimit ? "#cbd5e1" : "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: jobOrderOverLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+                                {docSaving ? "Saving…" : "💾 Save"}
+                              </button>
+                            </>
+                          );
+                        })()}
                         <button onClick={() => setDocEditMode(false)}
                           style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                           Cancel
@@ -7094,6 +7320,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <option value="PROJECT_MANAGER">Project Manager</option>
                     <option value="PROCUREMENT_ENGINEER">Procurement Engineer</option>
                     <option value="COSTING_PLANNING_ENGINEER">Costing & Planning Engineer</option>
+                    <option value="BILLING_ENGINEER">Billing Engineer</option>
                   </select>
                 </div>
                 <div style={{ paddingTop: 16 }}>

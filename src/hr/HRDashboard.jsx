@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
 
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
@@ -28,7 +28,6 @@ export default function HRDashboard({ user }) {
   const [todayAll, setTodayAll]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
   const [pendingLeaves, setPendingLeaves] = useState([]);
-  const [attFilter, setAttFilter]     = useState("all"); // all | permissions-today
   const isAdmin     = ["ADMIN","CEO","VP","OH"].includes(user?.role);
   const hidePersonal = ["VP","CEO","OH"].includes(user?.role);
 
@@ -52,17 +51,6 @@ export default function HRDashboard({ user }) {
   const checkedInCount  = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime).length;
 
   const pendingPermissions = pendingLeaves.filter(l => l.leaveType === "PERMISSION");
-
-  const todayDate = new Date().toISOString().slice(0, 10);
-  const permissionsApprovedToday = useMemo(() =>
-    new Set(pendingLeaves
-      .filter(l => l.leaveType === "PERMISSION" && l.status === "APPROVED" && l.fromDate === todayDate)
-      .map(l => l.username)
-    ), [pendingLeaves, todayDate]);
-
-  const displayTargets = attFilter === "permissions-today"
-    ? checkinTargets.filter(u => permissionsApprovedToday.has(u.username))
-    : checkinTargets;
 
   const card     = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px" };
   const secTitle = { fontSize: 17, fontWeight: 700, color: "#0f172a", marginBottom: 4 };
@@ -168,23 +156,6 @@ export default function HRDashboard({ user }) {
                 )}
               </div>
             </div>
-            {/* Filter pills */}
-            <div className="hr-pill-row" style={{ display: "flex", gap: 6 }}>
-              {[
-                { key: "all",               label: "All" },
-                { key: "permissions-today", label: "Permissions Today" },
-              ].map(f => {
-                const active = attFilter === f.key;
-                return (
-                  <button key={f.key} onClick={() => setAttFilter(f.key)}
-                    style={{ border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "5px 13px",
-                      background: active ? "#7c3aed" : "#fff", color: active ? "#fff" : "#000",
-                      fontWeight: active ? 600 : 500, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
           <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -201,16 +172,19 @@ export default function HRDashboard({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {displayTargets.length === 0 ? (
+                {checkinTargets.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ ...td, textAlign: "center", color: "#374151", padding: "24px 0" }}>
-                      {attFilter === "permissions-today" ? "No approved permissions for today" : "Loading team data…"}
+                      Loading team data…
                     </td>
                   </tr>
-                ) : displayTargets.map((u, i) => {
+                ) : checkinTargets.map((u, i) => {
                   const a      = todayByUsername.get(u.username);
                   const hasIn  = !!a?.checkInTime;
                   const hasOut = !!a?.checkOutTime;
+                  // A synthetic leave-derived row (see AttendanceService.fillLeaveGaps) —
+                  // approved leave for today, never a check-in to begin with.
+                  const onLeave = !hasIn && a?.status === "ABSENT";
                   return (
                     <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...td, color: "#374151", width: 36 }}>{i + 1}</td>
@@ -220,12 +194,13 @@ export default function HRDashboard({ user }) {
                       <td style={td}>{hasIn ? fmtTime(a.checkInTime) : <span style={{ color: "#374151" }}>—</span>}</td>
                       <td style={td}>{hasOut ? fmtTime(a.checkOutTime) : <span style={{ color: "#374151" }}>—</span>}</td>
                       <td style={td}>
-                        <span style={badge(
-                          !hasIn  ? { bg: "#fef2f2", color: "#dc2626" } :
+                        <span title={onLeave ? a.notes : undefined} style={badge(
+                          onLeave ? { bg: "#fef2f2", color: "#dc2626" } :
+                          !hasIn  ? { bg: "#fffbeb", color: "#b45309" } :
                           hasOut  ? { bg: "#eff6ff", color: "#2563eb" } :
                                     { bg: "#ecfdf5", color: "#059669" }
                         )}>
-                          {!hasIn ? "Not In" : hasOut ? "Checked Out" : "Working"}
+                          {onLeave ? "Absent" : !hasIn ? "Not In" : hasOut ? "Checked Out" : "Working"}
                         </span>
                       </td>
                       <td style={{ ...td, color: "#374151" }}>{a?.totalMinutes ? fmtHours(a.totalMinutes) : <span style={{ color: "#374151" }}>—</span>}</td>

@@ -52,6 +52,17 @@ const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINS
 const STAGE_LABEL = { ADVANCE: 'Advance', STAGE_1: 'Stage 1', STAGE_2: 'Stage 2', STAGE_3: 'Stage 3', FINAL: 'Final' };
 const fmtStage = v => (v ? (STAGE_LABEL[v] || v) : '—');
 
+// An Additional PO's doc number is always its base/original PO number plus one
+// trailing letter (e.g. WO-2627-0004 -> WO-2627-0004A) — used to keep an
+// additional PO's payment row grouped right under its original PO's row.
+function baseRefNo(ref) {
+  const m = /^(.+\d)[A-Z]$/.exec(ref || '');
+  return m ? m[1] : (ref || '');
+}
+function isAdditionalPoRef(ref) {
+  return /^(.+\d)[A-Z]$/.test(ref || '');
+}
+
 // Remarks carried into the dashboard cell and both exports: the free-text note (if any),
 // plus the Project ID and the Ref No (PO/WO document number). " / " separated so it
 // survives the pipe-delimited bank file.
@@ -482,7 +493,12 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
                       <td style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
                       <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
-                      <td style={{ fontSize: 12, color: '#64748b' }}>{it.refNo || '—'}</td>
+                      <td style={{ fontSize: 12, color: '#64748b' }}>
+                        {it.refNo || '—'}
+                        {isAdditionalPoRef(it.refNo) && (
+                          <div style={{ fontSize: 9.5, color: '#b45309', fontWeight: 700 }}>↳ of {baseRefNo(it.refNo)}</div>
+                        )}
+                      </td>
                       <td style={{ fontSize: 12, color: '#334155' }}>{fmtStage(it.paymentStage)}</td>
                       <td style={{ fontSize: 12, color: '#334155' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</td>
                       <td>
@@ -508,9 +524,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       {/* Approved Value */}
                       <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
 
-                      {/* OH Approval */}
+                      {/* OH Approval — OH and VP can both act here */}
                       <td style={{ minWidth: 150 }}>
-                        {isOH && ohPending ? (
+                        {(isOH || isVP) && ohPending ? (
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
                             <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>

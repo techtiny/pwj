@@ -37,6 +37,18 @@ const CAT_LABELS = {
   SUBCONTRACT: 'Sub-Contract', CONSULTANTS: 'Consultants', MISCELLANEOUS: 'Misc',
 };
 
+// An Additional PO's doc number is always its base PO number plus one trailing
+// letter (e.g. WO-2627-0004 -> WO-2627-0004A) — detect it from the ref text
+// alone so grouping still works for rows loaded back from saved expense items,
+// which don't carry the PWJ doc's isAdditionalPo/baseDocNumber flags.
+function baseRefNo(ref) {
+  const m = /^(.+\d)[A-Z]$/.exec(ref || '');
+  return m ? m[1] : (ref || '');
+}
+function isAdditionalPoRef(ref) {
+  return /^(.+\d)[A-Z]$/.test(ref || '');
+}
+
 function getDocType(paymentAgainst) {
   if (!paymentAgainst) return null;
   const u = paymentAgainst.toUpperCase();
@@ -115,6 +127,8 @@ function makeAutoRow(doc) {
     gstPercent: String(Math.round(doc.gstPct ?? 18)),
     pwjGstAmount: String(doc.gstAmount ?? 0),
     pwjTotalPayable: String(doc.totalPayable ?? 0),
+    _isAdditionalPo: !!doc.isAdditionalPo,
+    _baseDocNumber: doc.baseDocNumber || doc.docNumber || '',
   };
 }
 
@@ -223,11 +237,15 @@ export default function ExpensePage({ category }) {
 
     const existingRefs = new Set(newRowsRef.current.map(r => r.refNo).filter(Boolean));
 
-    const docsToAdd = pwjDocs.filter(d =>
-      autoFillTypes.includes(d.pwjType) &&
-      !trackedRefs.has(d.docNumber) &&
-      !existingRefs.has(d.docNumber)
-    );
+    const docsToAdd = pwjDocs
+      .filter(d =>
+        autoFillTypes.includes(d.pwjType) &&
+        !trackedRefs.has(d.docNumber) &&
+        !existingRefs.has(d.docNumber)
+      )
+      // Keep an Additional PO adjacent to its original/base PO in the new-rows list.
+      .sort((a, b) => (a.baseDocNumber || a.docNumber || '').localeCompare(b.baseDocNumber || b.docNumber || '')
+        || (a.docNumber || '').localeCompare(b.docNumber || ''));
 
     if (!docsToAdd.length) return;
     setNewRows(prev => [...prev, ...docsToAdd.map(makeAutoRow)]);
@@ -480,12 +498,17 @@ export default function ExpensePage({ category }) {
     const searchText = docSearch[pickerKey] ?? gv('refNo') ?? '';
     const isOpen     = !!docOpen[pickerKey];
     const allowedTypes = CATEGORY_PWJ_TYPES[category] || ['PO', 'WO', 'JO'];
-    const filteredDocs = pwjDocs.filter(d =>
-      allowedTypes.includes(d.pwjType) &&
-      (!searchText || d.docNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
-       d.materialRequired?.toLowerCase().includes(searchText.toLowerCase()) ||
-       d.vendor?.toLowerCase().includes(searchText.toLowerCase()))
-    );
+    // Sort so an Additional PO always sits right under its original/base PO
+    // (same baseDocNumber group) instead of appearing as an unrelated entry.
+    const filteredDocs = pwjDocs
+      .filter(d =>
+        allowedTypes.includes(d.pwjType) &&
+        (!searchText || d.docNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
+         d.materialRequired?.toLowerCase().includes(searchText.toLowerCase()) ||
+         d.vendor?.toLowerCase().includes(searchText.toLowerCase()))
+      )
+      .sort((a, b) => (a.baseDocNumber || a.docNumber || '').localeCompare(b.baseDocNumber || b.docNumber || '')
+        || (a.docNumber || '').localeCompare(b.docNumber || ''));
 
     function applyDoc(doc) {
       sv('refNo',          doc.docNumber  || '');
@@ -565,6 +588,11 @@ export default function ExpensePage({ category }) {
 
         {/* Ref No — searchable PWJ doc picker */}
         <td style={{ ...TD, position: 'relative' }}>
+          {isAdditionalPoRef(searchText) && (
+            <div style={{ fontSize: 8.5, color: '#b45309', fontWeight: 700, lineHeight: 1.3 }}>
+              ↳ Additional PO of {baseRefNo(searchText)}
+            </div>
+          )}
           <input
             value={searchText}
             onChange={e => {
@@ -585,12 +613,15 @@ export default function ExpensePage({ category }) {
             }}>
               {filteredDocs.map(doc => (
                 <div key={doc.docNumber} onMouseDown={() => applyDoc(doc)}
-                  style={{ padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}
+                  style={{ padding: '6px 10px', paddingLeft: doc.isAdditionalPo ? 20 : 10, cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}
                   onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
                   onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-                  <div style={{ fontWeight: 700, color: '#1e40af' }}>{doc.docNumber}
+                  <div style={{ fontWeight: 700, color: '#1e40af' }}>{doc.isAdditionalPo && '↳ '}{doc.docNumber}
                     <span style={{ marginLeft: 6, fontWeight: 400, color: '#64748b', fontSize: 10 }}>{doc.pwjType}</span>
                   </div>
+                  {doc.isAdditionalPo && (
+                    <div style={{ color: '#b45309', fontSize: 9.5, fontWeight: 600 }}>Additional PO of {doc.baseDocNumber}</div>
+                  )}
                   <div style={{ color: '#374151', fontSize: 10 }}>{doc.materialRequired} · {doc.vendor}</div>
                   <div style={{ color: '#10b981', fontSize: 10, fontWeight: 600 }}>
                     Gross: ₹{Number(doc.gross).toLocaleString('en-IN')} · GST {doc.gstPct}% · Total: ₹{Number(doc.totalPayable).toLocaleString('en-IN')}
