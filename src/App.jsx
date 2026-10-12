@@ -1570,7 +1570,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   const readTabFromHash = useCallback(() => {
     const h = (typeof window !== "undefined" ? window.location.hash : "").replace(/^#\/?/, "").toLowerCase();
-    return allowedTabs.has(h) ? h : "home";
+    const normalized = h === "happizo info" ? "happizo-info" : h;
+    return allowedTabs.has(normalized) ? normalized : "home";
   }, [allowedTabs]);
 
   const [mainTab, setMainTab] = useState(readTabFromHash);
@@ -1585,7 +1586,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   // state → hash + per-tab data load + tab title (so each browser tab is identifiable)
   useEffect(() => {
-    const desired = mainTab === "home" ? "" : "#" + mainTab;
+    const desired = mainTab === "home" ? "" : "#" + (mainTab === "happizo-info" ? "Happizo Info" : mainTab);
     if ((window.location.hash || "") !== desired) {
       // pushState so the browser Back button walks modules; hashchange stays in sync either way
       window.history.pushState(null, "", desired || window.location.pathname + window.location.search);
