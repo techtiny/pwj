@@ -1575,7 +1575,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   }, [allowedTabs]);
 
   const [mainTab, setMainTab] = useState(readTabFromHash);
-  const [happizoInfoTab, setHappizoInfoTab] = useState("holidays"); // "holidays" | "policies" | "general" | "sop"
+  const [happizoInfoTab, setHappizoInfoTab] = useState("general"); // "general" | "policies" | "sop"
 
   // hash → state (deep link, browser back/forward, editing the URL)
   useEffect(() => {
@@ -3757,7 +3757,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {mainTab === "happizo-info" && (
           <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
             <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 32px", display: "flex", gap: 8 }}>
-              {[["holidays", "Holidays"], ["policies", "Policies"], ["general", "General"], ["sop", "SOP"]].map(([key, label]) => {
+              {[["general", "General"], ["policies", "Policies"], ["sop", "SOP"]].map(([key, label]) => {
                 const active = happizoInfoTab === key;
                 return (
                   <button key={key} onClick={() => setHappizoInfoTab(key)}
@@ -3771,12 +3771,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 );
               })}
             </div>
-            {happizoInfoTab === "holidays" && <HolidaysPage user={user} />}
+            {happizoInfoTab === "general" && (
+              <>
+                <HolidaysPage user={user} />
+                <CompanyDocumentsPage user={user} category="General" title="General" icon="📄" description="General company documents and reference material." />
+              </>
+            )}
             {happizoInfoTab === "policies" && (
               <CompanyDocumentsPage user={user} category="Policy" title="Policies" icon="📋" description="Company policies — HSE, HR, and other governing documents." />
-            )}
-            {happizoInfoTab === "general" && (
-              <CompanyDocumentsPage user={user} category="General" title="General" icon="📄" description="General company documents and reference material." />
             )}
             {happizoInfoTab === "sop" && (
               <CompanyDocumentsPage user={user} category="SOP" title="SOP" icon="📘" description="Standard Operating Procedures for site and office processes." />
