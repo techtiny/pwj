@@ -1576,6 +1576,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   const [mainTab, setMainTab] = useState(readTabFromHash);
   const [happizoInfoTab, setHappizoInfoTab] = useState("general"); // "general" | "policies" | "sop"
+  const [hrInitialTab, setHrInitialTab] = useState(null); // forces HRSection to a sub-tab once, e.g. from the header avatar
 
   // hash → state (deep link, browser back/forward, editing the URL)
   useEffect(() => {
@@ -3584,8 +3585,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 🧪 Test Mode
               </div>
             )}
-            {/* Avatar + name + role */}
-            <div className="app-hbadge" style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "6px 16px 6px 7px", border: "1px solid rgba(15,23,42,0.08)" }}>
+            {/* Avatar + name + role — click to jump straight to the full "My Profile" page */}
+            <div className="app-hbadge" title="View my profile"
+              onClick={() => { setMainTab("hr"); setHrInitialTab("my-profile"); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "6px 16px 6px 7px", border: "1px solid rgba(15,23,42,0.08)", cursor: "pointer" }}>
               <div style={{ width: 34, height: 34, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0, letterSpacing: 0 }}>
                 {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
               </div>
@@ -3750,7 +3753,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <OperationsSection user={user} onCreateFromBOQ={handleCreateFromBOQ} />
         )}
 
-        {mainTab === "hr" && <HRSection user={user} />}
+        {mainTab === "hr" && (
+          <HRSection user={user} initialTab={hrInitialTab} onConsumeInitialTab={() => setHrInitialTab(null)} />
+        )}
 
         {mainTab === "bugs" && <BugTrackerPage user={user} />}
 

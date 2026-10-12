@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import HRDashboard from "./HRDashboard";
 import AttendancePage from "./AttendancePage";
 import LeavePage from "./LeavePage";
@@ -9,7 +9,7 @@ import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import MyProfilePage from "./MyProfilePage";
 
-export default function HRSection({ user }) {
+export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO", "PROJECT_MANAGER"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
@@ -62,8 +62,17 @@ export default function HRSection({ user }) {
     }] : []),
   ].filter(g => g.tabs.length > 0);
 
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useState(initialTab || "dashboard");
   const activeGroup = groups.find(g => g.tabs.some(t => t.key === tab)) || groups[0];
+
+  // Lets a caller (e.g. clicking the header avatar) jump straight to a sub-tab
+  // whether HRSection is already mounted or is mounting fresh for this — runs
+  // on every mount too, so the useState initializer above isn't load-bearing
+  // on its own, just a head start for the common "navigating in fresh" case.
+  useEffect(() => {
+    if (initialTab) { setTab(initialTab); onConsumeInitialTab?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
 
   return (
     <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)", fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>
