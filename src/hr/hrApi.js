@@ -41,6 +41,85 @@ export function attachmentFullUrl(path) {
   return (import.meta.env.VITE_API_BASE_URL || '') + path;
 }
 
+// ── Payslip — built entirely client-side, on demand, from the existing Salary
+// Sheet row (see SalaryService.compute) — nothing is generated or stored until
+// the user actually clicks Download. Layout follows the company's payslip
+// template; fields not tracked by the app (ESI, employee PF/ESI numbers) are
+// left out rather than faked.
+const PAYSLIP_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const HAPPIZO_LOGO_URL = "/happizo-logo.png";
+const PAYSLIP_COMPANY_ADDR = "No.11/ 20, Ground floor, 2nd cross street, Indira nagar, Adyar, Chennai 600020.";
+
+function fmtDDMMYY(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)}`;
+}
+const inrP = (v) => "Rs. " + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function buildPayslipHtml(row, year, month) {
+  const monthLabel = `${PAYSLIP_MONTHS[month - 1]} ${year}`.toUpperCase();
+  const payPeriod = `${fmtDDMMYY(row.cycleStart)}- ${fmtDDMMYY(row.cycleEnd)}`;
+  // Loss-of-pay money value = what attendance-based proration already took off the fixed
+  // gross; PF/PT below are the prorated (actual) amounts SalaryService computed — their sum
+  // nets out to exactly row.takeHome, so Net Pay here always matches the Salary Sheet.
+  const lossOfPay = Math.max(0, Number(row.fixedGross || 0) - Number(row.gross || 0));
+  const totalDeductions = lossOfPay + Number(row.pf || 0) + Number(row.pt || 0);
+  const netPay = row.takeHome;
+
+  return `<!doctype html><html><head><meta charset="utf-8"/>
+<title>Payslip - ${row.name} - ${monthLabel}</title>
+<style>
+  @page { margin: 28px; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; margin: 0; padding: 0; }
+  .center { text-align: center; }
+  .logo { width: 140px; display: block; margin: 0 auto 6px; }
+  .addr { font-size: 11px; color: #334155; margin-bottom: 10px; }
+  .title { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 10px; }
+  td, th { border: 1px solid #94a3b8; padding: 6px 10px; }
+  .label { background: #f1f5f9; font-weight: 700; width: 22%; }
+  .section-head { background: #1e3a5f; color: #fff; font-weight: 700; }
+  .right { text-align: right; }
+  .net { background: #f1f5f9; font-weight: 800; font-size: 13.5px; }
+</style></head><body>
+  <div class="center">
+    <img class="logo" src="${window.location.origin}${HAPPIZO_LOGO_URL}" alt="Happizo"/>
+    <div class="addr">${PAYSLIP_COMPANY_ADDR}</div>
+    <div class="title">PAYSLIP FOR ${monthLabel}</div>
+  </div>
+  <table>
+    <tr><td class="label">Name</td><td>${row.name}</td><td class="label">Pay Period</td><td>${payPeriod}</td></tr>
+    <tr><td class="label">Designation</td><td>${row.designation || "—"}</td><td class="label">Present Days</td><td>${row.workingDays}</td></tr>
+    <tr><td class="label">Employee No.</td><td>${row.employeeNumber || "—"}</td><td class="label">Absent / LOP Days</td><td>${row.lopDays}</td></tr>
+    <tr><td class="label">PF Applicable</td><td>${Number(row.fixedPf) > 0 ? "Yes" : "No"}</td><td class="label">Total Working Days</td><td>${row.daysInMonth}</td></tr>
+  </table>
+  <table>
+    <tr class="section-head"><td>Earnings</td><td class="right">Amount (INR)</td><td>Deductions</td><td class="right">Amount (INR)</td></tr>
+    <tr><td>Basic</td><td class="right">${inrP(row.fixedBasic)}</td><td>Loss of Pay</td><td class="right">${inrP(lossOfPay)}</td></tr>
+    <tr><td>HRA</td><td class="right">${inrP(row.fixedHra)}</td><td>Provident Fund (PF)</td><td class="right">${inrP(row.pf)}</td></tr>
+    <tr><td>Other Allowance</td><td class="right">${inrP(row.fixedOther)}</td><td>Professional Tax (PT)</td><td class="right">${inrP(row.pt)}</td></tr>
+    <tr style="font-weight:700;background:#f8fafc"><td>Total Gross</td><td class="right">${inrP(row.fixedGross)}</td><td>Total Deductions</td><td class="right">${inrP(totalDeductions)}</td></tr>
+  </table>
+  <table>
+    <tr class="net"><td>Net Pay for ${PAYSLIP_MONTHS[month - 1].slice(0, 3)}'${String(year).slice(-2)}</td><td class="right">${inrP(netPay)}</td></tr>
+  </table>
+  ${row.remarks ? `<div style="font-size:11px;color:#64748b;margin-top:10px;">Remarks: ${row.remarks}</div>` : ""}
+  <div style="font-size:10px;color:#94a3b8;margin-top:24px;">This is a system-generated payslip and does not require a signature.</div>
+</body></html>`;
+}
+
+/** Opens a print-ready payslip in a new tab (same pattern as PWJ PO/WO/JO document
+ *  PDFs elsewhere in the app) — built fresh on every call, never stored. */
+export function downloadPayslip(row, year, month) {
+  const html = buildPayslipHtml(row, year, month);
+  const win = window.open("about:blank", "_blank", "width=720,height=820");
+  if (!win) return;
+  win.document.write(html + `<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>`);
+  win.document.close();
+}
+
 export const attendanceApi = {
   checkIn:       (data)      => api.post('/attendance/checkin', data),
   checkOut:      (data)      => api.post('/attendance/checkout', data),

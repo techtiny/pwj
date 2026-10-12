@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { salaryApi, fmtDate } from "./hrApi";
+import { salaryApi, fmtDate, downloadPayslip } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // Payroll cycle: 26th of the previous month through the 25th of the selected month
@@ -188,14 +188,15 @@ export default function SalaryPage({ user }) {
                   <th style={thR}>PF</th><th style={thR}>PT</th><th style={thR}>Total Ded</th><th style={thR}>Take Home</th>
                   <th style={thR}>Employer</th><th style={thR}>CTC</th>
                   <th style={th}>Remarks</th>
+                  <th style={th}>Payslip</th>
                   {canManage && <th style={th}>Adjust</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={td} colSpan={canManage ? 32 : 31}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={canManage ? 33 : 32}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 32 : 31}>
+                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 33 : 32}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : sheet.map((r) => (
@@ -231,6 +232,9 @@ export default function SalaryPage({ user }) {
                     <td style={tdR}>{inr0(r.employer)}</td>
                     <td style={tdR}>{inr0(r.ctc)}</td>
                     <td style={{ ...td, whiteSpace: "normal", maxWidth: 220, fontSize: 12, color: "#475569" }}>{r.remarks}</td>
+                    <td style={td}>
+                      <button onClick={() => downloadPayslip(r, year, month)} style={btn("#ecfdf5", "#047857")}>📄 Payslip</button>
+                    </td>
                     {canManage && (
                       <td style={td}>
                         <button onClick={() => setAdjModal({ row: r })} style={btn("#eef2ff", "#4338ca")}>Adjust</button>
@@ -254,7 +258,7 @@ export default function SalaryPage({ user }) {
                     <td style={tdR}>{inr0(totals.takeHome)}</td>
                     <td style={td}></td>
                     <td style={tdR}>{inr0(totals.ctc)}</td>
-                    <td style={td} colSpan={canManage ? 2 : 1}></td>
+                    <td style={td} colSpan={canManage ? 3 : 2}></td>
                   </tr>
                 </tfoot>
               )}

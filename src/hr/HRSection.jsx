@@ -7,6 +7,7 @@ import PettyCashPage from "./PettyCashPage";
 import EmployeeExitPage from "./EmployeeExitPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
+import MyProfilePage from "./MyProfilePage";
 
 export default function HRSection({ user }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
@@ -25,6 +26,7 @@ export default function HRSection({ user }) {
   // every render condition further down still matches as-is.
   const groups = [
     { key: "dashboard", label: "Dashboard", tabs: [{ key: "dashboard", label: "Dashboard" }] },
+    { key: "my-profile", label: "My Profile", tabs: [{ key: "my-profile", label: "My Profile" }] },
     {
       key: "attendance",
       label: "Attendance",
@@ -176,6 +178,7 @@ export default function HRSection({ user }) {
       )}
 
       {tab === "dashboard"      && <HRDashboard user={user} />}
+      {tab === "my-profile"     && <MyProfilePage user={user} />}
       {tab === "attendance"     && <AttendancePage user={user} />}
       {tab === "leaves"         && <LeavePage user={user} />}
       {tab === "petty-cash"     && <PettyCashPage user={user} title="Petty Cash" defaultTab={canViewReimbursement ? "all" : "mine"} />}

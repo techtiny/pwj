@@ -156,14 +156,15 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   }
 
   if (loading) return <div className="hr-page" style={{ padding: "24px 32px" }}>Loading…</div>;
-  if (!emp) return <div className="hr-page" style={{ padding: "24px 32px" }}>Employee not found. <button onClick={onBack} style={btn("#1e3a5f")}>Back</button></div>;
+  if (!emp) return <div className="hr-page" style={{ padding: "24px 32px" }}>Employee not found. {onBack && <button onClick={onBack} style={btn("#1e3a5f")}>Back</button>}</div>;
 
   const isExited = !!emp.dor;
   const birthdaySoon = isBirthdaySoon(emp.dob);
+  const isSelf = !!(emp.linkedUsername && user?.username && emp.linkedUsername.toLowerCase() === user.username.toLowerCase());
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f8fafc" }}>
-      <button onClick={onBack} style={{ ...btn("#fff", "#374151"), border: "1.5px solid #e2e8f0", marginBottom: 16 }}>← Back to Employees</button>
+      {onBack && <button onClick={onBack} style={{ ...btn("#fff", "#374151"), border: "1.5px solid #e2e8f0", marginBottom: 16 }}>← Back to Employees</button>}
 
       {/* Header */}
       <div style={{ ...card, padding: "22px 24px", marginBottom: 20, display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -175,7 +176,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
               {emp.fullName.charAt(0).toUpperCase()}
             </div>
           )}
-          {canManage && (
+          {(canManage || isSelf) && (
             <label style={{ position: "absolute", bottom: -2, right: -2, background: "#1e3a5f", color: "#fff", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>
               {busy === "photo" ? "…" : "📷"}
               <input type="file" accept="image/*" hidden onChange={(e) => handlePhoto(e.target.files?.[0])} />
