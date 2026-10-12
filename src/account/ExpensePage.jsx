@@ -129,7 +129,14 @@ function makeAutoRow(doc) {
     pwjTotalPayable: String(doc.totalPayable ?? 0),
     _isAdditionalPo: !!doc.isAdditionalPo,
     _baseDocNumber: doc.baseDocNumber || doc.docNumber || '',
+    _clubbedPrs: doc.clubbedPrs || [],
   };
+}
+
+// "PR #12 (item), PR #15 (item2)" — used wherever a clubbed PR's materialRequired
+// should be shown alongside its id.
+function fmtClubbedPrs(clubbedPrs) {
+  return (clubbedPrs || []).map(p => `PR #${p.id}${p.materialRequired ? ` (${p.materialRequired})` : ''}`).join(', ');
 }
 
 export default function ExpensePage({ category }) {
@@ -593,6 +600,11 @@ export default function ExpensePage({ category }) {
               ↳ Additional PO of {baseRefNo(searchText)}
             </div>
           )}
+          {item._clubbedPrs?.length > 0 && (
+            <div style={{ fontSize: 8.5, color: '#7c3aed', fontWeight: 700, lineHeight: 1.3 }}>
+              📎 Clubs {fmtClubbedPrs(item._clubbedPrs)}
+            </div>
+          )}
           <input
             value={searchText}
             onChange={e => {
@@ -621,6 +633,9 @@ export default function ExpensePage({ category }) {
                   </div>
                   {doc.isAdditionalPo && (
                     <div style={{ color: '#b45309', fontSize: 9.5, fontWeight: 600 }}>Additional PO of {doc.baseDocNumber}</div>
+                  )}
+                  {doc.clubbedPrs?.length > 0 && (
+                    <div style={{ color: '#7c3aed', fontSize: 9.5, fontWeight: 600 }}>📎 Clubs {fmtClubbedPrs(doc.clubbedPrs)}</div>
                   )}
                   <div style={{ color: '#374151', fontSize: 10 }}>{doc.materialRequired} · {doc.vendor}</div>
                   <div style={{ color: '#10b981', fontSize: 10, fontWeight: 600 }}>

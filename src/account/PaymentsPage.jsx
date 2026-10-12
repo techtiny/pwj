@@ -498,6 +498,11 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                         {isAdditionalPoRef(it.refNo) && (
                           <div style={{ fontSize: 9.5, color: '#b45309', fontWeight: 700 }}>↳ of {baseRefNo(it.refNo)}</div>
                         )}
+                        {it.clubbedPrs?.length > 0 && (
+                          <div style={{ fontSize: 9.5, color: '#7c3aed', fontWeight: 700 }}>
+                            📎 Clubs {it.clubbedPrs.map(p => `PR #${p.id}`).join(', ')}
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontSize: 12, color: '#334155' }}>{fmtStage(it.paymentStage)}</td>
                       <td style={{ fontSize: 12, color: '#334155' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</td>
