@@ -9,6 +9,7 @@ import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 import OperationsSection from "./operations/OperationsSection";
 import HolidaysPage from "./hr/HolidaysPage";
+import CompanyDocumentsPage from "./hr/CompanyDocumentsPage";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -1573,6 +1574,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   }, [allowedTabs]);
 
   const [mainTab, setMainTab] = useState(readTabFromHash);
+  const [happizoInfoTab, setHappizoInfoTab] = useState("holidays"); // "holidays" | "documents"
 
   // hash → state (deep link, browser back/forward, editing the URL)
   useEffect(() => {
@@ -3753,7 +3755,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         {mainTab === "happizo-info" && (
           <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
-            <HolidaysPage user={user} />
+            <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 32px", display: "flex", gap: 8 }}>
+              {[["holidays", "Holidays"], ["documents", "Documents"]].map(([key, label]) => {
+                const active = happizoInfoTab === key;
+                return (
+                  <button key={key} onClick={() => setHappizoInfoTab(key)}
+                    style={{
+                      border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 15px",
+                      background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
+                      fontWeight: active ? 700 : 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                    }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {happizoInfoTab === "holidays" && <HolidaysPage user={user} />}
+            {happizoInfoTab === "documents" && <CompanyDocumentsPage user={user} />}
           </div>
         )}
 

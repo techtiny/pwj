@@ -16,6 +16,10 @@ const USERS_BASE = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/users`
   : '/api/v1/users';
 
+const COMPANY_DOCS_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/company-docs`
+  : '/api/v1/company-docs';
+
 const api = axios.create({ baseURL: BASE, headers: { 'Content-Type': 'application/json' } });
 
 export async function uploadDocument(file) {
@@ -93,6 +97,12 @@ export const holidayApi = {
   list:   ()       => api.get('/holidays'),
   add:    (data)    => api.post('/holidays', data),
   delete: (id)      => api.delete(`/holidays/${id}`),
+};
+
+export const companyDocApi = {
+  list:   ()       => axios.get(COMPANY_DOCS_BASE),
+  add:    (data)    => axios.post(COMPANY_DOCS_BASE, data),
+  delete: (id)      => axios.delete(`${COMPANY_DOCS_BASE}/${id}`),
 };
 
 export const employeeApi = {
