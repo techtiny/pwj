@@ -657,6 +657,7 @@ function BOQWorkspace({
   newAdditionalItem, setNewAdditionalItem, addLinkedAdditionalItem,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
+  const [activeAdditionalTab, setActiveAdditionalTab] = useState("AdditionalItems");
 
   return (
     <div>
@@ -751,72 +752,108 @@ function BOQWorkspace({
             </>
           )}
 
-          {/* Additional item categories shown below the BOQ table. "Additional
-              Items" requires linking each row to an existing BOQ line item —
-              it's a separate table from "NT Category" below, which (like NMR/
-              Transport/Establishment) stays fully standalone. */}
-          <AdditionalItemsTable
-            groups={groups}
-            items={additionalItemsByCategory.AdditionalItems || []}
-            checked={additionalChecked}
-            toggleChecked={toggleAdditionalChecked}
-            toggleAll={toggleAllAdditional}
-            newItem={newAdditionalItem}
-            setNewItem={setNewAdditionalItem}
-            addItem={addLinkedAdditionalItem}
-            removeItem={removeAdditionalItem}
-          />
+          {/* Additional item categories, grouped into tabs below the BOQ
+              table instead of stacked one after another. "Additional Items"
+              requires linking each row to an existing BOQ line item; NT/NMR/
+              Transport/Establishment are standalone. All stay selectable
+              into the same PR regardless of which tab is active. */}
+          {(() => {
+            const tabs = [
+              { key: "AdditionalItems", label: "Additional Items", count: (additionalItemsByCategory.AdditionalItems || []).length },
+              { key: "NT",              label: "NT Category",             count: (additionalItemsByCategory.NT || []).length },
+              { key: "NMR",             label: "NMR Category",            count: (additionalItemsByCategory.NMR || []).length },
+              { key: "Transport",       label: "Transport Category",      count: (additionalItemsByCategory.Transport || []).length },
+              { key: "Establishment",   label: "Establishment Category",  count: (additionalItemsByCategory.Establishment || []).length },
+            ];
+            return (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", gap: 4, borderBottom: "1.5px solid #e2e8f0", marginBottom: 16, flexWrap: "wrap" }}>
+                  {tabs.map(t => (
+                    <button key={t.key} onClick={() => setActiveAdditionalTab(t.key)}
+                      style={{
+                        border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+                        padding: "10px 16px", fontSize: 14, fontWeight: 700,
+                        color: activeAdditionalTab === t.key ? "#0d9488" : "#64748b",
+                        borderBottom: activeAdditionalTab === t.key ? "2.5px solid #0d9488" : "2.5px solid transparent",
+                        marginBottom: -1.5,
+                      }}>
+                      {t.label} <span style={{ color: "#94a3b8", fontWeight: 600 }}>· {t.count}</span>
+                    </button>
+                  ))}
+                </div>
 
-          <AdditionalCategoryTable
-            category="NT"
-            label="NT Category"
-            items={additionalItemsByCategory.NT || []}
-            checked={additionalChecked}
-            toggleChecked={toggleAdditionalChecked}
-            toggleAll={toggleAllAdditional}
-            newItem={newItemForms.NT}
-            setNewItem={updater => setNewItemForms(f => ({ ...f, NT: updater(f.NT) }))}
-            addItem={addAdditionalItem}
-            removeItem={removeAdditionalItem}
-          />
+                {activeAdditionalTab === "AdditionalItems" && (
+                  <AdditionalItemsTable
+                    groups={groups}
+                    items={additionalItemsByCategory.AdditionalItems || []}
+                    checked={additionalChecked}
+                    toggleChecked={toggleAdditionalChecked}
+                    toggleAll={toggleAllAdditional}
+                    newItem={newAdditionalItem}
+                    setNewItem={setNewAdditionalItem}
+                    addItem={addLinkedAdditionalItem}
+                    removeItem={removeAdditionalItem}
+                  />
+                )}
 
-          <NMRCategoryTable
-            items={additionalItemsByCategory.NMR || []}
-            checked={additionalChecked}
-            toggleChecked={toggleAdditionalChecked}
-            toggleAll={toggleAllAdditional}
-            newItem={newNmrItem}
-            setNewItem={setNewNmrItem}
-            addItem={addNmrItem}
-            removeItem={removeAdditionalItem}
-          />
+                {activeAdditionalTab === "NT" && (
+                  <AdditionalCategoryTable
+                    category="NT"
+                    label="NT Category"
+                    items={additionalItemsByCategory.NT || []}
+                    checked={additionalChecked}
+                    toggleChecked={toggleAdditionalChecked}
+                    toggleAll={toggleAllAdditional}
+                    newItem={newItemForms.NT}
+                    setNewItem={updater => setNewItemForms(f => ({ ...f, NT: updater(f.NT) }))}
+                    addItem={addAdditionalItem}
+                    removeItem={removeAdditionalItem}
+                  />
+                )}
 
-          <TransportCategoryTable
-            items={additionalItemsByCategory.Transport || []}
-            checked={additionalChecked}
-            toggleChecked={toggleAdditionalChecked}
-            toggleAll={toggleAllAdditional}
-            newItem={newTransportItem}
-            setNewItem={setNewTransportItem}
-            addItem={addTransportItem}
-            removeItem={removeAdditionalItem}
-          />
+                {activeAdditionalTab === "NMR" && (
+                  <NMRCategoryTable
+                    items={additionalItemsByCategory.NMR || []}
+                    checked={additionalChecked}
+                    toggleChecked={toggleAdditionalChecked}
+                    toggleAll={toggleAllAdditional}
+                    newItem={newNmrItem}
+                    setNewItem={setNewNmrItem}
+                    addItem={addNmrItem}
+                    removeItem={removeAdditionalItem}
+                  />
+                )}
 
-          {ADDITIONAL_CATEGORIES.filter(cat => cat.key !== "NT").map(cat => (
-            <AdditionalCategoryTable
-              key={cat.key}
-              category={cat.key}
-              label={cat.label}
-              items={additionalItemsByCategory[cat.key] || []}
-              checked={additionalChecked}
-              toggleChecked={toggleAdditionalChecked}
-              toggleAll={toggleAllAdditional}
-              newItem={newItemForms[cat.key]}
-              setNewItem={updater => setNewItemForms(f => ({ ...f, [cat.key]: updater(f[cat.key]) }))}
-              addItem={addAdditionalItem}
-              removeItem={removeAdditionalItem}
-            />
-          ))}
+                {activeAdditionalTab === "Transport" && (
+                  <TransportCategoryTable
+                    items={additionalItemsByCategory.Transport || []}
+                    checked={additionalChecked}
+                    toggleChecked={toggleAdditionalChecked}
+                    toggleAll={toggleAllAdditional}
+                    newItem={newTransportItem}
+                    setNewItem={setNewTransportItem}
+                    addItem={addTransportItem}
+                    removeItem={removeAdditionalItem}
+                  />
+                )}
+
+                {activeAdditionalTab === "Establishment" && (
+                  <AdditionalCategoryTable
+                    category="Establishment"
+                    label="Establishment Category"
+                    items={additionalItemsByCategory.Establishment || []}
+                    checked={additionalChecked}
+                    toggleChecked={toggleAdditionalChecked}
+                    toggleAll={toggleAllAdditional}
+                    newItem={newItemForms.Establishment}
+                    setNewItem={updater => setNewItemForms(f => ({ ...f, Establishment: updater(f.Establishment) }))}
+                    addItem={addAdditionalItem}
+                    removeItem={removeAdditionalItem}
+                  />
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button onClick={onCreatePR} disabled={selectedCount === 0}
