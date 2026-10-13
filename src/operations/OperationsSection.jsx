@@ -403,9 +403,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             saveStatus={saveStatus}
             showUploadOverride={showUploadOverride}
             onReplace={() => setShowUploadOverride(true)}
-            sheetNames={sheetNames}
             activeSheet={activeSheet}
-            setActiveSheet={setActiveSheet}
             groups={groups}
             preambleLines={preambleLines}
             checked={checked}
@@ -460,7 +458,7 @@ function ProjectPicker({ projects, loading, search, setSearch, onPick }) {
 
 function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
-  sheetNames, activeSheet, setActiveSheet,
+  activeSheet,
   groups, preambleLines, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
@@ -505,13 +503,9 @@ function BOQWorkspace({
             </button>
           </div>
 
-          {sheetNames.length > 1 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>Sheet:</span>
-              <select value={activeSheet} onChange={e => setActiveSheet(e.target.value)}
-                style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: "#0f172a" }}>
-                {sheetNames.map(name => <option key={name} value={name}>{name}</option>)}
-              </select>
+          {activeSheet && (
+            <div style={{ fontSize: 13, color: "#374151", fontWeight: 600, marginBottom: 14 }}>
+              Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
             </div>
           )}
 
@@ -520,7 +514,7 @@ function BOQWorkspace({
           {preambleLines.length > 0 && (
             <div style={{ marginBottom: 12 }}>
               {preambleLines.map((line, i) => (
-                <div key={i} style={{ fontSize: i === 0 ? 15 : 13.5, fontWeight: i === 0 ? 700 : 600, color: i === 0 ? "#0f172a" : "#374151" }}>
+                <div key={i} style={{ fontSize: i === 0 ? 19 : 17.5, fontWeight: i === 0 ? 700 : 600, color: i === 0 ? "#0f172a" : "#374151" }}>
                   {line}
                 </div>
               ))}
@@ -532,7 +526,7 @@ function BOQWorkspace({
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, color: "#374151" }}>
+                <div style={{ fontSize: 17, color: "#374151" }}>
                   {groups.length} item{groups.length !== 1 ? "s" : ""} · select the line items you want in this PR
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -544,11 +538,11 @@ function BOQWorkspace({
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90 }}>PR Selection</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60 }}>No.</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>Description</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90 }}>Unit</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90 }}>Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>No.</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -564,7 +558,7 @@ function BOQWorkspace({
                             )}
                           </td>
                           <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap" }}>{g.description}</td>
+                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{g.description}</td>
                           <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
                           <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? g.qty : "—"}</td>
                         </tr>
