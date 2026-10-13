@@ -491,23 +491,22 @@ function BOQWorkspace({
         </>
       ) : (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
               <FileSpreadsheet size={15} color="#0d9488" /> {fileName}
             </div>
+            {activeSheet && (
+              <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+                Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
+              </span>
+            )}
             {saveStatus === "saving" && <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Saving to project…</span>}
             {saveStatus === "saved" && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
             {saveStatus === "error" && <span style={{ fontSize: 12.5, color: "#ef4444" }}>Couldn't save — you'll need to re-upload next visit</span>}
-            <button onClick={onReplace} style={{ fontSize: 13, color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0 }}>
+            <button onClick={onReplace} style={{ fontSize: 13, color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0, marginLeft: "auto" }}>
               Replace BOQ
             </button>
           </div>
-
-          {activeSheet && (
-            <div style={{ fontSize: 13, color: "#374151", fontWeight: 600, marginBottom: 14 }}>
-              Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
-            </div>
-          )}
 
           {parseError && <div style={{ color: "#ef4444", fontSize: 13.5, marginBottom: 10 }}>{parseError}</div>}
 
