@@ -15,13 +15,17 @@ const STATUS_COLORS = { PROCEED: "#3b82f6", HOLD: "#f59e0b", NOT_APPROVED: "#ef4
 
 // Manually-entered item categories shown below the BOQ table — each is its
 // own table (S.No / Description / Qty / Unit), independent of the uploaded
-// BOQ file, but selectable into the same PR as BOQ line items.
+// BOQ file, but selectable into the same PR as BOQ line items. NMR has its
+// own distinct column set (labour count/type/date/rate) and its own table
+// component (NMRCategoryTable, rendered separately) — it's intentionally
+// left out of this generic list.
 const ADDITIONAL_CATEGORIES = [
   { key: "NT",            label: "Additional Items (NT)" },
-  { key: "NMR",           label: "NMR Category" },
   { key: "Transport",     label: "Transport Category" },
   { key: "Establishment", label: "Establishment Category" },
 ];
+
+const NMR_LABOUR_TYPES = ["Painters", "Plumber", "Electrician", "Mason", "MC", "FC", "Carpenter", "Tile/Granite", "Others"];
 
 function isBlankRow(row) {
   return !row || row.every(c => c === null || c === undefined || String(c).trim() === "");
@@ -202,6 +206,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [newItemForms, setNewItemForms] = useState(() =>
     Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }]))
   );
+  const [newNmrItem, setNewNmrItem] = useState({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
   const additionalIdCounter = useRef(0);
 
   const resetBOQ = () => {
@@ -210,6 +215,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setParseError(""); setSaveStatus(""); setShowUploadOverride(false);
     setAdditionalChecked({});
     setNewItemForms(Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }])));
+    setNewNmrItem({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
   };
 
   const loadWorkbookFromBuffer = (data, name) => {
@@ -371,6 +377,30 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setAdditionalChecked(c => { const next = { ...c }; delete next[id]; return next; });
   };
 
+  // NMR ("Nominal Muster Roll") — daily labour entries, a different shape
+  // from the other additional categories (labour count/type/date/rate
+  // instead of qty/unit), but stored in the same flat array (category:
+  // "NMR") so it shares the same selection/PR-creation/used-tracking.
+  const addNmrItem = () => {
+    const description = newNmrItem.description.trim();
+    if (!description) return;
+    const noOfLabours = Number(newNmrItem.noOfLabours) || 0;
+    const unitRate = Number(newNmrItem.unitRate) || 0;
+    const item = {
+      id: `NMR-${Date.now()}-${additionalIdCounter.current++}`,
+      category: "NMR",
+      description,
+      noOfLabours: newNmrItem.noOfLabours.trim(),
+      typeOfLabours: newNmrItem.typeOfLabours,
+      date: newNmrItem.date,
+      unitRate: newNmrItem.unitRate.trim(),
+      amount: String(Math.round(noOfLabours * unitRate * 100) / 100),
+      used: false,
+    };
+    persistAdditionalItems([...additionalItems, item]);
+    setNewNmrItem({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
+  };
+
   const toggleAdditionalChecked = (id) => {
     setAdditionalChecked(c => ({ ...c, [id]: !c[id] }));
   };
@@ -395,6 +425,16 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     const categoryCounters = {};
     const additionalLines = selectedAdditional.map(it => {
       const n = (categoryCounters[it.category] = (categoryCounters[it.category] || 0) + 1);
+      if (it.category === "NMR") {
+        const bits = [
+          it.noOfLabours ? `${it.noOfLabours} labour(s)` : "",
+          it.typeOfLabours || "",
+          it.date || "",
+          it.unitRate ? `rate ₹${it.unitRate}` : "",
+          it.amount ? `amount ₹${it.amount}` : "",
+        ].filter(Boolean).join(", ");
+        return `NMR${n}. ${it.description}${bits ? ` — ${bits}` : ""}`.trim();
+      }
       const qtyUnitStr = (it.qty || it.unit) ? ` — ${it.qty || ""}${it.unit ? " " + it.unit : ""}`.trim() : "";
       return `${it.category}${n}. ${it.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
     });
@@ -405,7 +445,11 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     // suffix when several items were selected across both tables.
     const allSelected = [
       ...selected,
-      ...selectedAdditional.map(it => ({ description: it.description, qty: it.qty ? Number(it.qty) : null, unit: it.unit })),
+      ...selectedAdditional.map(it => ({
+        description: it.description,
+        qty: it.category === "NMR" ? (it.noOfLabours ? Number(it.noOfLabours) : null) : (it.qty ? Number(it.qty) : null),
+        unit: it.category === "NMR" ? (it.typeOfLabours || "") : it.unit,
+      })),
     ];
     const firstDesc = allSelected[0]?.description || "";
     const materialRequired = (allSelected.length > 1
@@ -517,6 +561,9 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             setNewItemForms={setNewItemForms}
             addAdditionalItem={addAdditionalItem}
             removeAdditionalItem={removeAdditionalItem}
+            newNmrItem={newNmrItem}
+            setNewNmrItem={setNewNmrItem}
+            addNmrItem={addNmrItem}
           />
         )
       )}
@@ -567,6 +614,7 @@ function BOQWorkspace({
   groups, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
   additionalItemsByCategory, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
   newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem,
+  newNmrItem, setNewNmrItem, addNmrItem,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
 
@@ -672,8 +720,33 @@ function BOQWorkspace({
 
           {/* Additional item categories — manually entered, independent of
               the BOQ file, selectable into the same PR as the BOQ items
-              above. Each category is its own table. */}
-          {ADDITIONAL_CATEGORIES.map(cat => (
+              above. Each category is its own table. NT first, then NMR
+              (its own shape/component), then the rest of the generic ones. */}
+          <AdditionalCategoryTable
+            category="NT"
+            label="Additional Items (NT)"
+            items={additionalItemsByCategory.NT || []}
+            checked={additionalChecked}
+            toggleChecked={toggleAdditionalChecked}
+            toggleAll={toggleAllAdditional}
+            newItem={newItemForms.NT}
+            setNewItem={updater => setNewItemForms(f => ({ ...f, NT: updater(f.NT) }))}
+            addItem={addAdditionalItem}
+            removeItem={removeAdditionalItem}
+          />
+
+          <NMRCategoryTable
+            items={additionalItemsByCategory.NMR || []}
+            checked={additionalChecked}
+            toggleChecked={toggleAdditionalChecked}
+            toggleAll={toggleAllAdditional}
+            newItem={newNmrItem}
+            setNewItem={setNewNmrItem}
+            addItem={addNmrItem}
+            removeItem={removeAdditionalItem}
+          />
+
+          {ADDITIONAL_CATEGORIES.filter(cat => cat.key !== "NT").map(cat => (
             <AdditionalCategoryTable
               key={cat.key}
               category={cat.key}
@@ -778,6 +851,108 @@ function AdditionalCategoryTable({
           placeholder="Unit"
           style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
         <button onClick={() => addItem(category)} disabled={!newItem.description.trim()}
+          style={{
+            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+            color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
+            cursor: newItem.description.trim() ? "pointer" : "not-allowed",
+          }}>
+          + Add Item
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// NMR ("Nominal Muster Roll") — daily labour entries. Its own column set
+// (labour count/type/date/rate/amount) instead of the generic qty/unit
+// shape the other additional categories use.
+function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem }) {
+  const previewAmount = (Number(newItem.noOfLabours) || 0) * (Number(newItem.unitRate) || 0);
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 17, color: "#374151" }}>
+          NMR Category <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        </div>
+        {items.length > 0 && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => toggleAll("NMR", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll("NMR", false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+          </div>
+        )}
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "#f8fafc" }}>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: 17 }}>No of Labours</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: 17 }}>Type of Labours</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: 17 }}>Date</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit Rate</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: 17 }}>Amount</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr><td colSpan={9} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No NMR entries added yet.</td></tr>
+            ) : items.map((it, i) => (
+              <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                  {it.used ? (
+                    <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
+                  ) : (
+                    <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
+                  )}
+                </td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 300, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.noOfLabours || "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.typeOfLabours || "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.date || "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.unitRate ? `₹${it.unitRate}` : "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                  {!it.used && (
+                    <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add a new NMR entry */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input value={newItem.description}
+          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
+          placeholder="Description"
+          style={{ flex: 2, minWidth: 180, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <input value={newItem.noOfLabours}
+          onChange={e => setNewItem(f => ({ ...f, noOfLabours: e.target.value }))}
+          placeholder="No of Labours" type="number"
+          style={{ width: 110, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <select value={newItem.typeOfLabours}
+          onChange={e => setNewItem(f => ({ ...f, typeOfLabours: e.target.value }))}
+          style={{ width: 140, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          <option value="">Type of Labours</option>
+          {NMR_LABOUR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <input value={newItem.date} type="date"
+          onChange={e => setNewItem(f => ({ ...f, date: e.target.value }))}
+          style={{ width: 140, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <input value={newItem.unitRate}
+          onChange={e => setNewItem(f => ({ ...f, unitRate: e.target.value }))}
+          placeholder="Unit Rate" type="number"
+          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <div title="Amount = No of Labours × Unit Rate" style={{ width: 100, fontSize: 13, color: "#374151", fontWeight: 600 }}>
+          ₹{previewAmount.toLocaleString("en-IN")}
+        </div>
+        <button onClick={addItem} disabled={!newItem.description.trim()}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
             color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
