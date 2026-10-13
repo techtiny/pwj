@@ -46,6 +46,14 @@ export async function saveUsedLabels(projectId, usedLabelsMap) {
   return res.data?.data;
 }
 
+// Persists the manually-entered "Additional / NT Items" list for a project —
+// items[] = [{ id, sno, description, qty, unit }], independent of any BOQ
+// sheet (there may be no uploaded BOQ at all).
+export async function saveAdditionalItems(projectId, items) {
+  const res = await axios.put(`${PROJECTS_BASE}/${projectId}`, { boqAdditionalItems: JSON.stringify(items) });
+  return res.data?.data;
+}
+
 // Re-downloads a previously-uploaded BOQ file (by its stored URL) as raw bytes
 // so it can be parsed client-side again, the same way a fresh upload is.
 export async function fetchStoredFile(boqDocUrl) {

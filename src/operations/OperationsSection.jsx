@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search } from "lucide-react";
 import {
   getEligibleForAccountsProjects, getRecentEntries,
-  uploadDocument, saveProjectBoq, saveUsedLabels, fetchStoredFile,
+  uploadDocument, saveProjectBoq, saveUsedLabels, saveAdditionalItems, fetchStoredFile,
 } from "./operationsApi";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -183,10 +183,17 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "error"
   const [showUploadOverride, setShowUploadOverride] = useState(false);
 
+  // ── Additional / NT Items — manually entered, independent of the BOQ file,
+  // selectable into the same PR as BOQ line items ──
+  const [additionalChecked, setAdditionalChecked] = useState({}); // id -> bool
+  const [newAdditionalItem, setNewAdditionalItem] = useState({ description: "", qty: "", unit: "" });
+  const additionalIdCounter = useRef(0);
+
   const resetBOQ = () => {
     setWorkbook(null); setSheetNames([]); setActiveSheet(""); setRows([]);
     setHeaderRowIdx(-1); setChecked({}); setFileName("");
     setParseError(""); setSaveStatus(""); setShowUploadOverride(false);
+    setAdditionalChecked({}); setNewAdditionalItem({ description: "", qty: "", unit: "" });
   };
 
   const loadWorkbookFromBuffer = (data, name) => {
@@ -295,30 +302,90 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     [checked, usedLabelsForSheet, groups]
   );
 
+  // Manually-entered items not present in the uploaded BOQ ("NT"/additional
+  // items) — persisted on the project, independent of any sheet, selectable
+  // into the same PR as BOQ line items.
+  const additionalItems = useMemo(() => {
+    try { return JSON.parse(selectedProject?.boqAdditionalItems || "[]"); } catch { return []; }
+  }, [selectedProject?.boqAdditionalItems]);
+
+  const selectedAdditional = useMemo(
+    () => additionalItems.filter(it => additionalChecked[it.id] && !it.used),
+    [additionalItems, additionalChecked]
+  );
+
+  const persistAdditionalItems = (updated) => {
+    const json = JSON.stringify(updated);
+    setSelectedProject(p => ({ ...p, boqAdditionalItems: json }));
+    setProjects(ps => ps.map(p => p.id === selectedProject.id ? { ...p, boqAdditionalItems: json } : p));
+    saveAdditionalItems(selectedProject.id, updated).catch(() => {
+      // Best-effort — the in-memory state above still reflects the change
+      // for the rest of this session even if the save itself failed.
+    });
+  };
+
+  const addAdditionalItem = () => {
+    const description = newAdditionalItem.description.trim();
+    if (!description) return;
+    const item = {
+      id: `nt-${Date.now()}-${additionalIdCounter.current++}`,
+      description,
+      qty: newAdditionalItem.qty.trim(),
+      unit: newAdditionalItem.unit.trim(),
+      used: false,
+    };
+    persistAdditionalItems([...additionalItems, item]);
+    setNewAdditionalItem({ description: "", qty: "", unit: "" });
+  };
+
+  const removeAdditionalItem = (id) => {
+    persistAdditionalItems(additionalItems.filter(it => it.id !== id));
+    setAdditionalChecked(c => { const next = { ...c }; delete next[id]; return next; });
+  };
+
+  const toggleAdditionalChecked = (id) => {
+    setAdditionalChecked(c => ({ ...c, [id]: !c[id] }));
+  };
+
+  const toggleAllAdditional = (checkAll) => {
+    const next = {};
+    additionalItems.forEach(it => { if (!it.used) next[it.id] = checkAll; });
+    setAdditionalChecked(next);
+  };
+
   const buildPrefill = () => {
     const selected = selectedIndexes.map(i => groups[i]);
 
     const boqNo = selected.map(g => g.label).filter(Boolean).join(", ");
 
-    const lines = selected.map(g => {
+    const boqLines = selected.map(g => {
       const qtyUnitStr = (g.qty != null || g.unit) ? ` — ${g.qty != null ? g.qty : ""}${g.unit ? " " + g.unit : ""}`.trim() : "";
       return `${g.label ? g.label + ". " : ""}${g.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
     }).filter(Boolean);
-    const combinedSpecification = lines.join("\n");
+    const ntLines = selectedAdditional.map((it, i) => {
+      const qtyUnitStr = (it.qty || it.unit) ? ` — ${it.qty || ""}${it.unit ? " " + it.unit : ""}`.trim() : "";
+      return `NT${i + 1}. ${it.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
+    });
+    const combinedSpecification = [...boqLines, ...ntLines].join("\n");
 
-    // Short single-line summary for Material Required — the first item's
-    // description, plus a "+N more" suffix when several items were selected.
-    const firstDesc = selected[0]?.description || "";
-    const materialRequired = (selected.length > 1
-      ? `${firstDesc} (+${selected.length - 1} more from BOQ)`
+    // Short single-line summary for Material Required — the first selected
+    // item's description (BOQ first, then additional), plus a "+N more"
+    // suffix when several items were selected across both tables.
+    const allSelected = [
+      ...selected,
+      ...selectedAdditional.map(it => ({ description: it.description, qty: it.qty ? Number(it.qty) : null, unit: it.unit })),
+    ];
+    const firstDesc = allSelected[0]?.description || "";
+    const materialRequired = (allSelected.length > 1
+      ? `${firstDesc} (+${allSelected.length - 1} more)`
       : firstDesc).slice(0, 280);
 
-    // If every selected item shares one exact unit, sum the quantities.
-    const distinctUnits = [...new Set(selected.map(g => g.unit).filter(Boolean))];
+    // If every selected item (BOQ + additional) shares one exact unit, sum the quantities.
+    const distinctUnits = [...new Set(allSelected.map(g => g.unit).filter(Boolean))];
     let unit = "", quantity = "";
-    if (distinctUnits.length === 1 && selected.every(g => g.qty != null)) {
+    if (distinctUnits.length === 1 && allSelected.every(g => g.qty != null)) {
       unit = distinctUnits[0];
-      quantity = String(selected.reduce((s, g) => s + g.qty, 0));
+      quantity = String(allSelected.reduce((s, g) => s + g.qty, 0));
     }
 
     return {
@@ -332,23 +399,30 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
 
   const handleCreatePR = () => {
-    if (!selectedIndexes.length) return;
+    if (!selectedIndexes.length && !selectedAdditional.length) return;
     const prefill = buildPrefill();
     onCreateFromBOQ(prefill);
 
     // Persist these labels as "used" so they can't be selected again, even
     // after a reload or on another device.
-    const newLabels = selectedIndexes.map(i => groups[i]?.label).filter(Boolean);
-    const updatedSheetLabels = [...new Set([...usedLabelsForSheet, ...newLabels])];
-    const updatedMap = { ...usedLabelsMap, [activeSheet]: updatedSheetLabels };
-    setSelectedProject(p => ({ ...p, boqUsedLabels: JSON.stringify(updatedMap) }));
-    setProjects(ps => ps.map(p => p.id === selectedProject.id ? { ...p, boqUsedLabels: JSON.stringify(updatedMap) } : p));
-    saveUsedLabels(selectedProject.id, updatedMap).catch(() => {
-      // Best-effort — the in-memory state above still blocks re-selection
-      // for the rest of this session even if the save itself failed.
-    });
+    if (selectedIndexes.length) {
+      const newLabels = selectedIndexes.map(i => groups[i]?.label).filter(Boolean);
+      const updatedSheetLabels = [...new Set([...usedLabelsForSheet, ...newLabels])];
+      const updatedMap = { ...usedLabelsMap, [activeSheet]: updatedSheetLabels };
+      setSelectedProject(p => ({ ...p, boqUsedLabels: JSON.stringify(updatedMap) }));
+      setProjects(ps => ps.map(p => p.id === selectedProject.id ? { ...p, boqUsedLabels: JSON.stringify(updatedMap) } : p));
+      saveUsedLabels(selectedProject.id, updatedMap).catch(() => {
+        // Best-effort — the in-memory state above still blocks re-selection
+        // for the rest of this session even if the save itself failed.
+      });
+    }
+    if (selectedAdditional.length) {
+      const usedIds = new Set(selectedAdditional.map(it => it.id));
+      persistAdditionalItems(additionalItems.map(it => usedIds.has(it.id) ? { ...it, used: true } : it));
+    }
 
     setChecked({});
+    setAdditionalChecked({});
   };
 
   return (
@@ -401,8 +475,16 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             usedLabelsForSheet={usedLabelsForSheet}
             toggleRow={toggleRow}
             toggleAll={toggleAll}
-            selectedCount={selectedIndexes.length}
+            selectedCount={selectedIndexes.length + selectedAdditional.length}
             onCreatePR={handleCreatePR}
+            additionalItems={additionalItems}
+            additionalChecked={additionalChecked}
+            toggleAdditionalChecked={toggleAdditionalChecked}
+            toggleAllAdditional={toggleAllAdditional}
+            newAdditionalItem={newAdditionalItem}
+            setNewAdditionalItem={setNewAdditionalItem}
+            addAdditionalItem={addAdditionalItem}
+            removeAdditionalItem={removeAdditionalItem}
           />
         )
       )}
@@ -451,6 +533,8 @@ function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
   groups, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
+  additionalItems, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
+  newAdditionalItem, setNewAdditionalItem, addAdditionalItem, removeAdditionalItem,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
 
@@ -506,7 +590,7 @@ function BOQWorkspace({
           {parseError && <div style={{ color: "#ef4444", fontSize: 13.5, marginBottom: 10 }}>{parseError}</div>}
 
           {groups.length === 0 ? (
-            <div style={{ color: "#374151", fontSize: 14 }}>This sheet has no line items.</div>
+            <div style={{ color: "#374151", fontSize: 14, marginBottom: 20 }}>This sheet has no line items.</div>
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -518,7 +602,7 @@ function BOQWorkspace({
                   <button onClick={() => toggleAll(false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 460 }}>
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 460, marginBottom: 24 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
@@ -551,19 +635,95 @@ function BOQWorkspace({
                   </tbody>
                 </table>
               </div>
-
-              <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-                <button onClick={onCreatePR} disabled={selectedCount === 0}
-                  style={{
-                    border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-                    color: "#fff", background: selectedCount === 0 ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
-                    cursor: selectedCount === 0 ? "not-allowed" : "pointer",
-                  }}>
-                  Create PR from {selectedCount} Selected Item{selectedCount !== 1 ? "s" : ""}
-                </button>
-              </div>
             </>
           )}
+
+          {/* Additional / NT Items — manually entered, independent of the BOQ
+              file, selectable into the same PR as the BOQ items above. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 17, color: "#374151" }}>
+              Additional Items (NT) <span style={{ color: "#94a3b8" }}>· {additionalItems.length}</span>
+            </div>
+            {additionalItems.length > 0 && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => toggleAllAdditional(true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+                <button onClick={() => toggleAllAdditional(false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+              </div>
+            )}
+          </div>
+          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
+                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {additionalItems.length === 0 ? (
+                  <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No additional items added yet.</td></tr>
+                ) : additionalItems.map((it, i) => (
+                  <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                      {it.used ? (
+                        <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
+                      ) : (
+                        <input type="checkbox" checked={!!additionalChecked[it.id]} onChange={() => toggleAdditionalChecked(it.id)} />
+                      )}
+                    </td>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
+                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                      {!it.used && (
+                        <button onClick={() => removeAdditionalItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add a new additional/NT item */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 24, flexWrap: "wrap" }}>
+            <input value={newAdditionalItem.description}
+              onChange={e => setNewAdditionalItem(f => ({ ...f, description: e.target.value }))}
+              placeholder="Description"
+              style={{ flex: 2, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+            <input value={newAdditionalItem.qty}
+              onChange={e => setNewAdditionalItem(f => ({ ...f, qty: e.target.value }))}
+              placeholder="Qty" type="number"
+              style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+            <input value={newAdditionalItem.unit}
+              onChange={e => setNewAdditionalItem(f => ({ ...f, unit: e.target.value }))}
+              placeholder="Unit"
+              style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+            <button onClick={addAdditionalItem} disabled={!newAdditionalItem.description.trim()}
+              style={{
+                border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+                color: "#fff", background: newAdditionalItem.description.trim() ? "#0d9488" : "#cbd5e1",
+                cursor: newAdditionalItem.description.trim() ? "pointer" : "not-allowed",
+              }}>
+              + Add Item
+            </button>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button onClick={onCreatePR} disabled={selectedCount === 0}
+              style={{
+                border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 14, fontWeight: 700, fontFamily: "inherit",
+                color: "#fff", background: selectedCount === 0 ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
+                cursor: selectedCount === 0 ? "not-allowed" : "pointer",
+              }}>
+              Create PR from {selectedCount} Selected Item{selectedCount !== 1 ? "s" : ""}
+            </button>
+          </div>
         </>
       )}
     </div>
