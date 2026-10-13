@@ -13,6 +13,16 @@ import {
 const HEADER_HINTS = ["description", "qty", "quantity", "unit", "rate", "amount", "sl", "s.no", "particular", "item"];
 const STATUS_COLORS = { PROCEED: "#3b82f6", HOLD: "#f59e0b", NOT_APPROVED: "#ef4444" };
 
+// Manually-entered item categories shown below the BOQ table — each is its
+// own table (S.No / Description / Qty / Unit), independent of the uploaded
+// BOQ file, but selectable into the same PR as BOQ line items.
+const ADDITIONAL_CATEGORIES = [
+  { key: "NT",            label: "Additional Items (NT)" },
+  { key: "NMR",           label: "NMR Category" },
+  { key: "Transport",     label: "Transport Category" },
+  { key: "Establishment", label: "Establishment Category" },
+];
+
 function isBlankRow(row) {
   return !row || row.every(c => c === null || c === undefined || String(c).trim() === "");
 }
@@ -183,17 +193,23 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "error"
   const [showUploadOverride, setShowUploadOverride] = useState(false);
 
-  // ── Additional / NT Items — manually entered, independent of the BOQ file,
-  // selectable into the same PR as BOQ line items ──
+  // ── Additional item categories (NT, NMR, Transport, Establishment) —
+  // manually entered, independent of the BOQ file, selectable into the same
+  // PR as BOQ line items. All categories share one flat persisted array
+  // (each item tagged with its own `category`), so selection/PR-creation
+  // naturally spans all of them together.
   const [additionalChecked, setAdditionalChecked] = useState({}); // id -> bool
-  const [newAdditionalItem, setNewAdditionalItem] = useState({ description: "", qty: "", unit: "" });
+  const [newItemForms, setNewItemForms] = useState(() =>
+    Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }]))
+  );
   const additionalIdCounter = useRef(0);
 
   const resetBOQ = () => {
     setWorkbook(null); setSheetNames([]); setActiveSheet(""); setRows([]);
     setHeaderRowIdx(-1); setChecked({}); setFileName("");
     setParseError(""); setSaveStatus(""); setShowUploadOverride(false);
-    setAdditionalChecked({}); setNewAdditionalItem({ description: "", qty: "", unit: "" });
+    setAdditionalChecked({});
+    setNewItemForms(Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }])));
   };
 
   const loadWorkbookFromBuffer = (data, name) => {
@@ -302,12 +318,22 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     [checked, usedLabelsForSheet, groups]
   );
 
-  // Manually-entered items not present in the uploaded BOQ ("NT"/additional
-  // items) — persisted on the project, independent of any sheet, selectable
-  // into the same PR as BOQ line items.
+  // Manually-entered items not present in the uploaded BOQ, across all
+  // additional categories (NT, NMR, Transport, Establishment) — persisted on
+  // the project as one flat array (each item tagged with its own `category`),
+  // independent of any sheet, selectable into the same PR as BOQ line items.
   const additionalItems = useMemo(() => {
-    try { return JSON.parse(selectedProject?.boqAdditionalItems || "[]"); } catch { return []; }
+    try {
+      const parsed = JSON.parse(selectedProject?.boqAdditionalItems || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   }, [selectedProject?.boqAdditionalItems]);
+
+  const additionalItemsByCategory = useMemo(() => {
+    const byCat = Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, []]));
+    additionalItems.forEach(it => { (byCat[it.category] ||= []).push(it); });
+    return byCat;
+  }, [additionalItems]);
 
   const selectedAdditional = useMemo(
     () => additionalItems.filter(it => additionalChecked[it.id] && !it.used),
@@ -324,18 +350,20 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     });
   };
 
-  const addAdditionalItem = () => {
-    const description = newAdditionalItem.description.trim();
+  const addAdditionalItem = (category) => {
+    const form = newItemForms[category] || { description: "", qty: "", unit: "" };
+    const description = form.description.trim();
     if (!description) return;
     const item = {
-      id: `nt-${Date.now()}-${additionalIdCounter.current++}`,
+      id: `${category}-${Date.now()}-${additionalIdCounter.current++}`,
+      category,
       description,
-      qty: newAdditionalItem.qty.trim(),
-      unit: newAdditionalItem.unit.trim(),
+      qty: form.qty.trim(),
+      unit: form.unit.trim(),
       used: false,
     };
     persistAdditionalItems([...additionalItems, item]);
-    setNewAdditionalItem({ description: "", qty: "", unit: "" });
+    setNewItemForms(f => ({ ...f, [category]: { description: "", qty: "", unit: "" } }));
   };
 
   const removeAdditionalItem = (id) => {
@@ -347,10 +375,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setAdditionalChecked(c => ({ ...c, [id]: !c[id] }));
   };
 
-  const toggleAllAdditional = (checkAll) => {
-    const next = {};
-    additionalItems.forEach(it => { if (!it.used) next[it.id] = checkAll; });
-    setAdditionalChecked(next);
+  const toggleAllAdditional = (category, checkAll) => {
+    setAdditionalChecked(c => {
+      const next = { ...c };
+      (additionalItemsByCategory[category] || []).forEach(it => { if (!it.used) next[it.id] = checkAll; });
+      return next;
+    });
   };
 
   const buildPrefill = () => {
@@ -362,11 +392,13 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       const qtyUnitStr = (g.qty != null || g.unit) ? ` — ${g.qty != null ? g.qty : ""}${g.unit ? " " + g.unit : ""}`.trim() : "";
       return `${g.label ? g.label + ". " : ""}${g.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
     }).filter(Boolean);
-    const ntLines = selectedAdditional.map((it, i) => {
+    const categoryCounters = {};
+    const additionalLines = selectedAdditional.map(it => {
+      const n = (categoryCounters[it.category] = (categoryCounters[it.category] || 0) + 1);
       const qtyUnitStr = (it.qty || it.unit) ? ` — ${it.qty || ""}${it.unit ? " " + it.unit : ""}`.trim() : "";
-      return `NT${i + 1}. ${it.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
+      return `${it.category}${n}. ${it.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
     });
-    const combinedSpecification = [...boqLines, ...ntLines].join("\n");
+    const combinedSpecification = [...boqLines, ...additionalLines].join("\n");
 
     // Short single-line summary for Material Required — the first selected
     // item's description (BOQ first, then additional), plus a "+N more"
@@ -477,12 +509,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             toggleAll={toggleAll}
             selectedCount={selectedIndexes.length + selectedAdditional.length}
             onCreatePR={handleCreatePR}
-            additionalItems={additionalItems}
+            additionalItemsByCategory={additionalItemsByCategory}
             additionalChecked={additionalChecked}
             toggleAdditionalChecked={toggleAdditionalChecked}
             toggleAllAdditional={toggleAllAdditional}
-            newAdditionalItem={newAdditionalItem}
-            setNewAdditionalItem={setNewAdditionalItem}
+            newItemForms={newItemForms}
+            setNewItemForms={setNewItemForms}
             addAdditionalItem={addAdditionalItem}
             removeAdditionalItem={removeAdditionalItem}
           />
@@ -533,8 +565,8 @@ function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
   groups, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
-  additionalItems, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
-  newAdditionalItem, setNewAdditionalItem, addAdditionalItem, removeAdditionalItem,
+  additionalItemsByCategory, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
+  newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
 
@@ -638,81 +670,24 @@ function BOQWorkspace({
             </>
           )}
 
-          {/* Additional / NT Items — manually entered, independent of the BOQ
-              file, selectable into the same PR as the BOQ items above. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 17, color: "#374151" }}>
-              Additional Items (NT) <span style={{ color: "#94a3b8" }}>· {additionalItems.length}</span>
-            </div>
-            {additionalItems.length > 0 && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => toggleAllAdditional(true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-                <button onClick={() => toggleAllAdditional(false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
-              </div>
-            )}
-          </div>
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
-                  <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {additionalItems.length === 0 ? (
-                  <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No additional items added yet.</td></tr>
-                ) : additionalItems.map((it, i) => (
-                  <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                      {it.used ? (
-                        <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
-                      ) : (
-                        <input type="checkbox" checked={!!additionalChecked[it.id]} onChange={() => toggleAdditionalChecked(it.id)} />
-                      )}
-                    </td>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
-                    <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                      {!it.used && (
-                        <button onClick={() => removeAdditionalItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Add a new additional/NT item */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 24, flexWrap: "wrap" }}>
-            <input value={newAdditionalItem.description}
-              onChange={e => setNewAdditionalItem(f => ({ ...f, description: e.target.value }))}
-              placeholder="Description"
-              style={{ flex: 2, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-            <input value={newAdditionalItem.qty}
-              onChange={e => setNewAdditionalItem(f => ({ ...f, qty: e.target.value }))}
-              placeholder="Qty" type="number"
-              style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-            <input value={newAdditionalItem.unit}
-              onChange={e => setNewAdditionalItem(f => ({ ...f, unit: e.target.value }))}
-              placeholder="Unit"
-              style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-            <button onClick={addAdditionalItem} disabled={!newAdditionalItem.description.trim()}
-              style={{
-                border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-                color: "#fff", background: newAdditionalItem.description.trim() ? "#0d9488" : "#cbd5e1",
-                cursor: newAdditionalItem.description.trim() ? "pointer" : "not-allowed",
-              }}>
-              + Add Item
-            </button>
-          </div>
+          {/* Additional item categories — manually entered, independent of
+              the BOQ file, selectable into the same PR as the BOQ items
+              above. Each category is its own table. */}
+          {ADDITIONAL_CATEGORIES.map(cat => (
+            <AdditionalCategoryTable
+              key={cat.key}
+              category={cat.key}
+              label={cat.label}
+              items={additionalItemsByCategory[cat.key] || []}
+              checked={additionalChecked}
+              toggleChecked={toggleAdditionalChecked}
+              toggleAll={toggleAllAdditional}
+              newItem={newItemForms[cat.key]}
+              setNewItem={updater => setNewItemForms(f => ({ ...f, [cat.key]: updater(f[cat.key]) }))}
+              addItem={addAdditionalItem}
+              removeItem={removeAdditionalItem}
+            />
+          ))}
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button onClick={onCreatePR} disabled={selectedCount === 0}
@@ -726,6 +701,91 @@ function BOQWorkspace({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// One category's table of manually-entered items (S.No/Description/Qty/Unit)
+// — shared by NT, NMR, Transport, and Establishment below the BOQ table.
+function AdditionalCategoryTable({
+  category, label, items, checked, toggleChecked, toggleAll,
+  newItem, setNewItem, addItem, removeItem,
+}) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 17, color: "#374151" }}>
+          {label} <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        </div>
+        {items.length > 0 && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => toggleAll(category, true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll(category, false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+          </div>
+        )}
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "#f8fafc" }}>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+            ) : items.map((it, i) => (
+              <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                  {it.used ? (
+                    <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
+                  ) : (
+                    <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
+                  )}
+                </td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                  {!it.used && (
+                    <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add a new item to this category */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input value={newItem.description}
+          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
+          placeholder="Description"
+          style={{ flex: 2, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <input value={newItem.qty}
+          onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
+          placeholder="Qty" type="number"
+          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <input value={newItem.unit}
+          onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
+          placeholder="Unit"
+          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <button onClick={() => addItem(category)} disabled={!newItem.description.trim()}
+          style={{
+            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+            color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
+            cursor: newItem.description.trim() ? "pointer" : "not-allowed",
+          }}>
+          + Add Item
+        </button>
+      </div>
     </div>
   );
 }
