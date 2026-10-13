@@ -255,16 +255,6 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // row become a single item instead of two separately-checkable rows.
   const groups = useMemo(() => groupRows(rows, headerRowIdx), [rows, headerRowIdx]);
 
-  // Title/client lines sitting above the header row (e.g. "CLIENT : ...",
-  // "CIVIL AND INTERIOR") — shown as a caption above the table instead of
-  // as selectable items. The "CLIENT :" line is dropped — it just repeats
-  // the project name already shown above.
-  const preambleLines = useMemo(() => {
-    if (headerRowIdx <= 0) return [];
-    return rows.slice(0, headerRowIdx).map(rowDescription).filter(Boolean)
-      .filter(line => !/^client\s*:/i.test(line.trim()));
-  }, [rows, headerRowIdx]);
-
   // Which BOQ line items (by qualified label) were already turned into a PR
   // for this project — persisted on the project itself so it survives a
   // reload or a different session, not just kept in local component state.
@@ -407,7 +397,6 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             onReplace={() => setShowUploadOverride(true)}
             activeSheet={activeSheet}
             groups={groups}
-            preambleLines={preambleLines}
             checked={checked}
             usedLabelsForSheet={usedLabelsForSheet}
             toggleRow={toggleRow}
@@ -461,7 +450,7 @@ function ProjectPicker({ projects, loading, search, setSearch, onPick }) {
 function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
-  groups, preambleLines, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
+  groups, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
 
@@ -470,9 +459,30 @@ function BOQWorkspace({
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
         <ChevronLeft size={15} /> Change project
       </button>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{project.name}</div>
-      <div style={{ fontSize: 13.5, color: "#374151", marginBottom: 18 }}>
-        {[project.location, project.clientName].filter(Boolean).join(" · ") || "—"}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{project.name}</span>
+        <span style={{ fontSize: 13.5, color: "#374151" }}>
+          {[project.location, project.clientName].filter(Boolean).join(" · ") || "—"}
+        </span>
+        {!loadingStoredBoq && !showUpload && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
+              <FileSpreadsheet size={15} color="#0d9488" /> {fileName}
+            </div>
+            {activeSheet && (
+              <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+                Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
+              </span>
+            )}
+            {saveStatus === "saving" && <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Saving to project…</span>}
+            {saveStatus === "saved" && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
+            {saveStatus === "error" && <span style={{ fontSize: 12.5, color: "#ef4444" }}>Couldn't save — you'll need to re-upload next visit</span>}
+            <button onClick={onReplace} style={{ fontSize: 13, color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0, marginLeft: "auto" }}>
+              Replace BOQ
+            </button>
+          </>
+        )}
       </div>
 
       {loadingStoredBoq ? (
@@ -493,34 +503,7 @@ function BOQWorkspace({
         </>
       ) : (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
-              <FileSpreadsheet size={15} color="#0d9488" /> {fileName}
-            </div>
-            {activeSheet && (
-              <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
-                Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
-              </span>
-            )}
-            {saveStatus === "saving" && <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Saving to project…</span>}
-            {saveStatus === "saved" && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
-            {saveStatus === "error" && <span style={{ fontSize: 12.5, color: "#ef4444" }}>Couldn't save — you'll need to re-upload next visit</span>}
-            <button onClick={onReplace} style={{ fontSize: 13, color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0, marginLeft: "auto" }}>
-              Replace BOQ
-            </button>
-          </div>
-
           {parseError && <div style={{ color: "#ef4444", fontSize: 13.5, marginBottom: 10 }}>{parseError}</div>}
-
-          {preambleLines.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              {preambleLines.map((line, i) => (
-                <div key={i} style={{ fontSize: i === 0 ? 19 : 17.5, fontWeight: i === 0 ? 700 : 600, color: i === 0 ? "#0f172a" : "#374151" }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          )}
 
           {groups.length === 0 ? (
             <div style={{ color: "#374151", fontSize: 14 }}>This sheet has no line items.</div>
