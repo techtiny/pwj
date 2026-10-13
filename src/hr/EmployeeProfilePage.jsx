@@ -70,6 +70,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
   const [linkModal, setLinkModal] = useState(false);
+  const [photoZoom, setPhotoZoom] = useState(false);
   const [appUsers, setAppUsers] = useState([]);
   const [form, setForm] = useState({ rating: 0, notes: "" });
 
@@ -170,7 +171,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       <div style={{ ...card, padding: "22px 24px", marginBottom: 20, display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ position: "relative" }}>
           {emp.photoUrl ? (
-            <img src={attachmentFullUrl(emp.photoUrl)} alt={emp.fullName} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", border: "2px solid #e2e8f0" }} />
+            <img src={attachmentFullUrl(emp.photoUrl)} alt={emp.fullName} onClick={() => setPhotoZoom(true)}
+              title="Click to view full size"
+              style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", border: "2px solid #e2e8f0", cursor: "zoom-in" }} />
           ) : (
             <div style={{ width: 88, height: 88, borderRadius: "50%", background: "#e0e7ff", color: "#4338ca", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32 }}>
               {emp.fullName.charAt(0).toUpperCase()}
@@ -302,6 +305,16 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             </div>
             <button onClick={() => setLinkModal(false)} style={{ ...btn("#f1f5f9", "#374151"), width: "100%", marginTop: 12 }}>Cancel</button>
           </div>
+        </div>
+      )}
+
+      {photoZoom && emp.photoUrl && (
+        <div onClick={() => setPhotoZoom(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, cursor: "zoom-out", padding: 24 }}>
+          <img src={attachmentFullUrl(emp.photoUrl)} alt={emp.fullName}
+            style={{ maxWidth: "min(90vw, 480px)", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 24px 64px rgba(0,0,0,.5)", objectFit: "contain" }} />
+          <button onClick={() => setPhotoZoom(false)}
+            style={{ position: "absolute", top: 20, right: 24, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: 36, height: 36, fontSize: 18, cursor: "pointer" }}>✕</button>
         </div>
       )}
     </div>
