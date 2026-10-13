@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock } from "lucide-react";
 import {
   getEligibleForAccountsProjects, getRecentEntries,
-  uploadDocument, saveProjectBoq, saveUsedLabels, saveAdditionalItems, fetchStoredFile,
+  uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
 } from "./operationsApi";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -284,22 +284,13 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // row become a single item instead of two separately-checkable rows.
   const groups = useMemo(() => groupRows(rows, headerRowIdx), [rows, headerRowIdx]);
 
-  // Which BOQ line items (by qualified label) were already turned into a PR
-  // for this project — persisted on the project itself so it survives a
-  // reload or a different session, not just kept in local component state.
-  const usedLabelsMap = useMemo(() => {
-    try { return JSON.parse(selectedProject?.boqUsedLabels || "{}"); } catch { return {}; }
-  }, [selectedProject?.boqUsedLabels]);
-  const usedLabelsForSheet = useMemo(
-    () => new Set(usedLabelsMap[activeSheet] || []),
-    [usedLabelsMap, activeSheet]
-  );
-  const isUsed = (idx) => usedLabelsForSheet.has(groups[idx]?.label);
+  // BOQ line items can be reused across any number of PRs — a line item
+  // being already part of one PR doesn't lock it from being selected into
+  // another one, so there's no "used" tracking here anymore.
 
   // Checking a top-level section (label "2") also checks/unchecks its own
   // sub-items ("2a", "2b", ...) so you don't have to tick each one by hand.
   const toggleRow = (idx) => {
-    if (isUsed(idx)) return;
     setChecked(c => {
       const nextVal = !c[idx];
       const next = { ...c, [idx]: nextVal };
@@ -307,7 +298,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       if (label && /^\d+$/.test(label)) {
         const childRe = new RegExp(`^${label}[a-z]$`);
         groups.forEach((g, i) => {
-          if (i !== idx && childRe.test(g.label) && !isUsed(i)) next[i] = nextVal;
+          if (i !== idx && childRe.test(g.label)) next[i] = nextVal;
         });
       }
       return next;
@@ -315,13 +306,13 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
   const toggleAll = (checkAll) => {
     const next = {};
-    groups.forEach((_, i) => { if (!isUsed(i)) next[i] = checkAll; });
+    groups.forEach((_, i) => { next[i] = checkAll; });
     setChecked(next);
   };
 
   const selectedIndexes = useMemo(
-    () => Object.keys(checked).filter(k => checked[k] && !isUsed(Number(k))).map(Number).sort((a, b) => a - b),
-    [checked, usedLabelsForSheet, groups]
+    () => Object.keys(checked).filter(k => checked[k]).map(Number).sort((a, b) => a - b),
+    [checked]
   );
 
   // Manually-entered items not present in the uploaded BOQ, across all
@@ -342,7 +333,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   }, [additionalItems]);
 
   const selectedAdditional = useMemo(
-    () => additionalItems.filter(it => additionalChecked[it.id] && !it.used),
+    () => additionalItems.filter(it => additionalChecked[it.id]),
     [additionalItems, additionalChecked]
   );
 
@@ -366,7 +357,6 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       description,
       qty: form.qty.trim(),
       unit: form.unit.trim(),
-      used: false,
     };
     persistAdditionalItems([...additionalItems, item]);
     setNewItemForms(f => ({ ...f, [category]: { description: "", qty: "", unit: "" } }));
@@ -380,7 +370,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // NMR ("Nominal Muster Roll") — daily labour entries, a different shape
   // from the other additional categories (labour count/type/date/rate
   // instead of qty/unit), but stored in the same flat array (category:
-  // "NMR") so it shares the same selection/PR-creation/used-tracking.
+  // "NMR") so it shares the same selection/PR-creation flow.
   const addNmrItem = () => {
     const description = newNmrItem.description.trim();
     if (!description) return;
@@ -395,7 +385,6 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       date: newNmrItem.date,
       unitRate: newNmrItem.unitRate.trim(),
       amount: String(Math.round(noOfLabours * unitRate * 100) / 100),
-      used: false,
     };
     persistAdditionalItems([...additionalItems, item]);
     setNewNmrItem({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
@@ -408,7 +397,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const toggleAllAdditional = (category, checkAll) => {
     setAdditionalChecked(c => {
       const next = { ...c };
-      (additionalItemsByCategory[category] || []).forEach(it => { if (!it.used) next[it.id] = checkAll; });
+      (additionalItemsByCategory[category] || []).forEach(it => { next[it.id] = checkAll; });
       return next;
     });
   };
@@ -479,24 +468,9 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     const prefill = buildPrefill();
     onCreateFromBOQ(prefill);
 
-    // Persist these labels as "used" so they can't be selected again, even
-    // after a reload or on another device.
-    if (selectedIndexes.length) {
-      const newLabels = selectedIndexes.map(i => groups[i]?.label).filter(Boolean);
-      const updatedSheetLabels = [...new Set([...usedLabelsForSheet, ...newLabels])];
-      const updatedMap = { ...usedLabelsMap, [activeSheet]: updatedSheetLabels };
-      setSelectedProject(p => ({ ...p, boqUsedLabels: JSON.stringify(updatedMap) }));
-      setProjects(ps => ps.map(p => p.id === selectedProject.id ? { ...p, boqUsedLabels: JSON.stringify(updatedMap) } : p));
-      saveUsedLabels(selectedProject.id, updatedMap).catch(() => {
-        // Best-effort — the in-memory state above still blocks re-selection
-        // for the rest of this session even if the save itself failed.
-      });
-    }
-    if (selectedAdditional.length) {
-      const usedIds = new Set(selectedAdditional.map(it => it.id));
-      persistAdditionalItems(additionalItems.map(it => usedIds.has(it.id) ? { ...it, used: true } : it));
-    }
-
+    // BOQ entries and additional-category items can be reused across any
+    // number of PRs, so nothing is marked "used" here — just clear the
+    // current selection so the next PR starts from a blank slate.
     setChecked({});
     setAdditionalChecked({});
   };
@@ -549,7 +523,6 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             activeSheet={activeSheet}
             groups={groups}
             checked={checked}
-            usedLabelsForSheet={usedLabelsForSheet}
             toggleRow={toggleRow}
             toggleAll={toggleAll}
             selectedCount={selectedIndexes.length + selectedAdditional.length}
@@ -620,7 +593,7 @@ function ProjectPicker({ projects, loading, search, setSearch, onPick }) {
 function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
-  groups, checked, usedLabelsForSheet, toggleRow, toggleAll, selectedCount, onCreatePR,
+  groups, checked, toggleRow, toggleAll, selectedCount, onCreatePR,
   additionalItemsByCategory, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
   newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem,
   newNmrItem, setNewNmrItem, addNmrItem,
@@ -703,24 +676,17 @@ function BOQWorkspace({
                     </tr>
                   </thead>
                   <tbody>
-                    {groups.map((g, i) => {
-                      const added = usedLabelsForSheet.has(g.label);
-                      return (
-                        <tr key={i} style={{ background: added ? "#f0fdf4" : "#fff", opacity: added ? 0.55 : 1 }}>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                            {added ? (
-                              <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
-                            ) : (
-                              <input type="checkbox" checked={!!checked[i]} onChange={() => toggleRow(i)} />
-                            )}
-                          </td>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{g.description}</td>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
-                          <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? g.qty : "—"}</td>
-                        </tr>
-                      );
-                    })}
+                    {groups.map((g, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                          <input type="checkbox" checked={!!checked[i]} onChange={() => toggleRow(i)} />
+                        </td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{g.description}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? g.qty : "—"}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -822,22 +788,16 @@ function AdditionalCategoryTable({
             {items.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
-              <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
+              <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  {it.used ? (
-                    <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
-                  ) : (
-                    <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
-                  )}
+                  <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  {!it.used && (
-                    <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
-                  )}
+                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                 </td>
               </tr>
             ))}
@@ -909,13 +869,9 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
             {items.length === 0 ? (
               <tr><td colSpan={9} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No NMR entries added yet.</td></tr>
             ) : items.map((it, i) => (
-              <tr key={it.id} style={{ background: it.used ? "#f0fdf4" : "#fff", opacity: it.used ? 0.55 : 1 }}>
+              <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  {it.used ? (
-                    <span style={{ fontSize: 11, color: "#15803d", fontWeight: 700 }}>✓ Added</span>
-                  ) : (
-                    <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
-                  )}
+                  <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 300, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
@@ -925,9 +881,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.unitRate ? `₹${it.unitRate}` : "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  {!it.used && (
-                    <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
-                  )}
+                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                 </td>
               </tr>
             ))}
