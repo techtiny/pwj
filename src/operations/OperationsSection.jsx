@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search } from "lucide-react";
+import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock } from "lucide-react";
 import {
   getEligibleForAccountsProjects, getRecentEntries,
   uploadDocument, saveProjectBoq, saveUsedLabels, saveAdditionalItems, fetchStoredFile,
@@ -507,6 +507,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
         {[
           { key: "boq", label: "BOQ Import", icon: ClipboardList },
+          { key: "planning", label: "Project Planning", icon: CalendarClock },
           { key: "dashboard", label: "Dashboard", icon: TrendingUp },
         ].map(t => {
           const Icon = t.icon;
@@ -566,6 +567,14 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             addNmrItem={addNmrItem}
           />
         )
+      )}
+
+      {tab === "planning" && (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "48px 24px", textAlign: "center", color: "#94a3b8" }}>
+          <CalendarClock size={32} color="#cbd5e1" style={{ marginBottom: 10 }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Project Planning</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Coming soon.</div>
+        </div>
       )}
 
       {tab === "dashboard" && <TrendingDashboard />}
