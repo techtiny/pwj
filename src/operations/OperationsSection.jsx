@@ -340,6 +340,16 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     return byCat;
   }, [additionalItems]);
 
+  // Units already seen in this project — the current BOQ sheet's line items
+  // plus every additional-category item entered so far — so the Unit field
+  // can be picked from what's already in use instead of retyped each time.
+  const knownUnits = useMemo(() => {
+    const units = new Set();
+    groups.forEach(g => { if (g.unit) units.add(String(g.unit).trim()); });
+    additionalItems.forEach(it => { if (it.unit) units.add(String(it.unit).trim()); });
+    return [...units].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [groups, additionalItems]);
+
   const selectedAdditional = useMemo(
     () => additionalItems.filter(it => additionalChecked[it.id]),
     [additionalItems, additionalChecked]
@@ -578,6 +588,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             selectedCount={selectedIndexes.length + selectedAdditional.length}
             onCreatePR={handleCreatePR}
             additionalItemsByCategory={additionalItemsByCategory}
+            knownUnits={knownUnits}
             additionalChecked={additionalChecked}
             toggleAdditionalChecked={toggleAdditionalChecked}
             toggleAllAdditional={toggleAllAdditional}
@@ -650,7 +661,7 @@ function BOQWorkspace({
   project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
   groups, checked, toggleRow, toggleAll, selectedCount, onCreatePR,
-  additionalItemsByCategory, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
+  additionalItemsByCategory, knownUnits, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
   newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem,
   newNmrItem, setNewNmrItem, addNmrItem,
   newTransportItem, setNewTransportItem, addTransportItem,
@@ -729,7 +740,7 @@ function BOQWorkspace({
                     <tr style={{ background: "#f8fafc" }}>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>No.</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
                     </tr>
@@ -741,7 +752,7 @@ function BOQWorkspace({
                           <input type="checkbox" checked={!!checked[i]} onChange={() => toggleRow(i)} />
                         </td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
-                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{g.description}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{g.description}</td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? g.qty : "—"}</td>
                       </tr>
@@ -785,6 +796,7 @@ function BOQWorkspace({
                 {activeAdditionalTab === "AdditionalItems" && (
                   <AdditionalItemsTable
                     groups={groups}
+                    knownUnits={knownUnits}
                     items={additionalItemsByCategory.AdditionalItems || []}
                     checked={additionalChecked}
                     toggleChecked={toggleAdditionalChecked}
@@ -800,6 +812,7 @@ function BOQWorkspace({
                   <AdditionalCategoryTable
                     category="NT"
                     label="NT Category"
+                    knownUnits={knownUnits}
                     items={additionalItemsByCategory.NT || []}
                     checked={additionalChecked}
                     toggleChecked={toggleAdditionalChecked}
@@ -841,6 +854,7 @@ function BOQWorkspace({
                   <AdditionalCategoryTable
                     category="Establishment"
                     label="Establishment Category"
+                    knownUnits={knownUnits}
                     items={additionalItemsByCategory.Establishment || []}
                     checked={additionalChecked}
                     toggleChecked={toggleAdditionalChecked}
@@ -874,7 +888,7 @@ function BOQWorkspace({
 // One category's table of manually-entered items (S.No/Description/Qty/Unit)
 // — shared by NT, NMR, Transport, and Establishment below the BOQ table.
 function AdditionalCategoryTable({
-  category, label, items, checked, toggleChecked, toggleAll,
+  category, label, knownUnits, items, checked, toggleChecked, toggleAll,
   newItem, setNewItem, addItem, removeItem,
 }) {
   return (
@@ -896,7 +910,7 @@ function AdditionalCategoryTable({
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
@@ -911,7 +925,7 @@ function AdditionalCategoryTable({
                   <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -933,10 +947,12 @@ function AdditionalCategoryTable({
           onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
           placeholder="Qty" type="number"
           style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.unit}
+        <select value={newItem.unit}
           onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
-          placeholder="Unit"
-          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          <option value="">Unit</option>
+          {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
         <button onClick={() => addItem(category)} disabled={!newItem.description.trim()}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
@@ -953,7 +969,7 @@ function AdditionalCategoryTable({
 // "Additional Items" — unlike every other category above/below, each row
 // here must reference an existing BOQ line item (picked from `groups`), so
 // "+ Add Item" stays disabled until both a BOQ item and description are set.
-function AdditionalItemsTable({ groups, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem }) {
+function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem }) {
   const canAdd = !!newItem.linkedBoqLabel && !!newItem.description.trim();
   return (
     <div style={{ marginBottom: 24 }}>
@@ -975,7 +991,7 @@ function AdditionalItemsTable({ groups, items, checked, toggleChecked, toggleAll
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: 17 }}>BOQ Item</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
@@ -991,7 +1007,7 @@ function AdditionalItemsTable({ groups, items, checked, toggleChecked, toggleAll
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{it.linkedBoqLabel}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 380, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 220, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1021,10 +1037,12 @@ function AdditionalItemsTable({ groups, items, checked, toggleChecked, toggleAll
           onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
           placeholder="Qty" type="number"
           style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.unit}
+        <select value={newItem.unit}
           onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
-          placeholder="Unit"
-          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          <option value="">Unit</option>
+          {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
         <button onClick={addItem} disabled={!canAdd}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
@@ -1062,7 +1080,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 180, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: 17 }}>No of Labours</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: 17 }}>Type of Labours</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: 17 }}>Date</th>
@@ -1080,7 +1098,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
                   <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 300, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 180, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.noOfLabours || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.typeOfLabours || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.date || "—"}</td>
@@ -1156,7 +1174,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", fontSize: 17 }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 140, fontSize: 17 }}>Transport</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: 17 }}>Amount</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
@@ -1171,7 +1189,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
                   <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 420, whiteSpace: "pre-wrap", fontSize: 17 }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 220, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.transport || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
