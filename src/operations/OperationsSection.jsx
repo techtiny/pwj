@@ -257,10 +257,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
   // Title/client lines sitting above the header row (e.g. "CLIENT : ...",
   // "CIVIL AND INTERIOR") — shown as a caption above the table instead of
-  // as selectable items.
+  // as selectable items. The "CLIENT :" line is dropped — it just repeats
+  // the project name already shown above.
   const preambleLines = useMemo(() => {
     if (headerRowIdx <= 0) return [];
-    return rows.slice(0, headerRowIdx).map(rowDescription).filter(Boolean);
+    return rows.slice(0, headerRowIdx).map(rowDescription).filter(Boolean)
+      .filter(line => !/^client\s*:/i.test(line.trim()));
   }, [rows, headerRowIdx]);
 
   // Which BOQ line items (by qualified label) were already turned into a PR
