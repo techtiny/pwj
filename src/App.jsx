@@ -7027,7 +7027,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       )}
                       {/* Edit → Save → Send for VP Approval in order */}
                       {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
-                        isProcurement && e.pwjIssued ? (
+                        // e.pwjIssued is entry-level (set once the base PO is issued), not
+                        // per-sub-doc — only apply it as a lock for single-doc entries, so an
+                        // Additional PO's own still-Draft sub-doc isn't wrongly locked just
+                        // because the base PO it was raised under is already issued.
+                        isProcurement && !isMulti && e.pwjIssued ? (
                           <button disabled title="PWJ issued — editing locked"
                             style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
                             🔒 Locked
@@ -7094,7 +7098,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
                         </button>
                       )}
-                      {(activeDocStatus === "VP_APPROVED" || e.pwjIssued) && isVP && (
+                      {(activeDocStatus === "VP_APPROVED" || (!isMulti && e.pwjIssued)) && isVP && (
                         <button
                           title="Revoke VP approval — document returns to Draft for procurement to re-edit and resubmit"
                           onClick={async () => {
