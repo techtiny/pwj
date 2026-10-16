@@ -4034,7 +4034,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           onClick={e => e.stopPropagation()}
                           onChange={e => { setOpenKindF(e.target.value); setPage(0); }}
                           title="Filter Open rows by color, across every matching result"
-                          style={{ marginLeft: 4, width: 34, border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 2px", fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#0f172a", fontWeight: 500, cursor: "pointer" }}>
+                          style={{ marginLeft: 4, width: 46, border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 2px 2px 5px", fontSize: 15, lineHeight: 1, fontFamily: "inherit", background: "#fff", color: "#0f172a", fontWeight: 500, cursor: "pointer" }}>
                           <option value="ALL">⚪</option>
                           <option value="NORMAL">🟡</option>
                           <option value="STALE">🔴</option>
