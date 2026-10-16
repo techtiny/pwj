@@ -3975,11 +3975,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="HOLD">Hold</option>
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
-          <select style={s.sel} value={openKindF} onChange={e => { setOpenKindF(e.target.value); setPage(0); }} title="Filters the Open rows by color, across every matching result">
-            <option value="ALL">⚪ Open — Any Color</option>
-            <option value="NORMAL">🟡 Open</option>
-            <option value="STALE">🔴 Open</option>
-          </select>
           {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
             <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
               <option value="">All Users</option>
@@ -4030,9 +4025,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     ["Delivered","deliveredDate"],["Status","status"],["Dependency","dependency"],
                     ["Action","—"],
                   ].map(([lbl, field]) => (
-                    <th key={lbl} style={s.th} className={FREEZE_COL_CLASS[lbl] || undefined}
+                    <th key={lbl} style={{ ...s.th, ...(lbl === "Status" ? { display: "flex", alignItems: "center", gap: 4 } : {}) }} className={FREEZE_COL_CLASS[lbl] || undefined}
                       onClick={field !== "—" ? () => handleSort(field) : undefined}>
                       {lbl}{field !== "—" && <SortArrow field={field} />}
+                      {lbl === "Status" && (
+                        <select
+                          value={openKindF}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => { setOpenKindF(e.target.value); setPage(0); }}
+                          title="Filter Open rows by color, across every matching result"
+                          style={{ marginLeft: 4, border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 4px", fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#0f172a", fontWeight: 500, cursor: "pointer" }}>
+                          <option value="ALL">⚪ Any</option>
+                          <option value="NORMAL">🟡 Open</option>
+                          <option value="STALE">🔴 Open</option>
+                        </select>
+                      )}
                     </th>
                   ))}
                 </tr>
