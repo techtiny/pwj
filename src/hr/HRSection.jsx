@@ -37,7 +37,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
     },
     {
       key: "leave",
-      label: "Leave",
+      label: "Leave/Permission",
       tabs: [
         ...(hidePersonal ? [] : [{ key: "leaves", label: "My Leaves" }]),
         ...(isApprover ? [{ key: "approvals", label: "Approvals" }] : []),

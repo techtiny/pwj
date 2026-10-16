@@ -655,6 +655,23 @@ function LoginPage({ onLogin, logoutMessage }) {
   // Force-kick same user from another device
   const forceDeviceLogin = async () => { await doLogin(true); };
 
+  // Esc and Backspace both dismiss whichever conflict overlay is showing, back
+  // to the plain login form — same "go back" shortcut as the rest of the app.
+  // Backspace is skipped while typing in the username/password fields so it
+  // keeps deleting characters normally.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" && e.key !== "Backspace") return;
+      const el = document.activeElement;
+      const isEditable = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (e.key === "Backspace" && isEditable) return;
+      if (browserConflict) { e.preventDefault(); setBrowserConflict(null); return; }
+      if (deviceConflict)  { e.preventDefault(); setDeviceConflict(false); return; }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [browserConflict, deviceConflict]);
+
   return (
     <>
       <style>{`
@@ -1932,6 +1949,49 @@ function Dashboard({ user, onLogout: handleLogout }) {
       userMgmtModal || projectMgmtModal || addVendorPage || docEditMode
     );
   }, [createModal, editingEntry, approvalModal, assignModal, userMgmtModal, projectMgmtModal, addVendorPage, docEditMode]);
+
+  // Esc and Backspace both act as a universal "go back / close" shortcut across
+  // the whole app (desktop and mobile with an external/software keyboard) — Esc
+  // always, Backspace only when focus isn't in an editable field, so normal text
+  // deletion in inputs/textareas is never intercepted. Checked in priority order
+  // from the most specific/nested dialog to the least, closing only the first
+  // one found open — e.g. inside the doc modal, Esc exits edit mode first and
+  // only closes the whole modal on a second press, mirroring a real "back" step.
+  useEffect(() => {
+    const isEditable = (el) => {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    };
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" && e.key !== "Backspace") return;
+      if (e.key === "Backspace" && isEditable(document.activeElement)) return;
+      if (docModal) {
+        e.preventDefault();
+        if (docEditMode) setDocEditMode(false);
+        else { setDocModal(null); setDocViewIndex(0); }
+        return;
+      }
+      if (assignModal)      { e.preventDefault(); setAssignModal(null); return; }
+      if (approvalModal)    { e.preventDefault(); setApprovalModal(null); return; }
+      if (sendPaymentModal) { e.preventDefault(); setSendPaymentModal(null); setSendPaymentDocNumber(""); return; }
+      if (pwdModal)         { e.preventDefault(); setPwdModal(null); setNewPwd(""); return; }
+      if (genDocModal)      { e.preventDefault(); setGenDocModal(false); return; }
+      if (pendingDocsModal) { e.preventDefault(); setPendingDocsModal(false); return; }
+      if (pendingModal)     { e.preventDefault(); setPendingModal(false); return; }
+      if (vpPendingModal)   { e.preventDefault(); setVpPendingModal(false); return; }
+      if (userMgmtModal)    { e.preventDefault(); setUserMgmtModal(false); return; }
+      if (projectMgmtModal) { e.preventDefault(); setProjectMgmtModal(false); return; }
+      if (addVendorPage)    { e.preventDefault(); setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); return; }
+      if (vendorModal)      { e.preventDefault(); setVendorModal(false); return; }
+      if (createModal || editingEntry) { e.preventDefault(); setCreateModal(false); setEditingEntry(null); return; }
+      if (detailRow)        { e.preventDefault(); setDetailRow(null); return; }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [docModal, docEditMode, assignModal, approvalModal, sendPaymentModal, pwdModal, genDocModal,
+      pendingDocsModal, pendingModal, vpPendingModal, userMgmtModal, projectMgmtModal,
+      addVendorPage, vendorModal, createModal, editingEntry, detailRow]);
 
   // SSE — server pushes an event whenever any entry changes; client silently re-fetches
   useEffect(() => {
