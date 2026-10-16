@@ -1535,21 +1535,6 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Filters
   const [search, setSearch]           = useState("");
   const [statusF, setStatusF]         = useState("ALL");
-  // "Open" rows can look yellow (normal) or red (issued but stale/undelivered —
-  // see isIssuedStale below). This splits that visual distinction into a filter.
-  // Purely client-side (the backend has no column for it) — only filters within
-  // the current page's results, same as every other client-side-only control.
-  const [openKindF, setOpenKindF]     = useState("ALL"); // ALL | NORMAL | STALE
-  const visibleEntries = useMemo(() => {
-    if (openKindF === "ALL") return entries;
-    // isIssuedStale only ever distinguishes VP_APPROVED-but-undelivered docs —
-    // it's false for CLOSED rows too, not just normal-yellow OPEN ones — so the
-    // Yellow/Red(Stale) options must also check status === "OPEN" themselves,
-    // or a Yellow filter silently lets CLOSED rows through.
-    return entries.filter(row =>
-      row.status === "OPEN" && (openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row))
-    );
-  }, [entries, openKindF]);
   const [approvalF, setApprovalF]     = useState("ALL");
   const [dependencyF, setDependencyF] = useState("");
   const [projectF, setProjectF]       = useState("");
@@ -1561,6 +1546,36 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [sortBy, setSortBy]           = useState("createdAt");
   const [sortDir, setSortDir]         = useState("desc");
   const PAGE_SIZE = 15;
+  // Upper bound for "load everything matching the other filters" when the
+  // Yellow/Red(Stale) color filter is active (see colorFilterActive below) —
+  // comfortably above any realistic result-set size for this app.
+  const COLOR_FETCH_SIZE = 5000;
+  // "Open" rows can look yellow (normal) or red (issued but stale/undelivered —
+  // see isIssuedStale below). This splits that visual distinction into a filter.
+  // The backend has no column for it, so it's computed client-side — but unlike
+  // a true per-page filter, fetchEntries loads every entry matching the other
+  // filters in one shot (COLOR_FETCH_SIZE below) whenever this is active, so the
+  // Yellow/Red split applies across the whole result set, not just whatever 15
+  // rows happened to land on the currently-viewed server page.
+  const [openKindF, setOpenKindF]     = useState("ALL"); // ALL | NORMAL | STALE
+  const colorFilterActive = openKindF !== "ALL";
+  const colorFilteredAll = useMemo(() => {
+    if (!colorFilterActive) return null;
+    // isIssuedStale only ever distinguishes VP_APPROVED-but-undelivered docs —
+    // it's false for CLOSED rows too, not just normal-yellow OPEN ones — so the
+    // Yellow/Red(Stale) options must also check status === "OPEN" themselves,
+    // or a Yellow filter silently lets CLOSED rows through.
+    return entries.filter(row =>
+      row.status === "OPEN" && (openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row))
+    );
+  }, [entries, openKindF, colorFilterActive]);
+  const visibleEntries = colorFilteredAll
+    ? colorFilteredAll.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+    : entries;
+  // Pagination UI reflects the filtered count/page total while the color filter
+  // is active, instead of the server's unfiltered-by-color totals.
+  const colorTotalElements = colorFilteredAll ? colorFilteredAll.length : totalElements;
+  const colorTotalPages    = colorFilteredAll ? Math.max(1, Math.ceil(colorFilteredAll.length / PAGE_SIZE)) : totalPages;
 
   // ── Module routing via URL hash — lets each browser tab hold its own
   //    module (e.g. …/#hr) while every tab shares the one login session ──
@@ -1819,7 +1834,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const params = { page, size: PAGE_SIZE, sortBy, sortDir };
+      // While the Yellow/Red(Stale) color filter is active, load every entry
+      // matching the other filters in one page instead of just PAGE_SIZE, so
+      // that client-side filter can be applied (and then re-paginated) across
+      // the whole result set — see colorFilteredAll above.
+      const params = colorFilterActive
+        ? { page: 0, size: COLOR_FETCH_SIZE, sortBy, sortDir }
+        : { page, size: PAGE_SIZE, sortBy, sortDir };
       if (search)              params.search      = search;
       if (statusF !== "ALL")   params.status      = statusF;
       if (approvalF !== "ALL") params.approval    = approvalF;
@@ -1846,7 +1867,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       } else { setError(res.message); }
     } catch { if (fetchSeqRef.current === seq) setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
     finally { if (fetchSeqRef.current === seq) setLoading(false); }
-  }, [page, search, statusF, approvalF, projectF, raisedByF, dependencyF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user]);
+  }, [page, search, statusF, approvalF, projectF, raisedByF, dependencyF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user, colorFilterActive]);
 
   const fetchProjects = useCallback(async () => {
     try { const r = await api.getProjects(); if (r.success) setProjects(r.data); } catch {}
@@ -3455,9 +3476,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   const pageNumbers = useMemo(() => {
     const nums = [];
-    for (let i = 0; i < totalPages; i++) nums.push(i);
-    return nums.filter(p => p === 0 || p === totalPages - 1 || Math.abs(p - page) <= 1);
-  }, [totalPages, page]);
+    for (let i = 0; i < colorTotalPages; i++) nums.push(i);
+    return nums.filter(p => p === 0 || p === colorTotalPages - 1 || Math.abs(p - page) <= 1);
+  }, [colorTotalPages, page]);
 
   return (
     <>
@@ -3954,7 +3975,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="HOLD">Hold</option>
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
-          <select style={s.sel} value={openKindF} onChange={e => setOpenKindF(e.target.value)} title="Filters within the current page of results">
+          <select style={s.sel} value={openKindF} onChange={e => { setOpenKindF(e.target.value); setPage(0); }} title="Filters the Open rows by color, across every matching result">
             <option value="ALL">⚪ Open — Any Color</option>
             <option value="NORMAL">🟡 Open</option>
             <option value="STALE">🔴 Open</option>
@@ -3978,7 +3999,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             ✕ Clear Filters
           </button>
-          <div style={s.resultCount}>{totalElements} results</div>
+          <div style={s.resultCount}>{colorTotalElements} results</div>
         </div>
 
         {/* ─── TABLE ─── */}
@@ -4313,8 +4334,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {/* ─── PAGINATION ─── */}
         <div style={s.paginationRow} className="app-pagination">
           <div style={s.pageInfo}>
-            {totalElements > 0
-              ? `Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalElements)} of ${totalElements}`
+            {colorTotalElements > 0
+              ? `Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, colorTotalElements)} of ${colorTotalElements}`
               : "No results"}
           </div>
           <div style={s.pageBtns}>
@@ -4325,7 +4346,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button key={p} style={s.pageBtn(p === page)} onClick={() => setPage(p)}>{p + 1}</button>
               </>
             ))}
-            <button style={s.pageBtn(false)} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>›</button>
+            <button style={s.pageBtn(false)} onClick={() => setPage(p => Math.min(colorTotalPages - 1, p + 1))} disabled={page >= colorTotalPages - 1}>›</button>
           </div>
         </div>
         </>}
