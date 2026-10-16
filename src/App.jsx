@@ -3949,9 +3949,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
           <select style={s.sel} value={openKindF} onChange={e => setOpenKindF(e.target.value)} title="Filters within the current page of results">
-            <option value="ALL">Any Color</option>
-            <option value="NORMAL">Yellow</option>
-            <option value="STALE">Red (Stale)</option>
+            <option value="ALL">⚪ Open — Any Color</option>
+            <option value="NORMAL">🟡 Open — Yellow</option>
+            <option value="STALE">🔴 Open — Red (Stale)</option>
           </select>
           {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
             <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
