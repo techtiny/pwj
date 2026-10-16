@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock } from "lucide-react";
+import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban } from "lucide-react";
 import {
   getEligibleForAccountsProjects, getRecentEntries,
   uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
+  saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
+import ProjectPlanning from "./ProjectPlanning";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -162,7 +164,7 @@ function groupRows(rows, headerRowIdx) {
 }
 
 export default function OperationsSection({ user, onCreateFromBOQ }) {
-  const [tab, setTab] = useState("boq"); // "boq" | "dashboard"
+  const [tab, setTab] = useState("boq"); // "boq" | "planning" | "dashboard"
 
   // ── Project picker ──
   const [projects, setProjects] = useState([]);
@@ -176,6 +178,29 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       .catch(() => setProjects([]))
       .finally(() => setProjectsLoading(false));
   }, []);
+
+  // Assign / change a project's Operations category straight from the list.
+  // Optimistic: the row moves immediately and moves back if the save fails.
+  const [typeError, setTypeError] = useState("");
+  const assignProjectType = async (project, projectType) => {
+    const previous = project.projectType || null;
+    const next = projectType || null;
+    setTypeError("");
+    setProjects(ps => ps.map(p => p.id === project.id ? { ...p, projectType: next } : p));
+    try {
+      await saveProjectType(project.id, next);
+    } catch {
+      setProjects(ps => ps.map(p => p.id === project.id ? { ...p, projectType: previous } : p));
+      setTypeError(`Couldn't update the type for "${project.name}". Please try again.`);
+    }
+  };
+
+  const [planningDirty, setPlanningDirty] = useState(false);
+  const openProject = (project) => { setTab("boq"); setPlanningDirty(false); setSelectedProject(project); };
+  const closeProject = () => {
+    if (planningDirty && !window.confirm("The project schedule has unsaved changes. Leave without saving?")) return;
+    setPlanningDirty(false); setSelectedProject(null); resetBOQ(); setTab("boq");
+  };
 
   const filteredProjects = useMemo(() => {
     const q = projectSearch.trim().toLowerCase();
@@ -535,10 +560,43 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setAdditionalChecked({});
   };
 
+  const shellStyle = { minHeight: "calc(100vh - 108px)", background: "#f1f5f9", padding: "24px 32px" };
+
+  // ── Landing view: every project, grouped into one column per type ──
+  if (!selectedProject) {
+    return (
+      <div style={shellStyle}>
+        <ProjectsByType
+          projects={filteredProjects}
+          totalCount={projects.length}
+          loading={projectsLoading}
+          search={projectSearch}
+          setSearch={setProjectSearch}
+          onOpen={openProject}
+          onAssignType={assignProjectType}
+          error={typeError}
+        />
+      </div>
+    );
+  }
+
+  // ── Project view: BOQ Import / Project Planning / Dashboard ──
   return (
-    <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", padding: "24px 32px" }}>
+    <div style={shellStyle}>
+      <button onClick={closeProject} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
+        <ChevronLeft size={15} /> All projects
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{selectedProject.name}</span>
+        <TypeBadge type={selectedProject.projectType} />
+        <span style={{ fontSize: 13.5, color: "#374151" }}>
+          {[selectedProject.location, selectedProject.clientName].filter(Boolean).join(" · ") || "—"}
+        </span>
+      </div>
+
       {/* Sub-tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
         {[
           { key: "boq", label: "BOQ Import", icon: ClipboardList },
           { key: "planning", label: "Project Planning", icon: CalendarClock },
@@ -550,7 +608,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             <button key={t.key} onClick={() => setTab(t.key)}
               style={{
                 display: "flex", alignItems: "center", gap: 6, border: "none", background: "none", cursor: "pointer",
-                fontFamily: "inherit", padding: "10px 18px", fontSize: 14.5, fontWeight: active ? 700 : 600,
+                fontFamily: "inherit", padding: "10px 18px", fontSize: 14.5, fontWeight: active ? 700 : 600, whiteSpace: "nowrap",
                 color: active ? "#0d9488" : "#374151",
                 borderBottom: active ? "2.5px solid #0d9488" : "2.5px solid transparent", marginBottom: -1,
               }}>
@@ -561,104 +619,207 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       </div>
 
       {tab === "boq" && (
-        !selectedProject ? (
-          <ProjectPicker
-            projects={filteredProjects}
-            loading={projectsLoading}
-            search={projectSearch}
-            setSearch={setProjectSearch}
-            onPick={setSelectedProject}
-          />
-        ) : (
-          <BOQWorkspace
-            project={selectedProject}
-            onBack={() => { setSelectedProject(null); resetBOQ(); }}
-            fileName={fileName}
-            parseError={parseError}
-            onFile={handleFile}
-            loadingStoredBoq={loadingStoredBoq}
-            saveStatus={saveStatus}
-            showUploadOverride={showUploadOverride}
-            onReplace={() => setShowUploadOverride(true)}
-            activeSheet={activeSheet}
-            groups={groups}
-            checked={checked}
-            toggleRow={toggleRow}
-            toggleAll={toggleAll}
-            selectedCount={selectedIndexes.length + selectedAdditional.length}
-            onCreatePR={handleCreatePR}
-            additionalItemsByCategory={additionalItemsByCategory}
-            knownUnits={knownUnits}
-            additionalChecked={additionalChecked}
-            toggleAdditionalChecked={toggleAdditionalChecked}
-            toggleAllAdditional={toggleAllAdditional}
-            newItemForms={newItemForms}
-            setNewItemForms={setNewItemForms}
-            addAdditionalItem={addAdditionalItem}
-            removeAdditionalItem={removeAdditionalItem}
-            newNmrItem={newNmrItem}
-            setNewNmrItem={setNewNmrItem}
-            addNmrItem={addNmrItem}
-            newTransportItem={newTransportItem}
-            setNewTransportItem={setNewTransportItem}
-            addTransportItem={addTransportItem}
-            newAdditionalItem={newAdditionalItem}
-            setNewAdditionalItem={setNewAdditionalItem}
-            addLinkedAdditionalItem={addLinkedAdditionalItem}
-          />
-        )
+        <BOQWorkspace
+          fileName={fileName}
+          parseError={parseError}
+          onFile={handleFile}
+          loadingStoredBoq={loadingStoredBoq}
+          saveStatus={saveStatus}
+          showUploadOverride={showUploadOverride}
+          onReplace={() => setShowUploadOverride(true)}
+          activeSheet={activeSheet}
+          groups={groups}
+          checked={checked}
+          toggleRow={toggleRow}
+          toggleAll={toggleAll}
+          selectedCount={selectedIndexes.length + selectedAdditional.length}
+          onCreatePR={handleCreatePR}
+          additionalItemsByCategory={additionalItemsByCategory}
+          knownUnits={knownUnits}
+          additionalChecked={additionalChecked}
+          toggleAdditionalChecked={toggleAdditionalChecked}
+          toggleAllAdditional={toggleAllAdditional}
+          newItemForms={newItemForms}
+          setNewItemForms={setNewItemForms}
+          addAdditionalItem={addAdditionalItem}
+          removeAdditionalItem={removeAdditionalItem}
+          newNmrItem={newNmrItem}
+          setNewNmrItem={setNewNmrItem}
+          addNmrItem={addNmrItem}
+          newTransportItem={newTransportItem}
+          setNewTransportItem={setNewTransportItem}
+          addTransportItem={addTransportItem}
+          newAdditionalItem={newAdditionalItem}
+          setNewAdditionalItem={setNewAdditionalItem}
+          addLinkedAdditionalItem={addLinkedAdditionalItem}
+        />
       )}
 
-      {tab === "planning" && (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "48px 24px", textAlign: "center", color: "#94a3b8" }}>
-          <CalendarClock size={32} color="#cbd5e1" style={{ marginBottom: 10 }} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Project Planning</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Coming soon.</div>
-        </div>
-      )}
+      {/* Kept mounted while other tabs are open so unsaved schedule edits survive a tab switch. */}
+      <div style={{ display: tab === "planning" ? "block" : "none" }}>
+        <ProjectPlanning
+          key={selectedProject.id}
+          project={selectedProject}
+          user={user}
+          boqItems={groups}
+          boqLoading={loadingStoredBoq}
+          hasBoq={!!fileName}
+          onGoToBoq={() => setTab("boq")}
+          onDirtyChange={setPlanningDirty}
+        />
+      </div>
 
-      {tab === "dashboard" && <TrendingDashboard />}
+      {tab === "dashboard" && <TrendingDashboard key={selectedProject.id} projectName={selectedProject.name} />}
     </div>
   );
 }
 
-function ProjectPicker({ projects, loading, search, setSearch, onPick }) {
+const TYPE_COLORS = {
+  Commercial:   { bg: "#eff6ff", fg: "#1d4ed8" },
+  X:            { bg: "#f5f3ff", fg: "#6d28d9" },
+  Construction: { bg: "#fff7ed", fg: "#c2410c" },
+  Renovation:   { bg: "#ecfdf5", fg: "#047857" },
+};
+
+function TypeBadge({ type }) {
+  const c = TYPE_COLORS[type] || { bg: "#f1f5f9", fg: "#475569" };
+  return (
+    <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: c.bg, color: c.fg }}>
+      {type || "Type not set"}
+    </span>
+  );
+}
+
+const cellSt = { padding: "9px 12px", borderBottom: "1px solid #f1f5f9", fontSize: 13.5, color: "#0f172a", textAlign: "left" };
+const headSt = { ...cellSt, fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.3, background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
+
+// One card per project type, laid out like the "Projects - Operations" sheet:
+// Sl No / Project Name / Project Location. Projects with no (or an unknown)
+// type are listed separately with a picker so they can be categorised.
+function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOpen, onAssignType, error }) {
+  const grouped = useMemo(() => {
+    const m = Object.fromEntries(PROJECT_TYPES.map(t => [t, []]));
+    const unassigned = [];
+    projects.forEach(p => (m[p.projectType] ? m[p.projectType].push(p) : unassigned.push(p)));
+    return { byType: m, unassigned };
+  }, [projects]);
+
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Select a Project</div>
-      <div style={{ fontSize: 13.5, color: "#374151", marginBottom: 16 }}>
-        Running projects with Accounts active — pick one to upload its BOQ.
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
+            <FolderKanban size={20} color="#0d9488" /> Projects — Operations
+          </div>
+          <div style={{ fontSize: 13.5, color: "#374151", marginTop: 4 }}>
+            Running projects with Accounts active, grouped by type. Open a project for its BOQ, planning and dashboard.
+          </div>
+        </div>
+        <div style={{ position: "relative", width: 300, maxWidth: "100%" }}>
+          <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "#94a3b8" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…"
+            style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px 8px 32px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff" }} />
+        </div>
       </div>
-      <div style={{ position: "relative", maxWidth: 360, marginBottom: 18 }}>
-        <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "#94a3b8" }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…"
-          style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px 8px 32px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
-      </div>
+
+      {error && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
+
       {loading ? (
         <div style={{ color: "#374151", fontSize: 14 }}>Loading projects…</div>
-      ) : projects.length === 0 ? (
+      ) : totalCount === 0 ? (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 32, textAlign: "center", color: "#374151", fontSize: 14 }}>
           No running projects with Accounts active were found.
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-          {projects.map(p => (
-            <button key={p.id} onClick={() => onPick(p)}
-              style={{ textAlign: "left", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "16px 18px", cursor: "pointer", fontFamily: "inherit" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{p.name}</div>
-              <div style={{ fontSize: 13, color: "#374151", marginTop: 4 }}>
-                {[p.location, p.clientName].filter(Boolean).join(" · ") || "—"}
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+            {PROJECT_TYPES.map(type => (
+              <TypeCard key={type} type={type} projects={grouped.byType[type]} onOpen={onOpen} />
+            ))}
+          </div>
+
+          {grouped.unassigned.length > 0 && (
+            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, marginTop: 20, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Type not set</span>
+                <span style={{ fontSize: 12.5, color: "#64748b" }}>{grouped.unassigned.length} project{grouped.unassigned.length === 1 ? "" : "s"} · choose a type to move it into its column</span>
               </div>
-            </button>
-          ))}
-        </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...headSt, width: 60 }}>Sl No</th>
+                      <th style={headSt}>Project Name</th>
+                      <th style={headSt}>Project Location</th>
+                      <th style={{ ...headSt, width: 180 }}>Project Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grouped.unassigned.map((p, i) => (
+                      <tr key={p.id}>
+                        <td style={cellSt}>{i + 1}</td>
+                        <td style={cellSt}>
+                          <button onClick={() => onOpen(p)} style={{ border: "none", background: "none", padding: 0, fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, color: "#0d9488", cursor: "pointer", textAlign: "left" }}>
+                            {p.name}
+                          </button>
+                        </td>
+                        <td style={cellSt}>{p.location || "—"}</td>
+                        <td style={cellSt}>
+                          <select value="" onChange={e => e.target.value && onAssignType(p, e.target.value)}
+                            style={{ width: "100%", padding: "6px 8px", border: "1.5px solid #e2e8f0", borderRadius: 6, fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+                            <option value="">Select type…</option>
+                            {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function TypeCard({ type, projects, onOpen }) {
+  const c = TYPE_COLORS[type] || { bg: "#f1f5f9", fg: "#475569" };
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "12px 16px", background: c.bg, borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: c.fg }}>{type}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: c.fg }}>{projects.length}</span>
+      </div>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th style={{ ...headSt, width: 60 }}>Sl No</th>
+            <th style={headSt}>Project Name</th>
+            <th style={headSt}>Project Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          {projects.length === 0 ? (
+            <tr><td colSpan={3} style={{ ...cellSt, color: "#94a3b8", textAlign: "center", padding: "18px 12px" }}>No projects</td></tr>
+          ) : projects.map((p, i) => (
+            <tr key={p.id} onClick={() => onOpen(p)} style={{ cursor: "pointer" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+              onMouseLeave={e => (e.currentTarget.style.background = "")}>
+              <td style={cellSt}>{i + 1}</td>
+              <td style={{ ...cellSt, fontWeight: 600, color: "#0d9488" }}>{p.name}</td>
+              <td style={cellSt}>{p.location || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function BOQWorkspace({
-  project, onBack, fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
+  fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
   groups, checked, toggleRow, toggleAll, selectedCount, onCreatePR,
   additionalItemsByCategory, knownUnits, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
@@ -672,15 +833,7 @@ function BOQWorkspace({
 
   return (
     <div>
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
-        <ChevronLeft size={15} /> Change project
-      </button>
-
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{project.name}</span>
-        <span style={{ fontSize: 13.5, color: "#374151" }}>
-          {[project.location, project.clientName].filter(Boolean).join(" · ") || "—"}
-        </span>
         {!loadingStoredBoq && !showUpload && (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
@@ -1228,17 +1381,33 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
   );
 }
 
-function TrendingDashboard() {
+// With `projectName`, every number and chart is limited to that project's PRs
+// (the backend filters by project, so its summary counts match too).
+function TrendingDashboard({ projectName }) {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState([]);
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
-    getRecentEntries(200)
-      .then(d => { setEntries(d.content || []); setSummary(d); })
+    getRecentEntries(projectName ? 1000 : 200, projectName)
+      .then(d => {
+        const list = d.content || [];
+        setEntries(list);
+        // The backend's summary totals are company-wide even when filtered by
+        // project, so for a single project count from its own entries.
+        if (!projectName) { setSummary(d); return; }
+        const count = (key, val) => list.filter(e => e[key] === val).length;
+        setSummary({
+          totalOpen: count("status", "OPEN"),
+          totalClosed: count("status", "CLOSED"),
+          totalProceed: count("approvalStatus", "PROCEED"),
+          totalHold: count("approvalStatus", "HOLD"),
+          totalNotApproved: count("approvalStatus", "NOT_APPROVED"),
+        });
+      })
       .catch(() => { setEntries([]); setSummary(null); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [projectName]);
 
   const byProject = useMemo(() => {
     const m = new Map();
@@ -1277,7 +1446,7 @@ function TrendingDashboard() {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
         {[
-          { label: "Total (recent)", value: entries.length, color: "#0d9488" },
+          { label: projectName ? "Total PRs" : "Total (recent)", value: entries.length, color: "#0d9488" },
           { label: "Open", value: summary?.totalOpen ?? "—", color: "#3b82f6" },
           { label: "Closed", value: summary?.totalClosed ?? "—", color: "#15803d" },
           { label: "On Hold", value: summary?.totalHold ?? "—", color: "#f59e0b" },
@@ -1321,6 +1490,7 @@ function TrendingDashboard() {
         </div>
       </div>
 
+      {!projectName && (
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 20 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Top Projects by PR Count</div>
         <ResponsiveContainer width="100%" height={Math.max(160, byProject.length * 34)}>
@@ -1333,6 +1503,7 @@ function TrendingDashboard() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      )}
 
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Latest Activity</div>

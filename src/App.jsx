@@ -8,6 +8,7 @@ import { AttendanceIconButton } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 import OperationsSection from "./operations/OperationsSection";
+import { PROJECT_TYPES } from "./operations/operationsApi";
 import HolidaysPage from "./hr/HolidaysPage";
 import CompanyDocumentsPage from "./hr/CompanyDocumentsPage";
 
@@ -1740,7 +1741,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [managedProjects, setManagedProjects] = useState([]);
   const [budgetSummary, setBudgetSummary] = useState({});
   const [projectMgmtModal, setProjectMgmtModal] = useState(false);
-  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientSalutation: "Mr.", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", quoteValue: "", quoteGstPct: "18", quoteDocUrl: "", additionalWoValue: "", additionalWoGstPct: "18", additionalWoDocUrl: "", additionalQuoteValue: "", additionalQuoteGstPct: "18", additionalQuoteDocUrl: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "" };
+  const BLANK_PROJECT_FORM = { name: "", location: "", description: "", clientSalutation: "Mr.", clientName: "", clientGstNo: "", clientAddress: "", billingAddress: "", billingSameAsClient: true, projectValue: "", quoteValue: "", quoteGstPct: "18", quoteDocUrl: "", additionalWoValue: "", additionalWoGstPct: "18", additionalWoDocUrl: "", additionalQuoteValue: "", additionalQuoteGstPct: "18", additionalQuoteDocUrl: "", gstPct: "18", poWoStatus: "Pending", poWoDocUrl: "", amendedPoWoStatus: "N/A", amendedPoWoDocUrl: "", projectType: "" };
   const [projectMgmtForm, setProjectMgmtForm] = useState(BLANK_PROJECT_FORM);
   const [editingProject, setEditingProject] = useState(null);
   const [projectMgmtLoading, setProjectMgmtLoading] = useState(false);
@@ -4617,7 +4618,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             const clientSalutation = matchedSal || "";
             const clientNameOnly   = matchedSal ? rawClient.slice(matchedSal.length + 1) : rawClient;
             setProjectMgmtForm({
-              name: p.name, location: p.location || "", description: p.description || "",
+              name: p.name, location: p.location || "", description: p.description || "", projectType: p.projectType || "",
               clientSalutation, clientName: clientNameOnly, clientGstNo: p.clientGstNo || "",
               clientAddress: p.clientAddress || "", billingAddress: p.billingAddress || "",
               billingSameAsClient: (p.billingAddress || "") === (p.clientAddress || ""),
@@ -4967,6 +4968,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {lbl("Description")}
                         <input style={inpSt} placeholder="Optional"
                           value={projectMgmtForm.description} onChange={e => setF("description", e.target.value)} />
+                      </div>
+                      <div>
+                        {lbl("Project Type")}
+                        <select style={inpSt} value={projectMgmtForm.projectType || ""} onChange={e => setF("projectType", e.target.value)}>
+                          <option value="">— Not set —</option>
+                          {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
                       </div>
                     </div>
 

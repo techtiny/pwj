@@ -2,6 +2,11 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+// Project categories shown as columns in Operations → Projects, in display
+// order. Stored on the project as plain text, so renaming one here (e.g. the
+// "X" placeholder) only needs existing projects re-tagged, no DB migration.
+export const PROJECT_TYPES = ["Commercial", "X", "Construction", "Renovation"];
+
 const PROJECTS_BASE = `${API_BASE}/api/v1/projects`;
 const ENTRIES_BASE  = `${API_BASE}/api/v1/pwj/entries`;
 const UPLOAD_BASE   = `${API_BASE}/api/v1/upload`;
@@ -66,10 +71,30 @@ export async function fetchStoredFile(boqDocUrl) {
 // creation date (the app-wide default sort, confirmed already set in App.jsx).
 // Returns the full PagedResponse (content + totalClosed/totalOpen/... summary
 // counts) so the dashboard can reuse the backend's own tallies.
-export async function getRecentEntries(size = 200) {
+export async function getRecentEntries(size = 200, projectName) {
   const res = await axios.get(ENTRIES_BASE, {
-    params: { page: 0, size, sortBy: 'createdAt', sortDir: 'desc' },
+    params: { page: 0, size, sortBy: 'createdAt', sortDir: 'desc', ...(projectName ? { projectName } : {}) },
     headers: userHeaders(),
   });
   return res.data?.data || { content: [] };
+}
+
+// Sets (or clears, with "") a project's Operations category.
+export async function saveProjectType(projectId, projectType) {
+  const res = await axios.put(`${PROJECTS_BASE}/${projectId}`, { projectType: projectType || "" });
+  return res.data?.data;
+}
+
+// ── Project Planning schedule ────────────────────────────────────────────────
+// { woNumber, startDate, completionDate, spocClient, spocContact,
+//   happizoRepresentative, activities: [...] } — saved whole: activity rows
+// with an id are updated, rows without one are created, missing rows deleted.
+export async function getProjectSchedule(projectId) {
+  const res = await axios.get(`${PROJECTS_BASE}/${projectId}/schedule`);
+  return res.data?.data;
+}
+
+export async function saveProjectSchedule(projectId, schedule) {
+  const res = await axios.put(`${PROJECTS_BASE}/${projectId}/schedule`, schedule);
+  return res.data?.data;
 }
