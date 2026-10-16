@@ -3950,8 +3950,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </select>
           <select style={s.sel} value={openKindF} onChange={e => setOpenKindF(e.target.value)} title="Filters within the current page of results">
             <option value="ALL">⚪ Open — Any Color</option>
-            <option value="NORMAL">🟡 Open — Yellow</option>
-            <option value="STALE">🔴 Open — Red (Stale)</option>
+            <option value="NORMAL">🟡 Open</option>
+            <option value="STALE">🔴 Open</option>
           </select>
           {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
             <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
