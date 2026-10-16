@@ -1542,7 +1542,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [openKindF, setOpenKindF]     = useState("ALL"); // ALL | NORMAL | STALE
   const visibleEntries = useMemo(() => {
     if (openKindF === "ALL") return entries;
-    return entries.filter(row => openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row));
+    // isIssuedStale only ever distinguishes VP_APPROVED-but-undelivered docs —
+    // it's false for CLOSED rows too, not just normal-yellow OPEN ones — so the
+    // Yellow/Red(Stale) options must also check status === "OPEN" themselves,
+    // or a Yellow filter silently lets CLOSED rows through.
+    return entries.filter(row =>
+      row.status === "OPEN" && (openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row))
+    );
   }, [entries, openKindF]);
   const [approvalF, setApprovalF]     = useState("ALL");
   const [dependencyF, setDependencyF] = useState("");
