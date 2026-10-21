@@ -420,11 +420,15 @@ function isIssuedStale(row) {
   if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
   const issuedAt = (() => { try { return JSON.parse(row.docData || "{}").vpApprovedAt || row.approvedAt; } catch { return row.approvedAt; } })();
   if (!issuedAt) return false;
-  // Completion date still ahead (or today) → not overdue yet, stays yellow.
+  // Completion date (WO/JO) / Date of Supply (PO) — all stored as completionDate.
+  // Still ahead (or today) → not overdue yet, stays yellow. For multi-doc entries
+  // (split vendors / additional POs) the earliest date decides.
   const completion = (() => {
     try {
       const d = JSON.parse(row.docData || "{}");
-      return d.completionDate || (Array.isArray(d.docs) && d.docs[0]?.completionDate) || row.dateOfRequirement;
+      const dates = (Array.isArray(d.docs) && d.docs.length ? d.docs.map(x => x.completionDate) : [d.completionDate])
+        .filter(Boolean).map(x => String(x).substring(0, 10)).sort();
+      return dates[0] || row.dateOfRequirement;
     } catch { return row.dateOfRequirement; }
   })();
   if (completion) {
