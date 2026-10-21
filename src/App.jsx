@@ -420,6 +420,18 @@ function isIssuedStale(row) {
   if (row.docStatus !== "VP_APPROVED" || row.deliveredDate) return false;
   const issuedAt = (() => { try { return JSON.parse(row.docData || "{}").vpApprovedAt || row.approvedAt; } catch { return row.approvedAt; } })();
   if (!issuedAt) return false;
+  // Completion date still ahead (or today) → not overdue yet, stays yellow.
+  const completion = (() => {
+    try {
+      const d = JSON.parse(row.docData || "{}");
+      return d.completionDate || (Array.isArray(d.docs) && d.docs[0]?.completionDate) || row.dateOfRequirement;
+    } catch { return row.dateOfRequirement; }
+  })();
+  if (completion) {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (String(completion).substring(0, 10) >= today) return false;
+  }
   return new Date(issuedAt).toISOString().split("T")[0] !== new Date().toISOString().split("T")[0];
 }
 
