@@ -444,7 +444,7 @@ function CountBadge({ count }) {
   );
 }
 
-const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"];
+const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA","Lot"];
 
 function parseDocData(entry) {
   const base = {

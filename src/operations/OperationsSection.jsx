@@ -369,7 +369,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // plus every additional-category item entered so far — so the Unit field
   // can be picked from what's already in use instead of retyped each time.
   const knownUnits = useMemo(() => {
-    const units = new Set();
+    const units = new Set(["Lot"]);
     groups.forEach(g => { if (g.unit) units.add(String(g.unit).trim()); });
     additionalItems.forEach(it => { if (it.unit) units.add(String(it.unit).trim()); });
     return [...units].filter(Boolean).sort((a, b) => a.localeCompare(b));
