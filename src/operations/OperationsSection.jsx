@@ -598,7 +598,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       {/* Sub-tabs */}
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
         {[
-          { key: "boq", label: "BOQ Import", icon: ClipboardList },
+          { key: "boq", label: "BOQ", icon: ClipboardList },
           { key: "planning", label: "Project Planning", icon: CalendarClock },
           { key: "dashboard", label: "Dashboard", icon: TrendingUp },
         ].map(t => {
@@ -675,8 +675,8 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 }
 
 const TYPE_COLORS = {
-  Commercial:   { bg: "#eff6ff", fg: "#1d4ed8" },
-  X:            { bg: "#f5f3ff", fg: "#6d28d9" },
+  "Commercial Interior":   { bg: "#eff6ff", fg: "#1d4ed8" },
+  "Residential Interior":            { bg: "#f5f3ff", fg: "#6d28d9" },
   Construction: { bg: "#fff7ed", fg: "#c2410c" },
   Renovation:   { bg: "#ecfdf5", fg: "#047857" },
 };
