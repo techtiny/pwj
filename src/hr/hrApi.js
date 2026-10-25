@@ -194,7 +194,8 @@ export const employeeApi = {
 
 export const performanceApi = {
   history: (employeeId)                          => api.get(`/employees/${employeeId}/remarks`),
-  upsert:  (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
+  add:     (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
+  appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
 };
 
 export const usersApi = {

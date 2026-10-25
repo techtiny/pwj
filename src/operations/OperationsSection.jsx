@@ -163,6 +163,28 @@ function groupRows(rows, headerRowIdx) {
   });
 }
 
+// One BOQ line item as a PWJ document row: the first line of its description is the
+// item title, the remaining lines are its specification.
+export function boqGroupToItem(g) {
+  const lines = String(g.description || "").split("\n").map(x => x.trim()).filter(Boolean);
+  return { label: g.label, item: (lines[0] || "").slice(0, 280), spec: lines.slice(1).join("\n"), unit: g.unit || "", qty: g.qty };
+}
+
+export function boqSpecLine(g) {
+  const qtyUnitStr = (g.qty != null || g.unit) ? ` — ${g.qty != null ? g.qty : ""}${g.unit ? " " + g.unit : ""}`.trim() : "";
+  return `${g.label ? g.label + ". " : ""}${g.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
+}
+
+// Fetches a project's stored BOQ and returns its selectable line items (same grouping as
+// the BOQ tab), so other screens can look an item up by its code (e.g. "4A").
+export async function loadBoqGroups(boqDocUrl) {
+  const data = await fetchStoredFile(boqDocUrl);
+  const wb = XLSX.read(data, { type: "array" });
+  const ws = wb.Sheets[pickDefaultSheet(wb.SheetNames)];
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: "" }).filter(r => !isBlankRow(r));
+  return groupRows(raw, detectHeaderRow(raw));
+}
+
 export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [tab, setTab] = useState("boq"); // "boq" | "planning" | "dashboard"
 
@@ -231,13 +253,13 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // naturally spans all of them together.
   const [additionalChecked, setAdditionalChecked] = useState({}); // id -> bool
   const [newItemForms, setNewItemForms] = useState(() =>
-    Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }]))
+    Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "", remarks: "" }]))
   );
   const [newNmrItem, setNewNmrItem] = useState({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
-  const [newTransportItem, setNewTransportItem] = useState({ description: "", transport: "", amount: "" });
+  const [newTransportItem, setNewTransportItem] = useState({ description: "", transport: "", amount: "", remarks: "" });
   // "Additional Items" — unlike every category above, each row here *must*
   // be linked to an existing BOQ line item (can't be created standalone).
-  const [newAdditionalItem, setNewAdditionalItem] = useState({ linkedBoqLabel: "", description: "", qty: "", unit: "" });
+  const [newAdditionalItem, setNewAdditionalItem] = useState({ linkedBoqLabel: "", description: "", qty: "", unit: "", remarks: "" });
   const additionalIdCounter = useRef(0);
 
   const resetBOQ = () => {
@@ -245,10 +267,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setHeaderRowIdx(-1); setChecked({}); setFileName("");
     setParseError(""); setSaveStatus(""); setShowUploadOverride(false);
     setAdditionalChecked({});
-    setNewItemForms(Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "" }])));
+    setNewItemForms(Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "", remarks: "" }])));
     setNewNmrItem({ description: "", noOfLabours: "", typeOfLabours: "", date: "", unitRate: "" });
-    setNewTransportItem({ description: "", transport: "", amount: "" });
-    setNewAdditionalItem({ linkedBoqLabel: "", description: "", qty: "", unit: "" });
+    setNewTransportItem({ description: "", transport: "", amount: "", remarks: "" });
+    setNewAdditionalItem({ linkedBoqLabel: "", description: "", qty: "", unit: "", remarks: "" });
   };
 
   const loadWorkbookFromBuffer = (data, name) => {
@@ -391,7 +413,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
 
   const addAdditionalItem = (category) => {
-    const form = newItemForms[category] || { description: "", qty: "", unit: "" };
+    const form = newItemForms[category] || { description: "", qty: "", unit: "", remarks: "" };
     const description = form.description.trim();
     if (!description) return;
     const item = {
@@ -400,9 +422,15 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       description,
       qty: form.qty.trim(),
       unit: form.unit.trim(),
+      remarks: (form.remarks || "").trim(),
     };
     persistAdditionalItems([...additionalItems, item]);
-    setNewItemForms(f => ({ ...f, [category]: { description: "", qty: "", unit: "" } }));
+    setNewItemForms(f => ({ ...f, [category]: { description: "", qty: "", unit: "", remarks: "" } }));
+  };
+
+  // Inline edit of a saved row's Remarks (free text, saved on blur).
+  const updateAdditionalItem = (id, patch) => {
+    persistAdditionalItems(additionalItems.map(it => it.id === id ? { ...it, ...patch } : it));
   };
 
   const removeAdditionalItem = (id) => {
@@ -444,9 +472,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       description,
       transport: newTransportItem.transport.trim(),
       amount: newTransportItem.amount.trim(),
+      remarks: (newTransportItem.remarks || "").trim(),
     };
     persistAdditionalItems([...additionalItems, item]);
-    setNewTransportItem({ description: "", transport: "", amount: "" });
+    setNewTransportItem({ description: "", transport: "", amount: "", remarks: "" });
   };
 
   // "Additional Items" — each row must reference an existing BOQ line item
@@ -462,9 +491,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       description,
       qty: newAdditionalItem.qty.trim(),
       unit: newAdditionalItem.unit.trim(),
+      remarks: (newAdditionalItem.remarks || "").trim(),
     };
     persistAdditionalItems([...additionalItems, item]);
-    setNewAdditionalItem({ linkedBoqLabel: "", description: "", qty: "", unit: "" });
+    setNewAdditionalItem({ linkedBoqLabel: "", description: "", qty: "", unit: "", remarks: "" });
   };
 
   const toggleAdditionalChecked = (id) => {
@@ -484,12 +514,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
     const boqNo = selected.map(g => g.label).filter(Boolean).join(", ");
 
-    const boqLines = selected.map(g => {
-      const qtyUnitStr = (g.qty != null || g.unit) ? ` — ${g.qty != null ? g.qty : ""}${g.unit ? " " + g.unit : ""}`.trim() : "";
-      return `${g.label ? g.label + ". " : ""}${g.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
-    }).filter(Boolean);
+    const boqLines = selected.map(boqSpecLine).filter(Boolean);
     const categoryCounters = {};
-    const additionalLines = selectedAdditional.map(it => {
+    const withRemarks = (line, it) => it.remarks ? `${line} [Remarks: ${it.remarks}]` : line;
+    const additionalLines = selectedAdditional.map(it => withRemarks((() => {
       const n = (categoryCounters[it.category] = (categoryCounters[it.category] || 0) + 1);
       if (it.category === "NMR") {
         const bits = [
@@ -511,7 +539,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       }
       const qtyUnitStr = (it.qty || it.unit) ? ` — ${it.qty || ""}${it.unit ? " " + it.unit : ""}`.trim() : "";
       return `${it.category}${n}. ${it.description}${qtyUnitStr ? " " + qtyUnitStr : ""}`.trim();
-    });
+    })(), it));
     const combinedSpecification = [...boqLines, ...additionalLines].join("\n");
 
     // Short single-line summary for Material Required — the first selected
@@ -538,7 +566,19 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       quantity = String(allSelected.reduce((s, g) => s + g.qty, 0));
     }
 
+    // Structured per-item rows so the PWJ gets one row per selected item (not one lumped row).
+    const boqItems = [
+      ...selected.map(boqGroupToItem),
+      ...selectedAdditional.map((it, i) => ({
+        item: it.description,
+        spec: additionalLines[i].slice(additionalLines[i].indexOf(it.description) + it.description.length).replace(/^\s*—\s*/, ""),
+        unit: it.category === "NMR" ? (it.typeOfLabours || "") : (it.unit || ""),
+        qty: it.category === "NMR" ? (it.noOfLabours ? Number(it.noOfLabours) : null) : (it.qty ? Number(it.qty) : null),
+      })),
+    ];
+
     return {
+      docData: JSON.stringify({ boqItems, boqSpec: combinedSpecification }),
       projectName: selectedProject?.name || "",
       boqNo,
       materialRequired,
@@ -580,7 +620,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     );
   }
 
-  // ── Project view: BOQ Import / Project Planning / Dashboard ──
+  // ── Project view: BOQ / Project Planning / Dashboard ──
   return (
     <div style={shellStyle}>
       <button onClick={closeProject} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
@@ -598,7 +638,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       {/* Sub-tabs */}
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
         {[
-          { key: "boq", label: "BOQ Import", icon: ClipboardList },
+          { key: "boq", label: "BOQ", icon: ClipboardList },
           { key: "planning", label: "Project Planning", icon: CalendarClock },
           { key: "dashboard", label: "Dashboard", icon: TrendingUp },
         ].map(t => {
@@ -643,6 +683,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
           setNewItemForms={setNewItemForms}
           addAdditionalItem={addAdditionalItem}
           removeAdditionalItem={removeAdditionalItem}
+          updateAdditionalItem={updateAdditionalItem}
           newNmrItem={newNmrItem}
           setNewNmrItem={setNewNmrItem}
           addNmrItem={addNmrItem}
@@ -823,7 +864,7 @@ function BOQWorkspace({
   activeSheet,
   groups, checked, toggleRow, toggleAll, selectedCount, onCreatePR,
   additionalItemsByCategory, knownUnits, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
-  newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem,
+  newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem, updateAdditionalItem,
   newNmrItem, setNewNmrItem, addNmrItem,
   newTransportItem, setNewTransportItem, addTransportItem,
   newAdditionalItem, setNewAdditionalItem, addLinkedAdditionalItem,
@@ -958,6 +999,7 @@ function BOQWorkspace({
                     setNewItem={setNewAdditionalItem}
                     addItem={addLinkedAdditionalItem}
                     removeItem={removeAdditionalItem}
+                    updateItem={updateAdditionalItem}
                   />
                 )}
 
@@ -974,6 +1016,7 @@ function BOQWorkspace({
                     setNewItem={updater => setNewItemForms(f => ({ ...f, NT: updater(f.NT) }))}
                     addItem={addAdditionalItem}
                     removeItem={removeAdditionalItem}
+                    updateItem={updateAdditionalItem}
                   />
                 )}
 
@@ -987,6 +1030,7 @@ function BOQWorkspace({
                     setNewItem={setNewNmrItem}
                     addItem={addNmrItem}
                     removeItem={removeAdditionalItem}
+                    updateItem={updateAdditionalItem}
                   />
                 )}
 
@@ -1000,6 +1044,7 @@ function BOQWorkspace({
                     setNewItem={setNewTransportItem}
                     addItem={addTransportItem}
                     removeItem={removeAdditionalItem}
+                    updateItem={updateAdditionalItem}
                   />
                 )}
 
@@ -1016,6 +1061,7 @@ function BOQWorkspace({
                     setNewItem={updater => setNewItemForms(f => ({ ...f, Establishment: updater(f.Establishment) }))}
                     addItem={addAdditionalItem}
                     removeItem={removeAdditionalItem}
+                    updateItem={updateAdditionalItem}
                   />
                 )}
               </div>
@@ -1038,11 +1084,23 @@ function BOQWorkspace({
   );
 }
 
+// Editable free-text Remarks cell — edits locally, saves when focus leaves the field.
+function RemarksCell({ value, onSave }) {
+  const [v, setV] = useState(value || "");
+  useEffect(() => { setV(value || ""); }, [value]);
+  return (
+    <input value={v} onChange={e => setV(e.target.value)} placeholder="Add remarks"
+      onBlur={() => { if (v !== (value || "")) onSave(v); }}
+      onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+      style={{ width: "100%", boxSizing: "border-box", border: "1px solid transparent", borderBottom: "1px dashed #cbd5e1", borderRadius: 6, padding: "5px 6px", fontSize: 13, fontFamily: "inherit", background: "transparent" }} />
+  );
+}
+
 // One category's table of manually-entered items (S.No/Description/Qty/Unit)
 // — shared by NT, NMR, Transport, and Establishment below the BOQ table.
 function AdditionalCategoryTable({
   category, label, knownUnits, items, checked, toggleChecked, toggleAll,
-  newItem, setNewItem, addItem, removeItem,
+  newItem, setNewItem, addItem, removeItem, updateItem,
 }) {
   return (
     <div style={{ marginBottom: 24 }}>
@@ -1066,12 +1124,13 @@ function AdditionalCategoryTable({
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1081,6 +1140,7 @@ function AdditionalCategoryTable({
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
+                <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                   <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                 </td>
@@ -1106,6 +1166,10 @@ function AdditionalCategoryTable({
           <option value="">Unit</option>
           {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
         </select>
+        <input value={newItem.remarks || ""}
+          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
+          placeholder="Remarks"
+          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
         <button onClick={() => addItem(category)} disabled={!newItem.description.trim()}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
@@ -1122,7 +1186,7 @@ function AdditionalCategoryTable({
 // "Additional Items" — unlike every other category above/below, each row
 // here must reference an existing BOQ line item (picked from `groups`), so
 // "+ Add Item" stays disabled until both a BOQ item and description are set.
-function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem }) {
+function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem, updateItem }) {
   const canAdd = !!newItem.linkedBoqLabel && !!newItem.description.trim();
   return (
     <div style={{ marginBottom: 24 }}>
@@ -1147,12 +1211,13 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={8} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1163,6 +1228,7 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 220, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
+                <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                   <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                 </td>
@@ -1196,6 +1262,10 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
           <option value="">Unit</option>
           {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
         </select>
+        <input value={newItem.remarks || ""}
+          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
+          placeholder="Remarks"
+          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
         <button onClick={addItem} disabled={!canAdd}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
@@ -1307,7 +1377,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
 
 // Transport Category — its own column set (S.No/Description/Transport/Amount)
 // instead of the generic qty/unit shape the other standalone categories use.
-function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem }) {
+function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem, updateItem }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1330,12 +1400,13 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 140, fontSize: 17 }}>Transport</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: 17 }}>Amount</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1345,6 +1416,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 220, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.transport || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
+                <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                   <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                 </td>
@@ -1368,6 +1440,10 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
           onChange={e => setNewItem(f => ({ ...f, amount: e.target.value }))}
           placeholder="Amount" type="number"
           style={{ width: 110, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
+        <input value={newItem.remarks || ""}
+          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
+          placeholder="Remarks"
+          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
         <button onClick={addItem} disabled={!newItem.description.trim()}
           style={{
             border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",

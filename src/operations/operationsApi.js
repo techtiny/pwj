@@ -4,8 +4,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // Project categories shown as columns in Operations → Projects, in display
 // order. Stored on the project as plain text, so renaming one here (e.g. the
-// "X" placeholder) only needs existing projects re-tagged, no DB migration.
-export const PROJECT_TYPES = ["Commercial", "X", "Construction", "Renovation"];
+// "X" placeholder) needs existing projects re-tagged (see ProjectTypeMigration).
+export const PROJECT_TYPES = ["Commercial Interior", "Residential Interior", "Construction", "Renovation"];
 
 const PROJECTS_BASE = `${API_BASE}/api/v1/projects`;
 const ENTRIES_BASE  = `${API_BASE}/api/v1/pwj/entries`;

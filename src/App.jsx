@@ -7,7 +7,7 @@ import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
-import OperationsSection from "./operations/OperationsSection";
+import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine } from "./operations/OperationsSection";
 import { PROJECT_TYPES } from "./operations/operationsApi";
 import HolidaysPage from "./hr/HolidaysPage";
 import CompanyDocumentsPage from "./hr/CompanyDocumentsPage";
@@ -460,15 +460,27 @@ function CountBadge({ count }) {
   );
 }
 
-const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","EA"];
+const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","Lot","EA"];
+
+// PR → PWJ line items. A PR raised from several BOQ items carries them as docData.boqItems,
+// so each becomes its own PWJ row with its own spec/unit/qty. If the PR's specification was
+// edited afterward (no longer matches the snapshot) fall back to one row from the PR fields.
+function entryItems(entry) {
+  try {
+    const d = JSON.parse(entry.docData || "{}");
+    if (Array.isArray(d.boqItems) && d.boqItems.length && d.boqSpec === (entry.specification || "")) {
+      return d.boqItems.map(b => ({ item: b.item || "", unit: b.unit || "", qty: b.qty != null && b.qty !== "" ? String(b.qty) : "", rate: "", spec: b.spec || "" }));
+    }
+  } catch (_) {}
+  return [{ item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "", spec: entry.specification || "" }];
+}
 
 function parseDocData(entry) {
+  const first = entryItems(entry);
   const base = {
     items: [
-      { item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "" },
-      { item: "", unit: "", qty: "", rate: "" },
-      { item: "", unit: "", qty: "", rate: "" },
-      { item: "", unit: "", qty: "", rate: "" },
+      ...first,
+      ...Array.from({ length: Math.max(0, 4 - first.length) }, () => ({ item: "", unit: "", qty: "", rate: "", spec: "" })),
     ],
     amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
     completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
@@ -2035,7 +2047,50 @@ function Dashboard({ user, onLogout: handleLogout }) {
   //    state → submitCreate → api.createEntry) as the "New Entry" button, just
   //    with values handed in instead of blank, so the resulting entry behaves
   //    identically to one typed in by hand.
+  const boqTimerRef = useRef(null);
+  const boqCacheRef = useRef({});
+  const [boqLookup, setBoqLookup] = useState("");
+
+  // Typing BOQ codes (e.g. "4A" or "4A, 4B") on the PR form pulls their description,
+  // unit and quantity from the project's stored BOQ, so nothing is retyped by hand.
+  const autofillFromBoq = async (codesStr, projectName) => {
+    setBoqLookup("");
+    const codes = String(codesStr || "").split(/[,;\s]+/).filter(Boolean).map(c => c.toLowerCase());
+    if (!codes.length) return;
+    const proj = managedProjects.find(p => p.name === projectName);
+    if (!proj) { setBoqLookup("Select the project first to fetch the BOQ description."); return; }
+    if (!proj.boqDocUrl) { setBoqLookup("No BOQ uploaded for this project."); return; }
+    try {
+      let groups = boqCacheRef.current[proj.boqDocUrl];
+      if (!groups) { groups = await loadBoqGroups(proj.boqDocUrl); boqCacheRef.current[proj.boqDocUrl] = groups; }
+      const picked = [], missing = [];
+      codes.forEach(c => {
+        const g = groups.find(x => x.label.toLowerCase() === c);
+        if (!g) { missing.push(c.toUpperCase()); return; }
+        if (!picked.includes(g)) picked.push(g);
+        if (/^\d+$/.test(c)) groups.forEach(x => { if (new RegExp(`^${c}[a-z]$`, "i").test(x.label) && !picked.includes(x)) picked.push(x); });
+      });
+      if (!picked.length) { setBoqLookup(`BOQ item ${missing.join(", ")} not found in this project's BOQ.`); return; }
+      const items = picked.map(boqGroupToItem);
+      const specification = picked.map(boqSpecLine).filter(Boolean).join("\n");
+      const first = items[0].item;
+      const units = [...new Set(items.map(i => i.unit).filter(Boolean))];
+      const sumOk = units.length === 1 && items.every(i => i.qty != null);
+      setCreateForm(f => ({
+        ...f,
+        materialRequired: (items.length > 1 ? `${first} (+${items.length - 1} more)` : first).slice(0, 280),
+        specification,
+        unit: sumOk ? units[0] : f.unit,
+        quantity: sumOk ? String(items.reduce((a, i) => a + i.qty, 0)) : f.quantity,
+        // When editing an existing PR keep whatever is already in its docData.
+        docData: JSON.stringify({ ...(editingEntry ? (() => { try { return JSON.parse(editingEntry.docData || "{}"); } catch { return {}; } })() : {}), boqItems: items, boqSpec: specification }),
+      }));
+      setBoqLookup(`✓ Filled from BOQ: ${picked.map(g => g.label).join(", ")}${missing.length ? ` · not found: ${missing.join(", ")}` : ""}`);
+    } catch { setBoqLookup("Could not read the project's BOQ."); }
+  };
+
   const handleCreateFromBOQ = (prefill) => {
+    setBoqLookup("");
     setEditingEntry(null);
     setCreateForm({
       raisedBy: user.fullName || user.username, onBehalf: "",
@@ -2852,13 +2907,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const results = [];
       for (const vendor of vendorList) {
         const groupEntries = groups[vendor];
-        const items = groupEntries.map(e => ({
-          item: e.materialRequired || "",
-          unit: e.unit || "",
-          qty: e.quantity != null ? String(e.quantity) : "",
-          rate: "",
-          spec: e.specification || "",
-        }));
+        const items = groupEntries.flatMap(e => entryItems(e));
         while (items.length < 4) items.push({ item: "", unit: "", qty: "", rate: "", spec: "" });
         const primary = groupEntries[0];
         const secondaryIds = groupEntries.slice(1).map(e => e.id);
@@ -2971,7 +3020,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const amt = (parseFloat(row.qty) || 0) * (parseFloat(row.rate) || 0);
         return `<tr>
           <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${i+1}</td>
-          <td style="padding:7px 8px;border-bottom:1px solid #ddd;">${row.item || ""}</td>
+          <td style="padding:7px 8px;border-bottom:1px solid #ddd;word-break:break-word;overflow-wrap:anywhere;">${row.item || ""}${row.spec ? `<div style="white-space:pre-wrap;font-size:10px;color:#555;margin-top:3px;line-height:1.4;">${String(row.spec).replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>` : ""}</td>
           <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.unit || ""}</td>
           <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #ddd;">${row.qty || ""}</td>
           <td style="text-align:right;padding:7px 8px;border-bottom:1px solid #ddd;">${fmtCcy(row.rate)}</td>
@@ -5299,7 +5348,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ].filter(([, v]) => v !== null).map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
-                    <div style={s.dVal}>{v || "—"}</div>
+                    <div style={{ ...s.dVal, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{v || "—"}</div>
                   </div>
                 ))}
                 {parseImageRefs(detailRow.imageReference).length > 0 && (
@@ -5911,9 +5960,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {/* 2. BOQ No. */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
                   <label style={s.label}>BOQ No.</label>
-                  <input style={s.input} type="text" placeholder="BOQ No."
+                  <input style={s.input} type="text" placeholder="BOQ No. (e.g. 4A, or 4A, 4B) — description fills in from the BOQ"
                     value={createForm.boqNo || ""}
-                    onChange={e => setCreateForm(f => ({ ...f, boqNo: e.target.value }))} />
+                    onChange={e => {
+                      const v = e.target.value;
+                      setCreateForm(f => ({ ...f, boqNo: v }));
+                      clearTimeout(boqTimerRef.current);
+                      boqTimerRef.current = setTimeout(() => autofillFromBoq(v, createForm.projectName), 500);
+                    }}
+                    onBlur={e => { clearTimeout(boqTimerRef.current); autofillFromBoq(e.target.value, createForm.projectName); }} />
+                  {boqLookup && <div style={{ fontSize: 12.5, marginTop: 4, color: boqLookup.startsWith("✓") ? "#166534" : "#b45309" }}>{boqLookup}</div>}
                 </div>
                 {/* 3. Material Required */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
@@ -6809,7 +6865,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                             placeholder="Item description"
                                             rows={1}
                                           />
-                                        : <span style={{ whiteSpace: "pre-wrap" }}>{row.item || ""}</span>}
+                                        : <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{row.item || ""}</span>}
+                                      {docEditMode
+                                        ? <textarea
+                                            value={row.spec || ""}
+                                            onChange={ev => { setItem(i, "spec", ev.target.value); ev.target.style.height = "auto"; ev.target.style.height = ev.target.scrollHeight + "px"; }}
+                                            style={{ ...inpSt, resize: "none", overflow: "hidden", minHeight: 28, lineHeight: 1.4, fontSize: 12, marginTop: 4 }}
+                                            placeholder="Specification"
+                                            rows={1}
+                                          />
+                                        : row.spec ? <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: 12, color: "#555", marginTop: 3, lineHeight: 1.4 }}>{row.spec}</div> : null}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
                                       {docEditMode ? <input list="unit-list" value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", width: 70 }} placeholder="—" autoComplete="off" /> : row.unit || ""}
@@ -6838,7 +6903,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               {docEditMode && (
                                 <tr>
                                   <td colSpan={7} style={{ padding: "4px 10px" }}>
-                                    <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", vendor: "" }] }))}
+                                    <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", spec: "", vendor: "" }] }))}
                                       style={{ fontSize: 14, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
                                 </tr>

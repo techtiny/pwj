@@ -77,7 +77,7 @@ function StarRating({ value, onChange, readOnly }) {
 }
 
 export default function EmployeeProfilePage({ id, user, onBack }) {
-  const canManage = ["ADMIN", "VP", "OH", "CEO"].includes(user?.role);
+  const isReviewer = ["ADMIN", "VP", "OH", "CEO"].includes(user?.role);
   const [emp, setEmp] = useState(null);
   const [stats, setStats] = useState(null);
   const [range, setRange] = useState("cycle");
@@ -88,6 +88,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const [photoZoom, setPhotoZoom] = useState(false);
   const [appUsers, setAppUsers] = useState([]);
   const [form, setForm] = useState({ rating: 0, notes: "" });
+  const [appealFor, setAppealFor] = useState(null); // remark id being appealed
+  const [appealText, setAppealText] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,11 +118,6 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   useEffect(() => { loadStats(); }, [loadStats]);
 
   const today = new Date().toISOString().slice(0, 10);
-  const todaysRemark = useMemo(() => remarks.find(r => r.remarkDate === today), [remarks, today]);
-  useEffect(() => {
-    setForm({ rating: todaysRemark?.rating || 0, notes: todaysRemark?.notes || "" });
-  }, [todaysRemark]);
-
   const trend = useMemo(() => {
     if (remarks.length < 2) return null;
     const recent = remarks.slice(0, 7), prior = remarks.slice(7, 14);
@@ -165,9 +162,22 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     if (!form.rating) { alert("Pick a rating (1-5) first"); return; }
     setBusy("remark");
     try {
-      await performanceApi.upsert(id, { date: today, rating: form.rating, notes: form.notes, actionBy: user?.fullName || user?.username });
+      await performanceApi.add(id, { date: today, rating: form.rating, notes: form.notes, actionBy: user?.fullName || user?.username, actorRole: user?.role });
+      setForm({ rating: 0, notes: "" });
       await loadRemarks();
     } catch (e) { alert(e.response?.data?.message || "Could not save remark"); }
+    finally { setBusy(null); }
+  }
+
+  async function submitAppeal(remarkId) {
+    if (!appealText.trim()) { alert("Enter the reason for your appeal"); return; }
+    setBusy("appeal");
+    try {
+      await performanceApi.appeal(id, remarkId, { text: appealText, username: user?.username });
+      setAppealFor(null);
+      setAppealText("");
+      await loadRemarks();
+    } catch (e) { alert(e.response?.data?.message || "Could not submit appeal"); }
     finally { setBusy(null); }
   }
 
@@ -177,6 +187,11 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const isExited = !!emp.dor;
   const birthdaySoon = isBirthdaySoon(emp.dob);
   const isSelf = !!(emp.linkedUsername && user?.username && emp.linkedUsername.toLowerCase() === user.username.toLowerCase());
+  // Remarks on management staff are CEO-only; everyone else's go to Admin/VP/OH/CEO, and the employee sees their own.
+  const isMgmtEmp = /management/i.test(emp.department || "");
+  const canManage = isReviewer && (!isMgmtEmp || user?.role === "CEO");
+  const canSeeRemarks = canManage || isSelf;
+  const canAppeal = (r) => isSelf && !r.appealedAt && r.createdAt && Date.now() - new Date(r.createdAt).getTime() < 24 * 3600 * 1000;
 
   return (
     <div className="hr-page ep-page" style={{ padding: "24px 32px", background: "#f1f5f9" }}>
@@ -214,7 +229,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                 {emp.fullName.charAt(0).toUpperCase()}
               </div>
             )}
-            {(canManage || isSelf) && (
+            {(isReviewer || isSelf) && (
               <label className="ep-banner-btn" style={{ position: "absolute", bottom: 2, right: 2, background: "linear-gradient(135deg,#1e3a5f,#0f766e)", color: "#fff", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13, boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>
                 {busy === "photo" ? "…" : "📷"}
                 <input type="file" accept="image/*" hidden onChange={(e) => handlePhoto(e.target.files?.[0])} />
@@ -252,12 +267,12 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             {emp.linkedUsername ? (
               <div style={{ fontSize: 12.5, color: "#059669", marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
                 ✓ Linked to app account <b>@{emp.linkedUsername}</b>
-                {canManage && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>change</button>}
+                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>change</button>}
               </div>
             ) : (
               <div style={{ fontSize: 12.5, color: "#92400e", marginTop: 12, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 Not linked to an app account — PR/attendance stats unavailable.
-                {canManage && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#92400e", cursor: "pointer", fontSize: 12, fontWeight: 700, textDecoration: "underline" }}>Link now</button>}
+                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#92400e", cursor: "pointer", fontSize: 12, fontWeight: 700, textDecoration: "underline" }}>Link now</button>}
               </div>
             )}
           </div>
@@ -296,7 +311,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         <StatCard icon="📝" label="PRs Raised" value={stats ? stats.prRaised : "—"} accent="#3b82f6" accentBg="#eff6ff" />
         <StatCard icon="✅" label="Correct Check-ins" value={stats ? stats.correctCheckins : "—"} accent="#059669" accentBg="#ecfdf5" hint="Checked in and out" />
         <StatCard icon="⚠️" label="Incomplete Check-ins" value={stats ? stats.incompleteCheckins : "—"} accent="#dc2626" accentBg="#fef2f2" hint="Checked in, never checked out" />
-        <StatCard icon="⭐" label="Avg. Performance" value={avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={trend ? `${trend.icon} ${trend.label}` : `${remarks.length} rated day(s)`} />
+        <StatCard icon="⭐" label="Avg. Performance" value={canSeeRemarks && avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={canSeeRemarks ? (trend ? `${trend.icon} ${trend.label}` : `${remarks.length} remark(s)`) : undefined} />
       </div>
       {stats && !stats.linked && (
         <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: -14, marginBottom: 20 }}>
@@ -306,8 +321,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
 
       {/* Daily performance remark */}
       <div style={{ ...card, padding: "18px 20px", marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4, display: "flex", alignItems: "center", gap: 7 }}>📋 Daily Performance Remark</div>
-        <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 14 }}>One entry per day — track how {emp.fullName.split(" ")[0]} is doing, day by day.</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4, display: "flex", alignItems: "center", gap: 7 }}>📋 Performance Comments</div>
+        <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 14 }}>Add as many comments per day as needed.{isSelf && !canManage ? " You can appeal a comment within 24 hours of it being recorded; after that it stands as recorded." : ""}</div>
         {canManage ? (
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 12, padding: 14 }}>
             <div>
@@ -317,23 +332,42 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             <textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
               placeholder="What stood out today — good or bad?" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 40, resize: "vertical", background: "#fff" }} />
             <button onClick={saveRemark} disabled={busy === "remark"} style={{ ...btn("#1e3a5f"), opacity: busy === "remark" ? 0.7 : 1 }}>
-              {busy === "remark" ? "Saving…" : todaysRemark ? "Update" : "Save"}
+              {busy === "remark" ? "Saving…" : "Add Comment"}
             </button>
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: "#94a3b8" }}>Only Admin/VP/OH/CEO can add performance remarks.</div>
+          <div style={{ fontSize: 13, color: "#94a3b8" }}>{isMgmtEmp ? "Only the CEO can add comments for management." : "Only Admin/VP/OH/CEO can add performance comments."}</div>
         )}
 
-        {remarks.length > 0 && (
+        {canSeeRemarks && remarks.length > 0 && (
           <div style={{ marginTop: 18, borderTop: "1px solid #f1f5f9", paddingTop: 14 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "#475569", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>History</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
               {remarks.map(r => (
-                <div key={r.id} className="ep-history-row" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 10, borderBottom: "1px solid #f8fafc" }}>
+                <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: "1px solid #f8fafc" }}>
+                  <div className="ep-history-row" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", width: 84, flexShrink: 0, background: "#f1f5f9", borderRadius: 8, padding: "3px 8px", textAlign: "center" }}>{fmtDate(r.remarkDate)}</div>
                   <StarRating value={r.rating} readOnly />
                   <div style={{ flex: 1, fontSize: 13, color: "#374151" }}>{r.notes || <span style={{ color: "#cbd5e1" }}>No note</span>}</div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0 }}>{r.createdBy}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, textAlign: "right" }}>{r.createdBy}<br />{r.createdAt ? new Date(r.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}</div>
+                  </div>
+                  {r.appealedAt && (
+                    <div style={{ marginLeft: 96, fontSize: 12.5, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 10px", color: "#92400e" }}>
+                      <b>Appeal ({fmtDateTime(r.appealedAt)}):</b> {r.appealText}
+                    </div>
+                  )}
+                  {canAppeal(r) && appealFor !== r.id && (
+                    <div style={{ marginLeft: 96 }}>
+                      <button onClick={() => { setAppealFor(r.id); setAppealText(""); }} style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "4px 12px", fontSize: 12 }}>Raise appeal</button>
+                    </div>
+                  )}
+                  {appealFor === r.id && (
+                    <div style={{ marginLeft: 96, display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                      <textarea value={appealText} onChange={(e) => setAppealText(e.target.value)} placeholder="Why do you disagree with this comment?" style={{ ...inputS, flex: 1, minWidth: 200, minHeight: 40 }} />
+                      <button onClick={() => submitAppeal(r.id)} disabled={busy === "appeal"} style={btn("#b45309")}>{busy === "appeal" ? "Submitting…" : "Submit"}</button>
+                      <button onClick={() => setAppealFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
