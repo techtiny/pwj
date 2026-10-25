@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Plus, Trash2, X, ArrowDownLeft, ArrowUpRight, Scale, CalendarClock } from 'lucide-react';
-import { fundManagementApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
+import { fundManagementApi, fundTransferApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
 
 const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = d => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
@@ -40,6 +40,7 @@ export default function FundManagementPage() {
   const [xfer, setXfer] = useState(null); // { toProjectId, toName, shortfall }
   const [pwjDocs, setPwjDocs] = useState([]); // Planned Outflow — docs for the selected project
   const [docSearchOpen, setDocSearchOpen] = useState(false);
+  const [b2bProjects, setB2bProjects] = useState([]); // for Bank Balance / Total Project Balance tiles
 
   const isFunding = view === 'FUNDING';
   const isPlanned = view === 'PLANNED_INFLOW' || view === 'PLANNED_OUTFLOW';
@@ -55,6 +56,15 @@ export default function FundManagementPage() {
   useEffect(() => {
     projectsApi.getAll().then(r => setProjects(r.data || [])).catch(() => setProjects([]));
   }, []);
+
+  const loadB2b = useCallback(() => {
+    fundTransferApi.getProjects().then(r => setB2bProjects(r.data || [])).catch(() => setB2bProjects([]));
+  }, []);
+
+  useEffect(() => { loadB2b(); }, [loadB2b, view, rows]);
+
+  const totalBank = b2bProjects.reduce((s, p) => s + Number(p.collectionReceived ?? 0), 0);
+  const totalProject = b2bProjects.reduce((s, p) => s + Number(p.availableBalance ?? 0), 0);
 
   const loadFunding = useCallback(() => {
     fundManagementApi.paymentFunding().then(r => setFunding(r.data || null)).catch(() => setFunding(null));
@@ -177,6 +187,19 @@ export default function FundManagementPage() {
           <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>Happizo Fund Management</div>
           <div style={{ fontSize: 13.5, color: '#64748b', marginTop: 2 }}>Record every rupee that comes in (Inflow) and goes out (Outflow).</div>
         </div>
+      </div>
+
+      {/* Balance tiles */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 18 }}>
+        {[
+          { label: 'Bank Balance', value: totalBank, color: '#1e40af', bg: '#eff6ff', border: '#93c5fd' },
+          { label: 'Total Project Balance', value: totalProject, color: totalProject < 0 ? '#dc2626' : '#065f46', bg: '#f0fdf4', border: '#6ee7b7' },
+        ].map(t => (
+          <div key={t.label} className="card" style={{ padding: '20px 24px', background: t.bg, borderLeft: `5px solid ${t.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.label}</div>
+            <div style={{ fontSize: 34, fontWeight: 800, color: t.color, marginTop: 6, lineHeight: 1.1 }}>{fmt(t.value)}</div>
+          </div>
+        ))}
       </div>
 
       {/* View toggle + Add */}

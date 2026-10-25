@@ -3,7 +3,6 @@ import "./account.css";
 import AccountDashboard from "./Dashboard";
 import AccountProjects from "./ProjectsPage";
 import AccountExpenses from "./ExpensePage";
-import AccountTransfers from "./FundTransferPage";
 import CollectionPage from "./CollectionPage";
 import PaymentsPage from "./PaymentsPage";
 import TdsPage from "./TdsPage";
@@ -26,7 +25,6 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "dashboard",   label: "Dashboard"    },
     { key: "projects",    label: "Project-wise" },
     { key: "expenses",    label: "Expenses"     },
-    { key: "transfers",   label: "Fund Transfer"},
     { key: "fund-mgmt",   label: "Fund Management"},
     { key: "payments",    label: "Send for Payment"},
     { key: "tds",         label: "TDS"},
@@ -79,7 +77,6 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
         {tab === "dashboard"  && <AccountDashboard />}
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
-        {tab === "transfers"   && <div className="page-content"><AccountTransfers isCeo={isCeo} /></div>}
         {tab === "fund-mgmt"   && <div className="page-content"><FundManagementPage /></div>}
         {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} /></div>}
         {tab === "tds"         && <div className="page-content"><TdsPage isAdmin={isAdmin} /></div>}
