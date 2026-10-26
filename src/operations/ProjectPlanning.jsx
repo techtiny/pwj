@@ -50,6 +50,16 @@ const menuItem = (disabled) => ({
   color: disabled ? "#cbd5e1" : "#0f172a", cursor: disabled ? "not-allowed" : "pointer",
 });
 
+// Status is derived from the dates, never ticked by hand:
+//   actual finish on/before planned finish -> DONE (green)   after planned finish -> LATE (orange)
+//   no actual finish and planned finish already past today -> OVERDUE (red)   otherwise PENDING.
+const STATE_COLORS = { DONE: "#15803d", LATE: "#ea580c", OVERDUE: "#dc2626" };
+function rowState(r, today) {
+  if (r.actualFinish) return r.plannedFinish && r.actualFinish > r.plannedFinish ? "LATE" : "DONE";
+  if (r.plannedFinish && r.plannedFinish < today) return "OVERDUE";
+  return "PENDING";
+}
+
 const COMPANY = {
   name: "Happizo Infrastructure and Solutions",
   addr1: "No.11/ 20, Ground floor, 2nd cross street",
@@ -170,6 +180,17 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     touch();
   };
 
+  // "+" on a row: add a new activity directly below it, under the same BOQ item.
+  const addRowAfter = (key) => {
+    setRows(rs => {
+      const i = rs.findIndex(r => r.key === key);
+      if (i < 0) return rs;
+      const row = { ...blankRow(null), boqNo: rs[i].boqNo || "", boqDescription: rs[i].boqDescription || "" };
+      return [...rs.slice(0, i + 1), row, ...rs.slice(i + 1)];
+    });
+    touch();
+  };
+
   const removeRow = (key) => { setRows(rs => rs.filter(r => r.key !== key)); touch(); };
 
   // ── Grouping: consecutive rows sharing a BOQ item form one block, in row order. ──
@@ -214,22 +235,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     touch();
   };
 
-  // Add an activity at the end of a block, linked to the same BOQ item.
-  const addRowToGroup = (g) => {
-    const last = g.rows[g.rows.length - 1];
-    const row = blankRow(null);
-    row.boqNo = g.boqNo;
-    row.boqDescription = last?.boqDescription || "";
-    setRows(rs => { const i = rs.findIndex(r => r.key === last.key); return [...rs.slice(0, i + 1), row, ...rs.slice(i + 1)]; });
-    touch();
-  };
-
   // ── Header metrics ──
   const today = todayStr();
   const daysRemaining = header.completionDate ? Math.round((toUtc(header.completionDate) - toUtc(today)) / DAY_MS) : null;
-  const completedCount = rows.filter(r => r.status === "COMPLETED").length;
+  const completedCount = rows.filter(r => r.actualFinish).length;
   const pct = rows.length ? Math.round((completedCount / rows.length) * 100) : 0;
-  const overdueCount = rows.filter(r => r.plannedFinish && r.plannedFinish < today && r.status !== "COMPLETED").length;
+  const overdueCount = rows.filter(r => rowState(r, today) === "OVERDUE").length;
 
   const save = async () => {
     // Save in on-screen (grouped) order.
@@ -242,6 +253,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       activities: ordered.map(r => {
         const a = { id: r.id };
         ROW_FIELDS.forEach(f => { a[f] = r[f] === "" ? null : r[f]; });
+        const st = rowState(r, today);
+        a.status = st === "DONE" || st === "LATE" ? "COMPLETED" : st === "OVERDUE" ? "NOT_COMPLETED" : null;
         a.durationDays = r.durationDays === "" || r.durationDays == null ? null : parseInt(r.durationDays, 10) || null;
         return a;
       }),
@@ -264,9 +277,6 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     const cell = "border:1px solid #cbd5e1;padding:4px 5px;font-size:9.5px;vertical-align:top;";
     const th = "border:1px solid #94a3b8;padding:5px 4px;font-size:9.5px;background:#ededeb;text-align:center;font-weight:700;";
     const body = groups.map(g => {
-      const boq = boqByLabel.get(g.boqNo);
-      const desc = g.boqNo ? firstLine(boq?.description || g.rows[0]?.boqDescription || "") : "Not linked to a BOQ item";
-      const head = `<tr><td colspan="14" style="${cell}background:#f0fdfa;font-weight:700;">${g.boqNo ? `BOQ ${esc(g.boqNo)}` : "Other activities"} &nbsp;<span style="font-weight:400">${esc(desc)}${boq?.qty != null ? ` · ${esc(boq.qty)} ${esc(boq.unit)}` : ""}</span></td></tr>`;
       const rowsHtml = g.rows.map(r => `<tr>
         <td style="${cell}">${esc(r.boqNo)}</td><td style="${cell}text-align:center;">${serialByKey[r.key]}</td>
         <td style="${cell}">${esc(r.description)}</td><td style="${cell}">${esc(r.dependency)}</td>
@@ -274,16 +284,15 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         <td style="${cell}text-align:center;">${esc(r.durationDays)}</td>
         <td style="${cell}">${esc(fmtDate(r.plannedStart))}</td><td style="${cell}">${esc(fmtDate(r.plannedFinish))}</td>
         <td style="${cell}">${esc(fmtDate(r.actualStart))}</td><td style="${cell}">${esc(fmtDate(r.actualFinish))}</td>
-        <td style="${cell}text-align:center;">${r.status === "COMPLETED" ? "✓" : ""}</td><td style="${cell}text-align:center;">${r.status === "NOT_COMPLETED" ? "✓" : ""}</td>
+        ${(() => { const st = rowState(r, today); const c = STATE_COLORS[st]; const b = (t) => `<td style="${cell}text-align:center;font-weight:700;color:${c};">${t}</td>`; return (st === "DONE" || st === "LATE" ? b("Completed") : `<td style="${cell}"></td>`) + (st === "OVERDUE" ? b("Not Completed") : `<td style="${cell}"></td>`); })()}
         <td style="${cell}white-space:pre-wrap;">${esc(r.remarks)}</td></tr>`).join("");
-      return head + rowsHtml;
+      return rowsHtml;
     }).join("");
     const info = [
       ["Project Name", project.name], ["Project WO number", header.woNumber], ["Happizo representative", header.happizoRepresentative],
-      ["Project start date", fmtDate(header.startDate)], ["Project SPOC Client", header.spocClient], ["No of days remaining", daysRemaining ?? ""],
-      ["Project completion date", fmtDate(header.completionDate)], ["Project SPOC Contact number", header.spocContact], ["Overall project % completion", `${pct}%`],
+      ["Project start date", fmtDate(header.startDate)], ["Project completion date", fmtDate(header.completionDate)], ["No of days remaining", daysRemaining ?? ""],
     ];
-    const infoHtml = [0, 3, 6].map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
+    const infoHtml = [0, 3].map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Project Schedule - ${esc(project.name)}</title>
       <style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
       <table style="width:100%;border-bottom:2px solid #111;margin-bottom:8px"><tr>
@@ -308,9 +317,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const exportExcel = () => {
     const H = [
       ["Project Name", project.name, "", "Project WO number", header.woNumber, "", "Happizo representative", header.happizoRepresentative],
-      ["Project start date", fmtDate(header.startDate), "", "Project SPOC Client", header.spocClient, "", "No of days remaining", daysRemaining ?? ""],
-      ["Project completion date", fmtDate(header.completionDate), "", "Project SPOC Contact number", header.spocContact, "", "Over all project % in completion", `${pct}%`],
-      [],
+      ["Project start date", fmtDate(header.startDate), "", "Project completion date", fmtDate(header.completionDate), "", "No of days remaining", daysRemaining ?? ""],
+      [], [],
       ["BOQ No", "Sl No", "Description of works", "Dependency", "Dependency target date", "Material delivery date", "Activity duration", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
       ["", "", "", "", "", "", "", "Start date", "Finish date", "Started date", "Finished date", "Completed", "Not completed", ""],
     ];
@@ -318,7 +326,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       r.boqNo, serialByKey[r.key], r.description, r.dependency,
       fmtDate(r.dependencyTargetDate), fmtDate(r.materialDeliveryDate), r.durationDays,
       fmtDate(r.plannedStart), fmtDate(r.plannedFinish), fmtDate(r.actualStart), fmtDate(r.actualFinish),
-      r.status === "COMPLETED" ? "✓" : "", r.status === "NOT_COMPLETED" ? "✓" : "", r.remarks,
+      rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? "Completed (late)" : "", rowState(r, today) === "OVERDUE" ? "Not Completed" : "", r.remarks,
     ])));
     const ws = XLSX.utils.aoa_to_sheet(H);
     const m = (r1, c1, r2, c2) => ({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } });
@@ -345,27 +353,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <Field label="Happizo representative"><input style={inpSt} value={header.happizoRepresentative} onChange={e => setH("happizoRepresentative", e.target.value)} /></Field>
 
           <Field label="Project start date"><input type="date" style={inpSt} value={header.startDate} onChange={e => setH("startDate", e.target.value)} /></Field>
-          <Field label="Project SPOC Client"><input style={inpSt} value={header.spocClient} onChange={e => setH("spocClient", e.target.value)} /></Field>
+          <Field label="Project completion date"><input type="date" style={inpSt} value={header.completionDate} min={header.startDate || undefined} onChange={e => setH("completionDate", e.target.value)} /></Field>
           <Field label="No of days remaining">
             <div style={{ ...roSt, fontWeight: 700, color: daysRemaining == null ? "#94a3b8" : daysRemaining < 0 ? "#b91c1c" : daysRemaining <= 7 ? "#b45309" : "#0f172a" }}>
               {daysRemaining == null ? "Set a completion date"
                 : daysRemaining < 0 ? `Overdue by ${-daysRemaining} day${daysRemaining === -1 ? "" : "s"}`
                 : `${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`}
-            </div>
-          </Field>
-
-          <Field label="Project completion date"><input type="date" style={inpSt} value={header.completionDate} min={header.startDate || undefined} onChange={e => setH("completionDate", e.target.value)} /></Field>
-          <Field label="Project SPOC Contact number"><input type="tel" style={inpSt} value={header.spocContact} onChange={e => setH("spocContact", e.target.value)} /></Field>
-          <Field label="Overall project % in completion">
-            <div style={{ ...roSt, display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, height: 8, background: "#e2e8f0", borderRadius: 99, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: "#0d9488" }} />
-              </div>
-              <span style={{ fontWeight: 700, color: "#0f172a", minWidth: 40, textAlign: "right" }}>{pct}%</span>
-            </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              {completedCount} of {rows.length} activit{rows.length === 1 ? "y" : "ies"} completed
-              {overdueCount > 0 && <span style={{ color: "#b91c1c", fontWeight: 600 }}> · {overdueCount} past planned finish</span>}
             </div>
           </Field>
         </div>
@@ -434,7 +427,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
               <tr>
                 <th rowSpan={2} style={{ ...th, width: "7%" }}>BOQ No</th>
                 <th rowSpan={2} style={{ ...th, width: "3%" }}>Sl No</th>
-                <th rowSpan={2} style={{ ...th, width: "13%" }}>Description of works</th>
+                <th rowSpan={2} style={{ ...th, width: "11%" }}>Description of works</th>
                 <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency</th>
                 <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency target date</th>
                 <th rowSpan={2} style={{ ...th, width: "8%" }}>Material delivery date</th>
@@ -443,7 +436,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                 <th colSpan={2} style={th}>Actual</th>
                 <th colSpan={2} style={th}>Status</th>
                 <th rowSpan={2} style={{ ...th, width: "10%" }}>Remarks</th>
-                <th rowSpan={2} style={{ ...th, width: "6%" }} aria-label="Insert / Remove" />
+                <th rowSpan={2} style={{ ...th, width: "8%" }} aria-label="Add / Insert / Remove" />
               </tr>
               <tr>
                 <th style={{ ...th2, width: "8%" }}>Start date</th>
@@ -456,31 +449,13 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             </thead>
             <tbody>
               {groups.map(g => {
-                const isOther = !g.boqNo;
-                const boqDesc = isOther ? "" : (boqByLabel.get(g.boqNo)?.description || g.rows[0]?.boqDescription || "");
-                const boq = boqByLabel.get(g.boqNo);
                 return [
-                  <tr key={`g-${g.id}`} style={{ background: "#f0fdfa" }}>
-                    <td colSpan={15} style={{ padding: "8px 12px", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #ccfbf1" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: "#0f766e", whiteSpace: "nowrap" }}>
-                          {isOther ? "Other activities" : `BOQ ${g.boqNo}`}
-                        </span>
-                        <span title={boqDesc} style={{ fontSize: 13, color: "#334155", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 760 }}>
-                          {isOther ? "Not linked to a BOQ item" : firstLine(boqDesc) || "—"}
-                        </span>
-                        {boq?.qty != null && <span style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>{boq.qty} {boq.unit}</span>}
-                        <button onClick={() => addRowToGroup(g)} style={{ ...btn("link"), marginLeft: "auto" }}>
-                          <Plus size={14} /> Add activity
-                        </button>
-                      </div>
-                    </td>
-                  </tr>,
                   ...g.rows.map(r => {
-                    const overdue = r.plannedFinish && r.plannedFinish < today && r.status !== "COMPLETED";
+                    const state = rowState(r, today);
+                    const overdue = state === "OVERDUE";
                     const datesBad = r.plannedStart && r.plannedFinish && r.plannedFinish < r.plannedStart;
                     return (
-                      <tr key={r.key} style={{ background: r.status === "COMPLETED" ? "#f0fdf4" : undefined }}>
+                      <tr key={r.key} style={{ background: state === "DONE" ? "#f0fdf4" : state === "LATE" ? "#fff7ed" : state === "OVERDUE" ? "#fef2f2" : undefined }}>
                         <td style={{ ...td, color: "#475569", fontWeight: 600 }}>
                           {hasBoq ? (
                             <select style={{ ...cellInp, color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
@@ -489,7 +464,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                               <option value="">Link to BOQ…</option>
                               {r.boqNo && !boqByLabel.has(r.boqNo) && <option value={r.boqNo}>{r.boqNo}</option>}
                               {(boqItems || []).filter(b => b.label).map(b => (
-                                <option key={b.label} value={b.label} style={{ color: "#0f172a" }}>{b.label} — {firstLine(b.description).slice(0, 40)}</option>
+                                <option key={b.label} value={b.label} style={{ color: "#0f172a" }}>{b.label}</option>
                               ))}
                             </select>
                           ) : (r.boqNo || "—")}
@@ -514,15 +489,21 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={td}><DateCell value={r.actualStart} onChange={v => updateRow(r.key, "actualStart", v)} /></td>
                         <td style={td}><DateCell value={r.actualFinish} min={r.actualStart} onChange={v => updateRow(r.key, "actualFinish", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
-                          <input type="checkbox" aria-label="Completed" checked={r.status === "COMPLETED"} style={chk}
-                            onChange={e => updateRow(r.key, "status", e.target.checked ? "COMPLETED" : "")} />
+                          {state === "DONE" || state === "LATE" ? (
+                            <span style={{ fontWeight: 700, fontSize: 12.5, color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
+                          ) : (
+                            <button onClick={() => updateRow(r.key, "actualFinish", todayStr())} title="Set actual finish to today"
+                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 11.5, padding: "2px 6px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
+                          )}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>
-                          <input type="checkbox" aria-label="Not completed" checked={r.status === "NOT_COMPLETED"} style={chk}
-                            onChange={e => updateRow(r.key, "status", e.target.checked ? "NOT_COMPLETED" : "")} />
+                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 12.5, color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
                         </td>
                         <td style={td}><input style={cellInp} value={r.remarks} placeholder="Remarks" onChange={e => updateRow(r.key, "remarks", e.target.value)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
+                          <button onClick={() => addRowAfter(r.key)} title="Add activity below" aria-label="Add activity" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
+                            <Plus size={15} />
+                          </button>
                           <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setInsertMenu(m => m?.key === r.key ? null : { key: r.key, x: Math.max(8, b.right - 250), y: b.bottom + 4 }); }}
                             onMouseDown={e => e.stopPropagation()}
                             title={`Insert before Sl No ${serialByKey[r.key]}`} aria-label="Insert activity above" aria-haspopup="menu" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
