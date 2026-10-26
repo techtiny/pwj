@@ -60,6 +60,16 @@ function rowState(r, today) {
   return "PENDING";
 }
 
+// Days a row is behind: late finishes count actual vs planned finish; open rows past their
+// planned finish keep growing by one each day until an actual finish is entered.
+function delayDays(r, today) {
+  const st = rowState(r, today);
+  if (st === "LATE") return Math.round((toUtc(r.actualFinish) - toUtc(r.plannedFinish)) / DAY_MS);
+  if (st === "OVERDUE") return Math.round((toUtc(today) - toUtc(r.plannedFinish)) / DAY_MS);
+  return 0;
+}
+const dayLabel = (n) => `${n} day${n === 1 ? "" : "s"}`;
+
 const COMPANY = {
   name: "Happizo Infrastructure and Solutions",
   addr1: "No.11/ 20, Ground floor, 2nd cross street",
@@ -67,6 +77,155 @@ const COMPANY = {
   gst: "33EKIPS2810E1ZD",
 };
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+export function PlanningDashboard({ project, from, to }) {
+  const [statusF, setStatusF] = useState("ALL");
+  const [boqF, setBoqF] = useState("");
+  const [state, setState] = useState({ loading: true, error: "", header: null, rows: [] });
+  useEffect(() => {
+    let live = true;
+    setState(s => ({ ...s, loading: true, error: "" }));
+    getProjectSchedule(project.id)
+      .then(sch => { if (live) setState({ loading: false, error: "", header: sch || {}, rows: (sch?.activities || []).map(fromServerRow) }); })
+      .catch(() => { if (live) setState({ loading: false, error: "Couldn't load this project's schedule.", header: null, rows: [] }); });
+    return () => { live = false; };
+  }, [project.id]);
+
+  const { loading, error, header, rows: allRows } = state;
+  const today = todayStr();
+  const boqOptions = [...new Set(allRows.map(r => r.boqNo).filter(Boolean))];
+  // BOQ + date filters first (status chips show counts within these), then the status filter.
+  const base = allRows.filter(r => (!boqF || r.boqNo === boqF)
+    && ((!from && !to) || (r.plannedFinish && (!from || r.plannedFinish >= from) && (!to || r.plannedFinish <= to))));
+  const rows = statusF === "ALL" ? base : base.filter(r => rowState(r, today) === statusF);
+  const baseCount = (k) => base.filter(r => rowState(r, today) === k).length;
+  const states = rows.map(r => rowState(r, today));
+  const count = (k) => states.filter(x => x === k).length;
+  const done = count("DONE"), late = count("LATE"), overdue = count("OVERDUE"), pending = count("PENDING");
+  const total = rows.length;
+  const pct = total ? Math.round(((done + late) / total) * 100) : 0;
+  const totalDelay = rows.reduce((sum, r) => sum + delayDays(r, today), 0);
+  const daysRemaining = header?.completionDate ? Math.round((toUtc(header.completionDate) - toUtc(today)) / DAY_MS) : null;
+  const delayed = rows.map(r => ({ r, d: delayDays(r, today) })).filter(x => x.d > 0).sort((a, b) => b.d - a.d);
+
+  if (loading) return <div style={{ padding: 20, color: "#64748b" }}>Loading project planning…</div>;
+  if (error) return <div style={{ padding: 20, color: "#b91c1c" }}>{error}</div>;
+
+  const card = { background: "#fff", border: "1px solid #e8edf3", borderRadius: 14, boxShadow: "0 1px 2px rgba(15,23,42,.04)" };
+  const stat = (label, value, color, sub) => (
+    <div style={{ ...card, padding: "16px 18px" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color, marginTop: 6, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>{sub}</div>}
+    </div>
+  );
+  const legend = (label, n, color) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flex: "none" }} />
+      <span style={{ fontSize: 13, color: "#475569" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginLeft: "auto" }}>{n}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Project planning</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Schedule progress and delays, from the saved project schedule</div>
+      </div>
+      {allRows.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          {[["ALL", "All", base.length, "#0f172a"], ["DONE", "On time", baseCount("DONE"), STATE_COLORS.DONE], ["LATE", "Late", baseCount("LATE"), STATE_COLORS.LATE],
+            ["OVERDUE", "Not completed", baseCount("OVERDUE"), STATE_COLORS.OVERDUE], ["PENDING", "Pending", baseCount("PENDING"), "#64748b"]].map(([k, label, n, c]) => {
+            const on = statusF === k;
+            return (
+              <button key={k} onClick={() => setStatusF(k)}
+                style={{ border: `1.5px solid ${on ? c : "#e2e8f0"}`, background: on ? c : "#fff", color: on ? "#fff" : "#334155", borderRadius: 99, padding: "5px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {label} <span style={{ opacity: on ? 0.9 : 0.6, fontWeight: 700 }}>{n}</span>
+              </button>
+            );
+          })}
+          <select value={boqF} onChange={e => setBoqF(e.target.value)} aria-label="Filter by BOQ"
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: boqF ? "#0f172a" : "#64748b", marginLeft: 4 }}>
+            <option value="">All BOQ items</option>
+            {boqOptions.map(b => <option key={b} value={b}>BOQ {b}</option>)}
+          </select>
+          {(statusF !== "ALL" || boqF) && (
+            <button onClick={() => { setStatusF("ALL"); setBoqF(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Reset</button>
+          )}
+        </div>
+      )}
+      {allRows.length === 0 ? (
+        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "#64748b" }}>
+          No activities scheduled yet — add them in the <b>Project Planning</b> tab.
+        </div>
+      ) : total === 0 ? (
+        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "#64748b" }}>No activities match these filters.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ ...card, padding: 22, display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(260px, 1.4fr)", gap: 28, alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Overall completion</div>
+              <div style={{ fontSize: 52, fontWeight: 800, color: "#0f172a", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: 26, color: "#94a3b8" }}>%</span></div>
+              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{done + late} of {total} activities finished</div>
+              <div style={{ height: 10, background: "#eef2f6", borderRadius: 99, overflow: "hidden", display: "flex", marginTop: 14 }}>
+                <div style={{ width: `${(done / total) * 100}%`, background: STATE_COLORS.DONE }} />
+                <div style={{ width: `${(late / total) * 100}%`, background: STATE_COLORS.LATE }} />
+                <div style={{ width: `${(overdue / total) * 100}%`, background: STATE_COLORS.OVERDUE }} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {legend("Completed on time", done, STATE_COLORS.DONE)}
+              {legend("Completed late", late, STATE_COLORS.LATE)}
+              {legend("Not completed (past due)", overdue, STATE_COLORS.OVERDUE)}
+              {legend("Pending", pending, "#cbd5e1")}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+            {stat("Overall delayed days", totalDelay, totalDelay > 0 ? "#dc2626" : "#15803d", totalDelay > 0 ? `${delayed.length} activit${delayed.length === 1 ? "y" : "ies"} delayed` : "On schedule")}
+            {stat("Days remaining", daysRemaining == null ? "—" : daysRemaining < 0 ? `-${-daysRemaining}` : daysRemaining,
+              daysRemaining != null && daysRemaining < 0 ? "#dc2626" : "#0f172a", header?.completionDate ? `Due ${fmtDate(header.completionDate)}` : "Set a completion date")}
+            {stat("Activities", total, "#0f172a", total !== allRows.length ? `of ${allRows.length} in schedule` : (header?.startDate ? `Started ${fmtDate(header.startDate)}` : undefined))}
+          </div>
+
+          {delayed.length > 0 && (
+            <div style={{ ...card, overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Delayed activities</div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12 }}>
+                    <th style={{ padding: "8px 18px", fontWeight: 600 }}>BOQ</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Activity</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 600 }}>Planned finish</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Actual finish</th>
+                    <th style={{ padding: "8px 18px", fontWeight: 600, textAlign: "right" }}>Delay</th>
+                  </tr></thead>
+                  <tbody>
+                    {delayed.map(({ r, d }) => {
+                      const st = rowState(r, today);
+                      return (
+                        <tr key={r.key} style={{ borderTop: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "10px 18px", fontWeight: 700, color: "#0f172a" }}>{r.boqNo || "—"}</td>
+                          <td style={{ padding: "10px", color: "#334155" }}>{r.description || "—"}</td>
+                          <td style={{ padding: "10px", color: "#475569" }}>{fmtDate(r.plannedFinish) || "—"}</td>
+                          <td style={{ padding: "10px", color: "#475569" }}>{r.actualFinish ? fmtDate(r.actualFinish) : <span style={{ color: STATE_COLORS.OVERDUE }}>Not finished</span>}</td>
+                          <td style={{ padding: "10px 18px", textAlign: "right" }}>
+                            <span style={{ fontWeight: 700, fontSize: 12, color: STATE_COLORS[st], background: st === "OVERDUE" ? "#fef2f2" : "#fff7ed", padding: "3px 9px", borderRadius: 99 }}>
+                              {dayLabel(d)} {st === "OVERDUE" ? "overdue" : "late"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const firstLine = (s) => (s || "").split("\n")[0];
 
@@ -89,7 +248,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef(null);
   const [insertMenu, setInsertMenu] = useState(null); // { key, x, y } — row-level Insert menu
-  const [insertAtKey, setInsertAtKey] = useState(null); // row the BOQ picker inserts above
+  const [insertAtKey, setInsertAtKey] = useState(null);
+  const [fStatus, setFStatus] = useState("ALL");
+  const [fBoq, setFBoq] = useState("");
+  const [fText, setFText] = useState(""); // row the BOQ picker inserts above
 
   useEffect(() => {
     if (!insertMenu) return;
@@ -237,9 +399,17 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
 
   // ── Header metrics ──
   const today = todayStr();
+  const q = fText.trim().toLowerCase();
+  const filtering = fStatus !== "ALL" || !!fBoq || !!q;
+  const visible = (r) => (fStatus === "ALL" || rowState(r, today) === fStatus)
+    && (!fBoq || r.boqNo === fBoq)
+    && (!q || `${r.description} ${r.remarks} ${r.boqNo}`.toLowerCase().includes(q));
+  const visibleCount = rows.filter(visible).length;
   const daysRemaining = header.completionDate ? Math.round((toUtc(header.completionDate) - toUtc(today)) / DAY_MS) : null;
   const completedCount = rows.filter(r => r.actualFinish).length;
   const pct = rows.length ? Math.round((completedCount / rows.length) * 100) : 0;
+  const totalDelay = rows.reduce((sum, r) => sum + delayDays(r, today), 0);
+  const delayedCount = rows.filter(r => delayDays(r, today) > 0).length;
   const overdueCount = rows.filter(r => rowState(r, today) === "OVERDUE").length;
 
   const save = async () => {
@@ -277,31 +447,32 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     const cell = "border:1px solid #cbd5e1;padding:4px 5px;font-size:9.5px;vertical-align:top;";
     const th = "border:1px solid #94a3b8;padding:5px 4px;font-size:9.5px;background:#ededeb;text-align:center;font-weight:700;";
     const body = groups.map(g => {
-      const rowsHtml = g.rows.map(r => `<tr>
+      const rowsHtml = g.rows.filter(visible).map(r => `<tr>
         <td style="${cell}">${esc(r.boqNo)}</td><td style="${cell}text-align:center;">${serialByKey[r.key]}</td>
         <td style="${cell}">${esc(r.description)}</td><td style="${cell}">${esc(r.dependency)}</td>
         <td style="${cell}">${esc(fmtDate(r.dependencyTargetDate))}</td><td style="${cell}">${esc(fmtDate(r.materialDeliveryDate))}</td>
         <td style="${cell}text-align:center;">${esc(r.durationDays)}</td>
         <td style="${cell}">${esc(fmtDate(r.plannedStart))}</td><td style="${cell}">${esc(fmtDate(r.plannedFinish))}</td>
         <td style="${cell}">${esc(fmtDate(r.actualStart))}</td><td style="${cell}">${esc(fmtDate(r.actualFinish))}</td>
-        ${(() => { const st = rowState(r, today); const c = STATE_COLORS[st]; const b = (t) => `<td style="${cell}text-align:center;font-weight:700;color:${c};">${t}</td>`; return (st === "DONE" || st === "LATE" ? b("Completed") : `<td style="${cell}"></td>`) + (st === "OVERDUE" ? b("Not Completed") : `<td style="${cell}"></td>`); })()}
+        ${(() => { const st = rowState(r, today); const c = STATE_COLORS[st]; const b = (t) => `<td style="${cell}text-align:center;font-weight:700;color:${c};">${t}</td>`; return (st === "DONE" || st === "LATE" ? b("Completed" + (st === "LATE" ? `<br/><span style="font-size:8.5px">${dayLabel(delayDays(r, today))} late</span>` : "")) : `<td style="${cell}"></td>`) + (st === "OVERDUE" ? b(`Not Completed<br/><span style="font-size:8.5px">${dayLabel(delayDays(r, today))} overdue</span>`) : `<td style="${cell}"></td>`); })()}
         <td style="${cell}white-space:pre-wrap;">${esc(r.remarks)}</td></tr>`).join("");
       return rowsHtml;
     }).join("");
     const info = [
       ["Project Name", project.name], ["Project WO number", header.woNumber], ["Happizo representative", header.happizoRepresentative],
       ["Project start date", fmtDate(header.startDate)], ["Project completion date", fmtDate(header.completionDate)], ["No of days remaining", daysRemaining ?? ""],
+      ["Overall delayed days", totalDelay > 0 ? dayLabel(totalDelay) : "No delay"],
     ];
-    const infoHtml = [0, 3].map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
+    const infoHtml = [0, 3, 6].map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Project Schedule - ${esc(project.name)}</title>
-      <style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
+      <style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}th,td{overflow-wrap:anywhere}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
       <table style="width:100%;border-bottom:2px solid #111;margin-bottom:8px"><tr>
         <td style="width:40%"><img src="${window.location.origin}/happizo-logo.png" alt="Happizo" style="width:120px;height:auto" /></td>
         <td style="text-align:right;font-size:10.5px;line-height:1.5"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}<br/>${esc(COMPANY.addr2)}<br/>GSTIN: ${esc(COMPANY.gst)}</td></tr></table>
       <div style="font-size:15px;font-weight:800;margin-bottom:6px">Project Schedule</div>
       <table style="margin-bottom:8px">${infoHtml}</table>
       <table style="width:100%;table-layout:fixed">
-        <colgroup>${["6%","3%","14%","7%","7%","7%","4%","7%","7%","7%","7%","4%","4%","14%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
+        <colgroup>${["5%","3%","12%","7%","7%","7%","6%","7%","7%","7%","7%","8%","8%","9%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
           <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Sl No</th><th rowspan="2" style="${th}">Description of works</th><th rowspan="2" style="${th}">Dependency</th><th rowspan="2" style="${th}">Dependency target date</th><th rowspan="2" style="${th}">Material delivery date</th><th rowspan="2" style="${th}">Duration (days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
           <tr><th style="${th}">Start date</th><th style="${th}">Finish date</th><th style="${th}">Started date</th><th style="${th}">Finished date</th><th style="${th}">Completed</th><th style="${th}">Not completed</th></tr>
@@ -318,7 +489,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     const H = [
       ["Project Name", project.name, "", "Project WO number", header.woNumber, "", "Happizo representative", header.happizoRepresentative],
       ["Project start date", fmtDate(header.startDate), "", "Project completion date", fmtDate(header.completionDate), "", "No of days remaining", daysRemaining ?? ""],
-      [], [],
+      ["Overall delayed days", totalDelay],
+      [],
       ["BOQ No", "Sl No", "Description of works", "Dependency", "Dependency target date", "Material delivery date", "Activity duration", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
       ["", "", "", "", "", "", "", "Start date", "Finish date", "Started date", "Finished date", "Completed", "Not completed", ""],
     ];
@@ -326,7 +498,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       r.boqNo, serialByKey[r.key], r.description, r.dependency,
       fmtDate(r.dependencyTargetDate), fmtDate(r.materialDeliveryDate), r.durationDays,
       fmtDate(r.plannedStart), fmtDate(r.plannedFinish), fmtDate(r.actualStart), fmtDate(r.actualFinish),
-      rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? "Completed (late)" : "", rowState(r, today) === "OVERDUE" ? "Not Completed" : "", r.remarks,
+      rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? `Completed (late ${delayDays(r, today)}d)` : "", rowState(r, today) === "OVERDUE" ? `Not Completed (${delayDays(r, today)}d overdue)` : "", r.remarks,
     ])));
     const ws = XLSX.utils.aoa_to_sheet(H);
     const m = (r1, c1, r2, c2) => ({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } });
@@ -390,6 +562,38 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         <button onClick={exportExcel} disabled={!rows.length} style={btn(rows.length ? "secondary" : "disabled")}>
           <Download size={15} /> Export Excel
         </button>
+        <div title="Sum of days late on finished activities plus days overdue on open ones"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap",
+            background: totalDelay > 0 ? "#fef2f2" : "#f0fdf4", border: `1.5px solid ${totalDelay > 0 ? "#fecaca" : "#bbf7d0"}`, color: totalDelay > 0 ? "#dc2626" : "#15803d" }}>
+          Overall delayed days: {totalDelay > 0 ? dayLabel(totalDelay) : "No delay"}
+          {delayedCount > 0 && <span style={{ fontWeight: 500, fontSize: 12, color: "#64748b" }}>· {delayedCount} activit{delayedCount === 1 ? "y" : "ies"}</span>}
+        </div>
+        {rows.length > 0 && (<>
+        <div style={{ position: "relative" }}>
+          <Search size={14} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+          <input value={fText} onChange={e => setFText(e.target.value)} placeholder="Search activity or remarks"
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px 7px 29px", fontSize: 13, fontFamily: "inherit", width: 230 }} />
+        </div>
+        <select value={fStatus} onChange={e => setFStatus(e.target.value)} aria-label="Filter by status"
+          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          <option value="ALL">All statuses</option>
+          <option value="DONE">Completed on time</option>
+          <option value="LATE">Completed late</option>
+          <option value="OVERDUE">Not completed (overdue)</option>
+          <option value="PENDING">Pending</option>
+        </select>
+        <select value={fBoq} onChange={e => setFBoq(e.target.value)} aria-label="Filter by BOQ"
+          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          <option value="">All BOQ items</option>
+          {[...new Set(rows.map(r => r.boqNo).filter(Boolean))].map(b => <option key={b} value={b}>BOQ {b}</option>)}
+        </select>
+        {filtering && (
+          <>
+            <span style={{ fontSize: 12.5, color: "#64748b" }}>Showing {visibleCount} of {rows.length}</span>
+            <button onClick={() => { setFStatus("ALL"); setFBoq(""); setFText(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear filters</button>
+          </>
+        )}
+        </>)}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12.5, color: saveState === "error" ? "#b91c1c" : dirty ? "#b45309" : "#64748b" }}>
             {saveState === "saving" ? "Saving…"
@@ -450,12 +654,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             <tbody>
               {groups.map(g => {
                 return [
-                  ...g.rows.map(r => {
+                  ...g.rows.filter(visible).map(r => {
                     const state = rowState(r, today);
                     const overdue = state === "OVERDUE";
                     const datesBad = r.plannedStart && r.plannedFinish && r.plannedFinish < r.plannedStart;
                     return (
-                      <tr key={r.key} style={{ background: state === "DONE" ? "#f0fdf4" : state === "LATE" ? "#fff7ed" : state === "OVERDUE" ? "#fef2f2" : undefined }}>
+                      <tr key={r.key} style={{ background: "#fff" }}>
                         <td style={{ ...td, color: "#475569", fontWeight: 600 }}>
                           {hasBoq ? (
                             <select style={{ ...cellInp, color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
@@ -495,9 +699,11 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                             <button onClick={() => updateRow(r.key, "actualFinish", todayStr())} title="Set actual finish to today"
                               style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 11.5, padding: "2px 6px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
                           )}
+                          {state === "LATE" && <div style={{ fontSize: 11.5, fontWeight: 600, color: STATE_COLORS.LATE }}>{dayLabel(delayDays(r, today))} late</div>}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>
                           {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 12.5, color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
+                          {state === "OVERDUE" && <div style={{ fontSize: 11.5, fontWeight: 600, color: STATE_COLORS.OVERDUE }}>{dayLabel(delayDays(r, today))} overdue</div>}
                         </td>
                         <td style={td}><input style={cellInp} value={r.remarks} placeholder="Remarks" onChange={e => updateRow(r.key, "remarks", e.target.value)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>

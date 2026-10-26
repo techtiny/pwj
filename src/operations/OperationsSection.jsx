@@ -6,7 +6,7 @@ import {
   uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
   saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
-import ProjectPlanning from "./ProjectPlanning";
+import ProjectPlanning, { PlanningDashboard } from "./ProjectPlanning";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -186,7 +186,10 @@ export async function loadBoqGroups(boqDocUrl) {
 }
 
 export default function OperationsSection({ user, onCreateFromBOQ }) {
-  const [tab, setTab] = useState("boq"); // "boq" | "planning" | "dashboard"
+  const [dashFrom, setDashFrom] = useState("");
+  const [dashTo, setDashTo] = useState("");
+  const dashInp = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: 13, fontFamily: "inherit", background: "#fff" };
+  const [tab, setTab] = useState("dashboard"); // "dashboard" | "boq" | "planning"
 
   // ── Project picker ──
   const [projects, setProjects] = useState([]);
@@ -218,10 +221,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
 
   const [planningDirty, setPlanningDirty] = useState(false);
-  const openProject = (project) => { setTab("boq"); setPlanningDirty(false); setSelectedProject(project); };
+  const openProject = (project) => { setTab("dashboard"); setPlanningDirty(false); setSelectedProject(project); };
   const closeProject = () => {
     if (planningDirty && !window.confirm("The project schedule has unsaved changes. Leave without saving?")) return;
-    setPlanningDirty(false); setSelectedProject(null); resetBOQ(); setTab("boq");
+    setPlanningDirty(false); setSelectedProject(null); resetBOQ(); setTab("dashboard");
   };
 
   const filteredProjects = useMemo(() => {
@@ -638,9 +641,9 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       {/* Sub-tabs */}
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
         {[
+          { key: "dashboard", label: "Dashboard", icon: TrendingUp },
           { key: "boq", label: "BOQ", icon: ClipboardList },
           { key: "planning", label: "Project Planning", icon: CalendarClock },
-          { key: "dashboard", label: "Dashboard", icon: TrendingUp },
         ].map(t => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -710,7 +713,22 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
         />
       </div>
 
-      {tab === "dashboard" && <TrendingDashboard key={selectedProject.id} projectName={selectedProject.name} />}
+      {tab === "dashboard" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #e8edf3", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Date range</span>
+            <input type="date" value={dashFrom} max={dashTo || undefined} onChange={e => setDashFrom(e.target.value)} style={dashInp} aria-label="From date" />
+            <span style={{ color: "#94a3b8", fontSize: 13 }}>to</span>
+            <input type="date" value={dashTo} min={dashFrom || undefined} onChange={e => setDashTo(e.target.value)} style={dashInp} aria-label="To date" />
+            {(dashFrom || dashTo) && (
+              <button onClick={() => { setDashFrom(""); setDashTo(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+            )}
+            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Planning: by planned finish · PRs: by date raised</span>
+          </div>
+          <PlanningDashboard key={`pd-${selectedProject.id}`} project={selectedProject} from={dashFrom} to={dashTo} />
+          <TrendingDashboard key={selectedProject.id} projectName={selectedProject.name} from={dashFrom} to={dashTo} />
+        </>
+      )}
     </div>
   );
 }
@@ -1459,31 +1477,40 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
 
 // With `projectName`, every number and chart is limited to that project's PRs
 // (the backend filters by project, so its summary counts match too).
-function TrendingDashboard({ projectName }) {
+function TrendingDashboard({ projectName, from, to }) {
   const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [raw, setRaw] = useState([]);
+  const [rawSummary, setRawSummary] = useState(null);
 
   useEffect(() => {
     getRecentEntries(projectName ? 1000 : 200, projectName)
-      .then(d => {
-        const list = d.content || [];
-        setEntries(list);
-        // The backend's summary totals are company-wide even when filtered by
-        // project, so for a single project count from its own entries.
-        if (!projectName) { setSummary(d); return; }
-        const count = (key, val) => list.filter(e => e[key] === val).length;
-        setSummary({
-          totalOpen: count("status", "OPEN"),
-          totalClosed: count("status", "CLOSED"),
-          totalProceed: count("approvalStatus", "PROCEED"),
-          totalHold: count("approvalStatus", "HOLD"),
-          totalNotApproved: count("approvalStatus", "NOT_APPROVED"),
-        });
-      })
-      .catch(() => { setEntries([]); setSummary(null); })
+      .then(d => { setRaw(d.content || []); setRawSummary(d); })
+      .catch(() => { setRaw([]); setRawSummary(null); })
       .finally(() => setLoading(false));
   }, [projectName]);
+
+  // Date range filter on when the PR was raised.
+  const entries = useMemo(() => {
+    if (!from && !to) return raw;
+    return raw.filter(e => {
+      const d = String(e.createdAt || e.timestamp || "").slice(0, 10);
+      return d && (!from || d >= from) && (!to || d <= to);
+    });
+  }, [raw, from, to]);
+
+  // The backend's summary totals are company-wide even when filtered by project or date,
+  // so those cases count from the visible entries.
+  const summary = useMemo(() => {
+    if (!projectName && !from && !to) return rawSummary;
+    const count = (key, val) => entries.filter(e => e[key] === val).length;
+    return {
+      totalOpen: count("status", "OPEN"),
+      totalClosed: count("status", "CLOSED"),
+      totalProceed: count("approvalStatus", "PROCEED"),
+      totalHold: count("approvalStatus", "HOLD"),
+      totalNotApproved: count("approvalStatus", "NOT_APPROVED"),
+    };
+  }, [entries, rawSummary, projectName, from, to]);
 
   const byProject = useMemo(() => {
     const m = new Map();
@@ -1514,52 +1541,60 @@ function TrendingDashboard({ projectName }) {
     ].filter(d => d.value > 0);
   }, [summary]);
 
-  const latest = useMemo(() => entries.slice(0, 10), [entries]);
 
   if (loading) return <div style={{ color: "#374151", fontSize: 14 }}>Loading dashboard…</div>;
 
+  const card = { background: "#fff", border: "1px solid #e8edf3", borderRadius: 14, boxShadow: "0 1px 2px rgba(15,23,42,.04)", padding: 20 };
+  const cardTitle = { fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 14 };
+  const axis = { fontSize: 11, fill: "#64748b" };
+
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Purchase requests</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{projectName ? "PRs raised for this project" : "Recent PR activity across projects"}</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 16 }}>
         {[
-          { label: projectName ? "Total PRs" : "Total (recent)", value: entries.length, color: "#0d9488" },
-          { label: "Open", value: summary?.totalOpen ?? "—", color: "#3b82f6" },
+          { label: projectName ? "Total PRs" : "Total (recent)", value: entries.length, color: "#0f172a" },
+          { label: "Open", value: summary?.totalOpen ?? "—", color: "#2563eb" },
           { label: "Closed", value: summary?.totalClosed ?? "—", color: "#15803d" },
-          { label: "On Hold", value: summary?.totalHold ?? "—", color: "#f59e0b" },
+          { label: "On Hold", value: summary?.totalHold ?? "—", color: "#d97706" },
         ].map(c => (
-          <div key={c.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12.5, color: "#374151", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{c.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: c.color, marginTop: 4 }}>{c.value}</div>
+          <div key={c.label} style={{ ...card, padding: "16px 18px" }}>
+            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{c.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: c.color, marginTop: 6, lineHeight: 1 }}>{c.value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16, marginBottom: 20 }}>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>PRs Raised — Last 10 Weeks</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 16 }}>
+        <div style={card}>
+          <div style={cardTitle}>PRs raised — last 10 weeks</div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={byWeek}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />
+              <XAxis dataKey="week" tick={axis} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={axis} axisLine={false} tickLine={false} width={28} />
+              <Tooltip cursor={{ fill: "#f1f5f9" }} />
+              <Bar dataKey="count" fill="#0d9488" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Approval Status</div>
+        <div style={card}>
+          <div style={cardTitle}>Approval status</div>
           {statusPie.length === 0 ? (
-            <div style={{ color: "#374151", fontSize: 13 }}>No data yet.</div>
+            <div style={{ color: "#64748b", fontSize: 13 }}>No data yet.</div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={statusPie} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75}>
+                <Pie data={statusPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={82} paddingAngle={2} stroke="none">
                   {statusPie.map((d, i) => <Cell key={i} fill={STATUS_COLORS[d.name === "Proceed" ? "PROCEED" : d.name === "Hold" ? "HOLD" : "NOT_APPROVED"] || "#94a3b8"} />)}
                 </Pie>
                 <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -1567,40 +1602,19 @@ function TrendingDashboard({ projectName }) {
       </div>
 
       {!projectName && (
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Top Projects by PR Count</div>
+      <div style={{ ...card, marginBottom: 16 }}>
+        <div style={cardTitle}>Top projects by PR count</div>
         <ResponsiveContainer width="100%" height={Math.max(160, byProject.length * 34)}>
           <BarChart data={byProject} layout="vertical" margin={{ left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#14b8a6" radius={[0, 4, 4, 0]} />
+            <XAxis type="number" allowDecimals={false} tick={axis} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="name" width={140} tick={axis} axisLine={false} tickLine={false} />
+            <Tooltip cursor={{ fill: "#f1f5f9" }} />
+            <Bar dataKey="count" fill="#14b8a6" radius={[0, 5, 5, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
       )}
-
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Latest Activity</div>
-        {latest.length === 0 ? (
-          <div style={{ color: "#374151", fontSize: 13 }}>No entries yet.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {latest.map(e => (
-              <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
-                <div>
-                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{e.materialRequired || "—"}</span>
-                  <span style={{ color: "#374151" }}> · {e.projectName || "—"} · raised by {e.raisedBy || "—"}</span>
-                </div>
-                <div style={{ color: "#94a3b8", whiteSpace: "nowrap" }}>
-                  {(e.createdAt || e.timestamp) ? new Date(e.createdAt || e.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
