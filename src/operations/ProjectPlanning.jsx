@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Save, Trash2, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer } from "lucide-react";
+import { Plus, Save, Trash2, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle } from "lucide-react";
 import { getProjectSchedule, saveProjectSchedule } from "./operationsApi";
 
 // ── Date helpers (dates travel as "YYYY-MM-DD" strings) ─────────────────────
@@ -254,6 +254,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const addMenuRef = useRef(null);
   const [insertMenu, setInsertMenu] = useState(null); // { key, x, y } — row-level Insert menu
   const [insertAtKey, setInsertAtKey] = useState(null);
+  const [missingOpen, setMissingOpen] = useState(false);
   const [fStatus, setFStatus] = useState("ALL");
   const [fBoq, setFBoq] = useState("");
   const [fText, setFText] = useState(""); // row the BOQ picker inserts above
@@ -406,6 +407,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const today = todayStr();
   // Custom "Others" values already used in this schedule, offered in every row's dropdown.
   const customDeps = [...new Set(rows.filter(r => !r.depOtherMode).map(r => (r.dependency || "").trim()).filter(d => d && !DEPENDENCIES.includes(d)))];
+  // BOQ items (from the project's imported BOQ) that have no scheduled activity. A section heading that
+  // has sub-items (e.g. 34 → 34a, 34b) is skipped — its sub-items are what get planned.
+  const plannedLabels = new Set(rows.map(r => r.boqNo).filter(Boolean));
+  const boqLabels = (boqItems || []).map(b => b.label).filter(Boolean);
+  const missingBoq = (boqItems || []).filter(b => b.label && !plannedLabels.has(b.label)
+    && !(/^\d+$/.test(b.label) && boqLabels.some(l => new RegExp(`^${b.label}[a-z]$`, "i").test(l))));
   const q = fText.trim().toLowerCase();
   const filtering = fStatus !== "ALL" || !!fBoq || !!q;
   const visible = (r) => (fStatus === "ALL" || rowState(r, today) === fStatus)
@@ -482,7 +489,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       <table style="width:100%;table-layout:fixed">
         <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
-          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Sl No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
+          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Activity No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
           <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not completed</th></tr>
         </thead><tbody>${body}</tbody></table>
       <div style="font-size:9px;color:#64748b;margin-top:8px">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
@@ -499,7 +506,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Project start date", fmtDate(header.startDate), "", "Project completion date", fmtDate(header.completionDate), "", "No of days remaining", daysRemaining ?? ""],
       ["Overall delayed days", totalDelay],
       [],
-      ["BOQ No", "Sl No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
+      ["BOQ No", "Activity No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
       ["", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not completed", ""],
     ];
     groups.forEach(g => g.rows.forEach(r => H.push([
@@ -564,6 +571,17 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             </div>
           )}
         </div>
+        {hasBoq && !boqLoading && (
+          <button onClick={() => setMissingOpen(true)} aria-label={`${missingBoq.length} BOQ items not planned`}
+            title={missingBoq.length ? `${missingBoq.length} BOQ item(s) have no scheduled activity` : "All BOQ items are planned"}
+            style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 8, cursor: "pointer",
+              border: `1.5px solid ${missingBoq.length ? "#fcd34d" : "#bbf7d0"}`, background: missingBoq.length ? "#fffbeb" : "#f0fdf4", color: missingBoq.length ? "#d97706" : "#15803d" }}>
+            <AlertTriangle size={18} />
+            {missingBoq.length > 0 && (
+              <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{missingBoq.length}</span>
+            )}
+          </button>
+        )}
         <button onClick={printPdf} disabled={!rows.length} style={btn(rows.length ? "secondary" : "disabled")}>
           <Printer size={15} /> Print PDF
         </button>
@@ -638,8 +656,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             <thead>
               <tr>
                 <th rowSpan={2} style={{ ...th, width: "3.5%" }}>BOQ No</th>
-                <th rowSpan={2} style={{ ...th, width: "3%" }}>Sl No</th>
-                <th rowSpan={2} style={{ ...th, width: "11.5%" }}>Description of Activity</th>
+                <th rowSpan={2} style={{ ...th, width: "4%" }}>Activity No</th>
+                <th rowSpan={2} style={{ ...th, width: "10.5%" }}>Description of Activity</th>
                 <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency By</th>
                 <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Start Date</th>
                 <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Target Date</th>
@@ -734,7 +752,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                           </button>
                           <button onClick={(e) => { const b = e.currentTarget.getBoundingClientRect(); setInsertMenu(m => m?.key === r.key ? null : { key: r.key, x: Math.max(8, b.right - 250), y: b.bottom + 4 }); }}
                             onMouseDown={e => e.stopPropagation()}
-                            title={`Insert before Sl No ${serialByKey[r.key]}`} aria-label="Insert activity above" aria-haspopup="menu" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
+                            title={`Insert before Activity No ${serialByKey[r.key]}`} aria-label="Insert activity above" aria-haspopup="menu" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
                             <ListPlus size={15} />
                           </button>
                           <button onClick={() => removeRow(r.key)} title="Remove activity" style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8", padding: 4 }}>
@@ -758,7 +776,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         return (
           <div role="menu" onMouseDown={e => e.stopPropagation()}
             style={{ position: "fixed", left: insertMenu.x, top: insertMenu.y, zIndex: 60, width: 250, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 8px 24px rgba(15,23,42,.14)", padding: 4 }}>
-            <div style={{ padding: "6px 12px 4px", fontSize: 11.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Insert before Sl No {serialByKey[insertMenu.key]}</div>
+            <div style={{ padding: "6px 12px 4px", fontSize: 11.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Insert before Activity No {serialByKey[insertMenu.key]}</div>
             <button role="menuitem" onClick={() => pick(() => insertBefore(insertMenu.key, [null]))} style={menuItem(false)}>
               <Plus size={15} /> Activity without BOQ item
             </button>
@@ -773,6 +791,40 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </div>
         );
       })()}
+
+      {missingOpen && (
+        <div onClick={() => setMissingOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="BOQ items not planned"
+            style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
+            <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
+              <AlertTriangle size={18} color={missingBoq.length ? "#d97706" : "#15803d"} />
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>BOQ items not planned <span style={{ color: "#94a3b8", fontWeight: 500 }}>· {missingBoq.length} of {boqLabels.length}</span></div>
+              <button onClick={() => setMissingOpen(false)} aria-label="Close" style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: "#64748b" }}><X size={18} /></button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {missingBoq.length === 0 ? (
+                <div style={{ padding: 28, textAlign: "center", color: "#15803d", fontWeight: 600 }}>Every BOQ item has at least one scheduled activity.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12.5 }}>
+                    <th style={{ padding: "8px 18px", fontWeight: 600, width: 90 }}>BOQ No</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Description</th>
+                    <th style={{ padding: "8px 18px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>Qty</th>
+                  </tr></thead>
+                  <tbody>
+                    {missingBoq.map(b => (
+                      <tr key={b.label} style={{ borderTop: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "9px 18px", fontWeight: 700, color: "#0f172a" }}>{b.label}</td>
+                        <td style={{ padding: "9px 10px", color: "#334155", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{firstLine(b.description) || "—"}</td>
+                        <td style={{ padding: "9px 18px", textAlign: "right", color: "#475569", whiteSpace: "nowrap" }}>{b.qty != null ? `${b.qty} ${b.unit || ""}` : (b.unit || "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {pickerOpen && (
         <BoqPicker
