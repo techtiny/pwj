@@ -19,11 +19,13 @@ const fmtDate = (d) => d ? new Date(toUtc(d)).toLocaleDateString("en-IN", { day:
 const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "" };
 const ROW_FIELDS = [
   "boqNo", "boqDescription", "description", "dependency",
-  "dependencyTargetDate", "materialDeliveryDate", "durationDays",
+  "dependencyStartDate", "dependencyTargetDate", "materialLeadDays", "materialDeliveryDate", "durationDays",
   "plannedStart", "plannedFinish", "actualStart", "actualFinish", "status", "remarks",
 ];
 const OTHER_GROUP = "__other__";
 const DEPENDENCIES = ["Architect", "Consultant", "Client"];
+const OTHERS = "__others__";
+const isOtherDep = (r) => !!r.depOtherMode; // text box open (typing a custom value)
 
 let keySeq = 0;
 const newKey = () => `new-${++keySeq}`;
@@ -97,16 +99,22 @@ export function PlanningDashboard({ project, from, to }) {
   // BOQ + date filters first (status chips show counts within these), then the status filter.
   const base = allRows.filter(r => (!boqF || r.boqNo === boqF)
     && ((!from && !to) || (r.plannedFinish && (!from || r.plannedFinish >= from) && (!to || r.plannedFinish <= to))));
-  const rows = statusF === "ALL" ? base : base.filter(r => rowState(r, today) === statusF);
-  const baseCount = (k) => base.filter(r => rowState(r, today) === k).length;
+  // Two groups: Completed (finished, on time or late) vs Not completed (everything else).
+  const isCompleted = (r) => { const st = rowState(r, today); return st === "DONE" || st === "LATE"; };
+  const rows = statusF === "ALL" ? base : base.filter(r => (statusF === "COMPLETED") === isCompleted(r));
+  const baseCount = (k) => base.filter(r => (k === "COMPLETED") === isCompleted(r)).length;
   const states = rows.map(r => rowState(r, today));
   const count = (k) => states.filter(x => x === k).length;
-  const done = count("DONE"), late = count("LATE"), overdue = count("OVERDUE"), pending = count("PENDING");
+  const done = count("DONE"), late = count("LATE");
+  const completed = done + late;
   const total = rows.length;
-  const pct = total ? Math.round(((done + late) / total) * 100) : 0;
+  const notCompleted = total - completed;
+  const pct = total ? Math.round((completed / total) * 100) : 0;
   const totalDelay = rows.reduce((sum, r) => sum + delayDays(r, today), 0);
   const daysRemaining = header?.completionDate ? Math.round((toUtc(header.completionDate) - toUtc(today)) / DAY_MS) : null;
   const delayed = rows.map(r => ({ r, d: delayDays(r, today) })).filter(x => x.d > 0).sort((a, b) => b.d - a.d);
+  // Finished activities (even late ones) are done — the table lists only what is still open past its planned finish.
+  const openDelayed = delayed.filter(x => rowState(x.r, today) === "OVERDUE");
 
   if (loading) return <div style={{ padding: 20, color: "#64748b" }}>Loading project planning…</div>;
   if (error) return <div style={{ padding: 20, color: "#b91c1c" }}>{error}</div>;
@@ -135,8 +143,8 @@ export function PlanningDashboard({ project, from, to }) {
       </div>
       {allRows.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-          {[["ALL", "All", base.length, "#0f172a"], ["DONE", "On time", baseCount("DONE"), STATE_COLORS.DONE], ["LATE", "Late", baseCount("LATE"), STATE_COLORS.LATE],
-            ["OVERDUE", "Not completed", baseCount("OVERDUE"), STATE_COLORS.OVERDUE], ["PENDING", "Pending", baseCount("PENDING"), "#64748b"]].map(([k, label, n, c]) => {
+          {[["ALL", "All", base.length, "#0f172a"], ["COMPLETED", "Completed", baseCount("COMPLETED"), STATE_COLORS.DONE],
+            ["OPEN", "Not completed", baseCount("OPEN"), STATE_COLORS.OVERDUE]].map(([k, label, n, c]) => {
             const on = statusF === k;
             return (
               <button key={k} onClick={() => setStatusF(k)}
@@ -167,18 +175,15 @@ export function PlanningDashboard({ project, from, to }) {
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Overall completion</div>
               <div style={{ fontSize: 52, fontWeight: 800, color: "#0f172a", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: 26, color: "#94a3b8" }}>%</span></div>
-              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{done + late} of {total} activities finished</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{completed} of {total} activities completed</div>
               <div style={{ height: 10, background: "#eef2f6", borderRadius: 99, overflow: "hidden", display: "flex", marginTop: 14 }}>
-                <div style={{ width: `${(done / total) * 100}%`, background: STATE_COLORS.DONE }} />
-                <div style={{ width: `${(late / total) * 100}%`, background: STATE_COLORS.LATE }} />
-                <div style={{ width: `${(overdue / total) * 100}%`, background: STATE_COLORS.OVERDUE }} />
+                <div style={{ width: `${(completed / total) * 100}%`, background: STATE_COLORS.DONE }} />
+                <div style={{ width: `${(notCompleted / total) * 100}%`, background: STATE_COLORS.OVERDUE }} />
               </div>
             </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {legend("Completed on time", done, STATE_COLORS.DONE)}
-              {legend("Completed late", late, STATE_COLORS.LATE)}
-              {legend("Not completed (past due)", overdue, STATE_COLORS.OVERDUE)}
-              {legend("Pending", pending, "#cbd5e1")}
+            <div style={{ display: "grid", gap: 12 }}>
+              {legend("Completed", completed, STATE_COLORS.DONE)}
+              {legend("Not completed", notCompleted, STATE_COLORS.OVERDUE)}
             </div>
           </div>
 
@@ -189,9 +194,9 @@ export function PlanningDashboard({ project, from, to }) {
             {stat("Activities", total, "#0f172a", total !== allRows.length ? `of ${allRows.length} in schedule` : (header?.startDate ? `Started ${fmtDate(header.startDate)}` : undefined))}
           </div>
 
-          {delayed.length > 0 && (
+          {openDelayed.length > 0 && (
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Delayed activities</div>
+              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Not completed activities <span style={{ fontWeight: 500, color: "#94a3b8" }}>· past planned finish</span></div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12 }}>
@@ -200,7 +205,7 @@ export function PlanningDashboard({ project, from, to }) {
                     <th style={{ padding: "8px 18px", fontWeight: 600, textAlign: "right" }}>Delay</th>
                   </tr></thead>
                   <tbody>
-                    {delayed.map(({ r, d }) => {
+                    {openDelayed.map(({ r, d }) => {
                       const st = rowState(r, today);
                       return (
                         <tr key={r.key} style={{ borderTop: "1px solid #f1f5f9" }}>
@@ -399,6 +404,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
 
   // ── Header metrics ──
   const today = todayStr();
+  // Custom "Others" values already used in this schedule, offered in every row's dropdown.
+  const customDeps = [...new Set(rows.filter(r => !r.depOtherMode).map(r => (r.dependency || "").trim()).filter(d => d && !DEPENDENCIES.includes(d)))];
   const q = fText.trim().toLowerCase();
   const filtering = fStatus !== "ALL" || !!fBoq || !!q;
   const visible = (r) => (fStatus === "ALL" || rowState(r, today) === fStatus)
@@ -425,6 +432,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         ROW_FIELDS.forEach(f => { a[f] = r[f] === "" ? null : r[f]; });
         const st = rowState(r, today);
         a.status = st === "DONE" || st === "LATE" ? "COMPLETED" : st === "OVERDUE" ? "NOT_COMPLETED" : null;
+        a.materialLeadDays = r.materialLeadDays === "" || r.materialLeadDays == null ? null : parseInt(r.materialLeadDays, 10) || null;
         a.durationDays = r.durationDays === "" || r.durationDays == null ? null : parseInt(r.durationDays, 10) || null;
         return a;
       }),
@@ -450,11 +458,11 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       const rowsHtml = g.rows.filter(visible).map(r => `<tr>
         <td style="${cell}">${esc(r.boqNo)}</td><td style="${cell}text-align:center;">${serialByKey[r.key]}</td>
         <td style="${cell}">${esc(r.description)}</td><td style="${cell}">${esc(r.dependency)}</td>
-        <td style="${cell}">${esc(fmtDate(r.dependencyTargetDate))}</td><td style="${cell}">${esc(fmtDate(r.materialDeliveryDate))}</td>
+        <td style="${cell}">${esc(fmtDate(r.dependencyStartDate))}</td><td style="${cell}">${esc(fmtDate(r.dependencyTargetDate))}</td><td style="${cell}text-align:center;">${esc(r.materialLeadDays)}</td><td style="${cell}">${esc(fmtDate(r.materialDeliveryDate))}</td>
         <td style="${cell}text-align:center;">${esc(r.durationDays)}</td>
         <td style="${cell}">${esc(fmtDate(r.plannedStart))}</td><td style="${cell}">${esc(fmtDate(r.plannedFinish))}</td>
         <td style="${cell}">${esc(fmtDate(r.actualStart))}</td><td style="${cell}">${esc(fmtDate(r.actualFinish))}</td>
-        ${(() => { const st = rowState(r, today); const c = STATE_COLORS[st]; const b = (t) => `<td style="${cell}text-align:center;font-weight:700;color:${c};">${t}</td>`; return (st === "DONE" || st === "LATE" ? b("Completed" + (st === "LATE" ? `<br/><span style="font-size:8.5px">${dayLabel(delayDays(r, today))} late</span>` : "")) : `<td style="${cell}"></td>`) + (st === "OVERDUE" ? b(`Not Completed<br/><span style="font-size:8.5px">${dayLabel(delayDays(r, today))} overdue</span>`) : `<td style="${cell}"></td>`); })()}
+        ${(() => { const st = rowState(r, today); const c = STATE_COLORS[st]; const b = (t) => `<td style="${cell}text-align:center;font-weight:700;color:${c};">${t}</td>`; return (st === "DONE" || st === "LATE" ? b("Completed") : `<td style="${cell}"></td>`) + (st === "OVERDUE" ? b("Not Completed") : `<td style="${cell}"></td>`); })()}
         <td style="${cell}white-space:pre-wrap;">${esc(r.remarks)}</td></tr>`).join("");
       return rowsHtml;
     }).join("");
@@ -472,10 +480,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       <div style="font-size:15px;font-weight:800;margin-bottom:6px">Project Schedule</div>
       <table style="margin-bottom:8px">${infoHtml}</table>
       <table style="width:100%;table-layout:fixed">
-        <colgroup>${["5%","3%","12%","7%","7%","7%","6%","7%","7%","7%","7%","8%","8%","9%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
+        <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
-          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Sl No</th><th rowspan="2" style="${th}">Description of works</th><th rowspan="2" style="${th}">Dependency</th><th rowspan="2" style="${th}">Dependency target date</th><th rowspan="2" style="${th}">Material delivery date</th><th rowspan="2" style="${th}">Duration (days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
-          <tr><th style="${th}">Start date</th><th style="${th}">Finish date</th><th style="${th}">Started date</th><th style="${th}">Finished date</th><th style="${th}">Completed</th><th style="${th}">Not completed</th></tr>
+          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Sl No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
+          <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not completed</th></tr>
         </thead><tbody>${body}</tbody></table>
       <div style="font-size:9px;color:#64748b;margin-top:8px">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
       <script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`;
@@ -491,22 +499,22 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Project start date", fmtDate(header.startDate), "", "Project completion date", fmtDate(header.completionDate), "", "No of days remaining", daysRemaining ?? ""],
       ["Overall delayed days", totalDelay],
       [],
-      ["BOQ No", "Sl No", "Description of works", "Dependency", "Dependency target date", "Material delivery date", "Activity duration", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
-      ["", "", "", "", "", "", "", "Start date", "Finish date", "Started date", "Finished date", "Completed", "Not completed", ""],
+      ["BOQ No", "Sl No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
+      ["", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not completed", ""],
     ];
     groups.forEach(g => g.rows.forEach(r => H.push([
       r.boqNo, serialByKey[r.key], r.description, r.dependency,
-      fmtDate(r.dependencyTargetDate), fmtDate(r.materialDeliveryDate), r.durationDays,
+      fmtDate(r.dependencyStartDate), fmtDate(r.dependencyTargetDate), r.materialLeadDays, fmtDate(r.materialDeliveryDate), r.durationDays,
       fmtDate(r.plannedStart), fmtDate(r.plannedFinish), fmtDate(r.actualStart), fmtDate(r.actualFinish),
-      rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? `Completed (late ${delayDays(r, today)}d)` : "", rowState(r, today) === "OVERDUE" ? `Not Completed (${delayDays(r, today)}d overdue)` : "", r.remarks,
+      rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? "Completed" : "", rowState(r, today) === "OVERDUE" ? "Not Completed" : "", r.remarks,
     ])));
     const ws = XLSX.utils.aoa_to_sheet(H);
     const m = (r1, c1, r2, c2) => ({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } });
     ws["!merges"] = [
-      m(4, 0, 5, 0), m(4, 1, 5, 1), m(4, 2, 5, 2), m(4, 3, 5, 3), m(4, 4, 5, 4), m(4, 5, 5, 5), m(4, 6, 5, 6),
-      m(4, 7, 4, 8), m(4, 9, 4, 10), m(4, 11, 4, 12), m(4, 13, 5, 13),
+      m(4, 0, 5, 0), m(4, 1, 5, 1), m(4, 2, 5, 2), m(4, 3, 5, 3), m(4, 4, 5, 4), m(4, 5, 5, 5), m(4, 6, 5, 6), m(4, 7, 5, 7), m(4, 8, 5, 8),
+      m(4, 9, 4, 10), m(4, 11, 4, 12), m(4, 13, 4, 14), m(4, 15, 5, 15),
     ];
-    ws["!cols"] = [10, 7, 36, 14, 16, 16, 10, 13, 13, 13, 13, 11, 13, 30].map(w => ({ wch: w }));
+    ws["!cols"] = [10, 7, 36, 14, 16, 16, 12, 16, 10, 13, 13, 13, 13, 11, 13, 30].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Schedule");
     XLSX.writeFile(wb, `${project.name.replace(/[^\w\- ]+/g, "")} - Schedule.xlsx`);
@@ -629,26 +637,28 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th rowSpan={2} style={{ ...th, width: "7%" }}>BOQ No</th>
+                <th rowSpan={2} style={{ ...th, width: "3.5%" }}>BOQ No</th>
                 <th rowSpan={2} style={{ ...th, width: "3%" }}>Sl No</th>
-                <th rowSpan={2} style={{ ...th, width: "11%" }}>Description of works</th>
-                <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency</th>
-                <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency target date</th>
-                <th rowSpan={2} style={{ ...th, width: "8%" }}>Material delivery date</th>
-                <th rowSpan={2} style={{ ...th, width: "5%" }}>Activity duration (days)</th>
+                <th rowSpan={2} style={{ ...th, width: "11.5%" }}>Description of Activity</th>
+                <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency By</th>
+                <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Start Date</th>
+                <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Target Date</th>
+                <th rowSpan={2} style={{ ...th, width: "5%" }}>Material Lead Days</th>
+                <th rowSpan={2} style={{ ...th, width: "7%" }}>Material Delivery Date</th>
+                <th rowSpan={2} style={{ ...th, width: "5%" }}>Activity Duration (Days)</th>
                 <th colSpan={2} style={th}>Planned date</th>
                 <th colSpan={2} style={th}>Actual</th>
                 <th colSpan={2} style={th}>Status</th>
-                <th rowSpan={2} style={{ ...th, width: "10%" }}>Remarks</th>
-                <th rowSpan={2} style={{ ...th, width: "8%" }} aria-label="Add / Insert / Remove" />
+                <th rowSpan={2} style={{ ...th, width: "9%" }}>Remarks</th>
+                <th rowSpan={2} style={{ ...th, width: "7%" }} aria-label="Add / Insert / Remove" />
               </tr>
               <tr>
-                <th style={{ ...th2, width: "8%" }}>Start date</th>
-                <th style={{ ...th2, width: "8%" }}>Finish date</th>
-                <th style={{ ...th2, width: "8%" }}>Started date</th>
-                <th style={{ ...th2, width: "8%" }}>Finished date</th>
-                <th style={{ ...th2, width: "4%" }}>Completed</th>
-                <th style={{ ...th2, width: "4%" }}>Not completed</th>
+                <th style={{ ...th2, width: "7%" }}>Start Date</th>
+                <th style={{ ...th2, width: "7%" }}>Finish Date</th>
+                <th style={{ ...th2, width: "7%" }}>Started Date</th>
+                <th style={{ ...th2, width: "7%" }}>Finished Date</th>
+                <th style={{ ...th2, width: "5%" }}>Completed</th>
+                <th style={{ ...th2, width: "5%" }}>Not completed</th>
               </tr>
             </thead>
             <tbody>
@@ -662,10 +672,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                       <tr key={r.key} style={{ background: "#fff" }}>
                         <td style={{ ...td, color: "#475569", fontWeight: 600 }}>
                           {hasBoq ? (
-                            <select style={{ ...cellInp, color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
+                            <select style={{ ...cellInp, padding: "5px 0", color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
                               title="Link this activity to a BOQ item"
                               onChange={e => linkRowToBoq(r.key, e.target.value)}>
-                              <option value="">Link to BOQ…</option>
+                              <option value="">—</option>
                               {r.boqNo && !boqByLabel.has(r.boqNo) && <option value={r.boqNo}>{r.boqNo}</option>}
                               {(boqItems || []).filter(b => b.label).map(b => (
                                 <option key={b.label} value={b.label} style={{ color: "#0f172a" }}>{b.label}</option>
@@ -674,15 +684,29 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                           ) : (r.boqNo || "—")}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>{serialByKey[r.key]}</td>
-                        <td style={td}><input style={cellInp} value={r.description} placeholder="e.g. Gypsum framework" onChange={e => updateRow(r.key, "description", e.target.value)} /></td>
+                        <td style={td}><AutoText value={r.description} placeholder="e.g. Gypsum framework" onChange={v => updateRow(r.key, "description", v)} /></td>
                         <td style={td}>
-                          <select style={{ ...cellInp, color: r.dependency ? "#0f172a" : "#94a3b8" }} value={r.dependency || ""}
-                            onChange={e => updateRow(r.key, "dependency", e.target.value)}>
+                          <select style={{ ...cellInp, color: r.dependency || isOtherDep(r) ? "#0f172a" : "#94a3b8" }} value={isOtherDep(r) ? OTHERS : (r.dependency || "")}
+                            onChange={e => {
+                              const v = e.target.value;
+                              setRows(rs => rs.map(x => x.key !== r.key ? x : v === OTHERS
+                                ? { ...x, depOtherMode: true, dependency: DEPENDENCIES.includes(x.dependency) ? "" : x.dependency }
+                                : { ...x, depOtherMode: false, dependency: v }));
+                              touch();
+                            }}>
                             <option value="">None</option>
                             {DEPENDENCIES.map(d => <option key={d} value={d} style={{ color: "#0f172a" }}>{d}</option>)}
+                            {customDeps.map(d => <option key={d} value={d} style={{ color: "#0f172a" }}>{d}</option>)}
+                            <option value={OTHERS} style={{ color: "#0f172a" }}>Others…</option>
                           </select>
+                          {isOtherDep(r) && (
+                            <AutoText style={{ marginTop: 4 }} value={r.dependency} placeholder="Enter dependency" maxLength={100} onChange={v => updateRow(r.key, "dependency", v)}
+                              onBlur={() => setRows(rs => rs.map(x => x.key !== r.key ? x : { ...x, depOtherMode: false, dependency: (x.dependency || "").trim() }))} />
+                          )}
                         </td>
+                        <td style={td}><DateCell value={r.dependencyStartDate} onChange={v => updateRow(r.key, "dependencyStartDate", v)} /></td>
                         <td style={td}><DateCell value={r.dependencyTargetDate} onChange={v => updateRow(r.key, "dependencyTargetDate", v)} /></td>
+                        <td style={td}><input type="number" min={0} style={cellInp} value={r.materialLeadDays} onChange={e => updateRow(r.key, "materialLeadDays", e.target.value)} /></td>
                         <td style={td}><DateCell value={r.materialDeliveryDate} onChange={v => updateRow(r.key, "materialDeliveryDate", v)} /></td>
                         <td style={td}><input type="number" min={1} style={cellInp} value={r.durationDays} onChange={e => updateRow(r.key, "durationDays", e.target.value)} /></td>
                         <td style={td}><DateCell value={r.plannedStart} onChange={v => updateRow(r.key, "plannedStart", v)} /></td>
@@ -694,18 +718,16 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={td}><DateCell value={r.actualFinish} min={r.actualStart} onChange={v => updateRow(r.key, "actualFinish", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
                           {state === "DONE" || state === "LATE" ? (
-                            <span style={{ fontWeight: 700, fontSize: 12.5, color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
+                            <span style={{ fontWeight: 700, fontSize: 16, color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
                           ) : (
                             <button onClick={() => updateRow(r.key, "actualFinish", todayStr())} title="Set actual finish to today"
-                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 11.5, padding: "2px 6px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
+                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 14, padding: "4px 9px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
                           )}
-                          {state === "LATE" && <div style={{ fontSize: 11.5, fontWeight: 600, color: STATE_COLORS.LATE }}>{dayLabel(delayDays(r, today))} late</div>}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>
-                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 12.5, color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
-                          {state === "OVERDUE" && <div style={{ fontSize: 11.5, fontWeight: 600, color: STATE_COLORS.OVERDUE }}>{dayLabel(delayDays(r, today))} overdue</div>}
+                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 16, color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
                         </td>
-                        <td style={td}><input style={cellInp} value={r.remarks} placeholder="Remarks" onChange={e => updateRow(r.key, "remarks", e.target.value)} /></td>
+                        <td style={td}><AutoText value={r.remarks} placeholder="Remarks" onChange={v => updateRow(r.key, "remarks", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
                           <button onClick={() => addRowAfter(r.key)} title="Add activity below" aria-label="Add activity" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
                             <Plus size={15} />
@@ -838,20 +860,43 @@ function Field({ label, children }) {
   );
 }
 
+// Date shown as wrapping text ("21 Oct 2026") so nothing is clipped in a narrow column; a transparent
+// native date input sits on top, so clicking anywhere on the cell opens the picker.
 function DateCell({ value, onChange, min, warn, title }) {
+  const ref = useRef(null);
   return (
-    <input type="date" value={value || ""} min={min || undefined} title={title} onChange={e => onChange(e.target.value)}
-      style={{ ...cellInp, fontSize: 12, padding: "5px 3px", ...(warn ? { borderColor: "#fca5a5", background: "#fef2f2", color: "#b91c1c" } : {}) }} />
+    <div title={title} style={{ position: "relative", minHeight: 36, display: "flex", alignItems: "center", padding: "4px 8px", boxSizing: "border-box", borderRadius: 6,
+      border: `1px solid ${warn ? "#fca5a5" : "#e2e8f0"}`, background: warn ? "#fef2f2" : "#fff", color: warn ? "#b91c1c" : value ? "#0f172a" : "#94a3b8",
+      fontSize: 16, lineHeight: 1.3, wordBreak: "break-word" }}>
+      {value ? fmtDate(value) : "—"}
+      <input ref={ref} type="date" value={value || ""} min={min || undefined} aria-label="Date" onChange={e => onChange(e.target.value)}
+        onClick={() => { try { ref.current?.showPicker?.(); } catch {} }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: 0, padding: 0 }} />
+    </div>
+  );
+}
+
+// Text box that grows with its content, so long values wrap instead of scrolling or being clipped.
+// Pure CSS: a hidden mirror of the text sizes the grid cell and the textarea fills it, so there is
+// no height to measure in JS.
+function AutoText({ value, onChange, onBlur, placeholder, maxLength, style }) {
+  const box = { ...cellInp, gridArea: "1 / 1", lineHeight: 1.35, fontSize: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere", minHeight: 38 };
+  return (
+    <div style={{ display: "grid", ...style }}>
+      <div aria-hidden style={{ ...box, visibility: "hidden", border: "1px solid transparent" }}>{(value || placeholder || "") + " "}</div>
+      <textarea rows={1} value={value || ""} placeholder={placeholder} maxLength={maxLength} onChange={e => onChange(e.target.value)} onBlur={onBlur}
+        style={{ ...box, resize: "none", overflow: "hidden", height: "100%" }} />
+    </div>
   );
 }
 
 // ── Styles ──
 const inpSt = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
 const roSt = { padding: "8px 0", fontSize: 14, color: "#0f172a" };
-const th = { padding: "8px 8px", fontSize: 12, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
+const th = { padding: "10px 8px", fontSize: 15.5, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
 const th2 = { ...th, fontWeight: 600, background: "#f1f5f9" };
-const td = { padding: "4px 4px", borderBottom: "1px solid #f1f5f9", fontSize: 13, color: "#0f172a", verticalAlign: "middle" };
-const cellInp = { width: "100%", minWidth: 0, boxSizing: "border-box", padding: "5px 7px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
+const td = { padding: "6px 4px", borderBottom: "1px solid #f1f5f9", fontSize: 16, color: "#0f172a", verticalAlign: "middle" };
+const cellInp = { width: "100%", minWidth: 0, boxSizing: "border-box", padding: "5px 7px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 16, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
 const chk = { width: 16, height: 16, accentColor: "#0d9488", cursor: "pointer" };
 
 function btn(kind) {

@@ -2,18 +2,13 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban } from "lucide-react";
 import {
-  getEligibleForAccountsProjects, getRecentEntries,
+  getEligibleForAccountsProjects,
   uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
   saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
 import ProjectPlanning, { PlanningDashboard } from "./ProjectPlanning";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
-} from "recharts";
 
 const HEADER_HINTS = ["description", "qty", "quantity", "unit", "rate", "amount", "sl", "s.no", "particular", "item"];
-const STATUS_COLORS = { PROCEED: "#3b82f6", HOLD: "#f59e0b", NOT_APPROVED: "#ef4444" };
 
 // Manually-entered, BOQ-independent item categories shown below the BOQ
 // table — each is its own table (S.No / Description / Qty / Unit),
@@ -603,7 +598,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     setAdditionalChecked({});
   };
 
-  const shellStyle = { minHeight: "calc(100vh - 108px)", background: "#f1f5f9", padding: "24px 32px" };
+  const shellStyle = { minHeight: "calc(100vh - 108px)", background: "#f1f5f9", padding: "24px 16px" };
 
   // ── Landing view: every project, grouped into one column per type ──
   if (!selectedProject) {
@@ -723,10 +718,9 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             {(dashFrom || dashTo) && (
               <button onClick={() => { setDashFrom(""); setDashTo(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
             )}
-            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Planning: by planned finish · PRs: by date raised</span>
+            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Filters by planned finish</span>
           </div>
           <PlanningDashboard key={`pd-${selectedProject.id}`} project={selectedProject} from={dashFrom} to={dashTo} />
-          <TrendingDashboard key={selectedProject.id} projectName={selectedProject.name} from={dashFrom} to={dashTo} />
         </>
       )}
     </div>
@@ -1471,150 +1465,6 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
           + Add Item
         </button>
       </div>
-    </div>
-  );
-}
-
-// With `projectName`, every number and chart is limited to that project's PRs
-// (the backend filters by project, so its summary counts match too).
-function TrendingDashboard({ projectName, from, to }) {
-  const [loading, setLoading] = useState(true);
-  const [raw, setRaw] = useState([]);
-  const [rawSummary, setRawSummary] = useState(null);
-
-  useEffect(() => {
-    getRecentEntries(projectName ? 1000 : 200, projectName)
-      .then(d => { setRaw(d.content || []); setRawSummary(d); })
-      .catch(() => { setRaw([]); setRawSummary(null); })
-      .finally(() => setLoading(false));
-  }, [projectName]);
-
-  // Date range filter on when the PR was raised.
-  const entries = useMemo(() => {
-    if (!from && !to) return raw;
-    return raw.filter(e => {
-      const d = String(e.createdAt || e.timestamp || "").slice(0, 10);
-      return d && (!from || d >= from) && (!to || d <= to);
-    });
-  }, [raw, from, to]);
-
-  // The backend's summary totals are company-wide even when filtered by project or date,
-  // so those cases count from the visible entries.
-  const summary = useMemo(() => {
-    if (!projectName && !from && !to) return rawSummary;
-    const count = (key, val) => entries.filter(e => e[key] === val).length;
-    return {
-      totalOpen: count("status", "OPEN"),
-      totalClosed: count("status", "CLOSED"),
-      totalProceed: count("approvalStatus", "PROCEED"),
-      totalHold: count("approvalStatus", "HOLD"),
-      totalNotApproved: count("approvalStatus", "NOT_APPROVED"),
-    };
-  }, [entries, rawSummary, projectName, from, to]);
-
-  const byProject = useMemo(() => {
-    const m = new Map();
-    entries.forEach(e => { const k = e.projectName || "Unassigned"; m.set(k, (m.get(k) || 0) + 1); });
-    return [...m.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 8);
-  }, [entries]);
-
-  const byWeek = useMemo(() => {
-    const m = new Map();
-    entries.forEach(e => {
-      const d = e.createdAt || e.timestamp;
-      if (!d) return;
-      const dt = new Date(d);
-      const monday = new Date(dt); monday.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); monday.setHours(0, 0, 0, 0);
-      const key = monday.toISOString().slice(0, 10);
-      m.set(key, (m.get(key) || 0) + 1);
-    });
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-10)
-      .map(([week, count]) => ({ week: week.slice(5), count }));
-  }, [entries]);
-
-  const statusPie = useMemo(() => {
-    if (!summary) return [];
-    return [
-      { name: "Proceed", value: summary.totalProceed || 0 },
-      { name: "Hold", value: summary.totalHold || 0 },
-      { name: "Not Approved", value: summary.totalNotApproved || 0 },
-    ].filter(d => d.value > 0);
-  }, [summary]);
-
-
-  if (loading) return <div style={{ color: "#374151", fontSize: 14 }}>Loading dashboard…</div>;
-
-  const card = { background: "#fff", border: "1px solid #e8edf3", borderRadius: 14, boxShadow: "0 1px 2px rgba(15,23,42,.04)", padding: 20 };
-  const cardTitle = { fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 14 };
-  const axis = { fontSize: 11, fill: "#64748b" };
-
-  return (
-    <div>
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Purchase requests</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{projectName ? "PRs raised for this project" : "Recent PR activity across projects"}</div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 16 }}>
-        {[
-          { label: projectName ? "Total PRs" : "Total (recent)", value: entries.length, color: "#0f172a" },
-          { label: "Open", value: summary?.totalOpen ?? "—", color: "#2563eb" },
-          { label: "Closed", value: summary?.totalClosed ?? "—", color: "#15803d" },
-          { label: "On Hold", value: summary?.totalHold ?? "—", color: "#d97706" },
-        ].map(c => (
-          <div key={c.label} style={{ ...card, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{c.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: c.color, marginTop: 6, lineHeight: 1 }}>{c.value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 16 }}>
-        <div style={card}>
-          <div style={cardTitle}>PRs raised — last 10 weeks</div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={byWeek}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />
-              <XAxis dataKey="week" tick={axis} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={axis} axisLine={false} tickLine={false} width={28} />
-              <Tooltip cursor={{ fill: "#f1f5f9" }} />
-              <Bar dataKey="count" fill="#0d9488" radius={[5, 5, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={card}>
-          <div style={cardTitle}>Approval status</div>
-          {statusPie.length === 0 ? (
-            <div style={{ color: "#64748b", fontSize: 13 }}>No data yet.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={statusPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={82} paddingAngle={2} stroke="none">
-                  {statusPie.map((d, i) => <Cell key={i} fill={STATUS_COLORS[d.name === "Proceed" ? "PROCEED" : d.name === "Hold" ? "HOLD" : "NOT_APPROVED"] || "#94a3b8"} />)}
-                </Pie>
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {!projectName && (
-      <div style={{ ...card, marginBottom: 16 }}>
-        <div style={cardTitle}>Top projects by PR count</div>
-        <ResponsiveContainer width="100%" height={Math.max(160, byProject.length * 34)}>
-          <BarChart data={byProject} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis type="number" allowDecimals={false} tick={axis} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="name" width={140} tick={axis} axisLine={false} tickLine={false} />
-            <Tooltip cursor={{ fill: "#f1f5f9" }} />
-            <Bar dataKey="count" fill="#14b8a6" radius={[0, 5, 5, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      )}
     </div>
   );
 }
