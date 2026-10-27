@@ -142,7 +142,7 @@ export function PlanningDashboard({ project, from, to }) {
         <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Schedule progress and delays, from the saved project schedule</div>
       </div>
       {allRows.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        <div className="pp-chips" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           {[["ALL", "All", base.length, "#0f172a"], ["COMPLETED", "Completed", baseCount("COMPLETED"), STATE_COLORS.DONE],
             ["OPEN", "Not completed", baseCount("OPEN"), STATE_COLORS.OVERDUE]].map(([k, label, n, c]) => {
             const on = statusF === k;
@@ -171,10 +171,10 @@ export function PlanningDashboard({ project, from, to }) {
         <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "#64748b" }}>No activities match these filters.</div>
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ ...card, padding: 22, display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(260px, 1.4fr)", gap: 28, alignItems: "center" }}>
+          <div className="pp-hero" style={{ ...card, padding: 22, display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(260px, 1.4fr)", gap: 28, alignItems: "center" }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Overall completion</div>
-              <div style={{ fontSize: 52, fontWeight: 800, color: "#0f172a", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: 26, color: "#94a3b8" }}>%</span></div>
+              <div className="pp-hero-num" style={{ fontSize: 52, fontWeight: 800, color: "#0f172a", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: 26, color: "#94a3b8" }}>%</span></div>
               <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{completed} of {total} activities completed</div>
               <div style={{ height: 10, background: "#eef2f6", borderRadius: 99, overflow: "hidden", display: "flex", marginTop: 14 }}>
                 <div style={{ width: `${(completed / total) * 100}%`, background: STATE_COLORS.DONE }} />
@@ -187,7 +187,7 @@ export function PlanningDashboard({ project, from, to }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <div className="pp-stats" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
             {stat("Overall delayed days", totalDelay, totalDelay > 0 ? "#dc2626" : "#15803d", totalDelay > 0 ? `${delayed.length} activit${delayed.length === 1 ? "y" : "ies"} delayed` : "On schedule")}
             {stat("Days remaining", daysRemaining == null ? "—" : daysRemaining < 0 ? `-${-daysRemaining}` : daysRemaining,
               daysRemaining != null && daysRemaining < 0 ? "#dc2626" : "#0f172a", header?.completionDate ? `Due ${fmtDate(header.completionDate)}` : "Set a completion date")}
@@ -392,9 +392,11 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       let next = [...rs];
       items.forEach(item => {
         const row = blankRow(item);
-        const groupId = item ? item.label : "";
+        // "Activity without BOQ item" always goes to the very bottom; position-specific adds use the
+        // row's "+" (below) and Insert (above) buttons instead.
+        if (!item) { next.push(row); return; }
         let lastIdx = -1;
-        next.forEach((r, i) => { if ((r.boqNo || "") === (groupId || "")) lastIdx = i; });
+        next.forEach((r, i) => { if ((r.boqNo || "") === item.label) lastIdx = i; });
         if (lastIdx >= 0) next.splice(lastIdx + 1, 0, row);
         else next.push(row);
       });
@@ -534,7 +536,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     <div>
       {/* ── Header block ── */}
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px 24px" }}>
+        <div className="pp-header-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px 24px" }}>
           <Field label="Project Name"><div style={{ ...roSt, fontWeight: 700 }}>{project.name}</div></Field>
           <Field label="Project WO number"><input style={inpSt} value={header.woNumber} onChange={e => setH("woNumber", e.target.value)} placeholder="e.g. WO/2026/014" /></Field>
           <Field label="Happizo representative"><input style={inpSt} value={header.happizoRepresentative} onChange={e => setH("happizoRepresentative", e.target.value)} /></Field>
@@ -552,7 +554,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       </div>
 
       {/* ── Toolbar ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+      <div className="pp-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         <div ref={addMenuRef} style={{ position: "relative" }}>
           <button onClick={() => setAddMenuOpen(o => !o)} style={btn("secondary")} aria-haspopup="menu" aria-expanded={addMenuOpen}>
             <Plus size={15} /> Add Activities <ChevronDown size={14} />
@@ -620,7 +622,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </>
         )}
         </>)}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div className="pp-spacer" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12.5, color: saveState === "error" ? "#b91c1c" : dirty ? "#b45309" : "#64748b" }}>
             {saveState === "saving" ? "Saving…"
               : saveState === "error" ? saveError
@@ -651,8 +653,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </div>
         </div>
       ) : (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }} className="pp-scroll">
+          <table className="pp-table" style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
             <thead>
               <tr>
                 <th rowSpan={2} style={{ ...th, width: "3.5%" }}>BOQ No</th>
@@ -794,7 +796,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
 
       {missingOpen && (
         <div onClick={() => setMissingOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="BOQ items not planned"
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="BOQ items not planned" className="pp-modal"
             style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
             <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
               <AlertTriangle size={18} color={missingBoq.length ? "#d97706" : "#15803d"} />
@@ -862,7 +864,7 @@ function BoqPicker({ items, countByLabel, onClose, onAdd }) {
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add activities from BOQ"
+      <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add activities from BOQ" className="pp-modal"
         style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
         <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Add activities from BOQ</div>

@@ -3826,59 +3826,57 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </div>
 
         {/* ─── MAIN TABS ─── */}
-        <div className="app-tabs" style={{ display: "flex", alignItems: "center", gap: 0, padding: "0 32px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-          {/* Home always visible */}
+        <div className="app-tabs" style={{ display: "flex", alignItems: "stretch", gap: 4, padding: "0 28px", background: "#fff", borderBottom: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(15,23,42,.04)" }}>
           {(() => {
-            const active = mainTab === "home";
-            return (
-              <button onClick={() => setMainTab("home")} title="Home"
-                style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "14px 22px", fontSize: 14.5,
-                  color: "#000",
-                  borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
-                  marginBottom: -1, display: "flex", alignItems: "center", gap: 6 }}>
-                <Home size={24} strokeWidth={active ? 2.2 : 1.8} />
-              </button>
-            );
-          })()}
-
-          {/* Contextual tab — only show the current module's tab */}
-          {mainTab !== "home" && (() => {
+            // One shared look for every tab: muted when idle, navy with an underline when active,
+            // soft hover, and a refined count pill.
+            const tab = (active, tone) => ({
+              border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", position: "relative",
+              display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              padding: "0 18px", height: 52, fontSize: 15, fontWeight: active ? 700 : 600, letterSpacing: 0.1,
+              color: active ? "#1e3a5f" : (tone || "#475569"),
+              borderBottom: active ? "3px solid #1e3a5f" : "3px solid transparent", marginBottom: -1,
+              transition: "color .15s, background .15s",
+            });
+            const hover = (e, on) => { if (!e.currentTarget.dataset.active) e.currentTarget.style.background = on ? "#f1f5f9" : "transparent"; };
+            const pill = (n) => n ? (
+              <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 999, background: "#fee2e2", color: "#b91c1c", fontSize: 12.5, fontWeight: 800,
+                display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{n > 99 ? "99+" : n}</span>
+            ) : null;
             const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", bugs: "Bug Tracker" };
-            const label = labels[mainTab] || mainTab;
+            const homeActive = mainTab === "home";
+            const showApprovals = mainTab === "entries" && (isAdmin || isOH || isVP || isCeo);
+            const showDocs = mainTab === "entries" && isVP;
             return (
-              <button style={{ border: "none", background: "none", cursor: "default", fontFamily: "inherit",
-                padding: "14px 26px", fontSize: 17, fontWeight: 600,
-                color: "#0f172a",
-                borderBottom: "2.5px solid #1e3a5f",
-                marginBottom: -1, letterSpacing: 0.1,
-                display: "flex", alignItems: "center", gap: 6 }}>
-                {label}
-              </button>
+              <>
+                <button onClick={() => setMainTab("home")} title="Home" aria-label="Home" data-active={homeActive ? "1" : undefined}
+                  onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)}
+                  style={{ ...tab(homeActive), padding: "0 16px" }}>
+                  <Home size={21} strokeWidth={homeActive ? 2.3 : 1.9} />
+                </button>
+
+                {mainTab !== "home" && (
+                  <>
+                    <span aria-hidden style={{ width: 1, alignSelf: "center", height: 22, background: "#e2e8f0", margin: "0 6px" }} />
+                    <button data-active="1" style={{ ...tab(true), cursor: "default" }}>{labels[mainTab] || mainTab}</button>
+                  </>
+                )}
+
+                {(showApprovals || showDocs) && <span aria-hidden style={{ width: 1, alignSelf: "center", height: 22, background: "#e2e8f0", margin: "0 6px" }} />}
+
+                {showApprovals && (
+                  <button onClick={openPending} onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(false)}>
+                    <Clock size={18} strokeWidth={2} /> Pending OH {pill(pendingOHCount)}
+                  </button>
+                )}
+                {showDocs && (
+                  <button onClick={openPendingDocs} onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(false)}>
+                    <FileCheck size={18} strokeWidth={2} /> Doc Approvals {pill(pendingDocCount)}
+                  </button>
+                )}
+              </>
             );
           })()}
-
-          {/* Approval action buttons — only when on Procurement tab */}
-          {mainTab === "entries" && (isAdmin || isOH || isVP || isCeo) && (
-            <button onClick={openPending}
-              style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                padding: "14px 26px", fontSize: 17.5, fontWeight: 600,
-                color: "#1e293b", borderBottom: "2.5px solid transparent",
-                marginBottom: -1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-              <Clock size={20} strokeWidth={2} /> Pending OH
-              <CountBadge count={pendingOHCount} />
-            </button>
-          )}
-          {mainTab === "entries" && isVP && (
-            <button onClick={openPendingDocs}
-              style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                padding: "14px 26px", fontSize: 17.5, fontWeight: 600,
-                color: "#2563eb", borderBottom: "2.5px solid transparent",
-                marginBottom: -1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-              <FileCheck size={20} strokeWidth={2} /> Doc Approvals
-              <CountBadge count={pendingDocCount} />
-            </button>
-          )}
 
           {/* Attendance check-in/out — right side of this same row, Home tab only */}
           {mainTab === "home" && (

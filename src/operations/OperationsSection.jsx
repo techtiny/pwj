@@ -8,6 +8,43 @@ import {
 } from "./operationsApi";
 import ProjectPlanning, { PlanningDashboard } from "./ProjectPlanning";
 
+
+// Mobile layout for the whole Operations module (landing, project tabs, BOQ, planning, dashboard).
+// Desktop is untouched; below 768px tables scroll sideways inside their card and grids stack.
+export const OPS_MOBILE_CSS = `
+@media (max-width: 768px) {
+  .ops-shell { padding: 14px 10px !important; }
+  .ops-title { font-size: 19px !important; }
+  .ops-tabs button { padding: 10px 12px !important; font-size: 13.5px !important; }
+  .ops-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .ops-card-table th, .ops-card-table td { padding: 8px 8px !important; font-size: 12.5px !important; }
+  .ops-boq-table th { font-size: 13px !important; padding: 7px 8px !important; }
+  .ops-boq-table td { font-size: 13px !important; }
+  .ops-boq-table { min-width: 560px; }
+  .ops-add-row > * { flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
+  .ops-add-row > button { width: 100% !important; }
+  .ops-bar { gap: 8px !important; }
+  .ops-bar > * { max-width: 100%; }
+  .ops-hide-sm { display: none !important; }
+  .pp-header-grid { grid-template-columns: 1fr 1fr !important; gap: 10px 12px !important; }
+  .pp-toolbar { gap: 8px !important; }
+  .pp-toolbar > .pp-spacer { margin-left: 0 !important; width: 100%; justify-content: space-between; }
+  .pp-toolbar input, .pp-toolbar select { max-width: 100% !important; }
+  .pp-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .pp-table { min-width: 1900px; }
+  .pp-hero { grid-template-columns: 1fr !important; gap: 18px !important; padding: 16px !important; }
+  .pp-hero-num { font-size: 44px !important; }
+  .pp-stats { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .pp-modal { max-height: 92vh !important; }
+  .pp-chips { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; }
+  .pp-chips > * { flex: none; }
+}
+@media (max-width: 420px) {
+  .pp-header-grid { grid-template-columns: 1fr !important; }
+  .pp-stats { grid-template-columns: 1fr !important; }
+}
+`;
+
 const HEADER_HINTS = ["description", "qty", "quantity", "unit", "rate", "amount", "sl", "s.no", "particular", "item"];
 
 // Manually-entered, BOQ-independent item categories shown below the BOQ
@@ -603,7 +640,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // ── Landing view: every project, grouped into one column per type ──
   if (!selectedProject) {
     return (
-      <div style={shellStyle}>
+      <div className="ops-shell" style={shellStyle}><style>{OPS_MOBILE_CSS}</style>
         <ProjectsByType
           projects={filteredProjects}
           totalCount={projects.length}
@@ -620,13 +657,13 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
   // ── Project view: BOQ / Project Planning / Dashboard ──
   return (
-    <div style={shellStyle}>
+    <div className="ops-shell" style={shellStyle}><style>{OPS_MOBILE_CSS}</style>
       <button onClick={closeProject} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
         <ChevronLeft size={15} /> All projects
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{selectedProject.name}</span>
+        <span className="ops-title" style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{selectedProject.name}</span>
         <TypeBadge type={selectedProject.projectType} />
         <span style={{ fontSize: 13.5, color: "#374151" }}>
           {[selectedProject.location, selectedProject.clientName].filter(Boolean).join(" · ") || "—"}
@@ -634,7 +671,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       </div>
 
       {/* Sub-tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
+      <div className="ops-tabs" style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
         {[
           { key: "dashboard", label: "Dashboard", icon: TrendingUp },
           { key: "boq", label: "BOQ", icon: ClipboardList },
@@ -710,7 +747,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
       {tab === "dashboard" && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #e8edf3", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
+          <div className="ops-bar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #e8edf3", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Date range</span>
             <input type="date" value={dashFrom} max={dashTo || undefined} onChange={e => setDashFrom(e.target.value)} style={dashInp} aria-label="From date" />
             <span style={{ color: "#94a3b8", fontSize: 13 }}>to</span>
@@ -718,7 +755,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
             {(dashFrom || dashTo) && (
               <button onClick={() => { setDashFrom(""); setDashTo(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
             )}
-            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Filters by planned finish</span>
+            <span className="ops-hide-sm" style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Filters by planned finish</span>
           </div>
           <PlanningDashboard key={`pd-${selectedProject.id}`} project={selectedProject} from={dashFrom} to={dashTo} />
         </>
@@ -785,7 +822,7 @@ function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOp
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 16 }}>
             {PROJECT_TYPES.map(type => (
               <TypeCard key={type} type={type} projects={grouped.byType[type]} onOpen={onOpen} />
             ))}
@@ -798,7 +835,7 @@ function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOp
                 <span style={{ fontSize: 12.5, color: "#64748b" }}>{grouped.unassigned.length} project{grouped.unassigned.length === 1 ? "" : "s"} · choose a type to move it into its column</span>
               </div>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table className="ops-card-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <th style={{ ...headSt, width: 60 }}>Sl No</th>
@@ -845,7 +882,8 @@ function TypeCard({ type, projects, onOpen }) {
         <span style={{ fontSize: 15, fontWeight: 700, color: c.fg }}>{type}</span>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: c.fg }}>{projects.length}</span>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="ops-scroll" style={{ overflowX: "auto" }}>
+      <table className="ops-card-table" style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
             <th style={{ ...headSt, width: 60 }}>Sl No</th>
@@ -867,6 +905,7 @@ function TypeCard({ type, projects, onOpen }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -941,7 +980,7 @@ function BOQWorkspace({
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 460, marginBottom: 24 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
@@ -1128,7 +1167,7 @@ function AdditionalCategoryTable({
         )}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
@@ -1163,7 +1202,7 @@ function AdditionalCategoryTable({
       </div>
 
       {/* Add a new item to this category */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input value={newItem.description}
           onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
           placeholder="Description"
@@ -1214,7 +1253,7 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
         )}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
@@ -1251,7 +1290,7 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
       </div>
 
       {/* Add a new item — a BOQ item link is required */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <select value={newItem.linkedBoqLabel}
           onChange={e => setNewItem(f => ({ ...f, linkedBoqLabel: e.target.value }))}
           style={{ width: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
@@ -1310,7 +1349,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
         )}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
@@ -1349,7 +1388,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
       </div>
 
       {/* Add a new NMR entry */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input value={newItem.description}
           onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
           placeholder="Description"
@@ -1404,7 +1443,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
         )}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
@@ -1439,7 +1478,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
       </div>
 
       {/* Add a new Transport entry */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input value={newItem.description}
           onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
           placeholder="Description"
