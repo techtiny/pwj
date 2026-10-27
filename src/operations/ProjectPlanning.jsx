@@ -99,7 +99,7 @@ export function PlanningDashboard({ project, from, to }) {
   // BOQ + date filters first (status chips show counts within these), then the status filter.
   const base = allRows.filter(r => (!boqF || r.boqNo === boqF)
     && ((!from && !to) || (r.plannedFinish && (!from || r.plannedFinish >= from) && (!to || r.plannedFinish <= to))));
-  // Two groups: Completed (finished, on time or late) vs Not completed (everything else).
+  // Two groups: Completed (finished, on time or late) vs Not Completed (everything else).
   const isCompleted = (r) => { const st = rowState(r, today); return st === "DONE" || st === "LATE"; };
   const rows = statusF === "ALL" ? base : base.filter(r => (statusF === "COMPLETED") === isCompleted(r));
   const baseCount = (k) => base.filter(r => (k === "COMPLETED") === isCompleted(r)).length;
@@ -144,7 +144,7 @@ export function PlanningDashboard({ project, from, to }) {
       {allRows.length > 0 && (
         <div className="pp-chips" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           {[["ALL", "All", base.length, "#0f172a"], ["COMPLETED", "Completed", baseCount("COMPLETED"), STATE_COLORS.DONE],
-            ["OPEN", "Not completed", baseCount("OPEN"), STATE_COLORS.OVERDUE]].map(([k, label, n, c]) => {
+            ["OPEN", "Not Completed", baseCount("OPEN"), STATE_COLORS.OVERDUE]].map(([k, label, n, c]) => {
             const on = statusF === k;
             return (
               <button key={k} onClick={() => setStatusF(k)}
@@ -183,7 +183,7 @@ export function PlanningDashboard({ project, from, to }) {
             </div>
             <div style={{ display: "grid", gap: 12 }}>
               {legend("Completed", completed, STATE_COLORS.DONE)}
-              {legend("Not completed", notCompleted, STATE_COLORS.OVERDUE)}
+              {legend("Not Completed", notCompleted, STATE_COLORS.OVERDUE)}
             </div>
           </div>
 
@@ -196,7 +196,7 @@ export function PlanningDashboard({ project, from, to }) {
 
           {openDelayed.length > 0 && (
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Not completed activities <span style={{ fontWeight: 500, color: "#94a3b8" }}>· past planned finish</span></div>
+              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Not Completed activities <span style={{ fontWeight: 500, color: "#94a3b8" }}>· past planned finish</span></div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12 }}>
@@ -492,7 +492,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
           <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Activity No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
-          <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not completed</th></tr>
+          <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not Completed</th></tr>
         </thead><tbody>${body}</tbody></table>
       <div style="font-size:9px;color:#64748b;margin-top:8px">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
       <script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`;
@@ -509,7 +509,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Overall delayed days", totalDelay],
       [],
       ["BOQ No", "Activity No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
-      ["", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not completed", ""],
+      ["", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not Completed", ""],
     ];
     groups.forEach(g => g.rows.forEach(r => H.push([
       r.boqNo, serialByKey[r.key], r.description, r.dependency,
@@ -607,7 +607,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <option value="ALL">All statuses</option>
           <option value="DONE">Completed on time</option>
           <option value="LATE">Completed late</option>
-          <option value="OVERDUE">Not completed (overdue)</option>
+          <option value="OVERDUE">Not Completed (overdue)</option>
           <option value="PENDING">Pending</option>
         </select>
         <select value={fBoq} onChange={e => setFBoq(e.target.value)} aria-label="Filter by BOQ"
@@ -678,7 +678,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                 <th style={{ ...th2, width: "7%" }}>Started Date</th>
                 <th style={{ ...th2, width: "7%" }}>Finished Date</th>
                 <th style={{ ...th2, width: "5%" }}>Completed</th>
-                <th style={{ ...th2, width: "5%" }}>Not completed</th>
+                <th style={{ ...th2, width: "5%" }}>Not Completed</th>
               </tr>
             </thead>
             <tbody>
@@ -919,9 +919,9 @@ function Field({ label, children }) {
 function DateCell({ value, onChange, min, warn, title }) {
   const ref = useRef(null);
   return (
-    <div title={title} style={{ position: "relative", minHeight: 36, display: "flex", alignItems: "center", padding: "4px 8px", boxSizing: "border-box", borderRadius: 6,
+    <div title={title} style={{ position: "relative", minHeight: 36, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 2px", boxSizing: "border-box", borderRadius: 6, whiteSpace: "nowrap",
       border: `1px solid ${warn ? "#fca5a5" : "#e2e8f0"}`, background: warn ? "#fef2f2" : "#fff", color: warn ? "#b91c1c" : value ? "#0f172a" : "#94a3b8",
-      fontSize: 16, lineHeight: 1.3, wordBreak: "break-word" }}>
+      fontSize: 14.5, lineHeight: 1.3 }}>
       {value ? fmtDate(value) : "—"}
       <input ref={ref} type="date" value={value || ""} min={min || undefined} aria-label="Date" onChange={e => onChange(e.target.value)}
         onClick={() => { try { ref.current?.showPicker?.(); } catch {} }}
