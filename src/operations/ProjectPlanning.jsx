@@ -14,7 +14,7 @@ const todayStr = () => {
 // Inclusive day count: a task planned 5th → 8th takes 4 days.
 const inclusiveDays = (start, finish) => Math.round((toUtc(finish) - toUtc(start)) / DAY_MS) + 1;
 const addDays = (start, n) => fromUtc(toUtc(start) + n * DAY_MS);
-const fmtDate = (d) => d ? new Date(toUtc(d)).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : "";
+const fmtDate = (d) => { if (!d) return ""; const [y, m, dd] = String(d).slice(0, 10).split("-"); return y && m && dd ? `${dd}/${m}/${y}` : String(d); }; // DD/MM/YYYY
 
 const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "" };
 const ROW_FIELDS = [
