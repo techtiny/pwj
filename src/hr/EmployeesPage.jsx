@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { employeeApi, attachmentFullUrl } from "./hrApi";
+import { employeeApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
@@ -12,12 +12,9 @@ function fmtDate(d) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function tenure(doj, dor) {
-  if (!doj) return "—";
-  const start = new Date(doj + "T00:00:00");
-  const end = dor ? new Date(dor + "T00:00:00") : new Date();
-  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (months < 0) return "—";
+function tenure(emp) {
+  const months = tenureMonths(emp);
+  if (months == null) return "—";
   const y = Math.floor(months / 12), m = months % 12;
   return [y ? `${y}y` : null, m || !y ? `${m}m` : null].filter(Boolean).join(" ");
 }
@@ -57,8 +54,8 @@ export default function EmployeesPage({ user }) {
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return employees.filter(e => {
-      if (statusF === "active" && e.dor) return false;
-      if (statusF === "exited" && !e.dor) return false;
+      if (statusF === "active" && isExitedEmp(e)) return false;
+      if (statusF === "exited" && !isExitedEmp(e)) return false;
       if (deptF && e.department !== deptF) return false;
       if (s && !`${e.fullName} ${e.personCode || ""} ${e.designation || ""}`.toLowerCase().includes(s)) return false;
       return true;
@@ -136,9 +133,9 @@ export default function EmployeesPage({ user }) {
                   <td style={td}>{e.department || "—"}</td>
                   <td style={td}>{e.designation || "—"}</td>
                   <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(e.doj)}</td>
-                  <td style={td}>{tenure(e.doj, e.dor)}</td>
+                  <td style={td}>{tenure(e)}</td>
                   <td style={td}>
-                    {e.dor ? (
+                    {isExitedEmp(e) ? (
                       <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#fef2f2", color: "#b91c1c" }}>Exited</span>
                     ) : (
                       <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#ecfdf5", color: "#059669" }}>Active</span>

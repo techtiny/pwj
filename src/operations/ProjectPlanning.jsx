@@ -19,7 +19,7 @@ const fmtDate = (d) => { if (!d) return ""; const [y, m, dd] = String(d).slice(0
 const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "" };
 const ROW_FIELDS = [
   "boqNo", "boqDescription", "description", "dependency",
-  "dependencyStartDate", "dependencyTargetDate", "materialLeadDays", "materialDeliveryDate", "durationDays",
+  "dependencyStartDate", "dependencyTargetDate", "materialLeadDays", "materialLeadDate", "materialDeliveryDate", "durationDays",
   "plannedStart", "plannedFinish", "actualStart", "actualFinish", "status", "remarks",
 ];
 const OTHER_GROUP = "__other__";
@@ -467,7 +467,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       const rowsHtml = g.rows.filter(visible).map(r => `<tr>
         <td style="${cell}">${esc(r.boqNo)}</td><td style="${cell}text-align:center;">${serialByKey[r.key]}</td>
         <td style="${cell}">${esc(r.description)}</td><td style="${cell}">${esc(r.dependency)}</td>
-        <td style="${cell}">${esc(fmtDate(r.dependencyStartDate))}</td><td style="${cell}">${esc(fmtDate(r.dependencyTargetDate))}</td><td style="${cell}text-align:center;">${esc(r.materialLeadDays)}</td><td style="${cell}">${esc(fmtDate(r.materialDeliveryDate))}</td>
+        <td style="${cell}">${esc(fmtDate(r.dependencyStartDate))}</td><td style="${cell}">${esc(fmtDate(r.dependencyTargetDate))}</td><td style="${cell}text-align:center;">${esc(r.materialLeadDays)}</td><td style="${cell}">${esc(fmtDate(r.materialLeadDate))}</td><td style="${cell}">${esc(fmtDate(r.materialDeliveryDate))}</td>
         <td style="${cell}text-align:center;">${esc(r.durationDays)}</td>
         <td style="${cell}">${esc(fmtDate(r.plannedStart))}</td><td style="${cell}">${esc(fmtDate(r.plannedFinish))}</td>
         <td style="${cell}">${esc(fmtDate(r.actualStart))}</td><td style="${cell}">${esc(fmtDate(r.actualFinish))}</td>
@@ -489,9 +489,9 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       <div style="font-size:15px;font-weight:800;margin-bottom:6px">Project Schedule</div>
       <table style="margin-bottom:8px">${infoHtml}</table>
       <table style="width:100%;table-layout:fixed">
-        <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
+        <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
-          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Activity No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
+          <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Activity No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Lead Date</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
           <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not Completed</th></tr>
         </thead><tbody>${body}</tbody></table>
       <div style="font-size:9px;color:#64748b;margin-top:8px">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
@@ -508,22 +508,22 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Project start date", fmtDate(header.startDate), "", "Project completion date", fmtDate(header.completionDate), "", "No of days remaining", daysRemaining ?? ""],
       ["Overall delayed days", totalDelay],
       [],
-      ["BOQ No", "Activity No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
-      ["", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not Completed", ""],
+      ["BOQ No", "Activity No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Lead Date", "Material Delivery Date", "Activity Duration (Days)", "Planned date", "", "Actual", "", "Status", "", "Remarks"],
+      ["", "", "", "", "", "", "", "", "", "", "Start Date", "Finish Date", "Started Date", "Finished Date", "Completed", "Not Completed", ""],
     ];
     groups.forEach(g => g.rows.forEach(r => H.push([
       r.boqNo, serialByKey[r.key], r.description, r.dependency,
-      fmtDate(r.dependencyStartDate), fmtDate(r.dependencyTargetDate), r.materialLeadDays, fmtDate(r.materialDeliveryDate), r.durationDays,
+      fmtDate(r.dependencyStartDate), fmtDate(r.dependencyTargetDate), r.materialLeadDays, fmtDate(r.materialLeadDate), fmtDate(r.materialDeliveryDate), r.durationDays,
       fmtDate(r.plannedStart), fmtDate(r.plannedFinish), fmtDate(r.actualStart), fmtDate(r.actualFinish),
       rowState(r, today) === "DONE" ? "Completed" : rowState(r, today) === "LATE" ? "Completed" : "", rowState(r, today) === "OVERDUE" ? "Not Completed" : "", r.remarks,
     ])));
     const ws = XLSX.utils.aoa_to_sheet(H);
     const m = (r1, c1, r2, c2) => ({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } });
     ws["!merges"] = [
-      m(4, 0, 5, 0), m(4, 1, 5, 1), m(4, 2, 5, 2), m(4, 3, 5, 3), m(4, 4, 5, 4), m(4, 5, 5, 5), m(4, 6, 5, 6), m(4, 7, 5, 7), m(4, 8, 5, 8),
-      m(4, 9, 4, 10), m(4, 11, 4, 12), m(4, 13, 4, 14), m(4, 15, 5, 15),
+      m(4, 0, 5, 0), m(4, 1, 5, 1), m(4, 2, 5, 2), m(4, 3, 5, 3), m(4, 4, 5, 4), m(4, 5, 5, 5), m(4, 6, 5, 6), m(4, 7, 5, 7), m(4, 8, 5, 8), m(4, 9, 5, 9),
+      m(4, 10, 4, 11), m(4, 12, 4, 13), m(4, 14, 4, 15), m(4, 16, 5, 16),
     ];
-    ws["!cols"] = [10, 7, 36, 14, 16, 16, 12, 16, 10, 13, 13, 13, 13, 11, 13, 30].map(w => ({ wch: w }));
+    ws["!cols"] = [10, 7, 36, 14, 16, 16, 12, 16, 16, 10, 13, 13, 13, 13, 11, 13, 30].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Schedule");
     XLSX.writeFile(wb, `${project.name.replace(/[^\w\- ]+/g, "")} - Schedule.xlsx`);
@@ -659,11 +659,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
               <tr>
                 <th rowSpan={2} style={{ ...th, width: "3.5%" }}>BOQ No</th>
                 <th rowSpan={2} style={{ ...th, width: "4%" }}>Activity No</th>
-                <th rowSpan={2} style={{ ...th, width: "10.5%" }}>Description of Activity</th>
+                <th rowSpan={2} style={{ ...th, width: "9.5%" }}>Description of Activity</th>
                 <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency By</th>
                 <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Start Date</th>
                 <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Target Date</th>
                 <th rowSpan={2} style={{ ...th, width: "5%" }}>Material Lead Days</th>
+                <th rowSpan={2} style={{ ...th, width: "7%" }}>Material Lead Date</th>
                 <th rowSpan={2} style={{ ...th, width: "7%" }}>Material Delivery Date</th>
                 <th rowSpan={2} style={{ ...th, width: "5%" }}>Activity Duration (Days)</th>
                 <th colSpan={2} style={th}>Planned date</th>
@@ -727,6 +728,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={td}><DateCell value={r.dependencyStartDate} onChange={v => updateRow(r.key, "dependencyStartDate", v)} /></td>
                         <td style={td}><DateCell value={r.dependencyTargetDate} onChange={v => updateRow(r.key, "dependencyTargetDate", v)} /></td>
                         <td style={td}><input type="number" min={0} style={cellInp} value={r.materialLeadDays} onChange={e => updateRow(r.key, "materialLeadDays", e.target.value)} /></td>
+                        <td style={td}><DateCell value={r.materialLeadDate} onChange={v => updateRow(r.key, "materialLeadDate", v)} /></td>
                         <td style={td}><DateCell value={r.materialDeliveryDate} onChange={v => updateRow(r.key, "materialDeliveryDate", v)} /></td>
                         <td style={td}><input type="number" min={1} style={cellInp} value={r.durationDays} onChange={e => updateRow(r.key, "durationDays", e.target.value)} /></td>
                         <td style={td}><DateCell value={r.plannedStart} onChange={v => updateRow(r.key, "plannedStart", v)} /></td>

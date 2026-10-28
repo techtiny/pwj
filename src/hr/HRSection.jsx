@@ -45,7 +45,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
     },
     {
       key: "expenses",
-      label: "Expenses",
+      label: "Claims",
       tabs: [
         { key: "petty-cash", label: "Petty Cash" },
         ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
@@ -53,7 +53,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
     },
     ...(canViewExits ? [{
       key: "people",
-      label: "People",
+      label: "Employee Master",
       tabs: [
         { key: "employee-master", label: "Employee Profiles" },
         { key: "employees",       label: "Employee Exit" },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { employeeApi, performanceApi, usersApi, uploadImage, attachmentFullUrl } from "./hrApi";
+import { employeeApi, performanceApi, usersApi, uploadImage, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
@@ -118,16 +118,18 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   useEffect(() => { loadStats(); }, [loadStats]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // Plain comments (no stars, e.g. added from the HR dashboard) don't count towards ratings.
+  const rated = useMemo(() => remarks.filter(r => r.rating), [remarks]);
   const trend = useMemo(() => {
-    if (remarks.length < 2) return null;
-    const recent = remarks.slice(0, 7), prior = remarks.slice(7, 14);
+    if (rated.length < 2) return null;
+    const recent = rated.slice(0, 7), prior = rated.slice(7, 14);
     if (prior.length === 0) return null;
     const avg = (arr) => arr.reduce((s, r) => s + r.rating, 0) / arr.length;
     const diff = avg(recent) - avg(prior);
     if (Math.abs(diff) < 0.25) return { label: "Steady", icon: "→", color: "#64748b" };
     return diff > 0 ? { label: "Improving", icon: "▲", color: "#059669" } : { label: "Declining", icon: "▼", color: "#dc2626" };
-  }, [remarks]);
-  const avgRating = remarks.length ? (remarks.reduce((s, r) => s + r.rating, 0) / remarks.length).toFixed(1) : null;
+  }, [rated]);
+  const avgRating = rated.length ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : null;
 
   async function handlePhoto(file) {
     if (!file) return;
@@ -159,10 +161,10 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   }
 
   async function saveRemark() {
-    if (!form.rating) { alert("Pick a rating (1-5) first"); return; }
+    if (!form.rating && !form.notes.trim()) { alert("Add a comment or pick a rating"); return; }
     setBusy("remark");
     try {
-      await performanceApi.add(id, { date: today, rating: form.rating, notes: form.notes, actionBy: user?.fullName || user?.username, actorRole: user?.role });
+      await performanceApi.add(id, { date: today, rating: form.rating || null, notes: form.notes, actionBy: user?.fullName || user?.username, actorRole: user?.role });
       setForm({ rating: 0, notes: "" });
       await loadRemarks();
     } catch (e) { alert(e.response?.data?.message || "Could not save remark"); }
@@ -184,7 +186,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   if (loading) return <div className="hr-page" style={{ padding: "24px 32px" }}>Loading…</div>;
   if (!emp) return <div className="hr-page" style={{ padding: "24px 32px" }}>Employee not found. {onBack && <button onClick={onBack} style={btn("#1e3a5f")}>Back</button>}</div>;
 
-  const isExited = !!emp.dor;
+  const isExited = isExitedEmp(emp);
+  const hasExitHistory = !!emp.dor;
   const birthdaySoon = isBirthdaySoon(emp.dob);
   const isSelf = !!(emp.linkedUsername && user?.username && emp.linkedUsername.toLowerCase() === user.username.toLowerCase());
   // Remarks on management staff are CEO-only; everyone else's go to Admin/VP/OH/CEO, and the employee sees their own.
@@ -259,7 +262,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
               <InfoChip icon="🪪" label="Code" value={emp.personCode || "—"} />
               <InfoChip icon="📅" label="DOJ" value={fmtDate(emp.doj) || emp.dojRaw || "—"} />
-              <InfoChip icon="⏳" label="Tenure" value={tenure(emp.doj, emp.dor)} />
+              <InfoChip icon="⏳" label="Tenure" value={(() => { const m = tenureMonths(emp); if (m == null) return "—"; const y = Math.floor(m / 12), r = m % 12; return [y ? `${y} yr` : null, (r || !y) ? `${r} mo` : null].filter(Boolean).join(" "); })()} />
               {emp.dob && <InfoChip icon="🎈" label="Age" value={ageFromDob(emp.dob)} />}
               <InfoChip icon="⚧" label="Gender" value={emp.gender || "—"} />
             </div>
@@ -279,10 +282,10 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         </div>
       </div>
 
-      {isExited && (
-        <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: "4px solid #dc2626" }}>
+      {hasExitHistory && (
+        <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: `4px solid ${isExited ? "#dc2626" : "#f59e0b"}` }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 8, display: "flex", alignItems: "center", gap: 7 }}>
-            🚪 Exit Details
+            🚪 {isExited ? "Exit Details" : "Exit & Rejoin History"}
           </div>
           <div style={{ fontSize: 13, color: "#374151", display: "flex", gap: 24, flexWrap: "wrap" }}>
             <span>DOR: <b>{fmtDate(emp.dor) || emp.dorRaw}</b></span>
@@ -311,7 +314,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         <StatCard icon="📝" label="PRs Raised" value={stats ? stats.prRaised : "—"} accent="#3b82f6" accentBg="#eff6ff" />
         <StatCard icon="✅" label="Correct Check-ins" value={stats ? stats.correctCheckins : "—"} accent="#059669" accentBg="#ecfdf5" hint="Checked in and out" />
         <StatCard icon="⚠️" label="Incomplete Check-ins" value={stats ? stats.incompleteCheckins : "—"} accent="#dc2626" accentBg="#fef2f2" hint="Checked in, never checked out" />
-        <StatCard icon="⭐" label="Avg. Performance" value={canSeeRemarks && avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={canSeeRemarks ? (trend ? `${trend.icon} ${trend.label}` : `${remarks.length} remark(s)`) : undefined} />
+        <StatCard icon="⭐" label="Avg. Performance" value={canSeeRemarks && avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={canSeeRemarks ? (trend ? `${trend.icon} ${trend.label}` : `${rated.length} rated · ${remarks.length} comment(s)`) : undefined} />
       </div>
       {stats && !stats.linked && (
         <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: -14, marginBottom: 20 }}>
@@ -327,7 +330,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 12, padding: 14 }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>Today ({fmtDate(today)})</div>
-              <StarRating value={form.rating} onChange={(n) => setForm(f => ({ ...f, rating: n }))} />
+              <StarRating value={form.rating} onChange={(n) => setForm(f => ({ ...f, rating: f.rating === n ? 0 : n }))} />
             </div>
             <textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
               placeholder="What stood out today — good or bad?" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 40, resize: "vertical", background: "#fff" }} />
@@ -347,7 +350,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                 <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: "1px solid #f8fafc" }}>
                   <div className="ep-history-row" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", width: 84, flexShrink: 0, background: "#f1f5f9", borderRadius: 8, padding: "3px 8px", textAlign: "center" }}>{fmtDate(r.remarkDate)}</div>
-                  <StarRating value={r.rating} readOnly />
+                  {r.rating ? <StarRating value={r.rating} readOnly /> : <span style={{ width: 79, flexShrink: 0 }} />}
                   <div style={{ flex: 1, fontSize: 13, color: "#374151" }}>{r.notes || <span style={{ color: "#cbd5e1" }}>No note</span>}</div>
                   <div style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, textAlign: "right" }}>{r.createdBy}<br />{r.createdAt ? new Date(r.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}</div>
                   </div>

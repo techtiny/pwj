@@ -194,6 +194,7 @@ export const employeeApi = {
 
 export const performanceApi = {
   history: (employeeId)                          => api.get(`/employees/${employeeId}/remarks`),
+  byDate:  (date)                                => api.get('/employees/remarks/by-date', { params: date ? { date } : {} }),
   add:     (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
   appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
 };
@@ -246,4 +247,23 @@ const LEAVE_TYPE_LABELS = {
 
 export function leaveTypeLabel(type) {
   return LEAVE_TYPE_LABELS[type] || type;
+}
+
+// An employee who left (dor) and later rejoined (doj2 after dor) is currently ACTIVE.
+export const isExitedEmp = (e) => !!e?.dor && !(e.doj2 && e.doj2 > e.dor);
+
+// Total months with Happizo across stints: first stint (doj → dor) plus, if rejoined, doj2 → dor/now.
+export function tenureMonths(e) {
+  if (!e?.doj) return null;
+  const mo = (a, b) => (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+  const d = (x) => new Date(x + "T00:00:00");
+  const now = new Date();
+  let total = 0;
+  if (e.dor) {
+    total += mo(d(e.doj), d(e.dor));
+    if (e.doj2 && e.doj2 > e.dor) total += mo(d(e.doj2), now);
+  } else {
+    total += mo(d(e.doj), now);
+  }
+  return total < 0 ? null : total;
 }

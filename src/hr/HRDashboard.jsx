@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { attendanceApi, leaveApi, usersApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
+import { useEffect, useMemo, useState } from "react";
+import { attendanceApi, leaveApi, usersApi, employeeApi, performanceApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
 
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
 const EXCLUDED_USERNAMES = ["techtinyproc", "shobana", "techtinyadmin", "happizo"];
@@ -28,6 +28,10 @@ export default function HRDashboard({ user }) {
   const [todayAll, setTodayAll]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
   const [pendingLeaves, setPendingLeaves] = useState([]);
+  const [employees, setEmployees]   = useState([]);          // Employee Master rows, matched to users by linked login
+  const [todayRemarks, setTodayRemarks] = useState([]);       // all comments recorded today
+  const [draft, setDraft]           = useState({});           // employeeId -> text being typed
+  const [savingId, setSavingId]     = useState(null);
   const isAdmin     = ["ADMIN","CEO","VP","OH"].includes(user?.role);
   const hidePersonal = ["VP","CEO","OH"].includes(user?.role);
 
@@ -42,8 +46,34 @@ export default function HRDashboard({ user }) {
       attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
       usersApi.getAll().then(r => setAllUsers(r.data?.data || [])).catch(() => {});
       leaveApi.pending().then(r => setPendingLeaves(r.data?.data || [])).catch(() => {});
+      employeeApi.list().then(r => setEmployees(r.data?.data || [])).catch(() => {});
+      performanceApi.byDate().then(r => setTodayRemarks(r.data?.data || [])).catch(() => {});
     }
   }, [user?.username]);
+
+  // Dashboard row (login user) → Employee Master record, via the profile's linked username.
+  const employeeByUsername = useMemo(
+    () => new Map(employees.filter(e => e.linkedUsername).map(e => [e.linkedUsername.toLowerCase(), e])), [employees]);
+  const remarksByEmployee = useMemo(() => {
+    const m = new Map();
+    todayRemarks.forEach(r => { if (!m.has(r.employeeId)) m.set(r.employeeId, []); m.get(r.employeeId).push(r); });
+    return m;
+  }, [todayRemarks]);
+  // Same rule as the profile page: comments on management staff are CEO-only.
+  const canRemark = (emp) => !!emp && (user?.role === "CEO" || !/management/i.test(emp.department || ""));
+
+  const saveRemark = async (emp) => {
+    const text = (draft[emp.id] || "").trim();
+    if (!text || savingId) return;
+    setSavingId(emp.id);
+    try {
+      const r = await performanceApi.add(emp.id, { date: new Date().toLocaleDateString("en-CA"), notes: text, actionBy: user?.fullName || user?.username, actorRole: user?.role });
+      const saved = r.data?.data;
+      if (saved) setTodayRemarks(list => [saved, ...list]);
+      setDraft(d => ({ ...d, [emp.id]: "" }));
+    } catch (e) { alert(e.response?.data?.message || "Could not save comment"); }
+    finally { setSavingId(null); }
+  };
 
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
   const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_")
@@ -169,12 +199,13 @@ export default function HRDashboard({ user }) {
                   <th style={th}>Check Out</th>
                   <th style={th}>Status</th>
                   <th style={th}>Hours</th>
+                  <th style={{ ...th, minWidth: 280 }}>Remarks</th>
                 </tr>
               </thead>
               <tbody>
                 {checkinTargets.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ ...td, textAlign: "center", color: "#374151", padding: "24px 0" }}>
+                    <td colSpan={9} style={{ ...td, textAlign: "center", color: "#374151", padding: "24px 0" }}>
                       Loading team data…
                     </td>
                   </tr>
@@ -204,6 +235,36 @@ export default function HRDashboard({ user }) {
                         </span>
                       </td>
                       <td style={{ ...td, color: "#374151" }}>{a?.totalMinutes ? fmtHours(a.totalMinutes) : <span style={{ color: "#374151" }}>—</span>}</td>
+                      <td style={{ ...td, verticalAlign: "top" }}>
+                        {(() => {
+                          const emp = employeeByUsername.get((u.username || "").toLowerCase());
+                          if (!emp) return <span style={{ color: "#94a3b8", fontSize: 14 }} title="Link this login to an Employee Master profile to add comments">—</span>;
+                          const list = remarksByEmployee.get(emp.id) || [];
+                          return (
+                            <div>
+                              {list.slice(0, 2).map(r => (
+                                <div key={r.id} style={{ fontSize: 14, color: "#334155", marginBottom: 4, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                                  {r.notes} <span style={{ color: "#94a3b8", fontSize: 12.5 }}>· {fmtTime(r.createdAt)}{r.createdBy ? ` · ${r.createdBy}` : ""}</span>
+                                </div>
+                              ))}
+                              {list.length > 2 && <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 4 }}>+{list.length - 2} more today — see the profile</div>}
+                              {canRemark(emp) ? (
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  <input value={draft[emp.id] || ""} placeholder="Add feedback…" maxLength={1000}
+                                    onChange={e => setDraft(d => ({ ...d, [emp.id]: e.target.value }))}
+                                    onKeyDown={e => { if (e.key === "Enter") saveRemark(emp); }}
+                                    style={{ flex: 1, minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: 14, fontFamily: "inherit" }} />
+                                  <button onClick={() => saveRemark(emp)} disabled={!(draft[emp.id] || "").trim() || savingId === emp.id}
+                                    style={{ border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", color: "#fff",
+                                      background: (draft[emp.id] || "").trim() ? "#1e3a5f" : "#cbd5e1", cursor: (draft[emp.id] || "").trim() ? "pointer" : "not-allowed" }}>
+                                    {savingId === emp.id ? "…" : "Add"}
+                                  </button>
+                                </div>
+                              ) : <span style={{ color: "#94a3b8", fontSize: 13 }}>CEO only</span>}
+                            </div>
+                          );
+                        })()}
+                      </td>
                     </tr>
                   );
                 })}

@@ -1433,7 +1433,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: TrendingUp,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isOH || isBillingEngineer || isVP || isCeo,
+      visible: isAdmin || isOH || isBillingEngineer || isCostingPlanningEngineer || isVP || isCeo,
     },
     {
       key: "hr",
@@ -1605,6 +1605,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // rows happened to land on the currently-viewed server page.
   const [openKindF, setOpenKindF]     = useState("ALL"); // ALL | NORMAL | STALE
   const colorFilterActive = openKindF !== "ALL";
+  // When a sort or any filter is applied, show every matching row on one page instead of splitting
+  // the results across pages (default view — newest first, no filters — stays paginated).
+  const sortApplied   = sortBy !== "createdAt" || sortDir !== "desc";
+  const filterApplied = !!search || statusF !== "ALL" || approvalF !== "ALL" || !!dependencyF || !!projectF
+    || (!isEngineer && !!raisedByF) || !!dateFrom || !!dateTo || colorFilterActive;
+  const showAll = sortApplied || filterApplied;
   const colorFilteredAll = useMemo(() => {
     if (!colorFilterActive) return null;
     // isIssuedStale only ever distinguishes VP_APPROVED-but-undelivered docs —
@@ -1615,9 +1621,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       row.status === "OPEN" && (openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row))
     );
   }, [entries, openKindF, colorFilterActive]);
-  const visibleEntries = colorFilteredAll
-    ? colorFilteredAll.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-    : entries;
+  const visibleEntries = colorFilteredAll ? colorFilteredAll : entries;
   // Pagination UI reflects the filtered count/page total while the color filter
   // is active, instead of the server's unfiltered-by-color totals.
   const colorTotalElements = colorFilteredAll ? colorFilteredAll.length : totalElements;
@@ -1629,11 +1633,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const t = new Set(["home", "entries", "hr", "chatbot", "happizo-info"]);
     if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer) t.add("vendors");
     if (isAdmin || isVP || isOH || isCeo || isProjectManager) { t.add("projects"); t.add("account"); }
-    if (isAdmin || isOH || isBillingEngineer || isVP || isCeo) t.add("sales");
+    if (isAdmin || isOH || isBillingEngineer || isCostingPlanningEngineer || isVP || isCeo) t.add("sales");
     if (isOH || isVP || isCeo) t.add("operations");
     if (isAdmin || isVP || isOH || isCeo) t.add("bugs");
     return t;
-  }, [isAdmin, isProcurement, isVP, isOH, isCeo, isProjectManager]);
+  }, [isAdmin, isProcurement, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer]);
 
   const readTabFromHash = useCallback(() => {
     const h = (typeof window !== "undefined" ? window.location.hash : "").replace(/^#\/?/, "").toLowerCase();
@@ -1884,7 +1888,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       // matching the other filters in one page instead of just PAGE_SIZE, so
       // that client-side filter can be applied (and then re-paginated) across
       // the whole result set — see colorFilteredAll above.
-      const params = colorFilterActive
+      const params = showAll
         ? { page: 0, size: COLOR_FETCH_SIZE, sortBy, sortDir }
         : { page, size: PAGE_SIZE, sortBy, sortDir };
       if (search)              params.search      = search;
@@ -1913,7 +1917,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       } else { setError(res.message); }
     } catch { if (fetchSeqRef.current === seq) setError("Cannot connect to backend. Make sure Spring Boot is running on port 8080."); }
     finally { if (fetchSeqRef.current === seq) setLoading(false); }
-  }, [page, search, statusF, approvalF, projectF, raisedByF, dependencyF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user, colorFilterActive]);
+  }, [page, search, statusF, approvalF, projectF, raisedByF, dependencyF, dateFrom, dateTo, sortBy, sortDir, isEngineer, user, showAll]);
 
   const fetchProjects = useCallback(async () => {
     try { const r = await api.getProjects(); if (r.success) setProjects(r.data); } catch {}
@@ -4462,7 +4466,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </div>
         </div>
 
-        {/* ─── PAGINATION ─── */}
+        {/* ─── PAGINATION ─── (hidden while a sort/filter is applied: all matching rows are shown on one page) */}
+        {showAll ? (
+          <div style={s.paginationRow} className="app-pagination">
+            <div style={s.pageInfo}>{colorTotalElements > 0 ? `Showing all ${colorTotalElements} result${colorTotalElements === 1 ? "" : "s"}` : "No results"}</div>
+          </div>
+        ) : (
         <div style={s.paginationRow} className="app-pagination">
           <div style={s.pageInfo}>
             {colorTotalElements > 0
@@ -4480,6 +4489,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <button style={s.pageBtn(false)} onClick={() => setPage(p => Math.min(colorTotalPages - 1, p + 1))} disabled={page >= colorTotalPages - 1}>›</button>
           </div>
         </div>
+        )}
         </>}
 
         {/* ─── VENDORS TAB ─── */}
