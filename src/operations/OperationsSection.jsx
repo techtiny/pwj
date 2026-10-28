@@ -31,7 +31,6 @@ export const OPS_MOBILE_CSS = `
   .pp-toolbar > .pp-spacer { margin-left: 0 !important; width: 100%; justify-content: space-between; }
   .pp-toolbar input, .pp-toolbar select { max-width: 100% !important; }
   .pp-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .pp-table { min-width: 1900px; }
   .pp-hero { grid-template-columns: 1fr !important; gap: 18px !important; padding: 16px !important; }
   .pp-hero-num { font-size: 44px !important; }
   .pp-stats { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }

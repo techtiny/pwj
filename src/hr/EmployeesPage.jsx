@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { employeeApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
+import { employeeApi, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
@@ -37,6 +37,12 @@ export default function EmployeesPage({ user }) {
   const [deptF, setDeptF] = useState("");
   const [statusF, setStatusF] = useState("active"); // active | exited | all
   const [selectedId, setSelectedId] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [appUsers, setAppUsers] = useState([]);
+  const BLANK = { fullName: "", doj: "", dob: "", gender: "", department: "", designation: "", personCode: "", linkedUsername: "" };
+  const [form, setForm] = useState(BLANK);
+  const [saving, setSaving] = useState(false);
+  const [formErr, setFormErr] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +68,30 @@ export default function EmployeesPage({ user }) {
     });
   }, [employees, q, deptF, statusF]);
 
+  const openAdd = () => {
+    setForm(BLANK); setFormErr(""); setAddOpen(true);
+    usersApi.getAll().then(r => setAppUsers((r.data?.data || []).filter(u => !u.exited))).catch(() => setAppUsers([]));
+  };
+  // Logins not yet attached to an employee record.
+  const freeUsers = useMemo(() => {
+    const taken = new Set(employees.map(e => (e.linkedUsername || "").toLowerCase()).filter(Boolean));
+    return appUsers.filter(u => !taken.has((u.username || "").toLowerCase()));
+  }, [appUsers, employees]);
+
+  const saveEmployee = async () => {
+    if (!form.fullName.trim()) { setFormErr("Enter the employee's full name"); return; }
+    if (!form.doj) { setFormErr("Enter the date of joining"); return; }
+    setSaving(true); setFormErr("");
+    try {
+      const r = await employeeApi.create(form);
+      setAddOpen(false);
+      await load();
+      const created = r.data?.data;
+      if (created?.id) setSelectedId(created.id);
+    } catch (e) { setFormErr(e.response?.data?.message || "Could not add the employee"); }
+    finally { setSaving(false); }
+  };
+
   if (selectedId) {
     return <EmployeeProfilePage id={selectedId} user={user} onBack={() => { setSelectedId(null); load(); }} />;
   }
@@ -76,6 +106,11 @@ export default function EmployeesPage({ user }) {
             Full employment history — active and exited — with PR/attendance stats and daily performance tracking for each person.
           </div>
         </div>
+        {canManage && (
+          <button onClick={openAdd} style={{ marginLeft: "auto", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#4338ca", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            + Add Employee
+          </button>
+        )}
       </div>
 
       <div className="hr-filter-bar" style={{ ...card, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -147,6 +182,52 @@ export default function EmployeesPage({ user }) {
           </table>
         </div>
       </div>
+      {addOpen && (
+        <div onClick={() => setAddOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add employee"
+            style={{ background: "#fff", borderRadius: 16, width: 560, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Add Employee</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Onboard a new employee into the Employee Master. The person code is generated automatically.</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {[
+                ["fullName", "Full name *", "text", { full: true }],
+                ["doj", "Date of joining *", "date"],
+                ["dob", "Date of birth", "date"],
+                ["gender", "Gender", "select", { options: ["", "M", "F", "Other"] }],
+                ["personCode", "Person code (optional)", "text", { placeholder: "Auto, e.g. H-26-0055" }],
+                ["department", "Department", "text", { list: "dept-list" }],
+                ["designation", "Designation", "text"],
+              ].map(([k, label, type, o = {}]) => (
+                <label key={k} style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: o.full ? "1 / -1" : undefined, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                  {label}
+                  {type === "select" ? (
+                    <select value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
+                      {o.options.map(v => <option key={v} value={v}>{v || "—"}</option>)}
+                    </select>
+                  ) : (
+                    <input type={type} value={form[k]} list={o.list} placeholder={o.placeholder} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} style={inputS} />
+                  )}
+                </label>
+              ))}
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1", fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                Link to app login (optional)
+                <select value={form.linkedUsername} onChange={e => setForm(f => ({ ...f, linkedUsername: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
+                  <option value="">— None —</option>
+                  {freeUsers.map(u => <option key={u.id} value={u.username}>{u.fullName} (@{u.username})</option>)}
+                </select>
+              </label>
+            </div>
+            <datalist id="dept-list">{departments.map(d => <option key={d} value={d} />)}</datalist>
+            {formErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{formErr}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button onClick={() => setAddOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#4338ca", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+                {saving ? "Saving…" : "Add Employee"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

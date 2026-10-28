@@ -61,8 +61,13 @@ export default function LeaveApprovalPage({ user }) {
     return [...types].sort();
   }, [all]);
 
+  const countOf = (st) => all.filter(l => l.status === st).length;
+  const counts = { pending: pending.length, approved: countOf("APPROVED"), rejected: countOf("REJECTED"), all: all.length };
+
   const filteredAll = useMemo(() => {
     return all.filter(l => {
+      if (tab === "approved" && l.status !== "APPROVED") return false;
+      if (tab === "rejected" && l.status !== "REJECTED") return false;
       if (filterName && (l.fullName || l.username) !== filterName) return false;
       if (filterType && l.leaveType !== filterType) return false;
       if (filterStatus && l.status !== filterStatus) return false;
@@ -71,7 +76,7 @@ export default function LeaveApprovalPage({ user }) {
       if (filterTo && day > filterTo) return false;
       return true;
     });
-  }, [all, filterName, filterType, filterStatus, filterFrom, filterTo]);
+  }, [all, tab, filterName, filterType, filterStatus, filterFrom, filterTo]);
 
   const hasFilters = filterName || filterType || filterStatus || filterFrom || filterTo;
   const clearFilters = () => { setFilterName(""); setFilterType(""); setFilterStatus(""); setFilterFrom(""); setFilterTo(""); };
@@ -93,61 +98,71 @@ export default function LeaveApprovalPage({ user }) {
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Page title */}
-      <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Leave &amp; Permission Approvals</div>
-      <div style={{ fontSize: 13, color: "#374151", marginBottom: 20 }}>
-        {pending.length} pending · {pending.filter(l => l.leaveType === "PERMISSION").length} permissions
-      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 2 }}>Leave &amp; Permission Approvals</div>
+      <div style={{ fontSize: 14, color: "#64748b", marginBottom: 18 }}>Review requests and see what has been approved or not approved.</div>
 
-      {/* Tab pills */}
-      <div className="hr-pill-row" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      {/* Summary tiles — click to switch view */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 18 }}>
         {[
-          { key: "pending", label: `Pending (${pending.length})` },
-          { key: "all",     label: "All Requests" },
+          { key: "pending",  label: "Pending",      n: counts.pending,  color: "#d97706", sub: `${pending.filter(l => l.leaveType === "PERMISSION").length} permission(s)` },
+          { key: "approved", label: "Approved",     n: counts.approved, color: "#059669", sub: "Granted" },
+          { key: "rejected", label: "Not Approved", n: counts.rejected, color: "#dc2626", sub: "Rejected" },
+          { key: "all",      label: "All Requests", n: counts.all,      color: "#1e3a5f", sub: "Everything" },
         ].map(t => {
           const active = tab === t.key;
           return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{
-                border: active ? "none" : "1.5px solid #e2e8f0",
-                borderRadius: 8, padding: "8px 16px",
-                background: active ? "#1e3a5f" : "#fff",
-                color: active ? "#fff" : "#000",
-                fontWeight: active ? 600 : 500, fontSize: 14,
-                cursor: "pointer", fontFamily: "inherit",
-              }}>
-              {t.label}
+            <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={active}
+              style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "#fff", borderRadius: 12, padding: "14px 16px",
+                border: `1.5px solid ${active ? t.color : "#e2e8f0"}`, boxShadow: active ? `0 0 0 3px ${t.color}1f` : "0 1px 2px rgba(15,23,42,.04)", borderTop: `3px solid ${t.color}` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b" }}>{t.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: t.color, lineHeight: 1.1, marginTop: 4 }}>{t.n}</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{t.sub}</div>
             </button>
           );
         })}
       </div>
 
-      {/* Category filter pills */}
-      <div className="hr-pill-row" style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[
-          { key: "all",         label: "All" },
-          { key: "leaves",      label: "Leaves Only" },
-          { key: "permissions", label: "Permissions Only" },
-        ].map(c => {
-          const active = filterCategory === c.key;
-          return (
-            <button key={c.key} onClick={() => setFilterCategory(c.key)}
-              style={{
-                border: active ? "none" : "1.5px solid #e2e8f0",
-                borderRadius: 20, padding: "5px 14px",
-                background: active ? "#7c3aed" : "#fff",
-                color: active ? "#fff" : "#000",
-                fontWeight: active ? 600 : 500, fontSize: 13,
-                cursor: "pointer", fontFamily: "inherit",
-              }}>
-              {c.label}
-            </button>
-          );
-        })}
+      {/* One control bar: status view on the left, request type on the right */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px", marginBottom: 16 }}>
+        <div role="tablist" aria-label="Request status" style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 9, padding: 3, flexWrap: "wrap" }}>
+          {[
+            { key: "pending",  label: "Pending" },
+            { key: "approved", label: "Approved" },
+            { key: "rejected", label: "Not Approved" },
+            { key: "all",      label: "All" },
+          ].map(t => {
+            const active = tab === t.key;
+            return (
+              <button key={t.key} role="tab" aria-selected={active} onClick={() => setTab(t.key)}
+                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 14, fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
+                  background: active ? "#1e3a5f" : "transparent", color: active ? "#fff" : "#475569", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                {t.label}
+                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 99, padding: "1px 7px", background: active ? "rgba(255,255,255,.2)" : "#e2e8f0", color: active ? "#fff" : "#475569" }}>{counts[t.key]}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div role="group" aria-label="Request type" style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 9, padding: 3 }}>
+          {[
+            { key: "all",         label: "All types" },
+            { key: "leaves",      label: "Leaves" },
+            { key: "permissions", label: "Permissions" },
+          ].map(c => {
+            const active = filterCategory === c.key;
+            return (
+              <button key={c.key} onClick={() => setFilterCategory(c.key)} aria-pressed={active}
+                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 14, fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
+                  background: active ? "#fff" : "transparent", color: active ? "#7c3aed" : "#475569", boxShadow: active ? "0 1px 2px rgba(15,23,42,.12)" : "none" }}>
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Filter bar — All Requests only */}
-      {tab === "all" && (
-        <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+      {/* Filter bar — every view except Pending */}
+      {tab !== "pending" && (
+        <div className="hr-filter-bar" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <label style={FILTER_LBL}>Employee</label>
             <select style={{ ...FILTER_INP, minWidth: 160 }} value={filterName} onChange={e => setFilterName(e.target.value)}>
@@ -162,13 +177,15 @@ export default function LeaveApprovalPage({ user }) {
               {typeOptions.map(t => <option key={t} value={t}>{leaveTypeLabel(t)}</option>)}
             </select>
           </div>
-          <div>
-            <label style={FILTER_LBL}>Status</label>
-            <select style={{ ...FILTER_INP, minWidth: 140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="">All Statuses</option>
-              {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
-            </select>
-          </div>
+          {tab === "all" && (
+            <div>
+              <label style={FILTER_LBL}>Status</label>
+              <select style={{ ...FILTER_INP, minWidth: 140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                <option value="">All Statuses</option>
+                {Object.entries(STATUS_CFG).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label style={FILTER_LBL}>From</label>
             <input type="date" style={FILTER_INP} value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
@@ -188,9 +205,9 @@ export default function LeaveApprovalPage({ user }) {
 
       {list.length === 0 ? (
         <div style={{ ...card, padding: 60, textAlign: "center", color: "#374151", fontSize: 15 }}>
-          {tab === "pending"
-            ? "No pending leave approvals"
-            : hasFilters ? "No leave requests match the selected filters." : "No leave requests found"}
+          {tab === "pending" ? "No pending leave approvals"
+            : hasFilters ? "No leave requests match the selected filters."
+            : tab === "approved" ? "No approved requests yet" : tab === "rejected" ? "No requests have been rejected" : "No leave requests found"}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

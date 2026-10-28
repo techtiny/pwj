@@ -653,33 +653,34 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </div>
         </div>
       ) : (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }} className="pp-scroll">
-          <table className="pp-table" style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
-            <thead>
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }} className="pp-scroll">
+          <table className="pp-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 1468, tableLayout: "fixed" }}>
+            <colgroup><col style={{ width: 44 }} /><col style={{ width: 48 }} /><col style={{ width: 130 }} /><col style={{ width: 126 }} /><col style={{ width: 88 }} /><col style={{ width: 88 }} /><col style={{ width: 52 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 84 }} /><col style={{ width: 92 }} /><col style={{ width: 120 }} /><col style={{ width: 96 }} /></colgroup>
+                        <thead>
               <tr>
-                <th rowSpan={2} style={{ ...th, width: "3.5%" }}>BOQ No</th>
-                <th rowSpan={2} style={{ ...th, width: "4%" }}>Activity No</th>
-                <th rowSpan={2} style={{ ...th, width: "9.5%" }}>Description of Activity</th>
-                <th rowSpan={2} style={{ ...th, width: "8%" }}>Dependency By</th>
-                <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Start Date</th>
-                <th rowSpan={2} style={{ ...th, width: "7%", whiteSpace: "normal", wordBreak: "break-word" }}>Dependency Target Date</th>
-                <th rowSpan={2} style={{ ...th, width: "5%" }}>Material Lead Days</th>
-                <th rowSpan={2} style={{ ...th, width: "7%" }}>Material Lead Date</th>
-                <th rowSpan={2} style={{ ...th, width: "7%" }}>Material Delivery Date</th>
-                <th rowSpan={2} style={{ ...th, width: "5%" }}>Activity Duration (Days)</th>
+                <th rowSpan={2} style={{ ...th }}>BOQ No</th>
+                <th rowSpan={2} style={{ ...th }}>Activity No</th>
+                <th rowSpan={2} style={{ ...th }}>Description of Activity</th>
+                <th rowSpan={2} style={{ ...th }}>Dependency By</th>
+                <th rowSpan={2} style={{ ...th }}>Dependency Start Date</th>
+                <th rowSpan={2} style={{ ...th }}>Dependency Target Date</th>
+                <th rowSpan={2} style={{ ...th }}>Material Lead Days</th>
+                <th rowSpan={2} style={{ ...th }}>Material Lead Date</th>
+                <th rowSpan={2} style={{ ...th }}>Material Delivery Date</th>
+                <th rowSpan={2} style={{ ...th }}>Activity Duration (Days)</th>
                 <th colSpan={2} style={th}>Planned date</th>
                 <th colSpan={2} style={th}>Actual</th>
                 <th colSpan={2} style={th}>Status</th>
-                <th rowSpan={2} style={{ ...th, width: "9%" }}>Remarks</th>
-                <th rowSpan={2} style={{ ...th, width: "7%" }} aria-label="Add / Insert / Remove" />
+                <th rowSpan={2} style={{ ...th }}>Remarks</th>
+                <th rowSpan={2} style={{ ...th }} aria-label="Add / Insert / Remove" />
               </tr>
               <tr>
-                <th style={{ ...th2, width: "7%" }}>Start Date</th>
-                <th style={{ ...th2, width: "7%" }}>Finish Date</th>
-                <th style={{ ...th2, width: "7%" }}>Started Date</th>
-                <th style={{ ...th2, width: "7%" }}>Finished Date</th>
-                <th style={{ ...th2, width: "5%" }}>Completed</th>
-                <th style={{ ...th2, width: "5%" }}>Not Completed</th>
+                <th style={{ ...th2 }}>Start Date</th>
+                <th style={{ ...th2 }}>Finish Date</th>
+                <th style={{ ...th2 }}>Started Date</th>
+                <th style={{ ...th2 }}>Finished Date</th>
+                <th style={{ ...th2 }}>Completed</th>
+                <th style={{ ...th2 }}>Not Completed</th>
               </tr>
             </thead>
             <tbody>
@@ -740,14 +741,14 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={td}><DateCell value={r.actualFinish} min={r.actualStart} onChange={v => updateRow(r.key, "actualFinish", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
                           {state === "DONE" || state === "LATE" ? (
-                            <span style={{ fontWeight: 700, fontSize: 16, color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
+                            <span style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25, display: "inline-block", color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
                           ) : (
                             <button onClick={() => updateRow(r.key, "actualFinish", todayStr())} title="Set actual finish to today"
-                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 14, padding: "4px 9px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
+                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 12.5, padding: "3px 6px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
                           )}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>
-                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 16, color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
+                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25, display: "inline-block", color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
                         </td>
                         <td style={td}><AutoText value={r.remarks} placeholder="Remarks" onChange={v => updateRow(r.key, "remarks", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
@@ -923,7 +924,7 @@ function DateCell({ value, onChange, min, warn, title }) {
   return (
     <div title={title} style={{ position: "relative", minHeight: 36, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 2px", boxSizing: "border-box", borderRadius: 6, whiteSpace: "nowrap",
       border: `1px solid ${warn ? "#fca5a5" : "#e2e8f0"}`, background: warn ? "#fef2f2" : "#fff", color: warn ? "#b91c1c" : value ? "#0f172a" : "#94a3b8",
-      fontSize: 14.5, lineHeight: 1.3 }}>
+      fontSize: 12.5, lineHeight: 1.3 }}>
       {value ? fmtDate(value) : "—"}
       <input ref={ref} type="date" value={value || ""} min={min || undefined} aria-label="Date" onChange={e => onChange(e.target.value)}
         onClick={() => { try { ref.current?.showPicker?.(); } catch {} }}
@@ -949,7 +950,7 @@ function AutoText({ value, onChange, onBlur, placeholder, maxLength, style }) {
 // ── Styles ──
 const inpSt = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
 const roSt = { padding: "8px 0", fontSize: 14, color: "#0f172a" };
-const th = { padding: "10px 8px", fontSize: 15.5, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
+const th = { padding: "10px 4px", fontSize: 15.5, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
 const th2 = { ...th, fontWeight: 600, background: "#f1f5f9" };
 const td = { padding: "6px 4px", borderBottom: "1px solid #f1f5f9", fontSize: 16, color: "#0f172a", verticalAlign: "middle" };
 const cellInp = { width: "100%", minWidth: 0, boxSizing: "border-box", padding: "5px 7px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 16, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };

@@ -312,6 +312,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <StatCard icon="📝" label="PRs Raised" value={stats ? stats.prRaised : "—"} accent="#3b82f6" accentBg="#eff6ff" />
+        <StatCard icon="🔒" label="PRs Closed" value={stats ? stats.prClosed ?? 0 : "—"} accent="#0d9488" accentBg="#f0fdfa"
+          hint={stats ? `of ${stats.prRaised} raised · ${Math.max(0, (stats.prRaised || 0) - (stats.prClosed || 0))} still open` : undefined} />
         <StatCard icon="✅" label="Correct Check-ins" value={stats ? stats.correctCheckins : "—"} accent="#059669" accentBg="#ecfdf5" hint="Checked in and out" />
         <StatCard icon="⚠️" label="Incomplete Check-ins" value={stats ? stats.incompleteCheckins : "—"} accent="#dc2626" accentBg="#fef2f2" hint="Checked in, never checked out" />
         <StatCard icon="⭐" label="Avg. Performance" value={canSeeRemarks && avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={canSeeRemarks ? (trend ? `${trend.icon} ${trend.label}` : `${rated.length} rated · ${remarks.length} comment(s)`) : undefined} />

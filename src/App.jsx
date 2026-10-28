@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
@@ -267,6 +267,13 @@ const api = {
       const data = await r.json().catch(() => null);
       return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to send for payment" };
     }),
+  allocatePr: (id, body) =>
+    fetch(`${API_BASE}/entries/${id}/allocate`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  requestManualClosure: (id, body) =>
+    fetch(`${API_BASE}/entries/${id}/manual-close/request`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  decideManualClosure: (id, body) =>
+    fetch(`${API_BASE}/entries/${id}/manual-close/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+  getPendingClosures: () => fetch(`${API_BASE}/pending-closures`, { headers: userHeaders() }).then(r => r.json()),
   getPendingDocApprovals: () => fetch(`${API_BASE}/pending-doc-approvals`, { headers: userHeaders() }).then(r => r.json()),
   sendVendorDoc: (id, htmlContent) => fetch(`${API_BASE}/entries/${id}/send-vendor-doc`, {
     method: "POST",
@@ -1583,6 +1590,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [statusF, setStatusF]         = useState("ALL");
   const [approvalF, setApprovalF]     = useState("ALL");
   const [dependencyF, setDependencyF] = useState("");
+  const [allocF, setAllocF]       = useState("");   // "" all | "__none__" unallocated | procurement username
   const [projectF, setProjectF]       = useState("");
   const [raisedByF, setRaisedByF]     = useState("");
   const [datePreset, setDatePreset]   = useState("");   // today | week | month | custom | ""
@@ -1609,7 +1617,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // the results across pages (default view — newest first, no filters — stays paginated).
   const sortApplied   = sortBy !== "createdAt" || sortDir !== "desc";
   const filterApplied = !!search || statusF !== "ALL" || approvalF !== "ALL" || !!dependencyF || !!projectF
-    || (!isEngineer && !!raisedByF) || !!dateFrom || !!dateTo || colorFilterActive;
+    || (!isEngineer && !!raisedByF) || !!dateFrom || !!dateTo || colorFilterActive || !!allocF;
   const showAll = sortApplied || filterApplied;
   const colorFilteredAll = useMemo(() => {
     if (!colorFilterActive) return null;
@@ -1621,10 +1629,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
       row.status === "OPEN" && (openKindF === "STALE" ? isIssuedStale(row) : !isIssuedStale(row))
     );
   }, [entries, openKindF, colorFilterActive]);
-  const visibleEntries = colorFilteredAll ? colorFilteredAll : entries;
+  const allocMatch = (row) => !allocF || (allocF === "__none__" ? !row.allocatedTo : row.allocatedTo === allocF);
+  const visibleEntries = (colorFilteredAll ? colorFilteredAll : entries).filter(allocMatch);
   // Pagination UI reflects the filtered count/page total while the color filter
   // is active, instead of the server's unfiltered-by-color totals.
-  const colorTotalElements = colorFilteredAll ? colorFilteredAll.length : totalElements;
+  const colorTotalElements = (colorFilteredAll || allocF) ? visibleEntries.length : totalElements;
   const colorTotalPages    = colorFilteredAll ? Math.max(1, Math.ceil(colorFilteredAll.length / PAGE_SIZE)) : totalPages;
 
   // ── Module routing via URL hash — lets each browser tab hold its own
@@ -1701,6 +1710,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Notification badge counts — pending-approval counters shown on tabs/tiles
   const [pendingOHCount, setPendingOHCount]         = useState(0);
   const [pendingDocCount, setPendingDocCount]       = useState(0);
+  // Manual PR closure: Admin requests (with a reason), VP approves/rejects
+  const [allocBusy, setAllocBusy] = useState(null);
+  const [closureReqModal, setClosureReqModal] = useState(null);   // the entry being closed
+  const [closureReason, setClosureReason]     = useState("");
+  const [closureBusy, setClosureBusy]         = useState(false);
+  const [closuresModal, setClosuresModal]     = useState(false);  // VP's pending list
+  const [pendingClosures, setPendingClosures] = useState([]);
+  const [closuresLoading, setClosuresLoading] = useState(false);
+  const [closureComment, setClosureComment]   = useState({});
+  const [closureActing, setClosureActing]     = useState(null);
   const [pendingVendorCount, setPendingVendorCount] = useState(0);
   const [toast, setToast]                 = useState(null);
 
@@ -1763,7 +1782,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [genDocModal, setGenDocModal]         = useState(false);
   const [genDocPwjType, setGenDocPwjType]     = useState("PO");
   const [genDocItemVendors, setGenDocItemVendors] = useState({}); // { [entryId]: vendorName }
-  const [genDocApplyAll, setGenDocApplyAll]   = useState("");     // quick "same vendor for all"
+  const [genDocApplyAll, setGenDocApplyAll]   = useState("");     // first vendor (kept for the single-vendor path)
+  const [genDocVendors, setGenDocVendors]       = useState([""]);   // one or more vendors — 2+ makes a multi-vendor entry
   const [genDocSaving, setGenDocSaving]       = useState(false);
   const [pendingDocs, setPendingDocs]         = useState([]);
   const [pendingDocsModal, setPendingDocsModal] = useState(false);
@@ -1945,6 +1965,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (isVP) {
         const [docs, vendors] = await Promise.all([api.getPendingDocApprovals(), api.getPendingVendors()]);
         if (docs.success)    setPendingDocCount(countPendingDocItems(docs.data));
+        try { const cl = await api.getPendingClosures(); if (cl.success) setPendingClosures(cl.data); } catch {}
         if (vendors.success) setPendingVendorCount(vendors.data.length);
       } else if (isAdmin) {
         const vendors = await api.getPendingVendors();
@@ -2449,9 +2470,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const existingDocs = parseExistingDocs(assignModal);
       const findExistingDoc = (v, i) => existingDocs.find(d => d.vendor === v) || existingDocs[i];
       let docData = null;
+      // Keep the clubbing link (top-level clubbedEntryIds in docData) when turning a clubbed PR multi-vendor.
+      let clubbedTop = [];
+      try { clubbedTop = JSON.parse(assignModal.docData || "{}").clubbedEntryIds || []; } catch {}
       if (vendors.length > 1) {
         docData = JSON.stringify({
           multiVendor: true,
+          ...(clubbedTop.length ? { clubbedEntryIds: clubbedTop } : {}),
           docs: vendors.map((v, i) => ({
             ...(findExistingDoc(v, i) || { items: [{ item: "", unit: "", qty: "", rate: "" }] }),
             vendor: v,
@@ -2462,7 +2487,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         // previously entered items/rates instead of silently discarding docData.
         const survivor = (firstVendor && findExistingDoc(firstVendor, 0)) || existingDocs[0];
         const { vendor, docStatus, ...rest } = survivor;
-        docData = JSON.stringify(rest);
+        docData = JSON.stringify({ ...rest, ...(clubbedTop.length ? { clubbedEntryIds: clubbedTop } : {}) });
       }
       const r = await api.procurementUpdate(assignModal.id, {
         vendor:  firstVendor,
@@ -2737,6 +2762,60 @@ function Dashboard({ user, onLogout: handleLogout }) {
     finally { setDocSaving(false); }
   };
 
+  // Procurement users a PR can be allocated to.
+  const procUsers = useMemo(() => allUsers
+    .filter(u => (u.role === "PROCUREMENT" || u.role === "PROCUREMENT_ENGINEER") && u.active !== false && !u.isTestAccount && !u.exited)
+    .sort((a, b) => (a.fullName || a.username).localeCompare(b.fullName || b.username)), [allUsers]);
+
+  const allocatePr = async (row, username) => {
+    const u = procUsers.find(x => x.username === username);
+    setAllocBusy(row.id);
+    try {
+      const r = await api.allocatePr(row.id, { username: username || "", name: u ? (u.fullName || u.username) : "", allocatedBy: user.fullName || user.username, role: user.role });
+      if (r.success) {
+        setEntries(es => es.map(x => x.id === row.id ? { ...x, ...r.data } : x));
+        showToast(username ? `PR #${row.id} allocated to ${u?.fullName || username} ✅` : `PR #${row.id} allocation cleared`);
+      } else showToast(r.message || "Could not allocate", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setAllocBusy(null); }
+  };
+
+  const submitClosureRequest = async () => {
+    if (!closureReqModal) return;
+    if (!closureReason.trim()) { showToast("Enter the reason for closing this PR", "error"); return; }
+    setClosureBusy(true);
+    try {
+      const r = await api.requestManualClosure(closureReqModal.id, { reason: closureReason, requestedBy: user.fullName || user.username, role: user.role });
+      if (r.success) {
+        setEntries(es => es.map(x => x.id === closureReqModal.id ? r.data : x));
+        setClosureReqModal(null); setClosureReason("");
+        showToast("Closure request sent to VP ✅");
+      } else showToast(r.message || "Could not send the request", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setClosureBusy(false); }
+  };
+
+  const openPendingClosures = async () => {
+    setClosuresModal(true);
+    setClosuresLoading(true);
+    try { const r = await api.getPendingClosures(); if (r.success) setPendingClosures(r.data); } catch {}
+    finally { setClosuresLoading(false); }
+  };
+
+  const decideClosure = async (id, approve) => {
+    setClosureActing(id + (approve ? "a" : "r"));
+    try {
+      const r = await api.decideManualClosure(id, { approve, comment: closureComment[id] || "", decidedBy: user.fullName || user.username, role: user.role });
+      if (r.success) {
+        setPendingClosures(l => l.filter(x => x.id !== id));
+        setEntries(es => es.map(x => x.id === id ? r.data : x));
+        showToast(approve ? "PR closed ✅" : "Closure request rejected");
+        fetchEntries(true);
+      } else showToast(r.message || "Failed", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setClosureActing(null); }
+  };
+
   const openPendingDocs = async () => {
     setPendingDocsModal(true);
     setPendingDocsLoading(true);
@@ -2893,17 +2972,63 @@ function Dashboard({ user, onLogout: handleLogout }) {
     });
   };
 
+  // Clubbed PRs (or one PR) with 2+ vendors: ONE entry — the first selected PR — holds a PO per vendor
+  // (multiVendor docs), exactly like a single PR given several vendors; the other PRs stay clubbed to it.
+  // Every vendor's PO starts with all the clubbed line items, quantities left blank to be split per vendor.
+  const submitGenDocMultiVendor = async (selected, vendors) => {
+    setGenDocSaving(true);
+    try {
+      const primary = selected[0];
+      const secondaries = selected.slice(1);
+      const secondaryIds = secondaries.map(e => e.id);
+      const existing = parseDocData(primary);
+      const { items: _drop, vendor: _v, docStatus: _ds, docNumber: _dn, multiVendor: _mv, docs: _docs, ...base } = existing;
+      const templateItems = selected.flatMap(e => entryItems(e)).map(it => ({ ...it, qty: "", rate: "" }));
+      const docs = vendors.map(v => ({ ...base, items: templateItems.map(it => ({ ...it })), vendor: v, docStatus: "DRAFT" }));
+      const newDocData = JSON.stringify({ multiVendor: true, ...(secondaryIds.length ? { clubbedEntryIds: secondaryIds } : {}), docs });
+      const r = await api.updateEntry(primary.id, {
+        raisedBy: primary.raisedBy, projectName: primary.projectName,
+        approvalStatus: primary.approvalStatus, status: primary.status,
+        boqNo: primary.boqNo || null,
+        materialRequired: primary.materialRequired || templateItems.find(i => i.item)?.item || "—",
+        vendor: vendors[0], pwjType: genDocPwjType, docData: newDocData,
+      });
+      if (!r.success) { showToast(r.message || "Could not create the documents", "error"); return; }
+      for (const sec of secondaries) {
+        const secExisting = parseDocData(sec);
+        await api.updateEntry(sec.id, {
+          raisedBy: sec.raisedBy, projectName: sec.projectName,
+          approvalStatus: sec.approvalStatus, status: sec.status,
+          boqNo: sec.boqNo || null, materialRequired: sec.materialRequired,
+          vendor: vendors[0], pwjType: genDocPwjType,
+          pwjIssued: !!sec.pwjIssued, docNumber: sec.docNumber || null,
+          docData: JSON.stringify({ ...secExisting, clubbedWithId: primary.id }),
+        });
+      }
+      setGenDocModal(false);
+      setSelectedIds(new Set());
+      await fetchEntries();
+      showToast(`${vendors.length} vendor ${genDocPwjType}s created in entry #${primary.id} — set each vendor's quantities ✅`);
+      setDocViewIndex(0);
+      openDocModal({ ...primary, vendor: vendors[0], pwjType: genDocPwjType, docData: newDocData });
+    } finally { setGenDocSaving(false); }
+  };
+
   const submitGenDoc = async () => {
     const selected = entries.filter(e => selectedIds.has(e.id));
     // Validate every item has a vendor assigned
-    const missing = selected.filter(e => !(genDocItemVendors[e.id] || "").trim());
+    const chosenVendors = [...new Set(genDocVendors.map(v => (v || "").trim()).filter(Boolean))];
+    let gdVendors = genDocItemVendors;
+    if (chosenVendors.length > 1) { await submitGenDocMultiVendor(selected, chosenVendors); return; }
+    if (chosenVendors.length === 1) { const m = {}; selected.forEach(e => { m[e.id] = chosenVendors[0]; }); gdVendors = m; }
+    const missing = selected.filter(e => !(gdVendors[e.id] || "").trim());
     if (missing.length) { showToast(`Assign a vendor to all ${missing.length} unassigned item(s)`, "error"); return; }
     setGenDocSaving(true);
     try {
       // Group entries by vendor
       const groups = {};
       for (const e of selected) {
-        const v = genDocItemVendors[e.id].trim();
+        const v = gdVendors[e.id].trim();
         if (!groups[v]) groups[v] = [];
         groups[v].push(e);
       }
@@ -3454,6 +3579,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (sendPaymentModal) { e.preventDefault(); setSendPaymentModal(null); setSendPaymentDocNumber(""); return; }
       if (pwdModal)         { e.preventDefault(); setPwdModal(null); setNewPwd(""); return; }
       if (genDocModal)      { e.preventDefault(); setGenDocModal(false); return; }
+      if (closureReqModal)  { e.preventDefault(); setClosureReqModal(null); return; }
+      if (closuresModal)    { e.preventDefault(); setClosuresModal(false); return; }
       if (pendingDocsModal) { e.preventDefault(); setPendingDocsModal(false); return; }
       if (pendingModal)     { e.preventDefault(); setPendingModal(false); return; }
       if (vpPendingModal)   { e.preventDefault(); setVpPendingModal(false); return; }
@@ -3461,13 +3588,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (projectMgmtModal) { e.preventDefault(); setProjectMgmtModal(false); return; }
       if (addVendorPage)    { e.preventDefault(); setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); return; }
       if (vendorModal)      { e.preventDefault(); setVendorModal(false); return; }
-      if (createModal || editingEntry) { e.preventDefault(); setCreateModal(false); setEditingEntry(null); return; }
+      if (createModal || editingEntry) return; // New/Edit PR form closes only via its Close/Cancel button
       if (detailRow)        { e.preventDefault(); setDetailRow(null); return; }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [docModal, docEditMode, assignModal, approvalModal, sendPaymentModal, pwdModal, genDocModal,
-      pendingDocsModal, pendingModal, vpPendingModal, userMgmtModal, projectMgmtModal,
+      pendingDocsModal, closureReqModal, closuresModal, pendingModal, vpPendingModal, userMgmtModal, projectMgmtModal,
       addVendorPage, vendorModal, createModal, editingEntry, detailRow]);
 
   const submitChangePassword = async () => {
@@ -3874,6 +4001,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </button>
                 )}
                 {showDocs && (
+                  <button onClick={openPendingClosures} onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(false)}>
+                    <Lock size={18} strokeWidth={2} /> Closure Approvals {pill(pendingClosures.length)}
+                  </button>
+                )}
+                {showDocs && (
                   <button onClick={openPendingDocs} onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(false)}>
                     <FileCheck size={18} strokeWidth={2} /> Doc Approvals {pill(pendingDocCount)}
                   </button>
@@ -4103,6 +4235,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <option value="HOLD">Hold</option>
             <option value="NOT_APPROVED">Not Approved</option>
           </select>
+          {(isAdmin || isVP || isOH || isCeo || isProcurement || isProcurementEngineer) && (
+            <select style={s.sel} value={allocF} onChange={e => setAllocF(e.target.value)} title="Filter by the procurement user a PR is allocated to">
+              <option value="">All Allocations</option>
+              <option value="__none__">Unallocated</option>
+              {(isProcurement || isProcurementEngineer) && <option value={user.username}>Allocated to me</option>}
+              {procUsers.filter(u => u.username !== user.username).map(u => <option key={u.id} value={u.username}>{u.fullName || u.username}</option>)}
+            </select>
+          )}
           {(isAdmin || isVP || isOH || isProjectManager || isCeo) && (
             <select style={s.sel} value={raisedByF} onChange={e => { setRaisedByF(e.target.value); setPage(0); }}>
               <option value="">All Users</option>
@@ -4416,6 +4556,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
+                        {(isAdmin || isVP) && row.status === "OPEN" ? (
+                          <select value={row.allocatedTo || ""} disabled={allocBusy === row.id}
+                            onChange={e => allocatePr(row, e.target.value)} title="Allocate this PR to a procurement user"
+                            style={{ border: `1.5px solid ${row.allocatedTo ? "#a5b4fc" : "#e2e8f0"}`, background: row.allocatedTo ? "#eef2ff" : "#fff", color: row.allocatedTo ? "#3730a3" : "#64748b", borderRadius: 7, padding: "4px 6px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", maxWidth: 150, cursor: "pointer" }}>
+                            <option value="">👤 Allocate…</option>
+                            {procUsers.map(u => <option key={u.id} value={u.username}>{u.fullName || u.username}</option>)}
+                            {row.allocatedTo && !procUsers.some(u => u.username === row.allocatedTo) && <option value={row.allocatedTo}>{row.allocatedToName || row.allocatedTo}</option>}
+                          </select>
+                        ) : row.allocatedToName ? (
+                          <span title={`Allocated by ${row.allocatedBy || "—"}`} style={{ fontSize: 12.5, fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>👤 {row.allocatedToName}</span>
+                        ) : null}
+                        {isAdmin && row.status === "OPEN" && (
+                          row.closureRequestStatus === "PENDING" ? (
+                            <span title={row.closureReason} style={{ fontSize: 12.5, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>⏳ Closure pending VP</span>
+                          ) : (
+                            <button
+                              style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              title={row.closureRequestStatus === "REJECTED" ? `VP rejected the last request${row.closureDecisionComment ? `: ${row.closureDecisionComment}` : ""}` : "Close this PR manually (needs VP approval)"}
+                              onClick={() => { setClosureReason(""); setClosureReqModal(row); }}>
+                              🔒 Close PR
+                            </button>
+                          )
+                        )}
                         {isAdmin && (
                           <button
                             style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -5353,7 +5516,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ["Quantity", detailRow.quantity],
                   ["Date of Requirement", fmtDate(detailRow.dateOfRequirement)],
                   ["Dependency", detailRow.dependency],
-                ].filter(([, v]) => v !== null).map(([l, v]) => (
+                  detailRow.allocatedToName ? ["Allocated to", `${detailRow.allocatedToName}${detailRow.allocatedBy ? ` · by ${detailRow.allocatedBy}` : ""}${detailRow.allocatedAt ? ` · ${fmtDateTime(detailRow.allocatedAt)}` : ""}`] : null,
+                  detailRow.closureRequestStatus ? ["Manual closure", `${{ PENDING: "Pending VP approval", APPROVED: "Approved — PR closed", REJECTED: "Rejected by VP" }[detailRow.closureRequestStatus] || detailRow.closureRequestStatus} · requested by ${detailRow.closureRequestedBy || "—"} — ${detailRow.closureReason || ""}${detailRow.closureDecidedBy ? ` · decided by ${detailRow.closureDecidedBy}${detailRow.closureDecisionComment ? ` (${detailRow.closureDecisionComment})` : ""}` : ""}`] : null,
+                ].filter(Boolean).filter(([, v]) => v !== null).map(([l, v]) => (
                   <div key={l}>
                     <div style={s.dLabel}>{l}</div>
                     <div style={{ ...s.dVal, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{v || "—"}</div>
@@ -5911,7 +6076,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
       {/* ─── CREATE ENTRY MODAL ─── */}
       {createModal && (
-        <div style={s.overlay} onClick={() => { setCreateModal(false); setEditingEntry(null); }}>
+        <div style={s.overlay}>{/* no backdrop-click close: this form only closes via its ✕ / Cancel button, so typed data isn't lost by a stray click */}
           <div style={s.modalBox(620)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
@@ -7353,6 +7518,74 @@ function Dashboard({ user, onLogout: handleLogout }) {
       )}
 
       {/* ─── VP PENDING DOC APPROVALS MODAL ─── */}
+      {closureReqModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 310, padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 18, width: 520, maxWidth: "100%", padding: 24, boxShadow: "0 30px 80px rgba(0,0,0,.3)" }} role="dialog" aria-label="Request manual closure">
+            <div style={{ fontWeight: 800, fontSize: 19, color: "#0f172a" }}>Close PR #{closureReqModal.id} manually</div>
+            <div style={{ fontSize: 14, color: "#475569", marginTop: 4, marginBottom: 14 }}>
+              {closureReqModal.materialRequired} · {closureReqModal.projectName}. The VP must approve before the PR is closed.
+            </div>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Reason for closing <span style={{ color: "#ef4444" }}>*</span></label>
+            <textarea autoFocus value={closureReason} onChange={e => setClosureReason(e.target.value)} rows={4} maxLength={1000}
+              placeholder="Why is this PR being closed without the normal delivery flow? This is saved in the PR's remarks."
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <button onClick={() => { setClosureReqModal(null); setClosureReason(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, background: "#f1f5f9", color: "#334155", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={submitClosureRequest} disabled={closureBusy || !closureReason.trim()}
+                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "inherit",
+                  background: closureReason.trim() ? "#0f766e" : "#cbd5e1", cursor: closureReason.trim() && !closureBusy ? "pointer" : "not-allowed" }}>
+                {closureBusy ? "Sending…" : "Send for VP approval"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {closuresModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }} onClick={() => setClosuresModal(false)}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Closure approvals"
+            style={{ background: "#fff", borderRadius: 20, width: 880, maxWidth: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: "#0f172a" }}>Closure Approvals</div>
+                <div style={{ fontSize: 14, color: "#64748b", marginTop: 2 }}>{pendingClosures.length} manual closure request{pendingClosures.length === 1 ? "" : "s"} waiting</div>
+              </div>
+              <button onClick={() => setClosuresModal(false)} aria-label="Close" style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+              {closuresLoading ? <div style={{ color: "#64748b" }}>Loading…</div>
+                : pendingClosures.length === 0 ? <div style={{ textAlign: "center", color: "#64748b", padding: 36 }}>No closure requests pending.</div>
+                : pendingClosures.map(c => (
+                  <div key={c.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>#{c.id} · {c.materialRequired}</div>
+                        <div style={{ fontSize: 14, color: "#475569", marginTop: 2 }}>{c.projectName} · raised by {c.raisedBy}{c.boqNo ? ` · BOQ ${c.boqNo}` : ""}</div>
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748b", textAlign: "right" }}>Requested by <b>{c.closureRequestedBy || "Admin"}</b><br />{c.closureRequestedAt ? fmtDateTime(c.closureRequestedAt) : ""}</div>
+                    </div>
+                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 12px", marginTop: 12, fontSize: 14.5, color: "#78350f", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                      <b>Reason: </b>{c.closureReason}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                      <textarea value={closureComment[c.id] || ""} onChange={e => setClosureComment(m => ({ ...m, [c.id]: e.target.value }))} rows={2} placeholder="Comment (optional)…"
+                        style={{ flex: 1, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontFamily: "inherit", resize: "none" }} />
+                      <button onClick={() => decideClosure(c.id, true)} disabled={!!closureActing}
+                        style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#15803d", cursor: "pointer", fontFamily: "inherit", opacity: closureActing ? 0.6 : 1 }}>
+                        {closureActing === c.id + "a" ? "…" : "Approve & close"}
+                      </button>
+                      <button onClick={() => decideClosure(c.id, false)} disabled={!!closureActing}
+                        style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#dc2626", cursor: "pointer", fontFamily: "inherit", opacity: closureActing ? 0.6 : 1 }}>
+                        {closureActing === c.id + "r" ? "…" : "Reject"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {pendingDocsModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} className="modal-overlay" onClick={() => setPendingDocsModal(false)}>
           <div style={{ background: "#fff", borderRadius: 24, width: "96%", maxWidth: 1040, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden", animation: "slideUp .2s ease" }} className="modal-box" onClick={e => e.stopPropagation()}>
@@ -7764,7 +7997,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
           {(isAdmin || isProcurement) && (
             <button onClick={async () => {
-                setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocPwjType("PO");
+                setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocVendors([""]); setGenDocPwjType("PO");
                 try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
                 setGenDocModal(true);
               }}
@@ -7789,7 +8022,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
           if (v) { if (!vendorGroups[v]) vendorGroups[v] = 0; vendorGroups[v]++; }
         }
         const docCount = Object.keys(vendorGroups).length;
-        const allAssigned = selected.every(e => (genDocItemVendors[e.id] || "").trim());
+        const chosen = genDocVendors.map(v => (v || "").trim());
+        const isMultiGen = genDocVendors.length > 1;
+        const allAssigned = isMultiGen
+          ? chosen.every(Boolean) && new Set(chosen).size === chosen.length
+          : !!chosen[0];
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
             className="modal-overlay" onClick={() => setGenDocModal(false)}>
@@ -7819,29 +8056,41 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </div>
                 </div>
 
-                {/* Vendor selection — applies to all items automatically */}
+                {/* Vendor selection — one vendor applies to every item; add more for a multi-vendor entry */}
                 <div style={{ marginBottom: 18, background: "#f8fafc", borderRadius: 10, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
                   <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
-                    Vendor <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#374151" }}>— applies to all {selected.length} item(s)</span>
+                    {isMultiGen ? "Vendors" : "Vendor"} <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#374151" }}>— {isMultiGen ? `one ${genDocPwjType} per vendor, each with all ${selected.length} item(s)` : `applies to all ${selected.length} item(s)`}</span>
                   </label>
-                  <select value={genDocApplyAll}
-                    onChange={ev => {
-                      const val = ev.target.value;
-                      setGenDocApplyAll(val);
-                      const map = {};
-                      selected.forEach(e => { map[e.id] = val; });
-                      setGenDocItemVendors(map);
-                    }}
-                    style={{ width: "100%", border: `1.5px solid ${genDocApplyAll ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: genDocApplyAll ? "#f0fdf4" : "#fff" }}>
-                    <option value="">— Select vendor —</option>
-                    {approvedVendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                  </select>
+                  {genDocVendors.map((gv, vi) => (
+                    <div key={vi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <select value={gv}
+                        onChange={ev => {
+                          const val = ev.target.value;
+                          setGenDocVendors(list => list.map((x, i) => i === vi ? val : x));
+                          if (vi === 0) setGenDocApplyAll(val);
+                          if (genDocVendors.length === 1) { const map = {}; selected.forEach(e => { map[e.id] = val; }); setGenDocItemVendors(map); }
+                        }}
+                        style={{ flex: 1, border: `1.5px solid ${gv ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: gv ? "#f0fdf4" : "#fff" }}>
+                        <option value="">— Select vendor {genDocVendors.length > 1 ? vi + 1 : ""}—</option>
+                        {approvedVendors.filter(v => v.name === gv || !chosen.includes(v.name)).map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                      </select>
+                      {genDocVendors.length > 1 && (
+                        <button type="button" onClick={() => setGenDocVendors(list => list.filter((_, i) => i !== vi))} aria-label="Remove vendor"
+                          style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>×</button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setGenDocVendors(list => [...list, ""])}
+                    style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+                    + Add Vendor
+                  </button>
+                  {isMultiGen && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 8 }}>Quantities start blank in each vendor's document — split the items between vendors there.</div>}
                 </div>
 
                 {/* Summary */}
-                {allAssigned && docCount > 0 && (
+                {allAssigned && (isMultiGen || docCount > 0) && (
                   <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: 14, color: "#166534", fontWeight: 600 }}>
-                    ✅ 1 {genDocPwjType} will be created for <strong>{genDocApplyAll}</strong> with {selected.length} line item(s)
+                    ✅ {isMultiGen ? `${chosen.length} ${genDocPwjType}s will be created in one entry — ` : `1 ${genDocPwjType} will be created for `}<strong>{isMultiGen ? chosen.join(", ") : chosen[0]}</strong>{isMultiGen ? ` — ${selected.length} line item(s) each` : ` with ${selected.length} line item(s)`}
                   </div>
                 )}
               </div>
