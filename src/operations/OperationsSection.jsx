@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban } from "lucide-react";
+import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban, GanttChartSquare } from "lucide-react";
 import {
   getEligibleForAccountsProjects,
   uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
   saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
-import ProjectPlanning, { PlanningDashboard } from "./ProjectPlanning";
+import ProjectPlanning, { PlanningDashboard, ScheduleChart } from "./ProjectPlanning";
 
 
 // Mobile layout for the whole Operations module (landing, project tabs, BOQ, planning, dashboard).
@@ -220,6 +220,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [dashFrom, setDashFrom] = useState("");
   const [dashTo, setDashTo] = useState("");
   const dashInp = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: 13, fontFamily: "inherit", background: "#fff" };
+  const [scheduleRev, setScheduleRev] = useState(""); // revision being viewed in Project Planning / Schedule Chart ("" = current)
   const [tab, setTab] = useState("dashboard"); // "dashboard" | "boq" | "planning"
 
   // ── Project picker ──
@@ -252,10 +253,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
 
   const [planningDirty, setPlanningDirty] = useState(false);
-  const openProject = (project) => { setTab("dashboard"); setPlanningDirty(false); setSelectedProject(project); };
+  const openProject = (project) => { setScheduleRev(""); setTab("dashboard"); setPlanningDirty(false); setSelectedProject(project); };
   const closeProject = () => {
     if (planningDirty && !window.confirm("The project schedule has unsaved changes. Leave without saving?")) return;
-    setPlanningDirty(false); setSelectedProject(null); resetBOQ(); setTab("dashboard");
+    setPlanningDirty(false); setSelectedProject(null); resetBOQ(); setScheduleRev(""); setTab("dashboard");
   };
 
   const filteredProjects = useMemo(() => {
@@ -675,6 +676,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
           { key: "dashboard", label: "Dashboard", icon: TrendingUp },
           { key: "boq", label: "BOQ", icon: ClipboardList },
           { key: "planning", label: "Project Planning", icon: CalendarClock },
+          { key: "chart", label: "Schedule Chart", icon: GanttChartSquare },
         ].map(t => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -741,8 +743,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
           hasBoq={!!fileName}
           onGoToBoq={() => setTab("boq")}
           onDirtyChange={setPlanningDirty}
+          viewRev={scheduleRev}
+          setViewRev={setScheduleRev}
         />
       </div>
+
+      {tab === "chart" && <ScheduleChart key={`chart-${selectedProject.id}`} project={selectedProject} user={user} viewRev={scheduleRev} setViewRev={setScheduleRev} />}
 
       {tab === "dashboard" && (
         <>

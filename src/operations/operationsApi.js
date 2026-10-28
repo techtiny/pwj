@@ -98,3 +98,25 @@ export async function saveProjectSchedule(projectId, schedule) {
   const res = await axios.put(`${PROJECTS_BASE}/${projectId}/schedule`, schedule);
   return res.data?.data;
 }
+
+// Schedule revisions (Rev 0, Rev 1, …): frozen copies of the saved schedule.
+export async function getScheduleRevisions(projectId) {
+  const res = await axios.get(`${PROJECTS_BASE}/${projectId}/schedule/revisions`);
+  return res.data?.data || [];
+}
+
+export async function getScheduleRevision(projectId, revisionNo) {
+  const res = await axios.get(`${PROJECTS_BASE}/${projectId}/schedule/revisions/${revisionNo}`);
+  return res.data?.data;
+}
+
+export async function issueScheduleRevision(projectId, body) {
+  const res = await axios.post(`${PROJECTS_BASE}/${projectId}/schedule/revisions`, body);
+  return res.data?.data;
+}
+
+// Go back to a revision: the working schedule becomes a copy of it (issued revisions are untouched).
+export async function restoreScheduleRevision(projectId, revisionNo, restoredBy) {
+  const res = await axios.post(`${PROJECTS_BASE}/${projectId}/schedule/revisions/${revisionNo}/restore`, { restoredBy });
+  return res.data?.data;
+}

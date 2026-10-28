@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Save, Trash2, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle } from "lucide-react";
-import { getProjectSchedule, saveProjectSchedule } from "./operationsApi";
+import { Plus, Save, Trash2, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle, History } from "lucide-react";
+import { getProjectSchedule, saveProjectSchedule, getScheduleRevisions, getScheduleRevision, issueScheduleRevision, restoreScheduleRevision } from "./operationsApi";
 
 // ── Date helpers (dates travel as "YYYY-MM-DD" strings) ─────────────────────
 const DAY_MS = 86400000;
@@ -16,7 +16,7 @@ const inclusiveDays = (start, finish) => Math.round((toUtc(finish) - toUtc(start
 const addDays = (start, n) => fromUtc(toUtc(start) + n * DAY_MS);
 const fmtDate = (d) => { if (!d) return ""; const [y, m, dd] = String(d).slice(0, 10).split("-"); return y && m && dd ? `${dd}/${m}/${y}` : String(d); }; // DD/MM/YYYY
 
-const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "" };
+const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "", floorName: "", roomCount: "", revision: "" };
 const ROW_FIELDS = [
   "boqNo", "boqDescription", "description", "dependency",
   "dependencyStartDate", "dependencyTargetDate", "materialLeadDays", "materialLeadDate", "materialDeliveryDate", "durationDays",
@@ -79,6 +79,273 @@ const COMPANY = {
   gst: "33EKIPS2810E1ZD",
 };
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+
+// ── Schedule chart (Gantt) ─────────────────────────────────────────────────────
+// A day-by-day bar chart of the saved schedule in the same layout as the Happizo planning sheets:
+// Sl No · Description · Materials Delivery · Duration · Start · Finish · Remarks, then Day 1…Day N
+// columns with the planned period shaded. Days are counted from the project start date.
+function buildChart(header, activities) {
+  const list = (activities || []).filter(a => (a.description || "").trim() || a.plannedStart);
+  const starts = list.map(a => a.plannedStart).filter(Boolean).sort();
+  // Day 1 is the project start date — or the earliest planned start if some activity begins before it.
+  const base = [header?.startDate, starts[0]].filter(Boolean).sort()[0] || null;
+  const dayOf = (d) => (base && d ? Math.round((toUtc(d) - toUtc(base)) / DAY_MS) + 1 : null);
+  const rows = list.map((a, i) => {
+    const sd = dayOf(a.plannedStart), fd = dayOf(a.plannedFinish);
+    const md = dayOf(a.materialDeliveryDate);
+    return {
+      no: i + 1, description: a.description || "", remarks: a.remarks || "",
+      material: md != null ? `Day ${md}` : "NA",
+      duration: a.durationDays != null && a.durationDays !== "" ? a.durationDays : (sd != null && fd != null ? fd - sd + 1 : "NA"),
+      startDay: sd, finishDay: fd,
+      start: sd != null ? `Day ${sd}` : "NA", finish: fd != null ? `Day ${fd}` : "NA",
+      state: rowState(a, todayStr()),
+    };
+  });
+  const maxFinish = Math.max(0, ...rows.map(r => r.finishDay || 0));
+  const endDay = header?.completionDate ? dayOf(header.completionDate) : null;
+  const days = Math.min(180, Math.max(14, maxFinish, endDay || 0));
+  const todayDay = dayOf(todayStr());
+  return { rows, days, base, todayDay };
+}
+
+
+// ── Revisions (Rev 0, Rev 1, …) — shared by Project Planning and the Schedule Chart ──
+function useScheduleRevisions(projectId, viewRev) {
+  const [revisions, setRevisions] = useState([]);
+  const [snap, setSnap] = useState(null);
+  const reload = () => getScheduleRevisions(projectId).then(setRevisions).catch(() => setRevisions([]));
+  useEffect(() => { reload(); }, [projectId]);
+  useEffect(() => {
+    if (viewRev === "") { setSnap(null); return; }
+    let live = true;
+    setSnap(null);
+    getScheduleRevision(projectId, viewRev).then(d => { if (live) setSnap(d); }).catch(() => { if (live) setSnap(null); });
+    return () => { live = false; };
+  }, [projectId, viewRev]);
+  const viewing = viewRev !== "" && snap ? (revisions.find(r => String(r.revisionNo) === String(viewRev)) || null) : null;
+  const latestRev = revisions.length ? Math.max(...revisions.map(r => r.revisionNo)) : null;
+  return { revisions, reload, snap, viewing, latestRev };
+}
+
+// Confirms, then makes the working schedule a copy of that revision. Returns true when it happened.
+async function goBackToRevision(projectId, no, who) {
+  if (!window.confirm(`Go back to Rev ${no}?\n\nThe working schedule in Project Planning will be replaced by a copy of Rev ${no}. Any changes made since the last issued revision are lost; issued revisions are never deleted.`)) return false;
+  try { await restoreScheduleRevision(projectId, no, who); return true; }
+  catch (e) { alert(e.response?.data?.message || "Could not restore this revision"); return false; }
+}
+
+function RevisionStrip({ revisions, viewRev, setViewRev, currentSub }) {
+  const btn = (on, color) => ({ flex: "none", textAlign: "left", cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "8px 14px", minWidth: 120,
+    border: `1.5px solid ${on ? color : "#e2e8f0"}`, background: on ? color : "#fff", color: on ? "#fff" : "#0f172a" });
+  return (
+    <div role="tablist" aria-label="Schedule revisions" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
+      {[...revisions].sort((a, b) => a.revisionNo - b.revisionNo).map(r => {
+        const on = String(viewRev) === String(r.revisionNo);
+        return (
+          <button key={r.revisionNo} role="tab" aria-selected={on} onClick={() => setViewRev(String(r.revisionNo))} title={r.note || "Issued revision"} style={btn(on, "#1e3a5f")}>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>Rev {r.revisionNo}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{r.createdAt ? fmtDate(String(r.createdAt).slice(0, 10)) : ""}{r.createdBy ? ` · ${r.createdBy}` : ""}</div>
+          </button>
+        );
+      })}
+      <button role="tab" aria-selected={viewRev === ""} onClick={() => setViewRev("")} style={{ ...btn(viewRev === "", "#0d9488"), minWidth: 140 }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>Current</div>
+        <div style={{ fontSize: 12, opacity: 0.85 }}>{currentSub}</div>
+      </button>
+    </div>
+  );
+}
+
+function RevisionBanner({ rev, onGoBack, busy }) {
+  return (
+    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 14px", fontSize: 13.5, color: "#92400e", marginBottom: 10 }}>
+      Viewing <b>Rev {rev.revisionNo}</b> — issued {rev.createdAt ? fmtDate(String(rev.createdAt).slice(0, 10)) : ""}{rev.createdBy ? ` by ${rev.createdBy}` : ""}{rev.note ? ` · “${rev.note}”` : ""}. This is a frozen copy; it doesn't change when the schedule is edited.
+      <button onClick={onGoBack} disabled={busy}
+        style={{ marginLeft: 12, border: "1.5px solid #b45309", background: "#fff", color: "#b45309", borderRadius: 8, padding: "4px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        {busy ? "Restoring…" : `↩ Go back to Rev ${rev.revisionNo}`}
+      </button>
+    </div>
+  );
+}
+
+// Read-only copy of the Project Planning table, for a frozen revision.
+function RevisionPlanTable({ snap }) {
+  const today = todayStr();
+  const rows = (snap?.activities || []).map(fromServerRow);
+  const th = { padding: "9px 6px", fontSize: 13, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
+  const td = { padding: "7px 6px", fontSize: 13.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9", verticalAlign: "top", overflowWrap: "anywhere" };
+  const c = { ...td, textAlign: "center" };
+  const status = (r) => { const st = rowState(r, today); return st === "DONE" || st === "LATE" ? ["Completed", STATE_COLORS[st]] : st === "OVERDUE" ? ["Not Completed", STATE_COLORS.OVERDUE] : ["", ""]; };
+  const info = [["WO number", snap?.woNumber], ["Floor", snap?.floorName], ["No of rooms", snap?.roomCount], ["Start", fmtDate(snap?.startDate)], ["Completion", fmtDate(snap?.completionDate)], ["Representative", snap?.happizoRepresentative]];
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: 13.5 }}>
+        {info.map(([k, v]) => <div key={k}><span style={{ color: "#64748b" }}>{k}: </span><b style={{ color: "#0f172a" }}>{v || "—"}</b></div>)}
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1500, tableLayout: "fixed" }}>
+          <colgroup>{[50, 56, 190, 110, 84, 84, 60, 84, 84, 70, 84, 84, 84, 84, 110, 160].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+          <thead>
+            <tr>
+              {["BOQ No", "Activity No", "Description of Activity", "Dependency By", "Dependency Start Date", "Dependency Target Date", "Material Lead Days", "Material Lead Date", "Material Delivery Date", "Activity Duration (Days)", "Start Date", "Finish Date", "Started Date", "Finished Date", "Status", "Remarks"].map(h => <th key={h} style={th}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? <tr><td colSpan={16} style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 24 }}>No activities in this revision.</td></tr> : rows.map((r, i) => {
+              const [label, color] = status(r);
+              return (
+                <tr key={r.key}>
+                  <td style={c}>{r.boqNo || "—"}</td><td style={c}>{i + 1}</td><td style={td}>{r.description}</td><td style={c}>{r.dependency}</td>
+                  <td style={c}>{fmtDate(r.dependencyStartDate)}</td><td style={c}>{fmtDate(r.dependencyTargetDate)}</td>
+                  <td style={c}>{r.materialLeadDays}</td><td style={c}>{fmtDate(r.materialLeadDate)}</td><td style={c}>{fmtDate(r.materialDeliveryDate)}</td><td style={c}>{r.durationDays}</td>
+                  <td style={c}>{fmtDate(r.plannedStart)}</td><td style={c}>{fmtDate(r.plannedFinish)}</td><td style={c}>{fmtDate(r.actualStart)}</td><td style={c}>{fmtDate(r.actualFinish)}</td>
+                  <td style={{ ...c, fontWeight: 700, color }}>{label}</td><td style={td}>{r.remarks}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function ScheduleChart({ project, user, viewRev, setViewRev }) {
+  const [state, setState] = useState({ loading: true, error: "", header: null, activities: [] });
+  const { revisions, snap: revSnap, viewing: viewingRevHook } = useScheduleRevisions(project.id, viewRev);
+  const [restoring, setRestoring] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setState(s => ({ ...s, loading: true, error: "" }));
+    getProjectSchedule(project.id)
+      .then(sch => { if (live) setState({ loading: false, error: "", header: sch || {}, activities: sch?.activities || [] }); })
+      .catch(() => { if (live) setState({ loading: false, error: "Couldn't load this project's schedule.", header: null, activities: [] }); });
+    return () => { live = false; };
+  }, [project.id]);
+
+  const restoreRev = async (no) => {
+    setRestoring(true);
+    if (await goBackToRevision(project.id, no, user?.fullName || user?.username)) {
+      const sch = await getProjectSchedule(project.id);
+      setState({ loading: false, error: "", header: sch || {}, activities: sch?.activities || [] });
+      setViewRev("");
+    }
+    setRestoring(false);
+  };
+
+  const viewingRev = viewingRevHook;
+  const header = viewingRev ? revSnap : state.header;
+  const activities = viewingRev ? (revSnap.activities || []) : state.activities;
+  const chart = useMemo(() => buildChart(header, activities), [header, activities]);
+  const { rows, days, base, todayDay } = chart;
+
+  const printChart = () => {
+    const dw = Math.max(10, Math.min(18, Math.floor(900 / days)));
+    const c = "border:1px solid #bbb;padding:2px 4px;font-size:8.5px;vertical-align:middle;";
+    const h = "border:1px solid #888;padding:3px 4px;font-size:8.5px;font-weight:700;background:#f2f2f2;text-align:center;";
+    const dayHead = Array.from({ length: days }, (_, i) => `<th style="${h}width:${dw}px;padding:2px 0;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);margin:auto;font-size:7.5px;">Day ${i + 1}</div></th>`).join("");
+    const bodyRows = rows.map(r => {
+      const cells = Array.from({ length: days }, (_, i) => {
+        const d = i + 1, on = r.startDay != null && r.finishDay != null && d >= r.startDay && d <= r.finishDay;
+        return `<td style="border:1px solid #ddd;${on ? "background:#c9ccd1;" : ""}"></td>`;
+      }).join("");
+      return `<tr style="height:20px"><td style="${c}text-align:center;">${r.no}</td><td style="${c}">${esc(r.description)}</td><td style="${c}text-align:center;">${esc(r.material)}</td><td style="${c}text-align:center;">${esc(r.duration)}</td><td style="${c}text-align:center;">${esc(r.start)}</td><td style="${c}text-align:center;">${esc(r.finish)}</td><td style="${c}">${esc(r.remarks)}</td>${cells}</tr>`;
+    }).join("");
+    const info = [["Project Name", project.name], ["Floor", header?.floorName], ["No of Room", header?.roomCount], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Schedule - ${esc(project.name)}</title>
+      <style>@page{size:A3 landscape;margin:8mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
+      <table style="width:100%;margin-bottom:6px"><tr>
+        <td style="width:25%"><img src="${window.location.origin}/happizo-logo.png" alt="Happizo" style="width:110px;height:auto" /></td>
+        <td style="text-align:center;font-weight:700;font-size:13px">${esc(project.name)}${header?.floorName ? " — " + esc(header.floorName) : ""} — Schedule</td>
+        <td style="width:25%;text-align:right;font-size:9px;line-height:1.4"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}<br/>${esc(COMPANY.addr2)}</td></tr></table>
+      <table style="margin-bottom:6px">${info.map(([k, v]) => `<tr><td style="font-size:9px;font-weight:700;padding:1px 14px 1px 0">${esc(k)}</td><td style="font-size:9px;padding:1px 0">${esc(v || "")}</td></tr>`).join("")}</table>
+      <table style="width:100%;table-layout:fixed">
+        <colgroup><col style="width:28px"><col style="width:210px"><col style="width:62px"><col style="width:46px"><col style="width:46px"><col style="width:46px"><col style="width:150px">${Array.from({ length: days }, () => `<col style="width:${dw}px">`).join("")}</colgroup>
+        <thead><tr>
+          <th style="${h}">Sl.No</th><th style="${h}">Description of works</th><th style="${h}">Materials Delivery Date</th><th style="${h}">Duration</th><th style="${h}">Start date</th><th style="${h}">Finish date</th><th style="${h}">Remarks</th>${dayHead}
+        </tr></thead>
+        <tbody><tr><td colspan="${7 + days}" style="${c}font-weight:700;background:#fafafa">Execution Phase</td></tr>${bodyRows}</tbody></table>
+      <script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`;
+    const win = window.open("about:blank", "_blank", "width=1400,height=900");
+    if (!win) { alert("Allow pop-ups to print the schedule."); return; }
+    win.document.write(html);
+    win.document.close();
+  };
+
+  if (state.loading) return <div style={{ padding: 20, color: "#64748b" }}>Loading schedule chart…</div>;
+  if (state.error) return <div style={{ padding: 20, color: "#b91c1c" }}>{state.error}</div>;
+
+  const colW = 30;
+  const th = { border: "1px solid #cbd5e1", background: "#f1f5f9", padding: "6px 6px", fontSize: 12.5, fontWeight: 700, color: "#334155", textAlign: "center" };
+  const td = { border: "1px solid #e2e8f0", padding: "5px 6px", fontSize: 13.5, color: "#0f172a" };
+  const info = [["Project Name", project.name], ["Floor", header?.floorName || "—"], ["No of Room", header?.roomCount || "—"], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Schedule chart</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+            Day-by-day view of the saved Project Planning schedule{base ? ` — Day 1 = ${fmtDate(base)}` : " — set the project start date in Project Planning"}.
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={printChart} disabled={!rows.length} style={btn(rows.length ? "secondary" : "disabled")}><Printer size={15} /> Print PDF (A3)</button>
+        </div>
+      </div>
+      <RevisionStrip revisions={revisions} viewRev={viewRev} setViewRev={setViewRev}
+        currentSub={state.header?.revision != null && state.header.revision !== "" ? `working copy · based on Rev ${state.header.revision}` : "working copy · not issued"} />
+      {viewingRev && <RevisionBanner rev={viewingRev} onGoBack={() => restoreRev(viewingRev.revisionNo)} busy={restoring} />}
+      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: 13.5 }}>
+        {info.map(([k, v]) => <div key={k}><span style={{ color: "#64748b" }}>{k}: </span><b style={{ color: "#0f172a" }}>{v}</b></div>)}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 14, alignItems: "center", fontSize: 12.5, color: "#64748b" }}>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#c9ccd1", border: "1px solid #aaa", verticalAlign: "-2px" }} /> Planned</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#fecaca", border: "1px solid #f87171", verticalAlign: "-2px" }} /> Today</span>
+        </div>
+      </div>
+      {!rows.length ? (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 28, textAlign: "center", color: "#64748b" }}>No activities scheduled yet — add them in the <b>Project Planning</b> tab.</div>
+      ) : (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }}>
+          <table style={{ borderCollapse: "collapse", tableLayout: "fixed", minWidth: 720 + days * colW }}>
+            <colgroup>
+              <col style={{ width: 44 }} /><col style={{ width: 250 }} /><col style={{ width: 96 }} /><col style={{ width: 70 }} /><col style={{ width: 76 }} /><col style={{ width: 76 }} /><col style={{ width: 180 }} />
+              {Array.from({ length: days }, (_, i) => <col key={i} style={{ width: colW }} />)}
+            </colgroup>
+            <thead>
+              <tr>
+                <th style={th}>Sl.No</th><th style={th}>Description of works</th><th style={th}>Materials Delivery Date</th><th style={th}>Duration</th><th style={th}>Start date</th><th style={th}>Finish date</th><th style={th}>Remarks</th>
+                {Array.from({ length: days }, (_, i) => (
+                  <th key={i} style={{ ...th, padding: "4px 0", fontSize: 11, background: todayDay === i + 1 ? "#fecaca" : th.background }}>Day<br />{i + 1}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colSpan={7 + days} style={{ ...td, fontWeight: 700, background: "#fafafa" }}>Execution Phase</td></tr>
+              {rows.map(r => (
+                <tr key={r.no}>
+                  <td style={{ ...td, textAlign: "center" }}>{r.no}</td>
+                  <td style={{ ...td, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.description}</td>
+                  <td style={{ ...td, textAlign: "center" }}>{r.material}</td>
+                  <td style={{ ...td, textAlign: "center" }}>{r.duration}</td>
+                  <td style={{ ...td, textAlign: "center" }}>{r.start}</td>
+                  <td style={{ ...td, textAlign: "center" }}>{r.finish}</td>
+                  <td style={{ ...td, fontSize: 12.5, color: "#475569", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.remarks}</td>
+                  {Array.from({ length: days }, (_, i) => {
+                    const d = i + 1, on = r.startDay != null && r.finishDay != null && d >= r.startDay && d <= r.finishDay;
+                    return <td key={i} style={{ border: "1px solid #eef2f6", background: on ? "#c9ccd1" : todayDay === d ? "#fff1f2" : undefined, padding: 0 }} />;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PlanningDashboard({ project, from, to }) {
   const [statusF, setStatusF] = useState("ALL");
@@ -240,7 +507,7 @@ const firstLine = (s) => (s || "").split("\n")[0];
  * and activity rows grouped under BOQ line items. One BOQ item can have any
  * number of activity rows.
  */
-export default function ProjectPlanning({ project, user, boqItems, boqLoading, hasBoq, onGoToBoq, onDirtyChange }) {
+export default function ProjectPlanning({ project, user, boqItems, boqLoading, hasBoq, onGoToBoq, onDirtyChange, viewRev = "", setViewRev = () => {} }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [header, setHeader] = useState(EMPTY_HEADER);
@@ -255,6 +522,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const [insertMenu, setInsertMenu] = useState(null); // { key, x, y } — row-level Insert menu
   const [insertAtKey, setInsertAtKey] = useState(null);
   const [missingOpen, setMissingOpen] = useState(false);
+  const { revisions, reload: reloadRevs, snap: revSnap, viewing: viewingRev, latestRev } = useScheduleRevisions(project.id, viewRev);
+  const [restoringRev, setRestoringRev] = useState(false);
+  const [revModal, setRevModal] = useState(false);
+  const [revNote, setRevNote] = useState("");
+  const [revBusy, setRevBusy] = useState(false);
+  const [revError, setRevError] = useState("");
   const [fStatus, setFStatus] = useState("ALL");
   const [fBoq, setFBoq] = useState("");
   const [fText, setFText] = useState(""); // row the BOQ picker inserts above
@@ -266,6 +539,34 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     window.addEventListener("scroll", close, true);
     return () => { window.removeEventListener("mousedown", close); window.removeEventListener("scroll", close, true); };
   }, [insertMenu]);
+
+  const nextRevLabel = latestRev == null ? "Rev 0" : `Rev ${latestRev + 1}`;
+
+  // Freeze the saved schedule as the next revision (Rev 0 first). Needs the schedule saved, so the
+  // issued copy matches exactly what's on screen.
+  const issueRevision = async () => {
+    setRevBusy(true); setRevError("");
+    try {
+      await issueScheduleRevision(project.id, { note: revNote, createdBy: user?.fullName || user?.username });
+      const fresh = await getProjectSchedule(project.id);
+      applyServer(fresh);
+      reloadRevs();
+      setRevModal(false); setRevNote("");
+    } catch (e) { setRevError(e.response?.data?.message || "Could not issue the revision"); }
+    finally { setRevBusy(false); }
+  };
+
+  // Go back to an earlier revision: the working schedule becomes a copy of it.
+  const restoreRev = async (no) => {
+    setRestoringRev(true);
+    if (await goBackToRevision(project.id, no, user?.fullName || user?.username)) {
+      const fresh = await getProjectSchedule(project.id);
+      applyServer(fresh);
+      setViewRev("");
+      reloadRevs();
+    }
+    setRestoringRev(false);
+  };
 
   // Close the Add Activities menu on any click outside it.
   useEffect(() => {
@@ -279,6 +580,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     setHeader({
       woNumber: s?.woNumber || "", startDate: s?.startDate || "", completionDate: s?.completionDate || "",
       spocClient: s?.spocClient || "", spocContact: s?.spocContact || "", happizoRepresentative: s?.happizoRepresentative || "",
+      floorName: s?.floorName || "", roomCount: s?.roomCount || "", revision: s?.revision || "",
     });
     setRows((s?.activities || []).map(fromServerRow));
     setLastSaved(s?.updatedAt ? { at: s.updatedAt, by: s.updatedBy } : null);
@@ -532,14 +834,43 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   if (loading) return <div style={{ color: "#374151", fontSize: 14 }}>Loading schedule…</div>;
   if (loadError) return <div style={{ color: "#b91c1c", fontSize: 14 }}>{loadError}</div>;
 
+  const revStrip = (
+    <RevisionStrip revisions={revisions} viewRev={viewRev} setViewRev={setViewRev}
+      currentSub={header.revision !== "" ? `working copy · based on Rev ${header.revision}${dirty ? " · unsaved edits" : ""}` : `working copy · not issued${dirty ? " · unsaved edits" : ""}`} />
+  );
+
+  // Viewing an earlier revision: a read-only copy of the table, as it was when issued.
+  if (viewRev !== "") {
+    return (
+      <div>
+        {revStrip}
+        {viewingRev && revSnap ? (
+          <>
+            <RevisionBanner rev={viewingRev} onGoBack={() => restoreRev(viewingRev.revisionNo)} busy={restoringRev} />
+            <RevisionPlanTable snap={revSnap} />
+          </>
+        ) : <div style={{ padding: 20, color: "#64748b" }}>Loading revision…</div>}
+      </div>
+    );
+  }
+
   return (
     <div>
+      {revStrip}
       {/* ── Header block ── */}
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div className="pp-header-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px 24px" }}>
           <Field label="Project Name"><div style={{ ...roSt, fontWeight: 700 }}>{project.name}</div></Field>
           <Field label="Project WO number"><input style={inpSt} value={header.woNumber} onChange={e => setH("woNumber", e.target.value)} placeholder="e.g. WO/2026/014" /></Field>
           <Field label="Happizo representative"><input style={inpSt} value={header.happizoRepresentative} onChange={e => setH("happizoRepresentative", e.target.value)} /></Field>
+
+          <Field label="Floor / Area (schedule chart)"><input style={inpSt} value={header.floorName} onChange={e => setH("floorName", e.target.value)} placeholder="e.g. 4th floor" /></Field>
+          <Field label="No of rooms"><input style={inpSt} value={header.roomCount} onChange={e => setH("roomCount", e.target.value)} placeholder="e.g. 17" /></Field>
+          <Field label="Revision">
+            <div style={{ ...roSt, fontWeight: 700, color: header.revision === "" ? "#94a3b8" : "#0f172a" }}>
+              {header.revision === "" ? "Not issued yet" : `Rev ${header.revision}`}
+            </div>
+          </Field>
 
           <Field label="Project start date"><input type="date" style={inpSt} value={header.startDate} onChange={e => setH("startDate", e.target.value)} /></Field>
           <Field label="Project completion date"><input type="date" style={inpSt} value={header.completionDate} min={header.startDate || undefined} onChange={e => setH("completionDate", e.target.value)} /></Field>
@@ -584,6 +915,11 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             )}
           </button>
         )}
+        <button onClick={() => { setRevError(""); setRevNote(""); setRevModal(true); }} disabled={!rows.length || dirty}
+          title={dirty ? "Save the schedule first" : `Issue ${nextRevLabel} — freeze this schedule as ${latestRev == null ? "the first revision" : "a new revision"}`}
+          style={btn(!rows.length || dirty ? "disabled" : "secondary")}>
+          <History size={15} /> Issue {nextRevLabel}
+        </button>
         <button onClick={printPdf} disabled={!rows.length} style={btn(rows.length ? "secondary" : "disabled")}>
           <Printer size={15} /> Print PDF
         </button>
@@ -796,6 +1132,29 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </div>
         );
       })()}
+
+      {revModal && (
+        <div onClick={() => !revBusy && setRevModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Issue schedule revision" className="pp-modal"
+            style={{ background: "#fff", borderRadius: 14, width: 480, maxWidth: "100%", padding: 22, boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Issue {nextRevLabel}</div>
+            <div style={{ fontSize: 13.5, color: "#64748b", margin: "4px 0 14px" }}>
+              Freezes the schedule as currently saved. You can open any issued revision later from the Schedule Chart tab, exactly as it was.
+            </div>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{latestRev == null ? "Note (optional)" : "Reason for the revision *"}</label>
+            <textarea value={revNote} onChange={e => setRevNote(e.target.value)} rows={3} maxLength={500} autoFocus
+              placeholder={latestRev == null ? "e.g. Baseline schedule issued to client" : "e.g. Tile delivery delayed — toilet works moved by 5 days"}
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 14.5, fontFamily: "inherit", resize: "vertical" }} />
+            {revError && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 10 }}>{revError}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <button onClick={() => setRevModal(false)} disabled={revBusy} style={btn("secondary")}>Cancel</button>
+              <button onClick={issueRevision} disabled={revBusy || (latestRev != null && !revNote.trim())} style={btn(revBusy || (latestRev != null && !revNote.trim()) ? "disabled" : "primary")}>
+                {revBusy ? "Issuing…" : "Issue revision"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {missingOpen && (
         <div onClick={() => setMissingOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>

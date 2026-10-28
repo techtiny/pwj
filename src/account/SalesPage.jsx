@@ -19,7 +19,7 @@ export default function SalesPage() {
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
                 style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "12px 22px", fontSize: 13.5, fontWeight: active ? 700 : 500,
+                  padding: "12px 22px", fontSize: 17, fontWeight: active ? 700 : 500,
                   color: active ? "#10b981" : "#94a3b8",
                   borderBottom: active ? "2.5px solid #10b981" : "2.5px solid transparent",
                   marginBottom: -1, transition: "color .15s" }}>
