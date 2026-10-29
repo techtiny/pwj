@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { attendanceApi, leaveApi, usersApi, employeeApi, performanceApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
 
-const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT"];
+const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT", "COSTING_PLANNING_ENGINEER"];
 const EXCLUDED_USERNAMES = ["techtinyproc", "shobana", "techtinyadmin", "happizo"];
 // Matched by employee number, not username — usernames can differ from what's shown as the
 // display name, so this is the reliable way to keep specific test/admin accounts out of view.
@@ -11,6 +11,7 @@ const ROLE_LABELS = {
   PROJECT_MANAGER: "PM",
   ADMIN: "Admin",
   PROCUREMENT: "Procurement",
+  COSTING_PLANNING_ENGINEER: "Costing & Planning Engineer",
 };
 
 const LEAVE_STATUS = {

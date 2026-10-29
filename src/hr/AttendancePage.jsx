@@ -394,7 +394,7 @@ export default function AttendancePage({ user, adminView = false }) {
     return (
       <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Team Attendance</div>
-        <div style={{ fontSize: 13, color: "#374151", marginBottom: 16 }}>Engineers, Project Managers, Admin &amp; Procurement · {filteredRec.length} of {allRec.length} records</div>
+        <div style={{ fontSize: 13, color: "#374151", marginBottom: 16 }}>Engineers, Project Managers, Admin, Procurement &amp; Costing/Planning · {filteredRec.length} of {allRec.length} records</div>
 
         {/* Sub-tabs */}
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
