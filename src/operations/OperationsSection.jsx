@@ -394,6 +394,8 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       return next;
     });
   };
+  // Tick/untick just the given BOQ rows (used by Select all / Clear while a search is active).
+  const setRowsChecked = (idxs, val) => setChecked(c => { const n = { ...c }; idxs.forEach(i => { n[i] = val; }); return n; });
   const toggleAll = (checkAll) => {
     const next = {};
     groups.forEach((_, i) => { next[i] = checkAll; });
@@ -708,6 +710,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
           checked={checked}
           toggleRow={toggleRow}
           toggleAll={toggleAll}
+          setRowsChecked={setRowsChecked}
           selectedCount={selectedIndexes.length + selectedAdditional.length}
           onCreatePR={handleCreatePR}
           additionalItemsByCategory={additionalItemsByCategory}
@@ -918,7 +921,7 @@ function TypeCard({ type, projects, onOpen }) {
 function BOQWorkspace({
   fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
-  groups, checked, toggleRow, toggleAll, selectedCount, onCreatePR,
+  groups, checked, toggleRow, toggleAll, setRowsChecked, selectedCount, onCreatePR,
   additionalItemsByCategory, knownUnits, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
   newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem, updateAdditionalItem,
   newNmrItem, setNewNmrItem, addNmrItem,
@@ -927,6 +930,13 @@ function BOQWorkspace({
 }) {
   const showUpload = (!fileName && !loadingStoredBoq) || showUploadOverride;
   const [activeAdditionalTab, setActiveAdditionalTab] = useState("AdditionalItems");
+  const [boqSearch, setBoqSearch] = useState("");
+  // Rows that match the search, keeping each one's original index (selection is stored by index).
+  const shownRows = useMemo(() => {
+    const q = boqSearch.trim().toLowerCase();
+    const all = groups.map((g, i) => ({ g, i }));
+    return q ? all.filter(({ g }) => `${g.label} ${g.description} ${g.unit || ""}`.toLowerCase().includes(q)) : all;
+  }, [groups, boqSearch]);
 
   return (
     <div>
@@ -936,10 +946,13 @@ function BOQWorkspace({
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
               <FileSpreadsheet size={15} color="#0d9488" /> {fileName}
             </div>
-            {activeSheet && (
-              <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
-                Sheet: <span style={{ color: "#0d9488", fontWeight: 700 }}>{activeSheet}</span>
-              </span>
+            {groups.length > 0 && (
+              <div style={{ position: "relative", flex: "1 1 280px", maxWidth: 440 }}>
+                <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "#94a3b8" }} />
+                <input value={boqSearch} onChange={e => setBoqSearch(e.target.value)} placeholder="Search BOQ by number, description or unit…" aria-label="Search BOQ"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 32px 9px 34px", border: "1.5px solid #e2e8f0", borderRadius: 9, fontSize: 14, fontFamily: "inherit", background: "#fff" }} />
+                {boqSearch && <button onClick={() => setBoqSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 8, top: 7, border: "none", background: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, lineHeight: 1 }}>×</button>}
+              </div>
             )}
             {saveStatus === "saving" && <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Saving to project…</span>}
             {saveStatus === "saved" && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
@@ -977,11 +990,11 @@ function BOQWorkspace({
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <div style={{ fontSize: 17, color: "#374151" }}>
-                  {groups.length} item{groups.length !== 1 ? "s" : ""} · select the line items you want in this PR
+                  {boqSearch.trim() ? `${shownRows.length} of ${groups.length} items match` : `${groups.length} item${groups.length !== 1 ? "s" : ""}`} · select the line items you want in this PR
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => toggleAll(true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-                  <button onClick={() => toggleAll(false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), true) : toggleAll(true))} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{boqSearch.trim() ? "Select shown" : "Select all"}</button>
+                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), false) : toggleAll(false))} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 460, marginBottom: 24 }}>
@@ -996,7 +1009,10 @@ function BOQWorkspace({
                     </tr>
                   </thead>
                   <tbody>
-                    {groups.map((g, i) => (
+                    {shownRows.length === 0 && (
+                      <tr><td colSpan={5} style={{ padding: "18px 10px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>No BOQ items match “{boqSearch}”.</td></tr>
+                    )}
+                    {shownRows.map(({ g, i }) => (
                       <tr key={i}>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                           <input type="checkbox" checked={!!checked[i]} onChange={() => toggleRow(i)} />

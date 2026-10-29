@@ -178,14 +178,14 @@ function RevisionPlanTable({ snap }) {
   const td = { padding: "7px 6px", fontSize: 13.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9", verticalAlign: "top", overflowWrap: "anywhere" };
   const c = { ...td, textAlign: "center" };
   const status = (r) => { const st = rowState(r, today); return st === "DONE" || st === "LATE" ? ["Completed", STATE_COLORS[st]] : st === "OVERDUE" ? ["Not Completed", STATE_COLORS.OVERDUE] : ["", ""]; };
-  const info = [["WO number", snap?.woNumber], ["Floor", snap?.floorName], ["No of rooms", snap?.roomCount], ["Start", fmtDate(snap?.startDate)], ["Completion", fmtDate(snap?.completionDate)], ["Representative", snap?.happizoRepresentative]];
+  const info = [["WO number", snap?.woNumber], ["Start", fmtDate(snap?.startDate)], ["Completion", fmtDate(snap?.completionDate)], ["Representative", snap?.happizoRepresentative]];
   return (
     <div>
       <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: 13.5 }}>
         {info.map(([k, v]) => <div key={k}><span style={{ color: "#64748b" }}>{k}: </span><b style={{ color: "#0f172a" }}>{v || "—"}</b></div>)}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1500, tableLayout: "fixed" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1520, tableLayout: "fixed" }}>
           <colgroup>{[50, 56, 190, 110, 84, 84, 60, 84, 84, 70, 84, 84, 84, 84, 110, 160].map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
           <thead>
             <tr>
@@ -253,12 +253,12 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
       }).join("");
       return `<tr style="height:20px"><td style="${c}text-align:center;">${r.no}</td><td style="${c}">${esc(r.description)}</td><td style="${c}text-align:center;">${esc(r.material)}</td><td style="${c}text-align:center;">${esc(r.duration)}</td><td style="${c}text-align:center;">${esc(r.start)}</td><td style="${c}text-align:center;">${esc(r.finish)}</td><td style="${c}">${esc(r.remarks)}</td>${cells}</tr>`;
     }).join("");
-    const info = [["Project Name", project.name], ["Floor", header?.floorName], ["No of Room", header?.roomCount], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
+    const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Schedule - ${esc(project.name)}</title>
       <style>@page{size:A3 landscape;margin:8mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
       <table style="width:100%;margin-bottom:6px"><tr>
         <td style="width:25%"><img src="${window.location.origin}/happizo-logo.png" alt="Happizo" style="width:110px;height:auto" /></td>
-        <td style="text-align:center;font-weight:700;font-size:13px">${esc(project.name)}${header?.floorName ? " — " + esc(header.floorName) : ""} — Schedule</td>
+        <td style="text-align:center;font-weight:700;font-size:13px">${esc(project.name)} — Schedule</td>
         <td style="width:25%;text-align:right;font-size:9px;line-height:1.4"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}<br/>${esc(COMPANY.addr2)}</td></tr></table>
       <table style="margin-bottom:6px">${info.map(([k, v]) => `<tr><td style="font-size:9px;font-weight:700;padding:1px 14px 1px 0">${esc(k)}</td><td style="font-size:9px;padding:1px 0">${esc(v || "")}</td></tr>`).join("")}</table>
       <table style="width:100%;table-layout:fixed">
@@ -280,7 +280,7 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
   const colW = 30;
   const th = { border: "1px solid #cbd5e1", background: "#f1f5f9", padding: "6px 6px", fontSize: 12.5, fontWeight: 700, color: "#334155", textAlign: "center" };
   const td = { border: "1px solid #e2e8f0", padding: "5px 6px", fontSize: 13.5, color: "#0f172a" };
-  const info = [["Project Name", project.name], ["Floor", header?.floorName || "—"], ["No of Room", header?.roomCount || "—"], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
+  const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
 
   return (
     <div>
@@ -499,6 +499,9 @@ export function PlanningDashboard({ project, from, to }) {
   );
 }
 
+// A schedule row can cover several BOQ items clubbed together — its BOQ No is then "2, 2a, 2b".
+const boqLabelsOf = (boqNo) => String(boqNo || "").split(",").map(x => x.trim()).filter(Boolean);
+
 const firstLine = (s) => (s || "").split("\n")[0];
 
 /**
@@ -713,7 +716,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const customDeps = [...new Set(rows.filter(r => !r.depOtherMode).map(r => (r.dependency || "").trim()).filter(d => d && !DEPENDENCIES.includes(d)))];
   // BOQ items (from the project's imported BOQ) that have no scheduled activity. A section heading that
   // has sub-items (e.g. 34 → 34a, 34b) is skipped — its sub-items are what get planned.
-  const plannedLabels = new Set(rows.map(r => r.boqNo).filter(Boolean));
+  const plannedLabels = new Set(rows.flatMap(r => boqLabelsOf(r.boqNo)));
   const boqLabels = (boqItems || []).map(b => b.label).filter(Boolean);
   const missingBoq = (boqItems || []).filter(b => b.label && !plannedLabels.has(b.label)
     && !(/^\d+$/.test(b.label) && boqLabels.some(l => new RegExp(`^${b.label}[a-z]$`, "i").test(l))));
@@ -864,8 +867,6 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <Field label="Project WO number"><input style={inpSt} value={header.woNumber} onChange={e => setH("woNumber", e.target.value)} placeholder="e.g. WO/2026/014" /></Field>
           <Field label="Happizo representative"><input style={inpSt} value={header.happizoRepresentative} onChange={e => setH("happizoRepresentative", e.target.value)} /></Field>
 
-          <Field label="Floor / Area (schedule chart)"><input style={inpSt} value={header.floorName} onChange={e => setH("floorName", e.target.value)} placeholder="e.g. 4th floor" /></Field>
-          <Field label="No of rooms"><input style={inpSt} value={header.roomCount} onChange={e => setH("roomCount", e.target.value)} placeholder="e.g. 17" /></Field>
           <Field label="Revision">
             <div style={{ ...roSt, fontWeight: 700, color: header.revision === "" ? "#94a3b8" : "#0f172a" }}>
               {header.revision === "" ? "Not issued yet" : `Rev ${header.revision}`}
@@ -991,7 +992,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ) : (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }} className="pp-scroll">
           <table className="pp-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 1468, tableLayout: "fixed" }}>
-            <colgroup><col style={{ width: 44 }} /><col style={{ width: 48 }} /><col style={{ width: 130 }} /><col style={{ width: 126 }} /><col style={{ width: 88 }} /><col style={{ width: 88 }} /><col style={{ width: 52 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 84 }} /><col style={{ width: 92 }} /><col style={{ width: 120 }} /><col style={{ width: 96 }} /></colgroup>
+            <colgroup><col style={{ width: 64 }} /><col style={{ width: 48 }} /><col style={{ width: 130 }} /><col style={{ width: 126 }} /><col style={{ width: 88 }} /><col style={{ width: 88 }} /><col style={{ width: 52 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 84 }} /><col style={{ width: 92 }} /><col style={{ width: 120 }} /><col style={{ width: 96 }} /></colgroup>
                         <thead>
               <tr>
                 <th rowSpan={2} style={{ ...th }}>BOQ No</th>
@@ -1029,12 +1030,15 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                     return (
                       <tr key={r.key} style={{ background: "#fff" }}>
                         <td style={{ ...td, color: "#475569", fontWeight: 600 }}>
+                          {boqLabelsOf(r.boqNo).length > 1 && (
+                            <div title={`Clubbed BOQ items: ${r.boqNo}`} style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.25, marginBottom: 3, overflowWrap: "anywhere", color: "#0f766e" }}>{r.boqNo}</div>
+                          )}
                           {hasBoq ? (
                             <select style={{ ...cellInp, padding: "5px 0", color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
                               title="Link this activity to a BOQ item"
                               onChange={e => linkRowToBoq(r.key, e.target.value)}>
                               <option value="">—</option>
-                              {r.boqNo && !boqByLabel.has(r.boqNo) && <option value={r.boqNo}>{r.boqNo}</option>}
+                              {r.boqNo && !boqByLabel.has(r.boqNo) && <option value={r.boqNo}>{boqLabelsOf(r.boqNo).length > 1 ? `Clubbed (${boqLabelsOf(r.boqNo).length})` : r.boqNo}</option>}
                               {(boqItems || []).filter(b => b.label).map(b => (
                                 <option key={b.label} value={b.label} style={{ color: "#0f172a" }}>{b.label}</option>
                               ))}
@@ -1193,9 +1197,13 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       {pickerOpen && (
         <BoqPicker
           items={boqItems || []}
-          countByLabel={groups.reduce((m, g) => (g.boqNo ? { ...m, [g.boqNo]: (m[g.boqNo] || 0) + g.rows.length } : m), {})}
+          countByLabel={groups.reduce((m, g) => { boqLabelsOf(g.boqNo).forEach(l => { m[l] = (m[l] || 0) + g.rows.length; }); return m; }, {})}
           onClose={() => { setPickerOpen(false); setInsertAtKey(null); }}
-          onAdd={(items) => {
+          onAdd={(picked) => {
+            // Several BOQ items picked together become ONE schedule entry that covers all of them.
+            const items = picked.length > 1
+              ? [{ label: picked.map(i => i.label).join(", "), description: picked.map(i => `${i.label}. ${firstLine(i.description)}`).join("\n") }]
+              : picked;
             if (insertAtKey) insertBefore(insertAtKey, items); else addRowsForItems(items);
             setPickerOpen(false); setInsertAtKey(null);
           }}
@@ -1238,7 +1246,7 @@ function BoqPicker({ items, countByLabel, onClose, onAdd }) {
             <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by BOQ No or description…"
               style={{ ...inpSt, paddingLeft: 32 }} />
           </div>
-          <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 6 }}>Each item you pick gets one activity row. You can add more rows under an item afterwards.</div>
+          <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 6 }}>Pick one item for its own activity row, or several to club them into a single schedule entry (e.g. “2, 2a, 2b”). You can add more rows afterwards.</div>
         </div>
         <div style={{ overflowY: "auto", flex: 1 }}>
           {shown.length === 0 ? (
