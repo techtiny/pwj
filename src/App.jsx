@@ -467,6 +467,19 @@ function CountBadge({ count }) {
   );
 }
 
+// Which login roles can open each module — the single source of truth for BOTH the home-screen tiles and the
+// #module routing, so a role is never shown a tile it can't open (or can open a module it has no tile for).
+// When adding a role or a module, update this table. (Procurement Entries, HR, Chat Bot and Happizo Info are open to all.)
+const MODULE_ROLES = {
+  vendors:    ["ADMIN", "PROCUREMENT", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER"],
+  projects:   ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"],
+  account:    ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"],
+  sales:      ["ADMIN", "OH", "VP", "CEO", "BILLING_ENGINEER", "COSTING_PLANNING_ENGINEER"],
+  operations: ["OH", "VP", "CEO"],
+  bugs:       ["ADMIN", "VP", "OH", "CEO"],
+};
+const canOpenModule = (key, role) => !MODULE_ROLES[key] || MODULE_ROLES[key].includes(role);
+
 const UNITS = ["SqFt","SqM","RFt","RM","Ls","Nos","CuM","Set","Kg","Box","Roll","Bag","CFt","Litre","Ton","Bundle","Job","Load","Lot","EA"];
 
 // PR → PWJ line items. A PR raised from several BOQ items carries them as docData.boqItems,
@@ -1413,7 +1426,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Building2,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer,
+      visible: canOpenModule("vendors", user?.role),
     },
     {
       key: "projects",
@@ -1422,7 +1435,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: FolderKanban,
       gradient: "linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)",
       shadow: "rgba(139,92,246,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
+      visible: canOpenModule("projects", user?.role),
     },
     {
       key: "account",
@@ -1431,7 +1444,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: BarChart2,
       gradient: "linear-gradient(135deg, #92400e 0%, #f59e0b 100%)",
       shadow: "rgba(245,158,11,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo || isProjectManager,
+      visible: canOpenModule("account", user?.role),
     },
     {
       key: "sales",
@@ -1440,7 +1453,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: TrendingUp,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: isAdmin || isOH || isBillingEngineer || isCostingPlanningEngineer || isVP || isCeo,
+      visible: canOpenModule("sales", user?.role),
     },
     {
       key: "hr",
@@ -1458,7 +1471,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Settings2,
       gradient: "linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)",
       shadow: "rgba(20,184,166,0.35)",
-      visible: isOH || isVP || isCeo,
+      visible: canOpenModule("operations", user?.role),
     },
     {
       key: "bugs",
@@ -1467,7 +1480,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Bug,
       gradient: "linear-gradient(135deg, #991b1b 0%, #ef4444 100%)",
       shadow: "rgba(239,68,68,0.35)",
-      visible: isAdmin || isVP || isOH || isCeo,
+      visible: canOpenModule("bugs", user?.role),
     },
     {
       key: "chatbot",
@@ -1640,13 +1653,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
   //    module (e.g. …/#hr) while every tab shares the one login session ──
   const allowedTabs = useMemo(() => {
     const t = new Set(["home", "entries", "hr", "chatbot", "happizo-info"]);
-    if (isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager || isProcurementEngineer || isCostingPlanningEngineer) t.add("vendors");
-    if (isAdmin || isVP || isOH || isCeo || isProjectManager) { t.add("projects"); t.add("account"); }
-    if (isAdmin || isOH || isBillingEngineer || isCostingPlanningEngineer || isVP || isCeo) t.add("sales");
-    if (isOH || isVP || isCeo) t.add("operations");
-    if (isAdmin || isVP || isOH || isCeo) t.add("bugs");
+    Object.keys(MODULE_ROLES).forEach(m => { if (canOpenModule(m, user?.role)) t.add(m); });
     return t;
-  }, [isAdmin, isProcurement, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer]);
+  }, [user?.role]);
 
   const readTabFromHash = useCallback(() => {
     const h = (typeof window !== "undefined" ? window.location.hash : "").replace(/^#\/?/, "").toLowerCase();
