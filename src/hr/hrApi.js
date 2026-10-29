@@ -188,6 +188,7 @@ export const employeeApi = {
   list:        ()               => api.get('/employees'),
   get:         (id)             => api.get(`/employees/${id}`),
   create:      (data)           => api.post('/employees', data),
+  fromLogin:   (username)       => api.post(`/employees/from-login/${encodeURIComponent(username)}`),
   updatePhoto: (id, photoUrl)   => api.patch(`/employees/${id}/photo`, { photoUrl }),
   link:        (id, username)   => api.patch(`/employees/${id}/link`, { username }),
   stats:       (id, range)      => api.get(`/employees/${id}/stats`, { params: { range } }),

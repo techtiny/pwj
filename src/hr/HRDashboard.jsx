@@ -239,7 +239,16 @@ export default function HRDashboard({ user }) {
                       <td style={{ ...td, verticalAlign: "top" }}>
                         {(() => {
                           const emp = employeeByUsername.get((u.username || "").toLowerCase());
-                          if (!emp) return <span style={{ color: "#94a3b8", fontSize: 14 }} title="Link this login to an Employee Master profile to add comments">—</span>;
+                          if (!emp) return (
+                            <button onClick={async () => {
+                                try { await employeeApi.fromLogin(u.username); const r = await employeeApi.list(); setEmployees(r.data?.data || []); }
+                                catch (e) { alert(e.response?.data?.message || "Could not create the profile"); }
+                              }}
+                              title="This login has no Employee Master profile yet — create and link one so feedback can be added"
+                              style={{ border: "1.5px dashed #94a3b8", background: "#fff", color: "#475569", borderRadius: 8, padding: "5px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              + Create profile
+                            </button>
+                          );
                           const list = remarksByEmployee.get(emp.id) || [];
                           return (
                             <div>
