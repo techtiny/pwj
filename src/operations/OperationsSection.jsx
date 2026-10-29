@@ -7,6 +7,7 @@ import {
   saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
 import ProjectPlanning, { PlanningDashboard, ScheduleChart } from "./ProjectPlanning";
+import { getRecentEntries } from "./operationsApi";
 
 
 // Mobile layout for the whole Operations module (landing, project tabs, BOQ, planning, dashboard).
@@ -216,10 +217,37 @@ export async function loadBoqGroups(boqDocUrl) {
   return groupRows(raw, detectHeaderRow(raw));
 }
 
+
+// ── BOQ quantity already requested across PRs ───────────────────────────────────
+// Each PR raised from the BOQ stores how much of every BOQ item it asks for (boqAllocations). Older PRs
+// that predate that fall back to their single BOQ No + quantity. PRs the OH rejected don't count.
+export const roundQty = (n) => Math.round(Number(n) * 1000) / 1000;
+
+export function computeBoqRequested(entries) {
+  const map = {};
+  const add = (label, qty) => { const n = Number(qty); if (label && Number.isFinite(n)) map[label] = roundQty((map[label] || 0) + n); };
+  (entries || []).forEach(e => {
+    if (e.approvalStatus === "NOT_APPROVED") return;
+    let allocs = null;
+    try { allocs = e.boqAllocations ? JSON.parse(e.boqAllocations) : null; } catch { allocs = null; }
+    if (Array.isArray(allocs)) { allocs.forEach(a => add(a.label, a.qty)); return; }
+    const labels = String(e.boqNo || "").split(",").map(x => x.trim()).filter(Boolean);
+    if (labels.length === 1 && e.quantity != null) add(labels[0], e.quantity);
+  });
+  return map;
+}
+
+export async function loadBoqRequested(projectName) {
+  const d = await getRecentEntries(3000, projectName);
+  return computeBoqRequested(d.content || []);
+}
+
 export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [dashFrom, setDashFrom] = useState("");
   const [dashTo, setDashTo] = useState("");
   const dashInp = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: 13, fontFamily: "inherit", background: "#fff" };
+  const [requested, setRequested] = useState({});   // BOQ label -> qty already requested in PRs
+  const [reqQty, setReqQty] = useState({});            // BOQ row index -> qty typed for the PR being built
   const [scheduleRev, setScheduleRev] = useState(""); // revision being viewed in Project Planning / Schedule Chart ("" = current)
   const [tab, setTab] = useState("dashboard"); // "dashboard" | "boq" | "planning"
 
@@ -299,7 +327,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
   const resetBOQ = () => {
     setWorkbook(null); setSheetNames([]); setActiveSheet(""); setRows([]);
-    setHeaderRowIdx(-1); setChecked({}); setFileName("");
+    setHeaderRowIdx(-1); setChecked({}); setReqQty({}); setFileName("");
     setParseError(""); setSaveStatus(""); setShowUploadOverride(false);
     setAdditionalChecked({});
     setNewItemForms(Object.fromEntries(ADDITIONAL_CATEGORIES.map(c => [c.key, { description: "", qty: "", unit: "", remarks: "" }])));
@@ -380,7 +408,35 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
   // Checking a top-level section (label "2") also checks/unchecks its own
   // sub-items ("2a", "2b", ...) so you don't have to tick each one by hand.
+  // Quantity available for a BOQ item before the PR being built: its BOQ quantity PLUS any "Additional Items" linked to it
+  // (same unit), minus everything already requested in earlier PRs. null = no numeric BOQ quantity, so nothing to cap.
+  const extraFor = (g) => additionalItems
+    .filter(it => it.category === "AdditionalItems" && it.linkedBoqLabel === g.label && Number.isFinite(Number(it.qty)) && Number(it.qty) > 0
+      && (!it.unit || !g.unit || String(it.unit).trim().toLowerCase() === String(g.unit).trim().toLowerCase()))
+    .reduce((t, it) => roundQty(t + Number(it.qty)), 0);
+  const balanceOf = (g) => (g?.qty == null || !Number.isFinite(Number(g.qty)) ? null : Math.max(0, roundQty(Number(g.qty) + extraFor(g) - (requested[g.label] || 0))));
+  // Additional Items linked to this BOQ item that are ticked for the PR being built take their share of the balance too.
+  const usedByAdditional = (label) => selectedAdditional
+    .filter(it => it.category === "AdditionalItems" && it.linkedBoqLabel === label && Number.isFinite(Number(it.qty)))
+    .reduce((t, it) => roundQty(t + Number(it.qty)), 0);
+  const limitOf = (g) => { const bal = balanceOf(g); return bal == null ? null : Math.max(0, roundQty(bal - usedByAdditional(g.label))); };
+  const effQty = (i) => {
+    const lim = limitOf(groups[i]);
+    if (lim == null) return null;
+    const v = reqQty[i];
+    return v === undefined || v === "" ? lim : Number(v);
+  };
+  const qtyError = (i) => {
+    const lim = limitOf(groups[i]);
+    if (lim == null) return "";
+    const q = effQty(i);
+    if (!(q > 0)) return "Enter a quantity above 0";
+    if (q > lim + 0.0005) return `Only ${lim} left in the BOQ`;
+    return "";
+  };
+
   const toggleRow = (idx) => {
+    if (!checked[idx] && balanceOf(groups[idx]) === 0) return; // fully requested — can't be picked again
     setChecked(c => {
       const nextVal = !c[idx];
       const next = { ...c, [idx]: nextVal };
@@ -388,17 +444,17 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       if (label && /^\d+$/.test(label)) {
         const childRe = new RegExp(`^${label}[a-z]$`);
         groups.forEach((g, i) => {
-          if (i !== idx && childRe.test(g.label)) next[i] = nextVal;
+          if (i !== idx && childRe.test(g.label) && !(nextVal && balanceOf(g) === 0)) next[i] = nextVal;
         });
       }
       return next;
     });
   };
   // Tick/untick just the given BOQ rows (used by Select all / Clear while a search is active).
-  const setRowsChecked = (idxs, val) => setChecked(c => { const n = { ...c }; idxs.forEach(i => { n[i] = val; }); return n; });
+  const setRowsChecked = (idxs, val) => setChecked(c => { const n = { ...c }; idxs.forEach(i => { n[i] = val && balanceOf(groups[i]) === 0 ? false : val; }); return n; });
   const toggleAll = (checkAll) => {
     const next = {};
-    groups.forEach((_, i) => { next[i] = checkAll; });
+    groups.forEach((_, i) => { next[i] = checkAll && balanceOf(groups[i]) === 0 ? false : checkAll; });
     setChecked(next);
   };
 
@@ -406,6 +462,14 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     () => Object.keys(checked).filter(k => checked[k]).map(Number).sort((a, b) => a - b),
     [checked]
   );
+
+  // Refresh how much of each BOQ item is already requested whenever a project (or the BOQ tab) is opened.
+  useEffect(() => {
+    if (!selectedProject?.name || tab !== "boq") return;
+    let live = true;
+    loadBoqRequested(selectedProject.name).then(m => { if (live) setRequested(m); }).catch(() => {});
+    return () => { live = false; };
+  }, [selectedProject?.name, tab]);
 
   // Manually-entered items not present in the uploaded BOQ, across all
   // additional categories (NT, NMR, Transport, Establishment) — persisted on
@@ -438,6 +502,19 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     () => additionalItems.filter(it => additionalChecked[it.id]),
     [additionalItems, additionalChecked]
   );
+
+  // Selected BOQ rows (or ticked additional items) whose quantity would push the total requested past the BOQ quantity.
+  const additionalOver = [...new Set(selectedAdditional.filter(it => it.category === "AdditionalItems" && it.linkedBoqLabel).map(it => it.linkedBoqLabel))]
+    .filter(label => {
+      const g = groups.find(x => x.label === label);
+      if (!g) return false;
+      const bal = balanceOf(g);
+      if (bal == null) return false;
+      const rowIdx = groups.indexOf(g);
+      const rowQty = checked[rowIdx] ? Number(effQty(rowIdx) || 0) : 0;
+      return roundQty(usedByAdditional(label) + rowQty) > bal + 0.0005;
+    });
+  const hasQtyErrors = selectedIndexes.some(i => !!qtyError(i)) || additionalOver.length > 0;
 
   const persistAdditionalItems = (updated) => {
     const json = JSON.stringify(updated);
@@ -547,7 +624,8 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   };
 
   const buildPrefill = () => {
-    const selected = selectedIndexes.map(i => groups[i]);
+    // Each BOQ row carries the quantity THIS PR asks for (default: what's left in the BOQ), not the full BOQ quantity.
+    const selected = selectedIndexes.map(i => { const q = effQty(i); return q == null ? groups[i] : { ...groups[i], qty: q }; });
 
     const boqNo = selected.map(g => g.label).filter(Boolean).join(", ");
 
@@ -614,7 +692,16 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       })),
     ];
 
+    // How much of each BOQ item this PR takes — used to keep the total across PRs within the BOQ quantity.
+    const boqAllocations = JSON.stringify([
+      ...selected.filter(g => g.label && g.qty != null).map(g => ({ label: g.label, qty: Number(g.qty), unit: g.unit || "" })),
+      // Additional Items linked to a BOQ item draw on the same balance.
+      ...selectedAdditional.filter(it => it.category === "AdditionalItems" && it.linkedBoqLabel && Number.isFinite(Number(it.qty)))
+        .map(it => ({ label: it.linkedBoqLabel, qty: Number(it.qty), unit: it.unit || "", additional: true })),
+    ]);
+
     return {
+      boqAllocations,
       docData: JSON.stringify({ boqItems, boqSpec: combinedSpecification }),
       projectName: selectedProject?.name || "",
       boqNo,
@@ -627,6 +714,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
 
   const handleCreatePR = () => {
     if (!selectedIndexes.length && !selectedAdditional.length) return;
+    if (hasQtyErrors) return;
     const prefill = buildPrefill();
     onCreateFromBOQ(prefill);
 
@@ -634,6 +722,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
     // number of PRs, so nothing is marked "used" here — just clear the
     // current selection so the next PR starts from a blank slate.
     setChecked({});
+    setReqQty({});
     setAdditionalChecked({});
   };
 
@@ -711,6 +800,15 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
           toggleRow={toggleRow}
           toggleAll={toggleAll}
           setRowsChecked={setRowsChecked}
+          requested={requested}
+          balanceOf={balanceOf}
+          extraFor={extraFor}
+          effQty={effQty}
+          createBlockedMsg={additionalOver.length ? `Additional items for BOQ ${additionalOver.join(", ")} are more than what's left of that BOQ item.` : ""}
+          reqQty={reqQty}
+          setReqQty={setReqQty}
+          qtyError={qtyError}
+          createBlocked={hasQtyErrors}
           selectedCount={selectedIndexes.length + selectedAdditional.length}
           onCreatePR={handleCreatePR}
           additionalItemsByCategory={additionalItemsByCategory}
@@ -921,7 +1019,7 @@ function TypeCard({ type, projects, onOpen }) {
 function BOQWorkspace({
   fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
-  groups, checked, toggleRow, toggleAll, setRowsChecked, selectedCount, onCreatePR,
+  groups, checked, toggleRow, toggleAll, setRowsChecked, requested, balanceOf, extraFor, effQty, reqQty, setReqQty, qtyError, createBlocked, createBlockedMsg, selectedCount, onCreatePR,
   additionalItemsByCategory, knownUnits, additionalChecked, toggleAdditionalChecked, toggleAllAdditional,
   newItemForms, setNewItemForms, addAdditionalItem, removeAdditionalItem, updateAdditionalItem,
   newNmrItem, setNewNmrItem, addNmrItem,
@@ -1006,21 +1104,50 @@ function BOQWorkspace({
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Requested</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Balance</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: 17 }}>This PR</th>
                     </tr>
                   </thead>
                   <tbody>
                     {shownRows.length === 0 && (
-                      <tr><td colSpan={5} style={{ padding: "18px 10px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>No BOQ items match “{boqSearch}”.</td></tr>
+                      <tr><td colSpan={8} style={{ padding: "18px 10px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>No BOQ items match “{boqSearch}”.</td></tr>
                     )}
                     {shownRows.map(({ g, i }) => (
                       <tr key={i}>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                          <input type="checkbox" checked={!!checked[i]} onChange={() => toggleRow(i)} />
+                          <input type="checkbox" checked={!!checked[i]} disabled={!checked[i] && balanceOf(g) === 0} title={balanceOf(g) === 0 ? "Fully requested in earlier PRs" : undefined} onChange={() => toggleRow(i)} />
                         </td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{g.description}</td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
-                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? g.qty : "—"}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? roundQty(g.qty) : "—"}
+                          {g.qty != null && extraFor(g) > 0 && <div style={{ fontSize: 11.5, color: "#0d9488", fontWeight: 700 }} title="Additional Items linked to this BOQ item add to its quantity">+{extraFor(g)} additional</div>}
+                        </td>
+                        {(() => {
+                          const bal = balanceOf(g);
+                          const cell = { padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" };
+                          if (bal == null) return <><td style={cell}>—</td><td style={cell}>—</td><td style={cell}></td></>;
+                          const err = checked[i] ? qtyError(i) : "";
+                          return (
+                            <>
+                              <td style={cell}>{requested[g.label] ? roundQty(requested[g.label]) : 0}</td>
+                              <td style={{ ...cell, fontWeight: 700, color: bal === 0 ? "#dc2626" : "#15803d" }} title={bal === 0 ? "Fully requested — nothing left to raise a PR for" : ""}>
+                                {bal === 0 ? "0 · done" : bal}
+                              </td>
+                              <td style={cell}>
+                                {checked[i] ? (
+                                  <input type="number" min={0} step="any" value={reqQty[i] ?? effQty(i)} aria-label={`Quantity for BOQ ${g.label}`}
+                                    onChange={e => setReqQty(m => ({ ...m, [i]: e.target.value }))}
+                                    title={err || `Up to ${bal}`}
+                                    style={{ width: 100, textAlign: "right", padding: "4px 6px", fontSize: 14, borderRadius: 6, fontFamily: "inherit",
+                                      border: `1.5px solid ${err ? "#ef4444" : "#cbd5e1"}`, background: err ? "#fef2f2" : "#fff" }} />
+                                ) : null}
+                                {err && <div style={{ fontSize: 11.5, color: "#dc2626", marginTop: 2 }}>{err}</div>}
+                              </td>
+                            </>
+                          );
+                        })()}
                       </tr>
                     ))}
                   </tbody>
@@ -1141,11 +1268,12 @@ function BOQWorkspace({
           })()}
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={onCreatePR} disabled={selectedCount === 0}
+            {createBlocked && <span style={{ alignSelf: "center", marginRight: 12, fontSize: 13.5, color: "#dc2626", fontWeight: 600 }}>{createBlockedMsg || "Fix the quantities marked in red — a PR can't request more than the BOQ balance."}</span>}
+            <button onClick={onCreatePR} disabled={selectedCount === 0 || createBlocked}
               style={{
                 border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-                color: "#fff", background: selectedCount === 0 ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
-                cursor: selectedCount === 0 ? "not-allowed" : "pointer",
+                color: "#fff", background: selectedCount === 0 || createBlocked ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
+                cursor: selectedCount === 0 || createBlocked ? "not-allowed" : "pointer",
               }}>
               Create PR from {selectedCount} Selected Item{selectedCount !== 1 ? "s" : ""}
             </button>

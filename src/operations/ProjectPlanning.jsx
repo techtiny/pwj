@@ -712,8 +712,6 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
 
   // ── Header metrics ──
   const today = todayStr();
-  // Custom "Others" values already used in this schedule, offered in every row's dropdown.
-  const customDeps = [...new Set(rows.filter(r => !r.depOtherMode).map(r => (r.dependency || "").trim()).filter(d => d && !DEPENDENCIES.includes(d)))];
   // BOQ items (from the project's imported BOQ) that have no scheduled activity. A section heading that
   // has sub-items (e.g. 34 → 34a, 34b) is skipped — its sub-items are what get planned.
   const plannedLabels = new Set(rows.flatMap(r => boqLabelsOf(r.boqNo)));
@@ -1058,7 +1056,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                             }}>
                             <option value="">None</option>
                             {DEPENDENCIES.map(d => <option key={d} value={d} style={{ color: "#0f172a" }}>{d}</option>)}
-                            {customDeps.map(d => <option key={d} value={d} style={{ color: "#0f172a" }}>{d}</option>)}
+                            {/* A custom "Others" value belongs to THIS row only — it is never added to the shared list. */}
+                            {r.dependency && !DEPENDENCIES.includes(r.dependency) && !r.depOtherMode && <option value={r.dependency} style={{ color: "#0f172a" }}>{r.dependency}</option>}
                             <option value={OTHERS} style={{ color: "#0f172a" }}>Others…</option>
                           </select>
                           {isOtherDep(r) && (

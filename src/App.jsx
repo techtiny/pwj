@@ -7,7 +7,7 @@ import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
-import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine } from "./operations/OperationsSection";
+import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine, loadBoqRequested, computeBoqRequested, roundQty } from "./operations/OperationsSection";
 import { PROJECT_TYPES } from "./operations/operationsApi";
 import HolidaysPage from "./hr/HolidaysPage";
 import CompanyDocumentsPage from "./hr/CompanyDocumentsPage";
@@ -2096,21 +2096,35 @@ function Dashboard({ user, onLogout: handleLogout }) {
         if (/^\d+$/.test(c)) groups.forEach(x => { if (new RegExp(`^${c}[a-z]$`, "i").test(x.label) && !picked.includes(x)) picked.push(x); });
       });
       if (!picked.length) { setBoqLookup(`BOQ item ${missing.join(", ")} not found in this project's BOQ.`); return; }
-      const items = picked.map(boqGroupToItem);
-      const specification = picked.map(boqSpecLine).filter(Boolean).join("\n");
+      // Keep the total requested across PRs within the BOQ quantity: only the balance can be requested.
+      const requestedMap = await loadBoqRequested(projectName).catch(() => ({}));
+      const own = editingEntry ? computeBoqRequested([editingEntry]) : {};
+      const withBal = picked.map(g => {
+        if (g.qty == null || !Number.isFinite(Number(g.qty))) return { g, bal: null };
+        return { g, bal: Math.max(0, roundQty(g.qty - (requestedMap[g.label] || 0) + (own[g.label] || 0))) };
+      });
+      const usable = withBal.filter(x => x.bal !== 0);
+      const full = withBal.filter(x => x.bal === 0).map(x => x.g.label);
+      if (!usable.length) { setBoqLookup(`BOQ ${full.join(", ")} already fully requested in earlier PRs — nothing left to raise.`); return; }
+      const sized = usable.map(({ g, bal }) => (bal == null ? g : { ...g, qty: bal }));
+      const items = sized.map(boqGroupToItem);
+      const specification = sized.map(boqSpecLine).filter(Boolean).join("\n");
       const first = items[0].item;
       const units = [...new Set(items.map(i => i.unit).filter(Boolean))];
       const sumOk = units.length === 1 && items.every(i => i.qty != null);
+      const boqAllocations = JSON.stringify(sized.filter(g => g.qty != null && Number.isFinite(Number(g.qty))).map(g => ({ label: g.label, qty: Number(g.qty), unit: g.unit || "" })));
       setCreateForm(f => ({
         ...f,
         materialRequired: (items.length > 1 ? `${first} (+${items.length - 1} more)` : first).slice(0, 280),
         specification,
         unit: sumOk ? units[0] : f.unit,
         quantity: sumOk ? String(items.reduce((a, i) => a + i.qty, 0)) : f.quantity,
+        boqAllocations,
         // When editing an existing PR keep whatever is already in its docData.
         docData: JSON.stringify({ ...(editingEntry ? (() => { try { return JSON.parse(editingEntry.docData || "{}"); } catch { return {}; } })() : {}), boqItems: items, boqSpec: specification }),
       }));
-      setBoqLookup(`✓ Filled from BOQ: ${picked.map(g => g.label).join(", ")}${missing.length ? ` · not found: ${missing.join(", ")}` : ""}`);
+      const capped = usable.filter(x => x.bal != null && x.bal < Number(x.g.qty)).map(x => `${x.g.label} (${x.bal} left)`);
+      setBoqLookup(`✓ Filled from BOQ: ${usable.map(x => x.g.label).join(", ")}${capped.length ? ` · quantity limited to the balance: ${capped.join(", ")}` : ""}${full.length ? ` · already fully requested, skipped: ${full.join(", ")}` : ""}${missing.length ? ` · not found: ${missing.join(", ")}` : ""}`);
     } catch { setBoqLookup("Could not read the project's BOQ."); }
   };
 
@@ -2136,6 +2150,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement) {
       showToast("Unit, Quantity and Date of Requirement are required", "error"); return;
     }
+    // BOQ quantity guard: this PR can't ask for more than the BOQ balance recorded for its BOQ item(s).
+    let boqAlloc = null;
+    try { boqAlloc = createForm.boqAllocations ? JSON.parse(createForm.boqAllocations) : null; } catch { boqAlloc = null; }
+    if (Array.isArray(boqAlloc)) {
+      const wanted = new Set(String(createForm.boqNo || "").split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean));
+      boqAlloc = boqAlloc.filter(a => a.additional || wanted.has(String(a.label).toLowerCase()));   // the BOQ No was edited by hand → drop what no longer applies
+      const allowed = boqAlloc.reduce((t, a) => t + Number(a.qty || 0), 0);
+      const qty = parseFloat(createForm.quantity);
+      if (boqAlloc.length && qty > allowed + 0.0005) {
+        showToast(`Quantity ${qty} is more than the BOQ balance (${roundQty(allowed)}) for ${boqAlloc.map(a => a.label).join(", ")}`, "error"); return;
+      }
+      if (boqAlloc.length === 1 && !boqAlloc[0].additional && qty > 0) boqAlloc = [{ ...boqAlloc[0], qty }];   // a lower quantity frees the rest for later PRs
+    }
     setCreateLoading(true);
     try {
       const userName = user.fullName || user.username;
@@ -2143,7 +2170,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const isOnBehalf = canOnBehalf && !!createForm.onBehalf;
       const effectiveRaisedBy = isOnBehalf ? createForm.onBehalf : userName;
       const { onBehalf, ...formData } = createForm;
-      const body = { ...formData, raisedBy: effectiveRaisedBy, raisedByProxy: isOnBehalf ? userName : null, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null };
+      const body = { ...formData, raisedBy: effectiveRaisedBy, raisedByProxy: isOnBehalf ? userName : null, quantity: createForm.quantity ? parseFloat(createForm.quantity) : null,
+        boqAllocations: Array.isArray(boqAlloc) && boqAlloc.length ? JSON.stringify(boqAlloc) : undefined };
       if (editingEntry) {
         // Update existing entry
         const res = await api.updateEntry(editingEntry.id, { ...body, approvalStatus: editingEntry.approvalStatus, status: editingEntry.status, pwjIssued: editingEntry.pwjIssued });
