@@ -495,6 +495,10 @@ function entryItems(entry) {
   return [{ item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "", spec: entry.specification || "" }];
 }
 
+// Payment Terms: at least one stage (Stage 1 / 2 / 3 / Final) must be filled in.
+const hasPaymentStage = (d) => ["stage1", "stage2", "stage3", "stageF"].some(k => String(d?.[k] || "").trim());
+const PAYMENT_STAGE_MSG = "Fill in at least one payment stage (Stage 1 / 2 / 3 / Final stage) under Payment Terms";
+
 function parseDocData(entry) {
   const first = entryItems(entry);
   const base = {
@@ -503,7 +507,7 @@ function parseDocData(entry) {
       ...Array.from({ length: Math.max(0, 4 - first.length) }, () => ({ item: "", unit: "", qty: "", rate: "", spec: "" })),
     ],
     amountInWords: "", cgstPct: "9", sgstPct: "9", igstPct: "0",
-    completionDate: entry.dateOfRequirement || "", supplyDate: "", installationDate: "",
+    completionDate: "", supplyDate: "", installationDate: "",   // no default — the user must enter the Date of Completion / Supply
     deliveryAddress: "", contactDetails: "", kindAttn: "", kindAttnSalutation: "", msme: "", panNumber: "", gstNumber: "",
     vendorAddress1: "", vendorAddress2: "",
     stage1: "", stage2: "", stage3: "", stageF: "",
@@ -1948,7 +1952,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [issuedQuery, setIssuedQuery]   = useState("");
   const [issuedEntries, setIssuedEntries] = useState([]);
   const [issuedLoading, setIssuedLoading] = useState(false);
-  const [reassignModal, setReassignModal] = useState(null);   // { row, username } — taking a PR from its current assignee needs a comment
+    const [reassignModal, setReassignModal] = useState(null);   // { row, username } — taking a PR from its current assignee needs a comment
   const [reassignComment, setReassignComment] = useState("");
   const [closureReqModal, setClosureReqModal] = useState(null);   // the entry being closed
   const [closureReason, setClosureReason]     = useState("");
@@ -2804,6 +2808,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
       const itemsToCheck = isMulti ? (parsed.docs[docViewIndex]?.items || []) : parseDocData(e).items;
       const itemError = findEmptyItemFieldError(itemsToCheck);
       if (itemError) { showToast(itemError, "error"); return; }
+      const completionVal = isMulti ? parsed.docs[docViewIndex]?.completionDate : parseDocData(e).completionDate;
+      if (!completionVal) { showToast(`Enter the ${e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"} before sending for approval`, "error"); return; }
+      if (!hasPaymentStage(isMulti ? parsed.docs[docViewIndex] : parseDocData(e))) { showToast(PAYMENT_STAGE_MSG, "error"); return; }
 
       if (isMulti) {
         // Update only the current sub-doc's status in docData
@@ -2978,6 +2985,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
         showToast(`Job Order amount (₹${Number(savedTotals.total).toLocaleString("en-IN")}) cannot exceed ₹30,000`, "error");
         return;
       }
+      if (!docEditForm.completionDate) {
+        showToast(`Enter the ${e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"} — it is mandatory`, "error");
+        return;
+      }
+      if (!hasPaymentStage(docEditForm)) { showToast(PAYMENT_STAGE_MSG, "error"); return; }
       // For multi-vendor: merge edited sub-doc back into its slot, preserving other vendors' data
       let parsedTop = null;
       try { parsedTop = JSON.parse(e.docData || "{}"); } catch {}
@@ -3591,8 +3603,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
     <table class="sec" style="border:1px solid #ddd;">
       <tr>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;">
-          <div style="font-weight:700;margin-bottom:4px;">Date</div>
+          ${e.pwjType === "WO" && docData.supplyDate
+            ? `<div style="font-weight:700;margin-bottom:4px;">Date of Supply</div><div style="margin-bottom:8px;">${fmtDateDash(docData.supplyDate)}</div><div style="font-weight:700;margin-bottom:4px;">Date of Completion</div>`
+            : `<div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "PO" && (docData.extraSupplyDates || []).some(Boolean) ? "Date of Supply 1" : "Date"}</div>`}
           <div>${fmtDateDash(docData.completionDate)}</div>
+          ${e.pwjType === "PO" ? (Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : []).filter(Boolean).map((d, i) => `<div style="margin-top:6px;"><span style="font-weight:700;">Date of Supply ${i + 2}</span><div>${fmtDateDash(d)}</div></div>`).join("") : ""}
         </td>
         <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
           <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
@@ -7234,19 +7249,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       setDocEditForm(f => ({ ...f, items }));
                     };
                     const setField = (field, val) => setDocEditForm(f => ({ ...f, [field]: val }));
-                    const saveCompletionDateInline = async (newDate) => {
+                    const saveCompletionDateInline = (newDate) => saveDocDateInline("completionDate", newDate);
+                    const saveDocDateInline = async (field, newDate) => {
                       let topData = {};
                       try { topData = JSON.parse(e.docData || "{}"); } catch {}
                       const newDocDataStr = isMulti
-                        ? JSON.stringify({ ...topData, docs: multiDocs.map((d, i) => i === safeIdx ? { ...d, completionDate: newDate } : d) })
-                        : JSON.stringify({ ...topData, completionDate: newDate });
+                        ? JSON.stringify({ ...topData, docs: multiDocs.map((d, i) => i === safeIdx ? { ...d, [field]: newDate } : d) })
+                        : JSON.stringify({ ...topData, [field]: newDate });
                       try {
                         const r = await api.procurementUpdate(e.id, { docData: newDocDataStr });
                         if (r.success) {
                           const updated = { ...e, docData: newDocDataStr };
                           setDocModal(m => ({ ...m, entry: updated }));
                           setEntries(es => es.map(x => x.id === e.id ? updated : x));
-                          if (docEditMode) setField("completionDate", newDate);
+                          if (docEditMode) setField(field, newDate);
                         } else showToast(r.message || "Failed to save date", "error");
                       } catch { showToast("Network error — could not save date", "error"); }
                     };
@@ -7444,14 +7460,60 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {/* --- COMPLETION / DELIVERY / CONTACT --- */}
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, border: "1px solid #ddd", marginBottom: 16, marginTop: 0 }}>
                             <div style={{ padding: "10px 12px" }}>
-                              <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>
-                                {e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"}
+                              {/* Work Orders: a Date of Supply field is always shown above the Date of Completion */}
+                              {e.pwjType === "WO" && (() => {
+                                const canEditDate = (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED";
+                                return (
+                                  <div style={{ marginBottom: 10 }}>
+                                    <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>Date of Supply</div>
+                                    {canEditDate
+                                      ? <input type="date" value={docData.supplyDate || ""} onChange={ev => saveDocDateInline("supplyDate", ev.target.value)}
+                                          style={{ ...inpSt, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
+                                      : <div>{docData.supplyDate ? fmtDateDash(docData.supplyDate) : "—"}</div>}
+                                  </div>
+                                );
+                              })()}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontWeight: 700, textDecoration: "underline" }}>
+                                  {e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"} <span style={{ color: "#ef4444", textDecoration: "none" }}>*</span>
+                                </span>
+                                {e.pwjType === "PO" && (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && (docData.extraSupplyDates || []).length < 6 && (
+                                  <button type="button" title="Add another Date of Supply"
+                                    onClick={() => saveDocDateInline("extraSupplyDates", [...(Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : []), ""])}
+                                    style={{ width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #94a3b8", background: "#fff", color: "#334155", fontSize: 17, fontWeight: 700, lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit" }}>+</button>
+                                )}
                               </div>
                               {(canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED"
                                 ? <input type="date" value={docData.completionDate || ""}
                                     onChange={ev => saveCompletionDateInline(ev.target.value)}
-                                    style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
-                                : <div style={{ marginBottom: 6 }}>{fmtDateDash(docData.completionDate)}</div>}
+                                    style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }), ...(!docData.completionDate ? { border: "1.5px solid #ef4444", background: "#fef2f2" } : {}) }} />
+                                : <div style={{ marginBottom: 6 }}>{docData.completionDate ? fmtDateDash(docData.completionDate) : <span style={{ color: "#ef4444" }}>Not entered</span>}</div>}
+                              {(canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && !docData.completionDate && (
+                                <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 4 }}>Required — enter the date to continue</div>
+                              )}
+                              {/* Purchase Orders: further supply dates (e.g. staggered deliveries) via "+ Date of Supply" */}
+                              {e.pwjType === "PO" && (() => {
+                                const canEditDate = (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED";
+                                const extras = Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : [];
+                                const save = (arr) => saveDocDateInline("extraSupplyDates", arr);
+                                return (
+                                  <div>
+                                    {extras.map((d, i) => (
+                                      <div key={i} style={{ marginBottom: 6 }}>
+                                        <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>Date of Supply {i + 2}</div>
+                                        {canEditDate ? (
+                                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                            <input type="date" value={d || ""} onChange={ev => save(extras.map((x, k) => k === i ? ev.target.value : x))}
+                                              style={{ ...inpSt, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
+                                            <button type="button" title="Remove this date" onClick={() => save(extras.filter((_, k) => k !== i))}
+                                              style={{ border: "none", background: "#f1f5f9", color: "#64748b", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>✕</button>
+                                          </div>
+                                        ) : <div>{fmtDateDash(d)}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div style={{ padding: "10px 12px", borderLeft: "1px solid #ddd", borderRight: "1px solid #ddd" }}>
                               <div style={{ fontWeight: 700, marginBottom: 4 }}>{e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
@@ -7480,12 +7542,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                           {/* --- PAYMENT TERMS --- */}
                           <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms</div>
+                            <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms <span style={{ color: "#ef4444" }}>*</span>
+                              {!hasPaymentStage(docData) && (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && (
+                                <span style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 600, color: "#dc2626" }}>Required — fill in at least one stage</span>
+                              )}
+                            </div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
                               <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 14 }}>
                                 <span style={{ fontWeight: 600, minWidth: 70 }}>{lbl} -</span>
                                 {docEditMode
-                                  ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1 }} placeholder={lbl} />
+                                  ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1, ...(!hasPaymentStage(docData) ? { border: "1.5px solid #fca5a5" } : {}) }} placeholder={lbl} />
                                   : <span>{docData[key] || ""}</span>}
                               </div>
                             ))}
