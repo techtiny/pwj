@@ -737,6 +737,24 @@ function LoginPage({ onLogin, logoutMessage }) {
         @keyframes lgDrift { 0%{transform:scale(1) translate(0,0)} 100%{transform:scale(1.07) translate(-1.5%,-1%)} }
         @keyframes lgSway { 0%,100%{transform:rotate(-1.6deg)} 50%{transform:rotate(1.6deg)} }
         @keyframes lgDust { 0%{transform:translateY(0);opacity:0} 15%{opacity:.8} 100%{transform:translateY(-260px);opacity:0} }
+        @keyframes lgCurL { 0%,10%{transform:scaleX(1)} 22%,82%{transform:scaleX(.24)} 94%,100%{transform:scaleX(1)} }
+        @keyframes lgCurR { 0%,10%{transform:scaleX(1)} 22%,82%{transform:scaleX(.24)} 94%,100%{transform:scaleX(1)} }
+        @keyframes lgSashL { 0%,26%{transform:scaleX(1) skewY(0)} 36%,70%{transform:scaleX(.42) skewY(-9deg)} 80%,100%{transform:scaleX(1) skewY(0)} }
+        @keyframes lgSashR { 0%,26%{transform:scaleX(1) skewY(0)} 36%,70%{transform:scaleX(.42) skewY(9deg)} 80%,100%{transform:scaleX(1) skewY(0)} }
+        @keyframes lgDoorGlow { 0%,34%{opacity:0} 46%,62%{opacity:1} 72%,100%{opacity:0} }
+        @keyframes lgDoorOpen { 0%,34%{transform:scaleX(1)} 46%,62%{transform:scaleX(.07)} 72%,100%{transform:scaleX(1)} }
+        @keyframes lgDay { 0%,14%{opacity:0} 34%,70%{opacity:1} 90%,100%{opacity:0} }
+        @keyframes lgNight { 0%,14%{opacity:1} 34%,70%{opacity:0} 90%,100%{opacity:1} }
+        @keyframes lgLamp { 0%,14%{opacity:1} 30%,74%{opacity:.12} 90%,100%{opacity:1} }
+        .lg-cycle { animation-duration:20s; animation-timing-function:cubic-bezier(.65,0,.35,1); animation-delay:1.5s; animation-iteration-count:infinite; animation-fill-mode:both; }
+        .lg-doorleaf { transform-box:view-box; transform-origin:102.5px 491px; animation-name:lgDoorOpen; }
+        @keyframes lgWinLight { 0%,10%{opacity:.15} 22%,26%{opacity:.6} 36%,70%{opacity:1} 80%,82%{opacity:.6} 94%,100%{opacity:.15} }
+        .lg-sash { transform-box:fill-box; animation:20s cubic-bezier(.65,0,.35,1) 1.5s infinite both; }
+        .lg-sash.l { transform-origin:0% 50%; animation-name:lgSashL; }
+        .lg-sash.r { transform-origin:100% 50%; animation-name:lgSashR; }
+        .lg-curtain { transform-box:fill-box; animation-duration:20s; animation-timing-function:cubic-bezier(.65,0,.35,1); animation-iteration-count:infinite; animation-delay:1.5s; }
+        .lg-curtain.l { transform-origin:0% 50%; animation-name:lgCurL; }
+        .lg-curtain.r { transform-origin:100% 50%; animation-name:lgCurR; }
         @keyframes lgRise { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
         .lg-scene { transform-origin:50% 45%; animation:lgDrift 26s ease-in-out infinite alternate; }
         .lg-draw path, .lg-draw rect { stroke-dasharray:2400; stroke-dashoffset:2400; animation:lgDraw 2.8s cubic-bezier(.65,0,.35,1) forwards; }
@@ -745,12 +763,12 @@ function LoginPage({ onLogin, logoutMessage }) {
         .lg-late { opacity:0; animation:lgIn 1.2s ease 2s forwards; }
         .lg-rise { opacity:0; animation:lgRise .9s cubic-bezier(.22,1,.36,1) forwards; }
         @media (prefers-reduced-motion: reduce) {
-          .lg-scene, .lg-draw path, .lg-draw rect, .lg-late, .lg-rise, .lg-sway, .lg-dust { animation:none !important; stroke-dashoffset:0 !important; opacity:1 !important; }
+          .lg-scene, .lg-draw path, .lg-draw rect, .lg-late, .lg-rise, .lg-sway, .lg-dust, .lg-curtain, .lg-doorglow, .lg-winlight, .lg-sash, .lg-cycle { animation:none !important; stroke-dashoffset:0 !important; opacity:1 !important; }
         }
         .lg-wrap { min-height:100vh; display:flex; font-family:'DM Sans',sans-serif; background:#f6f8fb; }
-        .lg-art { flex:1.15; position:relative; overflow:hidden; color:#fff;
+        .lg-art { flex:1; position:relative; overflow:hidden; color:#fff;
           background:radial-gradient(120% 90% at 50% 40%, #12305a 0%, #0a1c36 55%, #061226 100%); }
-        .lg-side { flex:1; display:flex; align-items:center; justify-content:center; padding:48px 32px; }
+        .lg-side { flex:0 0 clamp(420px, 36vw, 520px); display:flex; align-items:center; justify-content:center; padding:40px 44px; box-shadow:-24px 0 60px rgba(6,18,38,.25); position:relative; z-index:1; }
         .lg-form { width:100%; max-width:400px; animation:lgFade .5s cubic-bezier(.22,1,.36,1) both; }
         .lg-input {
           width:100%; background:#fff; border:1.5px solid #dbe3ee; border-radius:12px;
@@ -772,10 +790,10 @@ function LoginPage({ onLogin, logoutMessage }) {
         .lg-ghost { flex:1; background:#fff; border:1px solid #dbe3ee; border-radius:8px; padding:9px; color:#475569; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
         @media (max-width: 900px) {
           .lg-wrap { flex-direction:column; }
-          .lg-art { flex:none; height:max(52vw, 200px); }
+          .lg-art { flex:none; height:max(40vw, 180px); }
           .lg-art-copy { display:none !important; }
-          .lg-art-svg { inset:auto !important; left:0; top:-18.75vw; width:100% !important; height:auto !important; aspect-ratio:8/9; }
-          .lg-side { flex:1; align-items:flex-start; padding:0 20px 28px; margin-top:-34px; position:relative; z-index:2; }
+          .lg-art-svg { inset:auto !important; left:0; top:-11vw; width:100% !important; height:auto !important; aspect-ratio:4/3; }
+          .lg-side { flex:1; box-shadow:none; align-items:flex-start; padding:0 20px 28px; margin-top:-34px; position:relative; z-index:2; }
           .lg-form { background:#fff; border-radius:22px; padding:24px 20px 22px; box-shadow:0 14px 40px rgba(15,47,87,.16); }
           .lg-logo-row { margin:-18px 0 -14px !important; }
           .lg-logo-row img { width:190px !important; }
@@ -785,9 +803,15 @@ function LoginPage({ onLogin, logoutMessage }) {
       <div className="lg-wrap">
         {/* ── Left: brand panel with interior perspective drawing ── */}
         <div className="lg-art">
-          <svg className="lg-art-svg" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}
+          <svg className="lg-art-svg" viewBox="-200 0 1200 900" preserveAspectRatio="xMidYMid slice" style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}
             fill="none" stroke="rgba(186,230,253,.42)" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round">
             <defs>
+              <linearGradient id="lgWash" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(253,224,171,.22)" /><stop offset="100%" stopColor="rgba(253,224,171,0)" /></linearGradient>
+              <radialGradient id="lgHalo"><stop offset="0%" stopColor="rgba(253,224,171,.45)" /><stop offset="100%" stopColor="rgba(253,224,171,0)" /></radialGradient>
+              <linearGradient id="lgBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(255,236,190,.30)" /><stop offset="70%" stopColor="rgba(255,236,190,.08)" /><stop offset="100%" stopColor="rgba(255,236,190,0)" /></linearGradient>
+              <linearGradient id="lgSkyDay" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(125,211,252,.55)" /><stop offset="100%" stopColor="rgba(254,243,199,.45)" /></linearGradient>
+              <linearGradient id="lgSkyNight" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(15,30,60,.9)" /><stop offset="100%" stopColor="rgba(30,58,100,.6)" /></linearGradient>
+              <radialGradient id="lgPatch" cx="50%" cy="40%" r="70%"><stop offset="0%" stopColor="rgba(255,236,190,.34)" /><stop offset="100%" stopColor="rgba(255,236,190,.04)" /></radialGradient>
               <linearGradient id="lgLamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(253,224,171,.32)" /><stop offset="100%" stopColor="rgba(253,224,171,0)" /></linearGradient>
               <linearGradient id="lgWin" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(56,189,248,.22)" /><stop offset="100%" stopColor="rgba(56,189,248,.04)" /></linearGradient>
               <linearGradient id="lgFadeB" x1="0" y1="0" x2="0" y2="1"><stop offset="45%" stopColor="rgba(6,18,38,0)" /><stop offset="100%" stopColor="rgba(6,18,38,.95)" /></linearGradient>
@@ -811,7 +835,6 @@ function LoginPage({ onLogin, logoutMessage }) {
 
               {/* back wall: window with mullions */}
               <rect className="d2" x="290" y="325" width="220" height="130" fill="url(#lgWin)" stroke="rgba(186,230,253,.65)" />
-              <path className="d3" d="M363 325 V455 M437 325 V455 M290 390 H510" stroke="rgba(186,230,253,.45)" />
 
               {/* back wall: sofa */}
               <path className="d2" d="M285 560 V500 a10 10 0 0 1 10 -10 H505 a10 10 0 0 1 10 10 V560" fill="rgba(10,28,54,.85)" stroke="rgba(186,230,253,.6)" />
@@ -821,9 +844,6 @@ function LoginPage({ onLogin, logoutMessage }) {
               <path className="d3" d={`M${P(285,560,1.12)} L${P(515,560,1.12)} L${P(515,560,1.75)} L${P(285,560,1.75)} Z`} fill="rgba(56,189,248,.05)" stroke="rgba(186,230,253,.35)" />
               <path className="d3" d={`M${P(345,560,1.3)} L${P(455,560,1.3)} L${P(455,560,1.5)} L${P(345,560,1.5)} Z`} stroke="rgba(186,230,253,.55)" transform="translate(0,-14)" />
 
-              {/* left wall: door */}
-              <path className="d2" d={`M${P(230,560,1.3)} L${P(230,370,1.3)} L${P(230,370,1.75)} L${P(230,560,1.75)}`} stroke="rgba(186,230,253,.55)" />
-
               {/* right wall: shelving unit */}
               <path className="d2" d={`M${P(570,340,1.22)} L${P(570,340,1.95)} L${P(570,540,1.95)} L${P(570,540,1.22)} Z`} stroke="rgba(186,230,253,.55)" />
               <g className="d3">{[390,440,490].map(y => <path key={y} d={`M${P(570,y,1.22)} L${P(570,y,1.95)}`} />)}</g>
@@ -831,20 +851,84 @@ function LoginPage({ onLogin, logoutMessage }) {
 
             {/* details that fade in once the drawing is done */}
             <g className="lg-late">
-              <path d={`M${P(230,300,1.08)} L${P(570,300,1.08)}`} strokeDasharray="3 5" stroke="rgba(186,230,253,.3)" />
-              <circle cx={VX + (230 - VX) * 1.68} cy={VY + (465 - VY) * 1.68} r="2.5" fill="rgba(186,230,253,.6)" stroke="none" />
 
-              {/* pendant lights — gently swaying from the ceiling, light cones breathing */}
-              {[330,470].map((x, i) => {
-                const top = i ? 180 : 165, y = i ? 300 : 285;
+              {/* view outside: night sky & moon while closed → daylight & sun once opened */}
+              <g>
+                <rect x="290" y="325" width="220" height="130" fill="url(#lgSkyNight)" stroke="none" />
+                <circle className="lg-cycle" cx="466" cy="350" r="7" fill="rgba(226,232,240,.85)" stroke="none" style={{ animationName:"lgNight" }} />
+                <g className="lg-cycle" style={{ animationName:"lgDay" }}>
+                  <rect x="290" y="325" width="220" height="130" fill="url(#lgSkyDay)" stroke="none" />
+                  <circle cx="462" cy="352" r="11" fill="rgba(254,240,138,.95)" stroke="none" />
+                  <circle cx="462" cy="352" r="20" fill="rgba(254,240,138,.25)" stroke="none" />
+                </g>
+                <path d="M290 432 L325 414 L352 424 L392 400 L432 420 L466 406 L510 428 V455 H290 Z" fill="rgba(30,64,110,.55)" stroke="rgba(186,230,253,.35)" />
+              </g>
+
+              {/* casement windows — two sashes hinged at the outer frame that swing open */}
+              {[["l",290],["r",400]].map(([side,x]) => (
+                <g key={side} className={`lg-sash ${side}`}>
+                  <rect x={x} y="325" width="110" height="130" fill="rgba(56,189,248,.10)" stroke="rgba(186,230,253,.7)" />
+                  <path d={`M${x} 390 H${x+110} M${x+55} 325 V455`} stroke="rgba(186,230,253,.4)" />
+                  <path d={side === "l" ? `M${x+100} 382 v16` : `M${x+10} 382 v16`} stroke="rgba(186,230,253,.8)" strokeWidth="2.2" />
+                </g>
+              ))}
+
+              {/* daylight: beam through the window and the light patch it casts on the floor (with window-bar shadows) */}
+              <g className="lg-cycle" style={{ animationName:"lgDay" }}>
+                <path d={`M290 330 L510 330 L${P(470,560,2.05)} L${P(262,560,2.05)} Z`} fill="url(#lgBeam)" stroke="none" />
+                <path d={`M${P(280,560,1.18)} L${P(496,560,1.18)} L${P(470,560,2.05)} L${P(262,560,2.05)} Z`} fill="url(#lgPatch)" stroke="none" />
+                <path d={`M${P(388,560,1.18)} L${P(366,560,2.05)} M${P(272,560,1.58)} L${P(484,560,1.58)}`} stroke="rgba(6,18,38,.35)" strokeWidth="5" />
+                <rect x="230" y="300" width="340" height="260" fill="rgba(255,236,190,.05)" stroke="none" />
+              </g>
+
+              {/* curtains — rod, two draped panels that slide open and closed */}
+              <path d="M272 318 H528" stroke="rgba(186,230,253,.7)" strokeWidth="2" />
+              {[["l",290,"M300 318 V472 M312 318 V472 M324 318 V472 M336 318 V472 M348 318 V472 M360 318 V472 M372 318 V472"],["r",400,"M410 318 V472 M422 318 V472 M434 318 V472 M446 318 V472 M458 318 V472 M470 318 V472 M482 318 V472"]].map(([side,x,folds]) => (
+                <g key={side} className={`lg-curtain ${side}`}>
+                  <path d={`M${x} 318 H${x+110} V472 H${x} Z`} fill="rgba(125,180,235,.20)" stroke="rgba(186,230,253,.55)" />
+                  <path d={folds} stroke="rgba(186,230,253,.28)" />
+                </g>
+              ))}
+
+              {/* door on the left wall: swings out on its near-side hinge, revealing a lit hallway */}
+              {(() => {
+                const doorway = `M${P(230,560,1.3)} L${P(230,370,1.3)} L${P(230,370,1.75)} L${P(230,560,1.75)} Z`;
+                const spill   = `M${P(230,560,1.3)} L${P(230,560,1.75)} L${P(330,560,2.1)} L${P(300,560,1.4)} Z`;
                 return (
-                  <g key={x} className="lg-sway" style={{ transformOrigin:`${x}px ${top}px`, animation:`lgSway ${7 + i * 1.5}s ease-in-out infinite` }}>
-                    <path d={`M${x} ${top} V${y}`} />
-                    <path d={`M${x-18} ${y+18} L${x-8} ${y} H${x+8} L${x+18} ${y+18} Z`} fill="rgba(253,224,171,.25)" stroke="rgba(253,224,171,.7)" />
-                    <path d={`M${x-18} ${y+18} L${x+18} ${y+18} L${x+62} ${y+150} L${x-62} ${y+150} Z`} fill="url(#lgLamp)" stroke="none" style={{ animation:`lgGlow ${5 + i}s ease-in-out infinite` }} />
+                  <g>
+                    <path d={doorway} fill="rgba(6,18,38,.9)" stroke="none" />
+                    <g className="lg-cycle" style={{ animationName:"lgDoorGlow", opacity:0 }}>
+                      <path d={doorway} fill="rgba(253,224,171,.5)" stroke="none" />
+                      <path d={spill} fill="rgba(253,224,171,.16)" stroke="none" />
+                    </g>
+                    <g className="lg-cycle lg-doorleaf">
+                      <path d={doorway} fill="rgba(30,64,110,.95)" stroke="rgba(186,230,253,.8)" strokeWidth="1.6" />
+                      <path d={`M${P(230,390,1.36)} L${P(230,445,1.36)} L${P(230,445,1.69)} L${P(230,390,1.69)} Z M${P(230,470,1.36)} L${P(230,540,1.36)} L${P(230,540,1.69)} L${P(230,470,1.69)} Z`} stroke="rgba(186,230,253,.35)" />
+                      <path d={`M${P(230,455,1.36)} L${P(230,478,1.36)}`} stroke="rgba(253,224,171,.9)" strokeWidth="2.4" />
+                    </g>
+                    <path d={doorway} stroke="rgba(186,230,253,.55)" fill="none" />
                   </g>
                 );
-              })}
+              })()}
+
+              {/* recessed ceiling lighting: LED cove + downlights in the false ceiling, wall wash on the back wall — dims in daylight */}
+              <g className="lg-cycle" style={{ animationName:"lgLamp" }}>
+                <path d={`M${P(290,300,1.35)} L${P(510,300,1.35)} L${P(510,300,2.5)} L${P(290,300,2.5)} Z`} fill="none" stroke="rgba(253,224,171,.55)" strokeWidth="2.5" style={{ filter:"blur(1.5px)" }} />
+                <rect x="230" y="300" width="340" height="90" fill="url(#lgWash)" stroke="none" />
+                {[[320,1.55],[480,1.55],[320,2.15],[480,2.15]].map(([x,f]) => {
+                  const cx = VX + (x - VX) * f, cy = VY + (300 - VY) * f;
+                  return (
+                    <g key={`${x}-${f}`}>
+                      <ellipse cx={cx} cy={cy} rx={4.5 * f} ry={1.6 * f} fill="rgba(255,244,214,.95)" stroke="none" />
+                      <ellipse cx={cx} cy={cy + 3 * f} rx={14 * f} ry={8 * f} fill="url(#lgHalo)" stroke="none" />
+                    </g>
+                  );
+                })}
+              </g>
+              {/* downlight fittings stay visible (unlit) during the day */}
+              {[[320,1.55],[480,1.55],[320,2.15],[480,2.15]].map(([x,f]) => (
+                <ellipse key={`f${x}-${f}`} cx={VX + (x - VX) * f} cy={VY + (300 - VY) * f} rx={4.5 * f} ry={1.6 * f} fill="none" stroke="rgba(186,230,253,.55)" />
+              ))}
 
               {/* dust in the light */}
               {[[300,520,0],[352,560,3],[455,540,1.5],[490,590,4.5],[400,600,6],[330,610,7.5]].map(([x,y,d], k) => (
@@ -854,7 +938,7 @@ function LoginPage({ onLogin, logoutMessage }) {
             </g>
             </g>
 
-            <rect x="0" y="0" width="800" height="900" fill="url(#lgFadeB)" stroke="none" />
+            <rect x="-200" y="0" width="1200" height="900" fill="url(#lgFadeB)" stroke="none" />
           </svg>
 
           {/* brand + message */}
