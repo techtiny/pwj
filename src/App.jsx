@@ -495,6 +495,23 @@ function entryItems(entry) {
   return [{ item: entry.materialRequired || "", unit: entry.unit || "", qty: entry.quantity != null ? String(entry.quantity) : "", rate: "", spec: entry.specification || "" }];
 }
 
+// Wraps every case-insensitive occurrence of `query` in <mark> so a search term stands out in results.
+function highlightText(text, query) {
+  const str = String(text ?? "");
+  const q = (query || "").trim();
+  if (!q) return str;
+  const lower = str.toLowerCase(), ql = q.toLowerCase();
+  const out = []; let i = 0, k = 0;
+  while (i < str.length) {
+    const j = lower.indexOf(ql, i);
+    if (j === -1) { out.push(str.slice(i)); break; }
+    if (j > i) out.push(str.slice(i, j));
+    out.push(<mark key={k++} style={{ background: "#fde047", color: "#0f172a", borderRadius: 3, padding: "0 1px" }}>{str.slice(j, j + q.length)}</mark>);
+    i = j + q.length;
+  }
+  return out;
+}
+
 // Payment Terms: at least one stage (Stage 1 / 2 / 3 / Final) must be filled in.
 const hasPaymentStage = (d) => ["stage1", "stage2", "stage3", "stageF"].some(k => String(d?.[k] || "").trim());
 const PAYMENT_STAGE_MSG = "Fill in at least one payment stage (Stage 1 / 2 / 3 / Final stage) under Payment Terms";
@@ -7942,8 +7959,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
                   <span style={{ fontSize: 14, color: "#475569" }}><b>{issuedMatches.length}</b> item line{issuedMatches.length === 1 ? "" : "s"} · <b>{new Set(issuedMatches.map(r => r.entryId)).size}</b> PR{new Set(issuedMatches.map(r => r.entryId)).size === 1 ? "" : "s"}</span>
                   {issuedQuery.trim() && issuedTotals.slice(0, 6).map(t => (
-                    <span key={t.item + t.unit} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 11px", fontSize: 13, fontWeight: 700 }}>
-                      {t.item}: {Math.round(t.qty * 100) / 100} {t.unit}
+                    <span key={t.item + t.unit} title={`${t.item}: ${Math.round(t.qty * 100) / 100} ${t.unit}`} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 11px", fontSize: 13, fontWeight: 700, maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                      {highlightText(t.item, issuedQuery)}: {Math.round(t.qty * 100) / 100} {t.unit}
                     </span>
                   ))}
                 </div>
@@ -7961,18 +7978,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <tr key={i} style={{ background: i % 2 ? "#fcfdff" : "#fff" }}>
                           <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
                             <button title={`Open PR #${r.entryId}`} onClick={() => { setIssuedModal(false); setDetailRow(r.entry); }}
-                              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 3 }}>#{r.entryId}</button>
+                              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 3 }}>#{highlightText(r.entryId, issuedQuery)}</button>
                           </td>
                           <td style={{ padding: "10px", fontSize: 14.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9" }}>
-                            <div style={{ fontWeight: 600 }}>{r.item}</div>
-                            {r.spec && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.spec}</div>}
+                            <div style={{ fontWeight: 600 }}>{highlightText(r.item, issuedQuery)}</div>
+                            {r.spec && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{highlightText(r.spec, issuedQuery)}</div>}
                           </td>
                           <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.qty} {r.unit}</td>
-                          <td style={{ padding: "10px", fontSize: 14.5, color: "#334155", borderBottom: "1px solid #f1f5f9" }}>{r.vendor || "—"}</td>
+                          <td style={{ padding: "10px", fontSize: 14.5, color: "#334155", borderBottom: "1px solid #f1f5f9" }}>{r.vendor ? highlightText(r.vendor, issuedQuery) : "—"}</td>
                           <td style={{ padding: "10px", fontSize: 14, color: "#334155", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
                             {r.docNumber ? (
                               <button title="Open the document" onClick={() => { setIssuedModal(false); setEngDocFile(null); openDocModal(r.entry); }}
-                                style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#7c3aed", textDecoration: "underline", textUnderlineOffset: 3 }}>{r.docNumber}</button>
+                                style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#7c3aed", textDecoration: "underline", textUnderlineOffset: 3 }}>{highlightText(r.docNumber, issuedQuery)}</button>
                             ) : "—"}
                             {r.pwjType ? <span style={{ marginLeft: 6, fontSize: 11.5, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}
                           </td>
