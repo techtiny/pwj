@@ -765,12 +765,27 @@ function LoginPage({ onLogin, logoutMessage }) {
         .lg-late { opacity:0; animation:lgIn 1.2s ease 2s forwards; }
         .lg-rise { opacity:0; animation:lgRise .9s cubic-bezier(.22,1,.36,1) forwards; }
         @media (prefers-reduced-motion: reduce) {
-          .lg-scene, .lg-draw path, .lg-draw rect, .lg-late, .lg-rise, .lg-sway, .lg-dust, .lg-curtain, .lg-doorglow, .lg-winlight, .lg-sash, .lg-cycle { animation:none !important; stroke-dashoffset:0 !important; opacity:1 !important; }
+          .lg-title, .lg-scene, .lg-draw path, .lg-draw rect, .lg-late, .lg-rise, .lg-sway, .lg-dust, .lg-curtain, .lg-doorglow, .lg-winlight, .lg-sash, .lg-cycle { animation:none !important; stroke-dashoffset:0 !important; opacity:1 !important; }
         }
         .lg-wrap { min-height:100vh; display:flex; font-family:'DM Sans',sans-serif; background:#f6f8fb; }
         .lg-art { flex:1; position:relative; overflow:hidden; color:#fff;
           background:radial-gradient(120% 90% at 50% 40%, #12305a 0%, #0a1c36 55%, #061226 100%); }
-        .lg-side { flex:0 0 clamp(460px, 38vw, 560px); display:flex; align-items:center; justify-content:center; padding:40px 44px; box-shadow:-24px 0 60px rgba(6,18,38,.25); position:relative; z-index:1; }
+        .lg-side { flex:0 0 clamp(480px, 39vw, 580px); display:flex; align-items:center; justify-content:center; padding:36px 32px; box-shadow:-24px 0 60px rgba(6,18,38,.25); position:relative; z-index:1; overflow:hidden;
+          background:radial-gradient(120% 70% at 100% 0%, rgba(56,189,248,.20) 0%, rgba(56,189,248,0) 55%), radial-gradient(90% 60% at 0% 100%, rgba(99,102,241,.16) 0%, rgba(99,102,241,0) 60%), linear-gradient(160deg,#f4f8fd 0%,#e8f0fa 100%); }
+        .lg-glass { position:relative; padding:34px 34px 28px; border-radius:26px;
+          background:linear-gradient(145deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.55) 100%);
+          backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%);
+          border:1px solid rgba(255,255,255,.9);
+          box-shadow:0 24px 60px rgba(15,47,87,.16), 0 2px 6px rgba(15,47,87,.06), inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(15,47,87,.05); }
+        .lg-glass::before { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+          background:linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 38%); }
+        @keyframes lgShine { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+        .lg-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:44px; font-weight:800; letter-spacing:-1px; line-height:1.1;
+          background:linear-gradient(100deg,#0f2f57 0%,#1d6fc4 18%,#38bdf8 34%,#6366f1 50%,#1d6fc4 66%,#38bdf8 82%,#0f2f57 100%);
+          background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+          filter:drop-shadow(0 1px 1px rgba(255,255,255,.9)) drop-shadow(0 3px 8px rgba(29,111,196,.18)); animation:lgShine 8s linear infinite; padding-bottom:4px; }
+        .lg-brand { background:linear-gradient(90deg,#1d6fc4,#38bdf8 55%,#6366f1); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; font-weight:800; }
+        .lg-glass .lg-input { background:rgba(255,255,255,.85); }
         .lg-form { width:100%; max-width:440px; animation:lgFade .5s cubic-bezier(.22,1,.36,1) both; }
         .lg-input {
           width:100%; background:#fff; border:1.5px solid #dbe3ee; border-radius:12px;
@@ -796,7 +811,9 @@ function LoginPage({ onLogin, logoutMessage }) {
           .lg-art-copy { display:none !important; }
           .lg-art-svg { inset:auto !important; left:0; top:-11vw; width:100% !important; height:auto !important; aspect-ratio:4/3; }
           .lg-side { flex:1; box-shadow:none; align-items:flex-start; padding:0 20px 28px; margin-top:-34px; position:relative; z-index:2; }
-          .lg-form { background:#fff; border-radius:22px; padding:24px 20px 22px; box-shadow:0 14px 40px rgba(15,47,87,.16); }
+          .lg-side { background:linear-gradient(160deg,#f4f8fd 0%,#e8f0fa 100%); overflow:visible; }
+          .lg-glass { padding:24px 20px 22px; border-radius:22px; }
+          .lg-title { font-size:36px; }
           .lg-logo-row { margin:-18px 0 -14px !important; }
           .lg-logo-row img { width:190px !important; }
         }
@@ -1003,13 +1020,13 @@ function LoginPage({ onLogin, logoutMessage }) {
 
         {/* ── Right: sign-in ── */}
         <div className="lg-side">
-          <div className="lg-form">
+          <div className="lg-form lg-glass">
             <div className="lg-logo-row" style={{ display:"flex", justifyContent:"center", margin:"-26px 0 -18px" }}>
               <img src="/happizo-logo.png" alt="Happizo" style={{ width:240, maxWidth:"80%", height:"auto" }} />
             </div>
 
-            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:42, fontWeight:800, color:"#0f172a", letterSpacing:"-0.6px" }}>Welcome back</div>
-            <div style={{ fontSize:20, color:"#64748b", marginTop:6, marginBottom:30 }}>Sign in to <b style={{ color:"#1d6fc4" }}>Happizo CloudDesk</b></div>
+            <div className="lg-title">Welcome back</div>
+            <div style={{ fontSize:20, color:"#475569", marginTop:8, marginBottom:28 }}>Sign in to <span className="lg-brand">Happizo CloudDesk</span></div>
 
             {error && (
               <div style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#b91c1c", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
@@ -1100,7 +1117,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               </button>
             </form>
 
-            <div style={{ marginTop:36, fontSize:15.5, color:"#94a3b8", textAlign:"center" }}>
+            <div style={{ marginTop:28, fontSize:13.5, color:"#94a3b8", textAlign:"center", whiteSpace:"nowrap" }}>
               © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
             </div>
           </div>
