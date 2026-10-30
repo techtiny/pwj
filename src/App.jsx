@@ -3062,7 +3062,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         : [{ ...pd, docNumber: e.docNumber || pd.docNumber, vendor: e.vendor }];
       for (const d of docs) {
         const lines = (d.items || []).filter(r => r.item?.trim());
-        const base = { entryId: e.id, docNumber: d.docNumber || e.docNumber || "", pwjType: e.pwjType, vendor: d.vendor || e.vendor || "", date: d.completionDate || e.deliveredDate || e.dateOfRequirement, status: e.status };
+        const base = { entry: e, entryId: e.id, docNumber: d.docNumber || e.docNumber || "", pwjType: e.pwjType, vendor: d.vendor || e.vendor || "", date: d.completionDate || e.deliveredDate || e.dateOfRequirement, status: e.status };
         if (lines.length === 0) out.push({ ...base, item: e.materialRequired, spec: e.specification, unit: e.unit, qty: e.quantity, rate: "" });
         else lines.forEach(r => out.push({ ...base, item: r.item.trim(), spec: r.spec || "", unit: r.unit || "", qty: r.qty, rate: r.rate }));
       }
@@ -7893,14 +7893,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <tbody>
                       {issuedMatches.map((r, i) => (
                         <tr key={i} style={{ background: i % 2 ? "#fcfdff" : "#fff" }}>
-                          <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>#{r.entryId}</td>
+                          <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                            <button title={`Open PR #${r.entryId}`} onClick={() => { setIssuedModal(false); setDetailRow(r.entry); }}
+                              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 3 }}>#{r.entryId}</button>
+                          </td>
                           <td style={{ padding: "10px", fontSize: 14.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9" }}>
                             <div style={{ fontWeight: 600 }}>{r.item}</div>
                             {r.spec && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.spec}</div>}
                           </td>
                           <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.qty} {r.unit}</td>
                           <td style={{ padding: "10px", fontSize: 14.5, color: "#334155", borderBottom: "1px solid #f1f5f9" }}>{r.vendor || "—"}</td>
-                          <td style={{ padding: "10px", fontSize: 14, color: "#334155", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.docNumber || "—"}{r.pwjType ? <span style={{ marginLeft: 6, fontSize: 11.5, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}</td>
+                          <td style={{ padding: "10px", fontSize: 14, color: "#334155", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                            {r.docNumber ? (
+                              <button title="Open the document" onClick={() => { setIssuedModal(false); setEngDocFile(null); openDocModal(r.entry); }}
+                                style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#7c3aed", textDecoration: "underline", textUnderlineOffset: 3 }}>{r.docNumber}</button>
+                            ) : "—"}
+                            {r.pwjType ? <span style={{ marginLeft: 6, fontSize: 11.5, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}
+                          </td>
                           <td style={{ padding: "10px", fontSize: 14, color: "#475569", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{fmtDate(r.date)}</td>
                           <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9" }}><span style={{ fontSize: 12.5, fontWeight: 700, color: r.status === "CLOSED" ? "#475569" : "#047857", background: r.status === "CLOSED" ? "#f1f5f9" : "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>{r.status === "CLOSED" ? "Closed" : "Open"}</span></td>
                         </tr>
