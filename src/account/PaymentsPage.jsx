@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Send, Download } from 'lucide-react';
+import { Send, Download, Check, X, Clock, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { expenseItemsApi, fundManagementApi } from './accountApi';
 
-const PAYMENT_STATUS_CFG = {
-  PART_PAYMENT_SENT: { label: 'Part Sent', color: '#b45309', bg: '#fef3c7' },
-  FULL_PAYMENT_SENT: { label: 'Full Sent', color: '#15803d', bg: '#dcfce7' },
-};
-
+// Read-only status — soft tint so a decision already made never looks like the solid, clickable Approve/Reject buttons
 const APPROVAL_CFG = {
-  PENDING:  { label: 'Pending',  color: '#64748b', bg: '#f1f5f9' },
-  APPROVED: { label: 'Approved', color: '#15803d', bg: '#dcfce7' },
-  REJECTED: { label: 'Rejected', color: '#b91c1c', bg: '#fee2e2' },
+  PENDING:  { label: 'Pending',  color: '#94a3b8', bg: '#f1f5f9', Icon: Clock },
+  APPROVED: { label: 'Approved', color: '#15803d', bg: '#dcfce7', Icon: Check },
+  REJECTED: { label: 'Rejected', color: '#b91c1c', bg: '#fee2e2', Icon: X },
 };
 function ApprovalBadge({ status }) {
   const cfg = APPROVAL_CFG[status] || APPROVAL_CFG.PENDING;
   return (
-    <span style={{ padding: '2px 8px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700 }}>
-      {cfg.label}
+    <span title={cfg.label} aria-label={cfg.label}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: cfg.bg, color: cfg.color, cursor: 'default' }}>
+      <cfg.Icon size={14} strokeWidth={2.5} />
     </span>
   );
 }
@@ -34,11 +31,6 @@ function fmt(v) {
   return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function fmtDateTime(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // The amount that actually goes to the vendor: Approved Value (after TDS / GST deductions) when set,
@@ -46,11 +38,10 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 const payableAmount = it => (it.approvedValue != null && it.approvedValue !== ''
   ? Number(it.approvedValue) : Number(it.sentAmount || 0));
 
-const PAYMENT_AGAINST_LABEL = { PO: 'PO', WO: 'WO', JO: 'JO', VENDOR_INVOICE: 'Vendor Invoice' };
-const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINST_LABEL[s.trim()] || s.trim()).filter(Boolean).join(', ') : '—');
-
 const STAGE_LABEL = { ADVANCE: 'Advance', STAGE_1: 'Stage 1', STAGE_2: 'Stage 2', STAGE_3: 'Stage 3', FINAL: 'Final' };
 const fmtStage = v => (v ? (STAGE_LABEL[v] || v) : '—');
+const PAYMENT_AGAINST_LABEL = { PO: 'PO', WO: 'WO', JO: 'JO', VENDOR_INVOICE: 'Vendor Invoice' };
+const fmtPaymentAgainst = v => (v ? String(v).split(',').map(s => PAYMENT_AGAINST_LABEL[s.trim()] || s.trim()).filter(Boolean).join(', ') : '—');
 
 // An Additional PO's doc number is always its base/original PO number plus one
 // trailing letter (e.g. WO-2627-0004 -> WO-2627-0004A) — used to keep an
@@ -170,6 +161,19 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     items.forEach(it => { if (it.projectId != null) map.set(it.projectId, it.projectName); });
     return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [items]);
+
+  // Paid Amt — total sent so far against the same doc (project + PWJ No), the same
+  // "already sent" figure the Send for Payment dialog shows
+  const paidByDoc = useMemo(() => {
+    const m = {};
+    items.forEach(it => {
+      if (!it.refNo) return;
+      const k = `${it.projectId}|${it.refNo}`;
+      m[k] = (m[k] || 0) + Number(it.sentAmount || 0);
+    });
+    return m;
+  }, [items]);
+  const paidAmt = it => (it.refNo ? paidByDoc[`${it.projectId}|${it.refNo}`] || 0 : Number(it.sentAmount || 0));
 
   const filtered = useMemo(() => {
     const now = new Date();
@@ -451,33 +455,30 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
           </div>
         ) : (
           <div className="table-container">
-            <table>
+            <table className="pay-table">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>Project</th>
                   <th>Party</th>
-                  <th>Ref No</th>
-                  <th>Stage</th>
-                  <th>Payment Against</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Amount Sent</th>
-                  <th style={{ textAlign: 'right' }}>Due Amount</th>
-                  <th>Sent At</th>
-                  <th>Remarks</th>
-                  <th title="TDS rate applied on Amount Sent — set on the TDS tab">TDS %</th>
-                  <th style={{ textAlign: 'right' }} title="Amount Sent × TDS %">TDS Amt</th>
-                  <th style={{ textAlign: 'right' }} title="Manual deduction — set on the TDS tab">Deduction</th>
-                  <th style={{ textAlign: 'right' }} title="Amount Sent − TDS Amt − GST Amt − Deduction">Approved Value</th>
-                  <th>OH Approval</th>
-                  <th>Admin Approval</th>
-                  <th>VP Approval</th>
+                  <th>PWJ No</th>
+                  <th title="Total sent so far against this PWJ No (same as 'already sent' in the Send for Payment dialog)">Paid<br />Amt</th>
+                  <th>Requested<br />At</th>
+                  <th>Stage /<br />Against</th>
+                  <th>Payment<br />Requested</th>
+                  <th className="col-remarks">Remarks</th>
+                  <th>Level 1<br />OH/VP</th>
+                  <th title="TDS rate applied on Payment Requested — set on the TDS tab">TDS %</th>
+                  <th title="Payment Requested × TDS %">TDS Amt</th>
+                  <th title="Manual deduction — set on the TDS tab">Deduction</th>
+                  <th title="Payment Requested − TDS Amt − GST Amt − Deduction">Approved<br />Value</th>
+                  <th>Level 2<br />Admin</th>
+                  <th>Level 3<br />VP</th>
                   {(isAdmin || isVP) && <th></th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((it, i) => {
-                  const status = PAYMENT_STATUS_CFG[it.paymentStatus] || PAYMENT_STATUS_CFG.PART_PAYMENT_SENT;
                   const isBusy = !!busy[it.id];
                   const ohPending = (it.ohApprovalStatus || 'PENDING') === 'PENDING';
                   const adminEligible = it.ohApprovalStatus === 'APPROVED' && (it.adminApprovalStatus || 'PENDING') === 'PENDING';
@@ -491,8 +492,8 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   return (
                     <tr key={it.id}>
                       <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
-                      <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
+                      <td className="col-wrap" style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
+                      <td className="col-wrap" style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
                       <td style={{ fontSize: 12, color: '#64748b' }}>
                         {it.refNo || '—'}
                         {isAdditionalPoRef(it.refNo) && (
@@ -504,49 +505,55 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                           </div>
                         )}
                       </td>
-                      <td style={{ fontSize: 12, color: '#334155' }}>{fmtStage(it.paymentStage)}</td>
-                      <td style={{ fontSize: 12, color: '#334155' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</td>
-                      <td>
-                        <span style={{ padding: '2px 8px', borderRadius: 100, background: status.bg, color: status.color, fontSize: 10, fontWeight: 700 }}>
-                          {status.label}
-                        </span>
+                      <td style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>{fmt(paidAmt(it))}</td>
+                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+                        {it.sentAt ? (
+                          <>
+                            <div>{new Date(it.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                            <div style={{ fontSize: '0.85em', color: '#64748b' }}>{new Date(it.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </>
+                        ) : '—'}
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb', fontSize: 14 }}>{fmt(it.sentAmount)}</td>
-                      <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#dc2626' }}>{fmt(Number(it.pwjTotalPayable || 0) - Number(it.sentAmount || 0))}</td>
-                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDateTime(it.sentAt)}</td>
-                      <td style={{ fontSize: 12, color: '#475569', maxWidth: 240, whiteSpace: 'pre-wrap' }}>{remarkText(it) || '—'}</td>
-
-                      {/* TDS % — read-only; set from the TDS tab */}
-                      <td>
-                        <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                      {/* Stage / Against — both picked in the Send for Payment dialog */}
+                      <td style={{ fontSize: 12, color: '#334155', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600 }}>{fmtStage(it.paymentStage)}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</div>
                       </td>
-                      {/* TDS Amt */}
-                      <td style={{ textAlign: 'right', fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
-                      {/* Deduction — read-only; set from the TDS tab */}
-                      <td style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
-                      </td>
-                      {/* Approved Value */}
-                      <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
+                      <td style={{ fontWeight: 800, color: '#2563eb', fontSize: 14 }}>{fmt(it.sentAmount)}</td>
+                      <td className="col-wrap col-remarks" style={{ fontSize: 12, color: '#475569' }}>{remarkText(it) || '—'}</td>
 
                       {/* OH Approval — OH and VP can both act here */}
-                      <td style={{ minWidth: 150 }}>
+                      <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
                         {(isOH || isVP) && ohPending ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
-                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
+                          <div className="appr-actions">
+                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                           </div>
                         ) : (
                           <ApprovalBadge status={it.ohApprovalStatus} />
                         )}
                       </td>
 
+
+                      {/* TDS % — read-only; set from the TDS tab */}
+                      <td>
+                        <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                      </td>
+                      {/* TDS Amt */}
+                      <td style={{ fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
+                      {/* Deduction — read-only; set from the TDS tab */}
+                      <td>
+                        <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
+                      </td>
+                      {/* Approved Value */}
+                      <td style={{ fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
+
                       {/* Admin Approval */}
-                      <td style={{ minWidth: 130 }}>
+                      <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
                         {isAdmin && adminEligible ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
-                            <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
+                          <div className="appr-actions">
+                            <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                           </div>
                         ) : it.ohApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.adminApprovalStatus} />
@@ -556,12 +563,12 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       </td>
 
                       {/* VP Approval */}
-                      <td style={{ minWidth: 130 }}>
+                      <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
                         {isVP && vpEligible ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button disabled={isBusy} onClick={() => handleVpDecision(it, 'APPROVED')} style={btn('#15803d')}>Approve</button>
-                            <button disabled={isBusy} onClick={() => handleVpDecision(it, 'REJECTED')} style={btn('#dc2626')}>Reject</button>
-                            <button disabled={isBusy} onClick={() => handleVpRevise(it)} style={btn('#b45309')} title="Send back to Admin to adjust TDS/Deduction">Revise</button>
+                          <div className="appr-actions">
+                            <button disabled={isBusy} onClick={() => handleVpDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => handleVpDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => handleVpRevise(it)} className="appr-btn appr-btn--revise" title="Send back to Admin to adjust TDS/Deduction">Revise</button>
                           </div>
                         ) : it.adminApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.vpApprovalStatus} />
@@ -573,9 +580,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       {(isAdmin || isVP) && (
                         <td>
                           <button disabled={isBusy} onClick={() => handleDelete(it)}
-                            title="Delete this Send for Payment entry"
-                            style={{ ...btn('#fee2e2'), color: '#b91c1c' }}>
-                            Delete
+                            title="Delete this Send for Payment entry" aria-label="Delete"
+                            className="appr-btn appr-btn--delete">
+                            <Trash2 size={14} strokeWidth={2.25} />
                           </button>
                         </td>
                       )}

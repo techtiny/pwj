@@ -168,3 +168,35 @@
 .acct-wrap .pay-dash .pay-section-title { font-size: 18px !important; }
 .acct-wrap .pay-dash select,
 .acct-wrap .pay-dash input { font-size: 14px !important; }
+
+/* Send for Payment — compact approve / reject / revise controls */
+.appr-actions { display: inline-flex; align-items: center; gap: 6px; }
+.appr-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 26px; min-width: 26px; padding: 0 6px;
+  border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;
+  font-size: 11px; font-weight: 600; line-height: 1; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.appr-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .25); }
+.appr-btn:disabled { opacity: .5; cursor: default; }
+.appr-btn--ok, .appr-btn--no { width: 26px; padding: 0; border-radius: 50%; border-color: transparent; }
+.appr-btn--ok     { color: #fff; background: #15803d; }
+.appr-btn--no     { color: #fff; background: #b91c1c; }
+.appr-btn--revise { color: #b45309; padding: 0 10px; }
+.appr-btn--ok:not(:disabled):hover     { background: #166534; }
+.appr-btn--no:not(:disabled):hover     { background: #991b1b; }
+.appr-btn--revise:not(:disabled):hover { background: #fffbeb; border-color: #fcd34d; }
+
+/* Send for Payment table — every column hugs its content; only Project / Party / Remarks wrap,
+   and Remarks takes whatever width is left over */
+.acct-wrap .pay-dash .pay-table th,
+.acct-wrap .pay-dash .pay-table td { white-space: nowrap; width: 1%; vertical-align: middle; }
+.acct-wrap .pay-dash .pay-table td.col-wrap { white-space: normal; min-width: 120px; max-width: 200px; }
+.acct-wrap .pay-dash .pay-table .col-remarks { width: auto; min-width: 200px; max-width: none; white-space: pre-wrap; }
+/* Delete — outlined so it can't be confused with the solid Reject button or the soft "Rejected" badge */
+.appr-btn--delete { width: 26px; padding: 0; border-radius: 50%; color: #b91c1c; background: #fff; border: 1.5px solid #fca5a5; }
+.appr-btn--delete:not(:disabled):hover { background: #fef2f2; border-color: #b91c1c; }
+/* Send for Payment — headers centred, every value left-aligned */
+.acct-wrap .pay-dash .pay-table thead th { text-align: center !important; }
+.acct-wrap .pay-dash .pay-table tbody td { text-align: left !important; }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload, ChevronDown, Check, X, Pause } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
@@ -1161,6 +1161,22 @@ const APPROVAL_META = {
   HOLD:         { label: "Hold",         bg: "#fef3c7", color: "#d97706", dot: "#f59e0b" },
   NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
 };
+// OH Approval column: solid circle + white icon, matching the Send for Payment approve/reject buttons
+const APPROVAL_ICON = {
+  PROCEED:      { Icon: Check, bg: "#15803d" },
+  HOLD:         { Icon: Pause, bg: "#d97706" },
+  NOT_APPROVED: { Icon: X,     bg: "#b91c1c" },
+};
+function ApprovalIcon({ status }) {
+  const cfg = APPROVAL_ICON[status] || { Icon: Clock, bg: "#94a3b8" };
+  const label = APPROVAL_META[status]?.label || "Pending";
+  return (
+    <span title={label} aria-label={label}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: cfg.bg, color: "#fff" }}>
+      <cfg.Icon size={14} strokeWidth={2.5} />
+    </span>
+  );
+}
 // Mobile only: everything through "Item" stays pinned in place (position:sticky) while the
 // rest of the entries table (Req Date onward) scrolls underneath — see the .freeze-* rules below.
 const FREEZE_COL_CLASS = {
@@ -1969,7 +1985,49 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [issuedQuery, setIssuedQuery]   = useState("");
   const [issuedEntries, setIssuedEntries] = useState([]);
   const [issuedLoading, setIssuedLoading] = useState(false);
-    const [reassignModal, setReassignModal] = useState(null);   // { row, username } — taking a PR from its current assignee needs a comment
+    const [headerMenu, setHeaderMenu] = useState(null);   // "data" | "user" | null — header dropdowns
+  const downloadBackup = async () => {
+                showToast("Preparing backup…", "info");
+                try {
+                  const res = await api.downloadBackup();
+                  if (!res.ok) { showToast("Backup download failed", "error"); return; }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `PWJ-FullBackup-${new Date().toISOString().substring(0,10)}.zip`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Backup downloaded ✅");
+                } catch { showToast("Backup download failed", "error"); }
+              };
+  const emailBackup = async () => {
+                showToast("Sending backup email…", "info");
+                try {
+                  const r = await api.triggerBackup();
+                  if (r.success) showToast("Backup emailed to admin ✅");
+                  else showToast(r.message || "Backup failed", "error");
+                } catch { showToast("Backup email failed", "error"); }
+              };
+  const restoreBackup = () => {
+                const input = document.createElement("input");
+                input.type = "file"; input.accept = ".zip";
+                input.onchange = async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (!window.confirm(`Restore from "${file.name}"?\n\nThis will OVERWRITE the current database and uploaded files. Make sure you have a recent backup before proceeding.`)) return;
+                  showToast("Restoring…", "info");
+                  try {
+                    const r = await api.restoreBackup(file);
+                    if (r.success) {
+                      showToast(`Restore complete — DB restored, ${r.data?.filesRestored || 0} file(s) recovered ✅`);
+                      setTimeout(() => window.location.reload(), 2000);
+                    } else showToast(r.message || "Restore failed", "error");
+                  } catch { showToast("Restore failed", "error"); }
+                };
+                input.click();
+              };
+  const [reassignModal, setReassignModal] = useState(null);   // { row, username } — taking a PR from its current assignee needs a comment
   const [reassignComment, setReassignComment] = useState("");
   const [closureReqModal, setClosureReqModal] = useState(null);   // the entry being closed
   const [closureReason, setClosureReason]     = useState("");
@@ -4026,6 +4084,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
       boxShadow: variant === "primary" ? "0 4px 12px rgba(37,99,235,.28)" : "0 1px 2px rgba(15,23,42,.05)",
       transition: "all .16s ease", letterSpacing: 0.1,
     }),
+    hMenu: { position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50, minWidth: 280, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 6, boxShadow: "0 18px 40px rgba(15,23,42,.14), 0 2px 6px rgba(15,23,42,.06)" },
+    hMenuItem: { display: "flex", alignItems: "flex-start", gap: 10, width: "100%", border: "none", background: "none", borderRadius: 8, padding: "9px 10px", textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: "#0f172a" },
+    hMenuSub: { display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginTop: 1 },
+    hMenuSep: { height: 1, background: "#f1f5f9", margin: "4px 6px" },
     // ── Stats ──
     statsRow: { display: "flex", gap: 12, padding: "20px 32px 0", overflowX: "auto" },
     statCard: (accent) => ({ background: "#ffffff", borderRadius: 12, padding: "18px 22px", minWidth: 136, flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}` }),
@@ -4112,6 +4174,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
         input:focus, select:focus, textarea:focus { border-color:#1e3a5f !important; box-shadow: 0 0 0 3px rgba(30,58,95,.08) !important; }
         .app-filterbar input::placeholder { color:#000; opacity:1; }
         .hbtn-hover:hover { background:#f1f5f9 !important; border-color:#b6c4d6 !important; color:#0f172a !important; transform:translateY(-1px); }
+        .hmenu-item:hover { background:#f1f5f9 !important; }
+        .hmenu-danger:hover { background:#fef2f2 !important; }
+        .hmenu-item b { font-weight:600; }
+        @media (max-width: 768px) { .app-hlabel { display:none !important; } .app-umenu { padding: 0 6px 0 4px !important; } .app-hright .hmenu-item { font-size: 13.5px !important; padding: 9px 10px !important; min-height: 0 !important; height: auto !important; } }
         .hbtn-danger-hover:hover { background:rgba(239,68,68,0.11) !important; border-color:rgba(239,68,68,0.32) !important; }
         .hbtn-primary-hover:hover { opacity:0.88; box-shadow:0 4px 16px rgba(37,99,235,0.38) !important; }
         @media (max-width: 768px) {
@@ -4222,76 +4288,41 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 🧪 Test Mode
               </div>
             )}
-            {/* Avatar + name + role — click to jump straight to the full "My Profile" page */}
-            <div className="app-hbadge" title="View my profile"
-              onClick={() => { setMainTab("hr"); setHrInitialTab("my-profile"); }}
-              style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 10, height: 42, boxSizing: "border-box", padding: "0 14px 0 5px", border: "1px solid #dbe3ee", boxShadow: "0 1px 2px rgba(15,23,42,.05)", cursor: "pointer" }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0, letterSpacing: 0 }}>
-                {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
+{/* Data & backup actions — one tidy menu instead of a row of buttons */}
+            {mainTab !== "hr" && (isAdmin || isProcurement || isVP) && (
+              <div style={{ position: "relative" }}>
+                <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={() => setHeaderMenu(m => m === "data" ? null : "data")}
+                  aria-haspopup="menu" aria-expanded={headerMenu === "data"} title="Export & backup">
+                  <Database size={16} strokeWidth={2} /> <span className="app-hlabel">Data</span> <ChevronDown size={15} strokeWidth={2.2} style={{ opacity: .6, transform: headerMenu === "data" ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+                </button>
+                {headerMenu === "data" && (
+                  <div role="menu" style={s.hMenu}>
+                    {(isAdmin || isProcurement) && (
+                      <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); exportCSV(); }}>
+                        <FileText size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <span><b>Export to CSV</b><small style={s.hMenuSub}>Current list, with filters</small></span>
+                      </button>
+                    )}
+                    {(isAdmin || isVP) && (<>
+                      {(isAdmin || isProcurement) && <div style={s.hMenuSep} />}
+                      <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); downloadBackup(); }}>
+                        <Download size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <span><b>Download backup</b><small style={s.hMenuSub}>ZIP of database, uploads & Excel</small></span>
+                      </button>
+                      <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); emailBackup(); }}>
+                        <Mail size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <span><b>Email backup</b><small style={s.hMenuSub}>Send the backup to the admin</small></span>
+                      </button>
+                      <div style={s.hMenuSep} />
+                      <button role="menuitem" className="hmenu-item hmenu-danger" style={{ ...s.hMenuItem, color: "#b91c1c" }} onClick={() => { setHeaderMenu(null); restoreBackup(); }}>
+                        <Upload size={16} strokeWidth={2} />
+                        <span><b>Restore from backup…</b><small style={{ ...s.hMenuSub, color: "#ef4444" }}>Overwrites current data</small></span>
+                      </button>
+                    </>)}
+                  </div>
+                )}
               </div>
-              <div style={{ lineHeight: 1.25 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: roleMeta.color, letterSpacing: 0.4, textTransform: "uppercase" }}>{user.designation || roleMeta.label}</div>
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 28, background: "#e2e8f0", margin: "0 6px" }} />
-
-            {/* Action buttons */}
-            {mainTab !== "hr" && (isAdmin || isProcurement) && (
-              <button className="hbtn-hover" style={s.hBtn("ghost")} onClick={exportCSV} title="Export CSV">
-                <Download size={16} strokeWidth={2} /> Export
-              </button>
             )}
-            {mainTab !== "hr" && (isAdmin || isVP) && (<>
-              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Download full backup ZIP (DB + uploads + Excel)" onClick={async () => {
-                showToast("Preparing backup…", "info");
-                try {
-                  const res = await api.downloadBackup();
-                  if (!res.ok) { showToast("Backup download failed", "error"); return; }
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `PWJ-FullBackup-${new Date().toISOString().substring(0,10)}.zip`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  showToast("Backup downloaded ✅");
-                } catch { showToast("Backup download failed", "error"); }
-              }}>
-                <Download size={16} strokeWidth={2} /> Backup
-              </button>
-              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Email backup to admin" onClick={async () => {
-                showToast("Sending backup email…", "info");
-                try {
-                  const r = await api.triggerBackup();
-                  if (r.success) showToast("Backup emailed to admin ✅");
-                  else showToast(r.message || "Backup failed", "error");
-                } catch { showToast("Backup email failed", "error"); }
-              }}>
-                <Mail size={16} strokeWidth={2} /> Email Backup
-              </button>
-              <button className="hbtn-hover" style={s.hBtn("ghost")} title="Restore system from a backup ZIP" onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file"; input.accept = ".zip";
-                input.onchange = async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  if (!window.confirm(`Restore from "${file.name}"?\n\nThis will OVERWRITE the current database and uploaded files. Make sure you have a recent backup before proceeding.`)) return;
-                  showToast("Restoring…", "info");
-                  try {
-                    const r = await api.restoreBackup(file);
-                    if (r.success) {
-                      showToast(`Restore complete — DB restored, ${r.data?.filesRestored || 0} file(s) recovered ✅`);
-                      setTimeout(() => window.location.reload(), 2000);
-                    } else showToast(r.message || "Restore failed", "error");
-                  } catch { showToast("Restore failed", "error"); }
-                };
-                input.click();
-              }}>
-                <Upload size={16} strokeWidth={2} /> Restore
-              </button>
-            </>)}
             {mainTab === "entries" && !isCeo && (
               <button className="hbtn-primary-hover" style={s.hBtn("primary")} onClick={() => {
                 setEditingEntry(null);
@@ -4302,10 +4333,45 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <Plus size={17} strokeWidth={2.2} /> New Entry
               </button>
             )}
-            <div style={{ width: 1, height: 28, background: "#e2e8f0", margin: "0 6px" }} />
-            <button className="hbtn-hover hbtn-danger-hover" style={s.hBtn("danger")} onClick={handleLogout} title="Sign out">
-              <LogOut size={16} strokeWidth={2} /> Logout
-            </button>
+
+            <div style={{ width: 1, height: 28, background: "#e2e8f0", margin: "0 4px" }} />
+
+            {/* Account menu — avatar, name & role; profile and sign-out live inside */}
+            <div style={{ position: "relative" }}>
+              <button className="hbtn-hover app-umenu" onClick={() => setHeaderMenu(m => m === "user" ? null : "user")} aria-haspopup="menu" aria-expanded={headerMenu === "user"}
+                style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 10, height: 42, boxSizing: "border-box", padding: "0 10px 0 5px", border: "1px solid #dbe3ee", boxShadow: "0 1px 2px rgba(15,23,42,.05)", cursor: "pointer", fontFamily: "inherit" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                  {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="app-hlabel" style={{ lineHeight: 1.2, textAlign: "left" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.fullName || user.username}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.designation || roleMeta.label}</div>
+                </div>
+                <ChevronDown size={15} strokeWidth={2.2} style={{ color: "#94a3b8", transform: headerMenu === "user" ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+              </button>
+              {headerMenu === "user" && (
+                <div role="menu" style={{ ...s.hMenu, minWidth: 250 }}>
+                  <div style={{ padding: "10px 12px 12px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #f1f5f9", marginBottom: 4 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
+                      {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
+                      <div style={{ fontSize: 12.5, color: "#64748b" }}>@{user.username}</div>
+                      <span style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, fontWeight: 700, color: roleMeta.color, background: roleMeta.bg, borderRadius: 999, padding: "2px 8px", letterSpacing: .3 }}>{roleMeta.label}</span>
+                    </div>
+                  </div>
+                  <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); setMainTab("hr"); setHrInitialTab("my-profile"); }}>
+                    <UserCog size={16} strokeWidth={2} style={{ color: "#64748b" }} /> <span><b>My profile</b></span>
+                  </button>
+                  <div style={s.hMenuSep} />
+                  <button role="menuitem" className="hmenu-item hmenu-danger" style={{ ...s.hMenuItem, color: "#b91c1c" }} onClick={() => { setHeaderMenu(null); handleLogout(); }}>
+                    <LogOut size={16} strokeWidth={2} /> <span><b>Sign out</b></span>
+                  </button>
+                </div>
+              )}
+            </div>
+            {headerMenu && <div onClick={() => setHeaderMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />}
           </div>
         </div>
 
@@ -4708,10 +4774,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     )}
                     {/* OH Approval */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
-                      <span className="cell-badge" style={s.badge(APPROVAL_META[row.approvalStatus])}>
-                        <span style={s.dot(APPROVAL_META[row.approvalStatus]?.dot || "#94a3b8")} />
-                        {APPROVAL_META[row.approvalStatus]?.label || "—"}
-                      </span>
+                      <ApprovalIcon status={row.approvalStatus} />
                     </td>
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
@@ -6221,6 +6284,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </span>
                   )}
                 </div>
+                {paymentAvail && typeof paymentAvail === "object" && paymentAvail.pendingRequestId && (
+                  <div style={{ fontSize: 11.5, color: "#dc2626", fontWeight: 600, marginTop: 4 }}>
+                    A request of ₹{Number(paymentAvail.pendingAmount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })} for this PR is still pending approval — a new request can be sent once it is approved or rejected.
+                  </div>
+                )}
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved === false && (
                   <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>
                     Couldn’t resolve the PO total here — the amount cap is still enforced on submit.
@@ -6240,7 +6308,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>Stage payment</label>
-                <select style={s.select2 || s.input} value={paymentStage} onChange={e => setPaymentStage(e.target.value)}>
+                <select style={s.select2 || s.input} value={paymentStage} onChange={e => {
+                  setPaymentStage(e.target.value);
+                  // Final payment is always made against the Vendor Invoice
+                  if (e.target.value === "FINAL") setPaymentAgainstSel("VENDOR_INVOICE");
+                }}>
                   <option value="">— Select stage —</option>
                   {[["ADVANCE", "Advance"], ["STAGE_1", "Stage 1"], ["STAGE_2", "Stage 2"], ["STAGE_3", "Stage 3"], ["FINAL", "Final"]].map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
@@ -6257,12 +6329,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       : [["VENDOR_INVOICE", "Vendor Invoice"]];
                     return options.map(([val, lbl]) => {
                       const on = paymentAgainstSel === val;
+                      const locked = paymentStage === "FINAL" && val !== "VENDOR_INVOICE";
                       return (
-                        <label key={val}
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: "pointer",
+                        <label key={val} title={locked ? "Final payment is made against the Vendor Invoice" : undefined}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.5 : 1,
                             border: `1.5px solid ${on ? "#0f766e" : "#e2e8f0"}`, background: on ? "#f0fdfa" : "#fff",
                             color: on ? "#0f766e" : "#334155", fontSize: 13, fontWeight: 600 }}>
-                          <input type="radio" name="paymentMadeAgainst" checked={on}
+                          <input type="radio" name="paymentMadeAgainst" checked={on} disabled={locked}
                             onChange={() => setPaymentAgainstSel(val)} />
                           {lbl}
                         </label>
@@ -6278,6 +6351,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <button style={s.submitBtn("linear-gradient(135deg,#0f766e,#14b8a6)")}
                 disabled={paymentLoading || !paymentAmount || Number(paymentAmount) <= 0
+                  || (paymentAvail && typeof paymentAvail === "object" && !!paymentAvail.pendingRequestId)
                   || (paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved !== false
                       && Number(paymentAmount) > Number(paymentAvail.available || 0))}
                 onClick={async () => {
