@@ -768,25 +768,25 @@ function LoginPage({ onLogin, logoutMessage }) {
         .lg-wrap { min-height:100vh; display:flex; font-family:'DM Sans',sans-serif; background:#f6f8fb; }
         .lg-art { flex:1; position:relative; overflow:hidden; color:#fff;
           background:radial-gradient(120% 90% at 50% 40%, #12305a 0%, #0a1c36 55%, #061226 100%); }
-        .lg-side { flex:0 0 clamp(420px, 36vw, 520px); display:flex; align-items:center; justify-content:center; padding:40px 44px; box-shadow:-24px 0 60px rgba(6,18,38,.25); position:relative; z-index:1; }
-        .lg-form { width:100%; max-width:400px; animation:lgFade .5s cubic-bezier(.22,1,.36,1) both; }
+        .lg-side { flex:0 0 clamp(460px, 38vw, 560px); display:flex; align-items:center; justify-content:center; padding:40px 44px; box-shadow:-24px 0 60px rgba(6,18,38,.25); position:relative; z-index:1; }
+        .lg-form { width:100%; max-width:440px; animation:lgFade .5s cubic-bezier(.22,1,.36,1) both; }
         .lg-input {
           width:100%; background:#fff; border:1.5px solid #dbe3ee; border-radius:12px;
-          padding:14px 16px 14px 46px; font-size:15px; outline:none; font-family:inherit;
+          padding:19px 16px 19px 58px; font-size:24px; outline:none; font-family:inherit;
           box-sizing:border-box; color:#0f172a; transition:border-color .2s, box-shadow .2s;
         }
         .lg-input::placeholder { color:#9aa8bb; }
         .lg-input:focus { border-color:#1d6fc4; box-shadow:0 0 0 4px rgba(29,111,196,.12); }
         .lg-input:-webkit-autofill { -webkit-box-shadow:0 0 0 1000px #fff inset !important; -webkit-text-fill-color:#0f172a !important; }
         .lg-btn {
-          width:100%; border:none; border-radius:12px; padding:15px; font-weight:700; font-size:15.5px;
+          width:100%; border:none; border-radius:12px; padding:15px; font-weight:700; font-size:19px;
           cursor:pointer; font-family:inherit; letter-spacing:.3px; color:#fff;
           background:linear-gradient(135deg,#0f2f57,#1d6fc4); box-shadow:0 8px 22px rgba(15,47,87,.25);
           transition:transform .15s, box-shadow .15s;
         }
         .lg-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 12px 28px rgba(15,47,87,.32); }
         .lg-btn:disabled { opacity:.65; cursor:not-allowed; }
-        .lg-label { font-size:13px; font-weight:700; color:#334155; display:block; margin-bottom:8px; }
+        .lg-label { font-size:22.5px; font-weight:700; color:#334155; display:block; margin-bottom:8px; }
         .lg-ghost { flex:1; background:#fff; border:1px solid #dbe3ee; border-radius:8px; padding:9px; color:#475569; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
         @media (max-width: 900px) {
           .lg-wrap { flex-direction:column; }
@@ -944,12 +944,12 @@ function LoginPage({ onLogin, logoutMessage }) {
           {/* brand + message */}
           <div style={{ position:"relative", zIndex:1, height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"44px 52px" }}>
             <div />
-            <div className="lg-art-copy" style={{ maxWidth:460 }}>
-              <div className="lg-rise" style={{ fontSize:12.5, fontWeight:700, letterSpacing:2.4, textTransform:"uppercase", color:"#7dd3fc", marginBottom:14, animationDelay:"1.4s" }}>Interior Fit-out · Project Delivery</div>
-              <div className="lg-rise" style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:38, fontWeight:800, lineHeight:1.15, letterSpacing:"-0.8px", animationDelay:"1.6s" }}>
+            <div className="lg-art-copy" style={{ maxWidth:640 }}>
+              <div className="lg-rise" style={{ fontSize:16, fontWeight:700, letterSpacing:2.4, textTransform:"uppercase", color:"#7dd3fc", marginBottom:14, animationDelay:"1.4s" }}>Interior Fit-out · Project Delivery</div>
+              <div className="lg-rise" style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:54, fontWeight:800, lineHeight:1.1, letterSpacing:"-0.8px", animationDelay:"1.6s" }}>
                 Designing spaces.<br/>Delivering on time.
               </div>
-              <div className="lg-rise" style={{ fontSize:15.5, color:"rgba(255,255,255,.7)", lineHeight:1.6, marginTop:14, animationDelay:"1.85s" }}>
+              <div className="lg-rise" style={{ fontSize:20.5, color:"rgba(255,255,255,.78)", lineHeight:1.55, marginTop:18, animationDelay:"1.85s" }}>
                 Projects, procurement, planning and people — one workspace for every Happizo site.
               </div>
             </div>
@@ -963,8 +963,8 @@ function LoginPage({ onLogin, logoutMessage }) {
               <img src="/happizo-logo.png" alt="Happizo" style={{ width:240, maxWidth:"80%", height:"auto" }} />
             </div>
 
-            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#0f172a", letterSpacing:"-0.6px" }}>Welcome back</div>
-            <div style={{ fontSize:15, color:"#64748b", marginTop:6, marginBottom:30 }}>Sign in to <b style={{ color:"#1d6fc4" }}>Happizo CloudDesk</b></div>
+            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:42, fontWeight:800, color:"#0f172a", letterSpacing:"-0.6px" }}>Welcome back</div>
+            <div style={{ fontSize:20, color:"#64748b", marginTop:6, marginBottom:30 }}>Sign in to <b style={{ color:"#1d6fc4" }}>Happizo CloudDesk</b></div>
 
             {error && (
               <div style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#b91c1c", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
@@ -1017,7 +1017,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               <div style={{ marginBottom:18 }}>
                 <label className="lg-label">Username</label>
                 <div style={{ position:"relative" }}>
-                  <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18 }} viewBox="0 0 24 24" fill="none" stroke={focused === "u" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <svg style={{ position:"absolute", left:19, top:"50%", transform:"translateY(-50%)", width:24, height:24 }} viewBox="0 0 24 24" fill="none" stroke={focused === "u" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <input className="lg-input" type="text" placeholder="Enter your username"
                     value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
                     onFocus={() => setFocused("u")} onBlur={() => setFocused(null)} autoComplete="username" />
@@ -1027,15 +1027,15 @@ function LoginPage({ onLogin, logoutMessage }) {
               <div style={{ marginBottom:26 }}>
                 <label className="lg-label">Password</label>
                 <div style={{ position:"relative" }}>
-                  <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18 }} viewBox="0 0 24 24" fill="none" stroke={focused === "p" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <svg style={{ position:"absolute", left:19, top:"50%", transform:"translateY(-50%)", width:24, height:24 }} viewBox="0 0 24 24" fill="none" stroke={focused === "p" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   <input className="lg-input" type={showPw ? "text" : "password"} placeholder="Enter your password"
                     value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                     onFocus={() => setFocused("p")} onBlur={() => setFocused(null)}
                     autoComplete="current-password" style={{ paddingRight:48 }} />
                   <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"#94a3b8", display:"flex", alignItems:"center", lineHeight:1 }}>
                     {showPw
-                      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     }
                   </button>
                 </div>
@@ -1055,7 +1055,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               </button>
             </form>
 
-            <div style={{ marginTop:36, fontSize:13, color:"#94a3b8", textAlign:"center" }}>
+            <div style={{ marginTop:36, fontSize:15.5, color:"#94a3b8", textAlign:"center" }}>
               © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
             </div>
           </div>
