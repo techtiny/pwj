@@ -721,194 +721,259 @@ function LoginPage({ onLogin, logoutMessage }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [browserConflict, deviceConflict]);
 
+  // One-point-perspective interior (vanishing point 400,430; back wall 230-570 × 300-560).
+  // A point on a side/floor/ceiling plane at depth factor f maps to VP + (backPoint − VP) × f.
+  const VX = 400, VY = 430;
+  const P = (bx, by, f) => `${VX + (bx - VX) * f},${VY + (by - VY) * f}`;
+
   return (
     <>
       <style>{`
-        @keyframes bgMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-        @keyframes cardIn { from{opacity:0;transform:translateY(32px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes pulse { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
         @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes orb1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-20px)} 66%{transform:translate(-20px,15px)} }
-        @keyframes orb2 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-25px,20px)} 66%{transform:translate(20px,-15px)} }
+        @keyframes lgFade { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes lgGlow { 0%,100%{opacity:.55} 50%{opacity:.95} }
+        @keyframes lgDraw { to { stroke-dashoffset:0 } }
+        @keyframes lgIn { from{opacity:0} to{opacity:1} }
+        @keyframes lgDrift { 0%{transform:scale(1) translate(0,0)} 100%{transform:scale(1.07) translate(-1.5%,-1%)} }
+        @keyframes lgSway { 0%,100%{transform:rotate(-1.6deg)} 50%{transform:rotate(1.6deg)} }
+        @keyframes lgDust { 0%{transform:translateY(0);opacity:0} 15%{opacity:.8} 100%{transform:translateY(-260px);opacity:0} }
+        @keyframes lgRise { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        .lg-scene { transform-origin:50% 45%; animation:lgDrift 26s ease-in-out infinite alternate; }
+        .lg-draw path, .lg-draw rect { stroke-dasharray:2400; stroke-dashoffset:2400; animation:lgDraw 2.8s cubic-bezier(.65,0,.35,1) forwards; }
+        .lg-draw .d2 path, .lg-draw .d2 rect, .lg-draw path.d2, .lg-draw rect.d2 { animation-delay:.6s; }
+        .lg-draw .d3 path, .lg-draw .d3 rect, .lg-draw path.d3, .lg-draw rect.d3 { animation-delay:1.2s; }
+        .lg-late { opacity:0; animation:lgIn 1.2s ease 2s forwards; }
+        .lg-rise { opacity:0; animation:lgRise .9s cubic-bezier(.22,1,.36,1) forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .lg-scene, .lg-draw path, .lg-draw rect, .lg-late, .lg-rise, .lg-sway, .lg-dust { animation:none !important; stroke-dashoffset:0 !important; opacity:1 !important; }
+        }
+        .lg-wrap { min-height:100vh; display:flex; font-family:'DM Sans',sans-serif; background:#f6f8fb; }
+        .lg-art { flex:1.15; position:relative; overflow:hidden; color:#fff;
+          background:radial-gradient(120% 90% at 50% 40%, #12305a 0%, #0a1c36 55%, #061226 100%); }
+        .lg-side { flex:1; display:flex; align-items:center; justify-content:center; padding:48px 32px; }
+        .lg-form { width:100%; max-width:400px; animation:lgFade .5s cubic-bezier(.22,1,.36,1) both; }
         .lg-input {
-          width:100%; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.15);
-          border-radius:14px; padding:14px 18px 14px 48px; font-size:14.5px; outline:none;
-          font-family:inherit; box-sizing:border-box; color:#fff; transition:all .25s;
-          -webkit-text-fill-color: #fff;
+          width:100%; background:#fff; border:1.5px solid #dbe3ee; border-radius:12px;
+          padding:14px 16px 14px 46px; font-size:15px; outline:none; font-family:inherit;
+          box-sizing:border-box; color:#0f172a; transition:border-color .2s, box-shadow .2s;
         }
-        .lg-input::placeholder { color:rgba(255,255,255,.35); }
-        .lg-input:focus { background:rgba(255,255,255,.13); border-color:rgba(99,179,237,.7); box-shadow:0 0 0 4px rgba(99,179,237,.15); }
-        .lg-input:-webkit-autofill,
-        .lg-input:-webkit-autofill:hover,
-        .lg-input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px rgba(15,60,110,.9) inset !important;
-          -webkit-text-fill-color: #fff !important;
-          border-color: rgba(255,255,255,.15) !important;
-        }
+        .lg-input::placeholder { color:#9aa8bb; }
+        .lg-input:focus { border-color:#1d6fc4; box-shadow:0 0 0 4px rgba(29,111,196,.12); }
+        .lg-input:-webkit-autofill { -webkit-box-shadow:0 0 0 1000px #fff inset !important; -webkit-text-fill-color:#0f172a !important; }
         .lg-btn {
-          width:100%; border:none; border-radius:14px; padding:15px; font-weight:700;
-          font-size:15px; cursor:pointer; font-family:inherit; letter-spacing:.4px;
-          background:linear-gradient(135deg,#38bdf8,#1a6ab1,#0f4c81);
-          background-size:200% 200%; animation:bgMove 4s ease infinite;
-          color:#fff; transition:transform .18s,box-shadow .18s; margin-top:8px;
-          box-shadow:0 4px 20px rgba(56,189,248,.3);
+          width:100%; border:none; border-radius:12px; padding:15px; font-weight:700; font-size:15.5px;
+          cursor:pointer; font-family:inherit; letter-spacing:.3px; color:#fff;
+          background:linear-gradient(135deg,#0f2f57,#1d6fc4); box-shadow:0 8px 22px rgba(15,47,87,.25);
+          transition:transform .15s, box-shadow .15s;
         }
-        .lg-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 32px rgba(56,189,248,.45); }
-        .lg-btn:active:not(:disabled) { transform:translateY(0); }
-        .lg-btn:disabled { opacity:.6; cursor:not-allowed; animation:none; background:#1a6ab1; }
-        .lg-label { font-size:11px; font-weight:700; color:rgba(255,255,255,.5); letter-spacing:1.2px; text-transform:uppercase; display:block; margin-bottom:8px; }
-        @media(max-width:600px){
-          .lg-card { padding:36px 24px !important; margin:16px !important; }
-          .lg-logo-row { gap:10px !important; }
+        .lg-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 12px 28px rgba(15,47,87,.32); }
+        .lg-btn:disabled { opacity:.65; cursor:not-allowed; }
+        .lg-label { font-size:13px; font-weight:700; color:#334155; display:block; margin-bottom:8px; }
+        .lg-ghost { flex:1; background:#fff; border:1px solid #dbe3ee; border-radius:8px; padding:9px; color:#475569; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
+        @media (max-width: 900px) {
+          .lg-wrap { flex-direction:column; }
+          .lg-art { flex:none; height:max(52vw, 200px); }
+          .lg-art-copy { display:none !important; }
+          .lg-art-svg { inset:auto !important; left:0; top:-18.75vw; width:100% !important; height:auto !important; aspect-ratio:8/9; }
+          .lg-side { flex:1; align-items:flex-start; padding:0 20px 28px; margin-top:-34px; position:relative; z-index:2; }
+          .lg-form { background:#fff; border-radius:22px; padding:24px 20px 22px; box-shadow:0 14px 40px rgba(15,47,87,.16); }
+          .lg-logo-row { margin:-18px 0 -14px !important; }
+          .lg-logo-row img { width:190px !important; }
         }
       `}</style>
 
-      {/* ── Background ── */}
-      <div style={{
-        minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
-        fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden",
-        background:"linear-gradient(145deg,#050d1a 0%,#071428 30%,#091e3a 60%,#0a2444 100%)"
-      }}>
-        {/* Animated orbs */}
-        <div style={{ position:"absolute", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,.18) 0%,transparent 70%)", top:"-10%", left:"-10%", animation:"orb1 12s ease-in-out infinite", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,.14) 0%,transparent 70%)", bottom:"-10%", right:"-5%", animation:"orb2 15s ease-in-out infinite", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%)", top:"50%", right:"20%", animation:"orb1 10s ease-in-out infinite 2s", pointerEvents:"none" }} />
+      <div className="lg-wrap">
+        {/* ── Left: brand panel with interior perspective drawing ── */}
+        <div className="lg-art">
+          <svg className="lg-art-svg" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}
+            fill="none" stroke="rgba(186,230,253,.42)" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round">
+            <defs>
+              <linearGradient id="lgLamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(253,224,171,.32)" /><stop offset="100%" stopColor="rgba(253,224,171,0)" /></linearGradient>
+              <linearGradient id="lgWin" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(56,189,248,.22)" /><stop offset="100%" stopColor="rgba(56,189,248,.04)" /></linearGradient>
+              <linearGradient id="lgFadeB" x1="0" y1="0" x2="0" y2="1"><stop offset="45%" stopColor="rgba(6,18,38,0)" /><stop offset="100%" stopColor="rgba(6,18,38,.95)" /></linearGradient>
+            </defs>
 
-        {/* Grid pattern */}
-        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none" }} />
+            <g className="lg-scene">
+            {/* lines draw themselves in: structure → furnishings → details */}
+            <g className="lg-draw">
+              {/* room edges */}
+              <rect x="230" y="300" width="340" height="260" stroke="rgba(186,230,253,.6)" />
+              <path d={`M230 300 L${P(230,300,2.6)} M570 300 L${P(570,300,2.6)} M230 560 L${P(230,560,3.7)} M570 560 L${P(570,560,3.7)}`} />
 
-        {/* ── Card ── */}
-        <div className="lg-card" style={{
-          width:"100%", maxWidth:440, padding:"48px 44px",
-          background:"rgba(255,255,255,.04)", backdropFilter:"blur(24px)",
-          borderRadius:28, border:"1px solid rgba(255,255,255,.1)",
-          boxShadow:"0 32px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08)",
-          animation:"cardIn .5s cubic-bezier(.22,1,.36,1) both", position:"relative", zIndex:1
-        }}>
+              {/* floor grid */}
+              <g className="d2" stroke="rgba(186,230,253,.18)">
+                {[298,366,434,502].map(x => <path key={x} d={`M${x} 560 L${P(x,560,3.7)}`} />)}
+                {[1.22,1.5,1.9,2.5,3.3].map(f => <path key={f} d={`M${P(230,560,f)} L${P(570,560,f)}`} />)}
+              </g>
 
-          {/* Logo + Brand */}
-          <div className="lg-logo-row" style={{ display:"flex", alignItems:"center", gap:14, marginBottom:36 }}>
-            <div style={{ width:54, height:54, borderRadius:16, background:"linear-gradient(135deg,rgba(14,165,233,.3),rgba(15,76,129,.4))", border:"1.5px solid rgba(255,255,255,.15)", display:"flex", alignItems:"center", justifyContent:"center", padding:8, flexShrink:0 }}>
-              <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ width:"100%", objectFit:"contain", filter:"brightness(0) invert(1)" }} />
-            </div>
-            <div>
-              <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:18, color:"#fff", letterSpacing:.2 }}>HAPPIZO</div>
-              <div style={{ fontSize:12.5, color:"rgba(255,255,255,.4)", letterSpacing:1.4, textTransform:"uppercase", marginTop:1 }}>Infrastructure & Solutions</div>
-            </div>
-            <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", borderRadius:20, padding:"4px 10px" }}>
-              <span style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e", display:"inline-block", animation:"pulse 2s ease infinite" }} />
-              <span style={{ fontSize:12.5, color:"#4ade80", fontWeight:600 }}>Live</span>
+              {/* recessed ceiling panel */}
+              <path className="d2" d={`M${P(290,300,1.35)} L${P(510,300,1.35)} L${P(510,300,2.5)} L${P(290,300,2.5)} Z`} />
+
+              {/* back wall: window with mullions */}
+              <rect className="d2" x="290" y="325" width="220" height="130" fill="url(#lgWin)" stroke="rgba(186,230,253,.65)" />
+              <path className="d3" d="M363 325 V455 M437 325 V455 M290 390 H510" stroke="rgba(186,230,253,.45)" />
+
+              {/* back wall: sofa */}
+              <path className="d2" d="M285 560 V500 a10 10 0 0 1 10 -10 H505 a10 10 0 0 1 10 10 V560" fill="rgba(10,28,54,.85)" stroke="rgba(186,230,253,.6)" />
+              <path className="d3" d="M298 560 V522 H502 V560 M400 522 V490" />
+
+              {/* rug + coffee table */}
+              <path className="d3" d={`M${P(285,560,1.12)} L${P(515,560,1.12)} L${P(515,560,1.75)} L${P(285,560,1.75)} Z`} fill="rgba(56,189,248,.05)" stroke="rgba(186,230,253,.35)" />
+              <path className="d3" d={`M${P(345,560,1.3)} L${P(455,560,1.3)} L${P(455,560,1.5)} L${P(345,560,1.5)} Z`} stroke="rgba(186,230,253,.55)" transform="translate(0,-14)" />
+
+              {/* left wall: door */}
+              <path className="d2" d={`M${P(230,560,1.3)} L${P(230,370,1.3)} L${P(230,370,1.75)} L${P(230,560,1.75)}`} stroke="rgba(186,230,253,.55)" />
+
+              {/* right wall: shelving unit */}
+              <path className="d2" d={`M${P(570,340,1.22)} L${P(570,340,1.95)} L${P(570,540,1.95)} L${P(570,540,1.22)} Z`} stroke="rgba(186,230,253,.55)" />
+              <g className="d3">{[390,440,490].map(y => <path key={y} d={`M${P(570,y,1.22)} L${P(570,y,1.95)}`} />)}</g>
+            </g>
+
+            {/* details that fade in once the drawing is done */}
+            <g className="lg-late">
+              <path d={`M${P(230,300,1.08)} L${P(570,300,1.08)}`} strokeDasharray="3 5" stroke="rgba(186,230,253,.3)" />
+              <circle cx={VX + (230 - VX) * 1.68} cy={VY + (465 - VY) * 1.68} r="2.5" fill="rgba(186,230,253,.6)" stroke="none" />
+
+              {/* pendant lights — gently swaying from the ceiling, light cones breathing */}
+              {[330,470].map((x, i) => {
+                const top = i ? 180 : 165, y = i ? 300 : 285;
+                return (
+                  <g key={x} className="lg-sway" style={{ transformOrigin:`${x}px ${top}px`, animation:`lgSway ${7 + i * 1.5}s ease-in-out infinite` }}>
+                    <path d={`M${x} ${top} V${y}`} />
+                    <path d={`M${x-18} ${y+18} L${x-8} ${y} H${x+8} L${x+18} ${y+18} Z`} fill="rgba(253,224,171,.25)" stroke="rgba(253,224,171,.7)" />
+                    <path d={`M${x-18} ${y+18} L${x+18} ${y+18} L${x+62} ${y+150} L${x-62} ${y+150} Z`} fill="url(#lgLamp)" stroke="none" style={{ animation:`lgGlow ${5 + i}s ease-in-out infinite` }} />
+                  </g>
+                );
+              })}
+
+              {/* dust in the light */}
+              {[[300,520,0],[352,560,3],[455,540,1.5],[490,590,4.5],[400,600,6],[330,610,7.5]].map(([x,y,d], k) => (
+                <circle key={k} className="lg-dust" cx={x} cy={y} r={k % 2 ? 1.6 : 1.1} fill="rgba(253,224,171,.85)" stroke="none"
+                  style={{ animation:`lgDust ${9 + (k % 3) * 2}s linear ${d}s infinite` }} />
+              ))}
+            </g>
+            </g>
+
+            <rect x="0" y="0" width="800" height="900" fill="url(#lgFadeB)" stroke="none" />
+          </svg>
+
+          {/* brand + message */}
+          <div style={{ position:"relative", zIndex:1, height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"44px 52px" }}>
+            <div />
+            <div className="lg-art-copy" style={{ maxWidth:460 }}>
+              <div className="lg-rise" style={{ fontSize:12.5, fontWeight:700, letterSpacing:2.4, textTransform:"uppercase", color:"#7dd3fc", marginBottom:14, animationDelay:"1.4s" }}>Interior Fit-out · Project Delivery</div>
+              <div className="lg-rise" style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:38, fontWeight:800, lineHeight:1.15, letterSpacing:"-0.8px", animationDelay:"1.6s" }}>
+                Designing spaces.<br/>Delivering on time.
+              </div>
+              <div className="lg-rise" style={{ fontSize:15.5, color:"rgba(255,255,255,.7)", lineHeight:1.6, marginTop:14, animationDelay:"1.85s" }}>
+                Projects, procurement, planning and people — one workspace for every Happizo site.
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Heading */}
-          <div style={{ marginBottom:32 }}>
-            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#fff", letterSpacing:"-0.8px", lineHeight:1.15 }}>
-              Sign in to<br/>
-              <span style={{ background:"linear-gradient(90deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Happizo CloudDesk</span>
+        {/* ── Right: sign-in ── */}
+        <div className="lg-side">
+          <div className="lg-form">
+            <div className="lg-logo-row" style={{ display:"flex", justifyContent:"center", margin:"-26px 0 -18px" }}>
+              <img src="/happizo-logo.png" alt="Happizo" style={{ width:240, maxWidth:"80%", height:"auto" }} />
             </div>
-          </div>
 
-          {/* Error */}
-          {error && (
-            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.3)", color:"#fca5a5", borderRadius:12, padding:"11px 16px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ fontSize:15, flexShrink:0 }}>⚠</span> {error}
-            </div>
-          )}
+            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, color:"#0f172a", letterSpacing:"-0.6px" }}>Welcome back</div>
+            <div style={{ fontSize:15, color:"#64748b", marginTop:6, marginBottom:30 }}>Sign in to <b style={{ color:"#1d6fc4" }}>Happizo CloudDesk</b></div>
 
-          {/* Signed out by session conflict — shown instead of alert() */}
-          {logoutMessage && (
-            <div style={{ background:"rgba(59,130,246,.12)", border:"1px solid rgba(59,130,246,.35)", borderRadius:12, padding:"11px 16px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8, color:"#93c5fd" }}>
-              <span style={{ fontSize:15, flexShrink:0 }}>ℹ</span> {logoutMessage}
-            </div>
-          )}
-
-          {/* Different user already logged in this browser (same localStorage) */}
-          {browserConflict && (
-            <div style={{ background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.35)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-              <div style={{ color:"#fca5a5", fontWeight:700, fontSize:14, marginBottom:6 }}>Another User is Active on this Browser</div>
-              <div style={{ color:"rgba(255,255,255,.7)", fontSize:13, marginBottom:12 }}>
-                <b>{browserConflict.fullName}</b> is currently logged in on this browser. Only one user can be active at a time. Sign in to take over and end their session.
+            {error && (
+              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#b91c1c", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ flexShrink:0 }}>⚠</span> {error}
               </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <button type="button" onClick={forceBrowserLogin} disabled={loading}
-                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
-                  {loading ? "Signing in…" : "Sign In & End Their Session"}
-                </button>
-                <button type="button" onClick={() => setBrowserConflict(null)} disabled={loading}
-                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                  Cancel
-                </button>
+            )}
+
+            {/* Signed out by session conflict — shown instead of alert() */}
+            {logoutMessage && (
+              <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", color:"#1e40af", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ flexShrink:0 }}>ℹ</span> {logoutMessage}
               </div>
+            )}
+
+            {/* Different user already logged in this browser (same localStorage) */}
+            {browserConflict && (
+              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"14px 16px", marginBottom:20 }}>
+                <div style={{ color:"#b91c1c", fontWeight:700, fontSize:14, marginBottom:6 }}>Another User is Active on this Browser</div>
+                <div style={{ color:"#475569", fontSize:13.5, marginBottom:12 }}>
+                  <b>{browserConflict.fullName}</b> is currently logged in on this browser. Only one user can be active at a time. Sign in to take over and end their session.
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button type="button" onClick={forceBrowserLogin} disabled={loading}
+                    style={{ flex:1, background:"#dc2626", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                    {loading ? "Signing in…" : "Sign In & End Their Session"}
+                  </button>
+                  <button type="button" className="lg-ghost" onClick={() => setBrowserConflict(null)} disabled={loading}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Same user already logged in on another device (backend ALREADY_LOGGED_IN) */}
+            {deviceConflict && (
+              <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:10, padding:"14px 16px", marginBottom:20 }}>
+                <div style={{ color:"#92400e", fontWeight:700, fontSize:14, marginBottom:6 }}>Already Signed In on Another Device</div>
+                <div style={{ color:"#475569", fontSize:13.5, marginBottom:12 }}>
+                  Your account is currently active on another device or browser tab. Signing in here will end that session immediately.
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button type="button" onClick={forceDeviceLogin} disabled={loading}
+                    style={{ flex:1, background:"#d97706", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                    {loading ? "Signing in…" : "Sign In & End Other Session"}
+                  </button>
+                  <button type="button" className="lg-ghost" onClick={() => setDeviceConflict(false)} disabled={loading}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={submit}>
+              <div style={{ marginBottom:18 }}>
+                <label className="lg-label">Username</label>
+                <div style={{ position:"relative" }}>
+                  <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18 }} viewBox="0 0 24 24" fill="none" stroke={focused === "u" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input className="lg-input" type="text" placeholder="Enter your username"
+                    value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                    onFocus={() => setFocused("u")} onBlur={() => setFocused(null)} autoComplete="username" />
+                </div>
+              </div>
+
+              <div style={{ marginBottom:26 }}>
+                <label className="lg-label">Password</label>
+                <div style={{ position:"relative" }}>
+                  <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18 }} viewBox="0 0 24 24" fill="none" stroke={focused === "p" ? "#1d6fc4" : "#94a3b8"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input className="lg-input" type={showPw ? "text" : "password"} placeholder="Enter your password"
+                    value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    onFocus={() => setFocused("p")} onBlur={() => setFocused(null)}
+                    autoComplete="current-password" style={{ paddingRight:48 }} />
+                  <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"#94a3b8", display:"flex", alignItems:"center", lineHeight:1 }}>
+                    {showPw
+                      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
+              </div>
+
+              <button className="lg-btn" type="submit" disabled={loading}>
+                {loading
+                  ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" style={{ animation:"spin .8s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      Signing in…
+                    </span>
+                  : <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                      Sign In
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </span>
+                }
+              </button>
+            </form>
+
+            <div style={{ marginTop:36, fontSize:13, color:"#94a3b8", textAlign:"center" }}>
+              © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
             </div>
-          )}
-
-          {/* Same user already logged in on another device (backend ALREADY_LOGGED_IN) */}
-          {deviceConflict && (
-            <div style={{ background:"rgba(251,191,36,.12)", border:"1px solid rgba(251,191,36,.4)", borderRadius:12, padding:"14px 16px", marginBottom:20 }}>
-              <div style={{ color:"#fde68a", fontWeight:700, fontSize:14, marginBottom:6 }}>Already Signed In on Another Device</div>
-              <div style={{ color:"rgba(255,255,255,.7)", fontSize:13, marginBottom:12 }}>
-                Your account is currently active on another device or browser tab. Signing in here will end that session immediately.
-              </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <button type="button" onClick={forceDeviceLogin} disabled={loading}
-                  style={{ flex:1, background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
-                  {loading ? "Signing in…" : "Sign In & End Other Session"}
-                </button>
-                <button type="button" onClick={() => setDeviceConflict(false)} disabled={loading}
-                  style={{ flex:1, background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"9px", color:"rgba(255,255,255,.7)", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={submit}>
-            <div style={{ marginBottom:18 }}>
-              <label className="lg-label">Username</label>
-              <div style={{ position:"relative" }}>
-                <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18, opacity:.45 }} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input className="lg-input" type="text" placeholder="Enter your username"
-                  value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                  onFocus={() => setFocused("u")} onBlur={() => setFocused(null)} autoComplete="username" />
-              </div>
-            </div>
-
-            <div style={{ marginBottom:28 }}>
-              <label className="lg-label">Password</label>
-              <div style={{ position:"relative" }}>
-                <svg style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", width:18, height:18, opacity:.45 }} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input className="lg-input" type={showPw ? "text" : "password"} placeholder="Enter your password"
-                  value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  onFocus={() => setFocused("p")} onBlur={() => setFocused(null)}
-                  autoComplete="current-password" style={{ paddingRight:48 }} />
-                <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"rgba(255,255,255,.4)", display:"flex", alignItems:"center", lineHeight:1 }}>
-                  {showPw
-                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  }
-                </button>
-              </div>
-            </div>
-
-            <button className="lg-btn" type="submit" disabled={loading}>
-              {loading
-                ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" style={{ animation:"spin .8s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    Signing in…
-                  </span>
-                : <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                    Sign In
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </span>
-              }
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div style={{ marginTop:28, paddingTop:20, borderTop:"1px solid rgba(255,255,255,.07)", textAlign:"center", color:"rgba(255,255,255,.25)", fontSize:13 }}>
-            © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
           </div>
         </div>
       </div>

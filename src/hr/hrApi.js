@@ -198,6 +198,7 @@ export const performanceApi = {
   history: (employeeId)                          => api.get(`/employees/${employeeId}/remarks`),
   byDate:  (date)                                => api.get('/employees/remarks/by-date', { params: date ? { date } : {} }),
   add:     (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
+  rate:    (employeeId, remarkId, data)           => api.put(`/employees/${employeeId}/remarks/${remarkId}/rating`, data),
   appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
 };
 

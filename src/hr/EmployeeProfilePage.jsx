@@ -171,6 +171,15 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     finally { setBusy(null); }
   }
 
+  async function rateRemark(remarkId, n) {
+    setBusy("rate");
+    try {
+      await performanceApi.rate(id, remarkId, { rating: n, actionBy: user?.username, role: user?.role });
+      await loadRemarks();
+    } catch (e) { alert(e.response?.data?.message || "Could not save rating"); }
+    setBusy(null);
+  }
+
   async function submitAppeal(remarkId) {
     if (!appealText.trim()) { alert("Enter the reason for your appeal"); return; }
     setBusy("appeal");
@@ -194,7 +203,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const isMgmtEmp = /management/i.test(emp.department || "");
   const canManage = isReviewer && (!isMgmtEmp || user?.role === "CEO");
   const canSeeRemarks = canManage || isSelf;
-  const canAppeal = (r) => isSelf && !r.appealedAt && r.createdAt && Date.now() - new Date(r.createdAt).getTime() < 24 * 3600 * 1000;
+  const canAppeal = (r) => isSelf && !r.appealedAt && r.createdAt && Date.now() - new Date(r.createdAt).getTime() < 48 * 3600 * 1000;
+  // Needs a reviewer's star rating: unrated, and either appealed or the 48h appeal window has lapsed.
+  const needsRating = (r) => !r.rating && (r.appealedAt || (r.createdAt && Date.now() - new Date(r.createdAt).getTime() >= 48 * 3600 * 1000));
 
   return (
     <div className="hr-page ep-page" style={{ padding: "24px 32px", background: "#f1f5f9" }}>
@@ -327,7 +338,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       {/* Daily performance remark */}
       <div style={{ ...card, padding: "18px 20px", marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4, display: "flex", alignItems: "center", gap: 7 }}>📋 Performance Comments</div>
-        <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 14 }}>Add as many comments per day as needed.{isSelf && !canManage ? " You can appeal a comment within 24 hours of it being recorded; after that it stands as recorded." : ""}</div>
+        <div style={{ fontSize: 14, color: "#64748b", marginBottom: 14 }}>Add as many comments per day as needed.{isSelf && !canManage ? " You can appeal a comment within 48 hours of it being recorded; if you don't, a reviewer will set the final star rating." : ""}</div>
         {canManage ? (
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 12, padding: 14 }}>
             <div>
@@ -349,25 +360,31 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "#475569", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>History</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
               {remarks.map(r => (
-                <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: "1px solid #f8fafc" }}>
-                  <div className="ep-history-row" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", width: 84, flexShrink: 0, background: "#f1f5f9", borderRadius: 8, padding: "3px 8px", textAlign: "center" }}>{fmtDate(r.remarkDate)}</div>
-                  {r.rating ? <StarRating value={r.rating} readOnly /> : <span style={{ width: 79, flexShrink: 0 }} />}
-                  <div style={{ flex: 1, fontSize: 13, color: "#374151" }}>{r.notes || <span style={{ color: "#cbd5e1" }}>No note</span>}</div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, textAlign: "right" }}>{r.createdBy}<br />{r.createdAt ? new Date(r.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}</div>
+                <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 10 }}>
+                  <div className="ep-history-row" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#475569", background: "#e2e8f0", borderRadius: 8, padding: "3px 10px" }}>{fmtDate(r.remarkDate)}</span>
+                    {r.rating ? <StarRating value={r.rating} readOnly /> : null}
+                    <span style={{ fontSize: 12.5, color: "#94a3b8", marginLeft: "auto" }}>{r.createdBy}{r.createdAt ? " · " + new Date(r.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}</span>
                   </div>
+                  <div style={{ fontSize: 15, lineHeight: 1.5, color: "#1f2937" }}>{r.notes || <span style={{ color: "#cbd5e1" }}>No note</span>}</div>
                   {r.appealedAt && (
-                    <div style={{ marginLeft: 96, fontSize: 12.5, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 10px", color: "#92400e" }}>
+                    <div style={{ fontSize: 14, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px", color: "#92400e" }}>
                       <b>Appeal ({fmtDateTime(r.appealedAt)}):</b> {r.appealText}
                     </div>
                   )}
+                  {canManage && needsRating(r) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, color: "#b45309" }}>{r.appealedAt ? "Appealed — set final rating:" : "Not appealed in 48h — set final rating:"}</span>
+                      <StarRating value={0} onChange={(n) => rateRemark(r.id, n)} />
+                    </div>
+                  )}
                   {canAppeal(r) && appealFor !== r.id && (
-                    <div style={{ marginLeft: 96 }}>
+                    <div>
                       <button onClick={() => { setAppealFor(r.id); setAppealText(""); }} style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "4px 12px", fontSize: 12 }}>Raise appeal</button>
                     </div>
                   )}
                   {appealFor === r.id && (
-                    <div style={{ marginLeft: 96, display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
                       <textarea value={appealText} onChange={(e) => setAppealText(e.target.value)} placeholder="Why do you disagree with this comment?" style={{ ...inputS, flex: 1, minWidth: 200, minHeight: 40 }} />
                       <button onClick={() => submitAppeal(r.id)} disabled={busy === "appeal"} style={btn("#b45309")}>{busy === "appeal" ? "Submitting…" : "Submit"}</button>
                       <button onClick={() => setAppealFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
