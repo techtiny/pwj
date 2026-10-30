@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { attendanceApi, leaveApi, usersApi, employeeApi, performanceApi, fmtTime, fmtHours, fmtDate } from "./hrApi";
+import { attendanceApi, leaveApi, usersApi, employeeApi, performanceApi, fmtTime, fmtHours, fmtDate, fmtServerTime } from "./hrApi";
+import EmployeeProfilePage from "./EmployeeProfilePage";
+import { PerformanceFactorsTable, CategoryChip, Stars, CATEGORY_BY_KEY, PERF_CATEGORIES, scoreOf } from "./PerformanceFactors";
 
 // Everyone who checks in — all roles except VP / OH / CEO (mirrors AppUser.CHECKIN_ROLES on the backend).
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"];
@@ -16,6 +18,9 @@ const ROLE_LABELS = {
   PROCUREMENT_ENGINEER: "Procurement Engineer",
   BILLING_ENGINEER: "Billing Engineer",
 };
+
+const ROLE_SHORT = { VP: "VP", OH: "OH", CEO: "CEO", ADMIN: "Admin" };
+const roleLabel = (role) => (role ? ROLE_SHORT[role.toUpperCase()] || role : "");
 
 const LEAVE_STATUS = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
@@ -36,6 +41,14 @@ export default function HRDashboard({ user }) {
   const [todayRemarks, setTodayRemarks] = useState([]);       // all comments recorded today
   const [draft, setDraft]           = useState({});           // employeeId -> text being typed
   const [savingId, setSavingId]     = useState(null);
+  const [myRemarks, setMyRemarks]   = useState(null);          // logged-in user's own performance comments (null = no linked profile)
+  const [appeals, setAppeals]       = useState([]);            // reviewers: appeals awaiting ✓ / ✕
+  const [rejectFor, setRejectFor]   = useState(null);
+  const [rejectText, setRejectText] = useState("");
+  const [deciding, setDeciding]     = useState(null);
+  const [finRating, setFinRating]   = useState(0);
+  const [profileId, setProfileId]   = useState(null);          // team row clicked → show that employee's profile
+  const [finCategory, setFinCategory] = useState("");
   const isAdmin     = ["ADMIN","CEO","VP","OH"].includes(user?.role);
   const hidePersonal = ["VP","CEO","OH"].includes(user?.role);
 
@@ -46,11 +59,18 @@ export default function HRDashboard({ user }) {
     attendanceApi.getSummary(u).then(r => setAttSum(r.data?.data)).catch(() => {});
     leaveApi.summary(u).then(r => setLeaveSum(r.data?.data)).catch(() => {});
     leaveApi.myLeaves(u).then(r => setLeaves((r.data?.data || []).slice(0, 5))).catch(() => {});
+    // Own performance factors — every user whose login is linked to an Employee Master profile.
+    employeeApi.list().then(r => {
+      const list = r.data?.data || [];
+      if (isAdmin) setEmployees(list);
+      const mine = list.find(e => (e.linkedUsername || "").toLowerCase() === u.toLowerCase());
+      if (!mine) { setMyRemarks(null); return; }
+      performanceApi.history(mine.id).then(h => setMyRemarks(h.data?.data || [])).catch(() => setMyRemarks([]));
+    }).catch(() => {});
     if (isAdmin) {
       attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
       usersApi.getAll().then(r => setAllUsers(r.data?.data || [])).catch(() => {});
       leaveApi.pending().then(r => setPendingLeaves(r.data?.data || [])).catch(() => {});
-      employeeApi.list().then(r => setEmployees(r.data?.data || [])).catch(() => {});
       performanceApi.byDate().then(r => setTodayRemarks(r.data?.data || [])).catch(() => {});
     }
   }, [user?.username]);
@@ -79,6 +99,25 @@ export default function HRDashboard({ user }) {
     finally { setSavingId(null); }
   };
 
+  // ✓ accept (withdrawn) · ✕ reject + Rating/Category · RATE (no appeal in 48h) → Rating/Category
+  const decideAppeal = async (item, decision) => {
+    const r = item.remark;
+    if (decision === "REJECT" && !rejectText.trim()) { alert("Add a comment explaining why the appeal is not accepted"); return; }
+    if (decision === "RATE" && (!finRating || !finCategory)) { alert("Set the Rating and Category"); return; }
+    setDeciding(r.id);
+    try {
+      const by = user?.fullName || user?.username;
+      if (decision === "RATE") await performanceApi.rate(r.employeeId, r.id, { rating: finRating, category: finCategory, actionBy: by, role: user?.role });
+      else await performanceApi.decide(r.employeeId, r.id, { decision, comment: decision === "REJECT" ? rejectText : "", actionBy: by, role: user?.role });
+      setAppeals(list => list.filter(a => a.remark.id !== r.id));
+      setRejectFor(null); setRejectText("");
+    } catch (e) { alert(e.response?.data?.message || "Could not save decision"); }
+    finally { setDeciding(null); }
+  };
+  const openFinal = (id) => { setRejectFor(id); setRejectText(""); setFinRating(0); setFinCategory(""); };
+  // Appeals on management staff are CEO-only, same as the comments themselves.
+  const visibleAppeals = appeals.filter(a => user?.role === "CEO" || !/management/i.test(a.department || ""));
+
   const todayByUsername = new Map(todayAll.map(a => [a.username, a]));
   const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_")
     && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()) && !EXCLUDED_EMP_NOS.includes(u.employeeNumber));
@@ -100,8 +139,16 @@ export default function HRDashboard({ user }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
 
+  if (profileId) {
+    return <EmployeeProfilePage id={profileId} user={user} onBack={() => {
+      setProfileId(null);
+      performanceApi.byDate().then(r => setTodayRemarks(r.data?.data || [])).catch(() => {});
+    }} />;
+  }
+
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 148px)" }}>
+      <style>{`.hd-team-row:hover { background: #eff6ff !important; }`}</style>
 
       {/* Hero */}
       <div className="hr-hero" style={{
@@ -150,6 +197,13 @@ export default function HRDashboard({ user }) {
               <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Own performance factors (any user with a linked Employee Master profile) */}
+      {myRemarks && myRemarks.some(r => r.category) && (
+        <div style={{ marginBottom: 20 }}>
+          <PerformanceFactorsTable remarks={myRemarks} title="My Performance Factors" compact />
         </div>
       )}
 
@@ -220,11 +274,15 @@ export default function HRDashboard({ user }) {
                   // A synthetic leave-derived row (see AttendanceService.fillLeaveGaps) —
                   // approved leave for today, never a check-in to begin with.
                   const onLeave = !hasIn && a?.status === "ABSENT";
+                  const rowEmp = employeeByUsername.get((u.username || "").toLowerCase());
                   return (
-                    <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                    <tr key={u.id} className={rowEmp ? "hd-team-row" : undefined}
+                      onClick={rowEmp ? () => { setProfileId(rowEmp.id); window.scrollTo(0, 0); } : undefined}
+                      title={rowEmp ? `Open ${u.fullName}'s profile` : undefined}
+                      style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa", cursor: rowEmp ? "pointer" : "default" }}>
                       <td style={{ ...td, color: "#374151", width: 36 }}>{i + 1}</td>
                       <td style={{ ...td, color: "#475569", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
-                      <td style={{ ...td, fontWeight: 600, color: "#0f172a" }}>{u.fullName}</td>
+                      <td style={{ ...td, fontWeight: 600, color: rowEmp ? "#1d4ed8" : "#0f172a" }}>{u.fullName}</td>
                       <td style={{ ...td, color: "#374151" }}>{u.designation || ROLE_LABELS[u.role] || u.role}</td>
                       <td style={td}>{hasIn ? fmtTime(a.checkInTime) : <span style={{ color: "#374151" }}>—</span>}</td>
                       <td style={td}>{hasOut ? fmtTime(a.checkOutTime) : <span style={{ color: "#374151" }}>—</span>}</td>
@@ -239,7 +297,7 @@ export default function HRDashboard({ user }) {
                         </span>
                       </td>
                       <td style={{ ...td, color: "#374151" }}>{a?.totalMinutes ? fmtHours(a.totalMinutes) : <span style={{ color: "#374151" }}>—</span>}</td>
-                      <td style={{ ...td, verticalAlign: "top" }}>
+                      <td style={{ ...td, verticalAlign: "top", cursor: "default" }} onClick={(e) => e.stopPropagation()}>
                         {(() => {
                           const emp = employeeByUsername.get((u.username || "").toLowerCase());
                           if (!emp) return (
@@ -257,7 +315,7 @@ export default function HRDashboard({ user }) {
                             <div>
                               {list.slice(0, 2).map(r => (
                                 <div key={r.id} style={{ fontSize: 14, color: "#334155", marginBottom: 4, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                                  {r.notes} <span style={{ color: "#94a3b8", fontSize: 12.5 }}>· {fmtTime(r.createdAt)}{r.createdBy ? ` · ${r.createdBy}` : ""}</span>
+                                  {r.notes} <span style={{ color: "#94a3b8", fontSize: 12.5 }}>· {fmtServerTime(r.createdAt)}{(r.createdByRole || r.createdBy) ? ` · ${roleLabel(r.createdByRole) || r.createdBy}` : ""}</span>
                                 </div>
                               ))}
                               {list.length > 2 && <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 4 }}>+{list.length - 2} more today — see the profile</div>}

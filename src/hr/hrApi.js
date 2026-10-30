@@ -200,6 +200,9 @@ export const performanceApi = {
   add:     (employeeId, data)                     => api.post(`/employees/${employeeId}/remarks`, data),
   rate:    (employeeId, remarkId, data)           => api.put(`/employees/${employeeId}/remarks/${remarkId}/rating`, data),
   appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
+  acknowledge: (employeeId, remarkId, data)       => api.post(`/employees/${employeeId}/remarks/${remarkId}/acknowledge`, data),
+  decide:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/decision`, data),
+  pendingAppeals: ()                             => api.get('/employees/remarks/appeals/pending'),
 };
 
 export const usersApi = {
@@ -225,6 +228,16 @@ export function fmtTime(dt) {
 export function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Server LocalDateTime values are UTC without a zone suffix — parse them as UTC.
+export function serverDate(d) {
+  return new Date(typeof d === 'string' && !d.endsWith('Z') && !d.includes('+') ? d + 'Z' : d);
+}
+
+export function fmtServerTime(d) {
+  if (!d) return '—';
+  return serverDate(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 }
 
 export function fmtDateTime(d) {

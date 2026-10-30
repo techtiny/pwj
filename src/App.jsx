@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
@@ -731,6 +731,7 @@ function LoginPage({ onLogin, logoutMessage }) {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to{transform:rotate(360deg)} }
         @keyframes lgFade { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes lgGlow { 0%,100%{opacity:.55} 50%{opacity:.95} }
@@ -779,6 +780,13 @@ function LoginPage({ onLogin, logoutMessage }) {
           box-shadow:0 24px 60px rgba(15,47,87,.16), 0 2px 6px rgba(15,47,87,.06), inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(15,47,87,.05); }
         .lg-glass::before { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
           background:linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 38%); }
+        /* frosted-glass lettering: pale ice-blue gradient fill, bright top edge, soft depth */
+        .lg-glass-title { font-family:'Plus Jakarta Sans','Inter',sans-serif; font-size:clamp(22px, 5.4cqw, 50px); white-space:nowrap; font-weight:700; line-height:1.3; padding-bottom:.14em; letter-spacing:-.02em; word-spacing:.06em;
+          background:linear-gradient(180deg,#ffffff 0%,#e6f4ff 38%,#a9d8f7 72%,#7fb9e6 100%);
+          -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+          filter:drop-shadow(0 1px 0 rgba(255,255,255,.55)) drop-shadow(0 6px 18px rgba(56,189,248,.28)) drop-shadow(0 2px 3px rgba(2,8,23,.55)); }
+        .lg-glass-sub { font-family:'Plus Jakarta Sans','Inter',sans-serif; font-size:clamp(11px, 2.3cqw, 19px); white-space:nowrap; font-weight:400; line-height:1.6; letter-spacing:0; margin-top:16px;
+          padding-left:16px; border-left:2px solid rgba(125,211,252,.55); color:rgba(226,240,255,.82); text-shadow:0 1px 8px rgba(2,8,23,.5); }
         @keyframes lgShine { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
         .lg-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:44px; font-weight:800; letter-spacing:-1px; line-height:1.1;
           background:linear-gradient(100deg,#0f2f57 0%,#1d6fc4 18%,#38bdf8 34%,#6366f1 50%,#1d6fc4 66%,#38bdf8 82%,#0f2f57 100%);
@@ -1006,12 +1014,11 @@ function LoginPage({ onLogin, logoutMessage }) {
           {/* brand + message */}
           <div style={{ position:"relative", zIndex:1, height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"44px 52px" }}>
             <div />
-            <div className="lg-art-copy" style={{ maxWidth:640 }}>
-              <div className="lg-rise" style={{ fontSize:16, fontWeight:700, letterSpacing:2.4, textTransform:"uppercase", color:"#7dd3fc", marginBottom:14, animationDelay:"1.4s" }}>Interior Fit-out · Project Delivery</div>
-              <div className="lg-rise" style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:54, fontWeight:800, lineHeight:1.1, letterSpacing:"-0.8px", animationDelay:"1.6s" }}>
-                Designing spaces.<br/>Delivering on time.
+            <div className="lg-art-copy" style={{ width:"100%", containerType:"inline-size" }}>
+              <div className="lg-rise lg-glass-title" style={{ animationDelay:"1.6s" }}>
+                Designing spaces. Delivering on time.
               </div>
-              <div className="lg-rise" style={{ fontSize:20.5, color:"rgba(255,255,255,.78)", lineHeight:1.55, marginTop:18, animationDelay:"1.85s" }}>
+              <div className="lg-rise lg-glass-sub" style={{ animationDelay:"1.85s" }}>
                 Projects, procurement, planning and people — one workspace for every Happizo site.
               </div>
             </div>
@@ -1790,6 +1797,9 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
 function Dashboard({ user, onLogout: handleLogout }) {
   const isAdmin                    = user?.role === "ADMIN";
   const isProcurement              = user?.role === "PROCUREMENT";
+  // Procurement functions on a PR are limited to the person it is assigned to; everyone else (Admin, other
+  // procurement users, VP…) gets view-only. Unassigned PRs are view-only until Admin/VP assigns them.
+  const canProc = (r) => !!r?.allocatedTo && !!user?.username && r.allocatedTo.toLowerCase() === user.username.toLowerCase();
   const isEngineer                 = user?.role === "ENGINEER";
   const isVP                       = user?.role === "VP";
   const isOH                       = user?.role === "OH";
@@ -1932,6 +1942,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [pendingDocCount, setPendingDocCount]       = useState(0);
   // Manual PR closure: Admin requests (with a reason), VP approves/rejects
   const [allocBusy, setAllocBusy] = useState(null);
+  // Issued-items lookup: search the item lines of issued PRs (PO/WO/JO) of a project
+  const [issuedModal, setIssuedModal]   = useState(false);
+  const [issuedProject, setIssuedProject] = useState("");
+  const [issuedQuery, setIssuedQuery]   = useState("");
+  const [issuedEntries, setIssuedEntries] = useState([]);
+  const [issuedLoading, setIssuedLoading] = useState(false);
+  const [reassignModal, setReassignModal] = useState(null);   // { row, username } — taking a PR from its current assignee needs a comment
+  const [reassignComment, setReassignComment] = useState("");
   const [closureReqModal, setClosureReqModal] = useState(null);   // the entry being closed
   const [closureReason, setClosureReason]     = useState("");
   const [closureBusy, setClosureBusy]         = useState(false);
@@ -2369,6 +2387,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     }
     if (!createForm.unit || !createForm.quantity || !createForm.dateOfRequirement) {
       showToast("Unit, Quantity and Date of Requirement are required", "error"); return;
+    }
+    // Past dates can't be picked for a new requirement; an existing entry may keep its original date.
+    if (createForm.dateOfRequirement < new Date().toLocaleDateString("en-CA") && !(editingEntry && editingEntry.dateOfRequirement === createForm.dateOfRequirement)) {
+      showToast("Date of Requirement can't be in the past", "error"); return;
     }
     // BOQ quantity guard: this PR can't ask for more than the BOQ balance recorded for its BOQ item(s).
     let boqAlloc = null;
@@ -3015,14 +3037,67 @@ function Dashboard({ user, onLogout: handleLogout }) {
     .filter(u => (u.role === "PROCUREMENT" || u.role === "PROCUREMENT_ENGINEER") && u.active !== false && !u.isTestAccount && !u.exited)
     .sort((a, b) => (a.fullName || a.username).localeCompare(b.fullName || b.username)), [allUsers]);
 
-  const allocatePr = async (row, username) => {
+  const loadIssuedFor = async (project) => {
+    setIssuedProject(project); setIssuedEntries([]);
+    if (!project) return;
+    setIssuedLoading(true);
+    try {
+      const params = { page: 0, size: 5000, sortBy: "id", sortDir: "desc", projectName: project };
+      const res = isEngineer ? await api.getMyEntries(user.fullName || user.username, params) : await api.getEntries(params);
+      if (res.success) setIssuedEntries(res.data.content || []);
+      else showToast(res.message || "Could not load PRs", "error");
+    } catch { showToast("Network error", "error"); }
+    finally { setIssuedLoading(false); }
+  };
+
+  // One row per item line of every issued doc in the project (multi-vendor PRs contribute each approved vendor doc).
+  const issuedRows = useMemo(() => {
+    const out = [];
+    for (const e of issuedEntries) {
+      if (!(e.pwjIssued || e.docStatus === "VP_APPROVED")) continue;
+      let pd = {}; try { pd = JSON.parse(e.docData || "{}"); } catch {}
+      if (pd.clubbedWithId) continue;   // clubbed into another PR's doc — its item lines are listed under that PR
+      const docs = pd.multiVendor && Array.isArray(pd.docs) && pd.docs.length
+        ? pd.docs.filter(d => d.docStatus === "VP_APPROVED" || e.docStatus === "VP_APPROVED" && !d.docStatus)
+        : [{ ...pd, docNumber: e.docNumber || pd.docNumber, vendor: e.vendor }];
+      for (const d of docs) {
+        const lines = (d.items || []).filter(r => r.item?.trim());
+        const base = { entryId: e.id, docNumber: d.docNumber || e.docNumber || "", pwjType: e.pwjType, vendor: d.vendor || e.vendor || "", date: d.completionDate || e.deliveredDate || e.dateOfRequirement, status: e.status };
+        if (lines.length === 0) out.push({ ...base, item: e.materialRequired, spec: e.specification, unit: e.unit, qty: e.quantity, rate: "" });
+        else lines.forEach(r => out.push({ ...base, item: r.item.trim(), spec: r.spec || "", unit: r.unit || "", qty: r.qty, rate: r.rate }));
+      }
+    }
+    return out;
+  }, [issuedEntries]);
+  const issuedMatches = useMemo(() => {
+    const q = issuedQuery.trim().toLowerCase();
+    if (!q) return issuedRows;
+    return issuedRows.filter(r => [r.item, r.spec, r.vendor, r.docNumber, String(r.entryId)].some(v => String(v || "").toLowerCase().includes(q)));
+  }, [issuedRows, issuedQuery]);
+  const issuedTotals = useMemo(() => {
+    const m = new Map();
+    for (const r of issuedMatches) {
+      const k = `${r.item.trim().toLowerCase()}|${(r.unit || "").toLowerCase()}`;
+      const cur = m.get(k) || { item: r.item.trim(), unit: r.unit || "", qty: 0, prs: new Set() };
+      cur.qty += parseFloat(r.qty) || 0; cur.prs.add(r.entryId); m.set(k, cur);
+    }
+    return [...m.values()].sort((a, b) => b.qty - a.qty);
+  }, [issuedMatches]);
+
+  const allocatePr = async (row, username, comment) => {
     const u = procUsers.find(x => x.username === username);
+    // Taking a PR away from its current assignee: ask for a comment about them first (goes to their profile).
+    if (row.allocatedTo && row.allocatedTo.toLowerCase() !== (username || "").toLowerCase() && !comment) {
+      setReassignComment(""); setReassignModal({ row, username: username || "" });
+      return;
+    }
     setAllocBusy(row.id);
     try {
-      const r = await api.allocatePr(row.id, { username: username || "", name: u ? (u.fullName || u.username) : "", allocatedBy: user.fullName || user.username, role: user.role });
+      const r = await api.allocatePr(row.id, { username: username || "", name: u ? (u.fullName || u.username) : "", allocatedBy: user.fullName || user.username, role: user.role, comment: comment || "" });
       if (r.success) {
         setEntries(es => es.map(x => x.id === row.id ? { ...x, ...r.data } : x));
         showToast(username ? `PR #${row.id} allocated to ${u?.fullName || username} ✅` : `PR #${row.id} allocation cleared`);
+        setReassignModal(null); setReassignComment("");
       } else showToast(r.message || "Could not allocate", "error");
     } catch { showToast("Network error", "error"); }
     finally { setAllocBusy(null); }
@@ -3827,6 +3902,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
       if (sendPaymentModal) { e.preventDefault(); setSendPaymentModal(null); setSendPaymentDocNumber(""); return; }
       if (pwdModal)         { e.preventDefault(); setPwdModal(null); setNewPwd(""); return; }
       if (genDocModal)      { e.preventDefault(); setGenDocModal(false); return; }
+      if (issuedModal)      { e.preventDefault(); setIssuedModal(false); return; }
+      if (reassignModal)    { e.preventDefault(); setReassignModal(null); return; }
       if (closureReqModal)  { e.preventDefault(); setClosureReqModal(null); return; }
       if (closuresModal)    { e.preventDefault(); setClosuresModal(false); return; }
       if (pendingDocsModal) { e.preventDefault(); setPendingDocsModal(false); return; }
@@ -3842,7 +3919,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [docModal, docEditMode, assignModal, approvalModal, sendPaymentModal, pwdModal, genDocModal,
-      pendingDocsModal, closureReqModal, closuresModal, pendingModal, vpPendingModal, userMgmtModal, projectMgmtModal,
+      pendingDocsModal, closureReqModal, reassignModal, issuedModal, closuresModal, pendingModal, vpPendingModal, userMgmtModal, projectMgmtModal,
       addVendorPage, vendorModal, createModal, editingEntry, detailRow]);
 
   const submitChangePassword = async () => {
@@ -3906,19 +3983,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
     hBtn: (variant) => ({
       background: variant === "primary"
         ? "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)"
-        : variant === "danger"
-        ? "rgba(239,68,68,0.06)"
-        : "rgba(15,23,42,0.04)",
-      border: variant === "primary"
-        ? "none"
-        : variant === "danger"
-        ? "1px solid rgba(239,68,68,0.18)"
-        : "1px solid rgba(15,23,42,0.09)",
-      borderRadius: 50,
-      padding: variant === "primary" ? "11px 22px" : "10px 18px",
-      color: variant === "primary" ? "#fff" : variant === "danger" ? "#ef4444" : "#475569",
+        : variant === "danger" ? "#fff" : "#fff",
+      border: variant === "primary" ? "1px solid transparent"
+        : variant === "danger" ? "1px solid #fecaca" : "1px solid #dbe3ee",
+      borderRadius: 10, height: 42, boxSizing: "border-box",
+      padding: variant === "primary" ? "0 20px" : "0 15px",
+      color: variant === "primary" ? "#fff" : variant === "danger" ? "#dc2626" : "#334155",
       fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-      display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
+      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap",
+      boxShadow: variant === "primary" ? "0 4px 12px rgba(37,99,235,.28)" : "0 1px 2px rgba(15,23,42,.05)",
       transition: "all .16s ease", letterSpacing: 0.1,
     }),
     // ── Stats ──
@@ -4006,7 +4079,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         tr:hover td { background:#f8fafc !important; transition: background .1s; }
         input:focus, select:focus, textarea:focus { border-color:#1e3a5f !important; box-shadow: 0 0 0 3px rgba(30,58,95,.08) !important; }
         .app-filterbar input::placeholder { color:#000; opacity:1; }
-        .hbtn-hover:hover { background:rgba(15,23,42,0.09) !important; border-color:rgba(15,23,42,0.18) !important; color:#0f172a !important; }
+        .hbtn-hover:hover { background:#f1f5f9 !important; border-color:#b6c4d6 !important; color:#0f172a !important; transform:translateY(-1px); }
         .hbtn-danger-hover:hover { background:rgba(239,68,68,0.11) !important; border-color:rgba(239,68,68,0.32) !important; }
         .hbtn-primary-hover:hover { opacity:0.88; box-shadow:0 4px 16px rgba(37,99,235,0.38) !important; }
         @media (max-width: 768px) {
@@ -4120,8 +4193,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* Avatar + name + role — click to jump straight to the full "My Profile" page */}
             <div className="app-hbadge" title="View my profile"
               onClick={() => { setMainTab("hr"); setHrInitialTab("my-profile"); }}
-              style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(15,23,42,0.04)", borderRadius: 50, padding: "6px 16px 6px 7px", border: "1px solid rgba(15,23,42,0.08)", cursor: "pointer" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0, letterSpacing: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 10, height: 42, boxSizing: "border-box", padding: "0 14px 0 5px", border: "1px solid #dbe3ee", boxShadow: "0 1px 2px rgba(15,23,42,.05)", cursor: "pointer" }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0, letterSpacing: 0 }}>
                 {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
               </div>
               <div style={{ lineHeight: 1.25 }}>
@@ -4164,7 +4237,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   else showToast(r.message || "Backup failed", "error");
                 } catch { showToast("Backup email failed", "error"); }
               }}>
-                <Database size={16} strokeWidth={2} /> Email Backup
+                <Mail size={16} strokeWidth={2} /> Email Backup
               </button>
               <button className="hbtn-hover" style={s.hBtn("ghost")} title="Restore system from a backup ZIP" onClick={() => {
                 const input = document.createElement("input");
@@ -4184,7 +4257,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 };
                 input.click();
               }}>
-                <Database size={16} strokeWidth={2} /> Restore
+                <Upload size={16} strokeWidth={2} /> Restore
               </button>
             </>)}
             {mainTab === "entries" && !isCeo && (
@@ -4501,6 +4574,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ))}
             </select>
           )}
+          <button onClick={() => { setIssuedModal(true); fetchProjects(); if (projectF && projectF !== issuedProject) loadIssuedFor(projectF); }} title="Search the items of issued PRs, project-wise"
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#0f172a", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            📦 Issued Items
+          </button>
           <button onClick={fetchEntries} title="Refresh entries"
             style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0px 8px", fontSize: 36, cursor: "pointer", color: "#000", lineHeight: 1 }}>
             ↺
@@ -4607,7 +4684,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* PWJ — visible to Admin, Procurement, VP, OH, CEO, Project Manager; editable only by Admin/Procurement */}
                     {(isAdmin || isProcurement || isVP || isOH || isCeo || isProjectManager) && (
                       <td style={s.td} onClick={e => e.stopPropagation()}>
-                        {(isAdmin || isProcurement) ? (
+                        {canProc(row) ? (
                           <button
                             title={row.pwjIssued ? "PWJ Issued — click to unset" : "Not issued — click to mark issued"}
                             onClick={async () => {
@@ -4643,7 +4720,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
                       {row.status === "CLOSED" ? (
                         <span style={{ color: "#374151" }}>—</span>
-                      ) : isProcurement ? (
+                      ) : canProc(row) ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
                             const val = e.target.value;
@@ -4714,8 +4791,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                         {/* Once issued, "Add an Additional PO" lives inside the Doc Issued
                             modal itself (next to Edit/Send for VP Approval) instead of here. */}
-                        {(isAdmin || isProcurement) && !(row.pwjIssued || row.docStatus === "VP_APPROVED") && (
-                          isProcurement && row.approvalStatus !== "PROCEED" ? (
+                        {canProc(row) && !(row.pwjIssued || row.docStatus === "VP_APPROVED") && (
+                          row.approvalStatus !== "PROCEED" ? (
                             <button
                               disabled
                               title="OH approval pending — vendor can be assigned only after OH approves"
@@ -4730,7 +4807,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )
                         )}
-                        {(isAdmin || isProcurement) && row.vendor && row.pwjType && (() => {
+                        {(isAdmin || isProcurement || canProc(row)) && row.vendor && row.pwjType && (() => {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
@@ -4758,7 +4835,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
-                        {isProcurement && (row.pwjIssued || row.docStatus === "VP_APPROVED") && (() => {
+                        {canProc(row) && (row.pwjIssued || row.docStatus === "VP_APPROVED") && (() => {
                           // Multi-vendor/multi-PO entries (incl. Additional POs) have a per-doc
                           // value in docData.docs[] — only a VP-approved sub-doc can be sent for
                           // payment, and the modal lets Procurement pick which one.
@@ -4804,7 +4881,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
-                        {(isAdmin || isVP) && row.status === "OPEN" ? (
+                        {(isAdmin || isVP || isOH) && row.status === "OPEN" ? (
                           <select value={row.allocatedTo || ""} disabled={allocBusy === row.id}
                             onChange={e => allocatePr(row, e.target.value)} title="Allocate this PR to a procurement user"
                             style={{ border: `1.5px solid ${row.allocatedTo ? "#a5b4fc" : "#e2e8f0"}`, background: row.allocatedTo ? "#eef2ff" : "#fff", color: row.allocatedTo ? "#3730a3" : "#64748b", borderRadius: 7, padding: "4px 6px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", maxWidth: 150, cursor: "pointer" }}>
@@ -4853,7 +4930,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                   <span key={cid} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
                                     {ci > 0 && ","}
                                     #{cid}
-                                    {(isAdmin || isProcurement) && (
+                                    {canProc(row) && (
                                       <button title={`Unclub entry #${cid}`}
                                         style={{ border: "none", background: "none", color: "#7c3aed", cursor: "pointer", padding: "0 1px", fontSize: 11, lineHeight: 1 }}
                                         onClick={() => unclubEntry(cid)}>
@@ -5849,7 +5926,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* PR Clarity flow — Procurement asks Site Team for clarification.
                   Available on any PR at any stage, including newly created ones and
                   ones already OH-approved; never changes approvalStatus. */}
-              {(isAdmin || isProcurement) && (
+              {canProc(detailRow) && (
                 detailRow.dependency === "Site team" ? (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#f5f3ff", borderRadius: 8, border: "1px solid #ddd6fe", fontSize: 13, color: "#5b21b6" }}>
                     🏗️ Awaiting clarification from Site Team.
@@ -5905,7 +5982,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               )}
 
               {/* Visibility controls — only Admin or Procurement can share a PR with other engineers */}
-              {(isAdmin || isProcurement) && (
+              {canProc(detailRow) && (
                 <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 13, color: "#334155" }}>
@@ -6481,6 +6558,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <div style={s.formGroup}>
                   <label style={s.label}>Date of Requirement <span style={{color:"#ef4444"}}>*</span></label>
                   <input style={s.input} type="date" placeholder="Date of Requirement"
+                    min={new Date().toLocaleDateString("en-CA")}
                     value={createForm.dateOfRequirement || ""}
                     onChange={e => setCreateForm(f => ({ ...f, dateOfRequirement: e.target.value }))} />
                 </div>
@@ -7369,7 +7447,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ fontWeight: 700, textDecoration: "underline", marginBottom: 4 }}>
                                 {e.pwjType === "PO" ? "Date of Supply" : "Date of Completion"}
                               </div>
-                              {(isAdmin || isProcurement || isVP) && activeDocStatus !== "VP_APPROVED"
+                              {(canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED"
                                 ? <input type="date" value={docData.completionDate || ""}
                                     onChange={ev => saveCompletionDateInline(ev.target.value)}
                                     style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
@@ -7554,7 +7632,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               })}
                             </div>
                           )}
-                          {(isAdmin || isProcurement) ? (
+                          {canProc(e) ? (
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                               <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
                                 placeholder="Add a new remark for the site team…" rows={2}
@@ -7574,7 +7652,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     })()}
 
                     {/* Revision notice + actions for Procurement */}
-                    {(isAdmin || isProcurement) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
+                    {canProc(e) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
                       <div style={{ margin: "0 24px 0", padding: "14px 18px", background: "#fff7ed", border: "1.5px solid #fed7aa", borderRadius: 12 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                           ⚠️ VP Revision Request
@@ -7623,19 +7701,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           doc number (original + next letter), ready to fill in and save.
                           Only the base PO (doc index 0) can spawn an additional PO — an
                           additional PO itself is not eligible to spawn another one. */}
-                      {(isAdmin || isProcurement) && (e.pwjIssued || e.docStatus === "VP_APPROVED") && (!isMulti || safeIdx === 0) && (
+                      {canProc(e) && (e.pwjIssued || e.docStatus === "VP_APPROVED") && (!isMulti || safeIdx === 0) && (
                         <button onClick={() => addAdditionalPO(e)}
                           style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
                           ➕ Additional PO
                         </button>
                       )}
                       {/* Edit → Save → Send for VP Approval in order */}
-                      {(isAdmin || isProcurement) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
+                      {canProc(e) && activeDocStatus !== "VP_APPROVED" && !docEditMode && (
                         // e.pwjIssued is entry-level (set once the base PO is issued), not
                         // per-sub-doc — only apply it as a lock for single-doc entries, so an
                         // Additional PO's own still-Draft sub-doc isn't wrongly locked just
                         // because the base PO it was raised under is already issued.
-                        isProcurement && !isMulti && e.pwjIssued ? (
+                        canProc(e) && !isMulti && e.pwjIssued ? (
                           <button disabled title="PWJ issued — editing locked"
                             style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
                             🔒 Locked
@@ -7671,7 +7749,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           Cancel
                         </button>
                       </>)}
-                      {(isAdmin || isProcurement) && !docEditMode &&
+                      {canProc(e) && !docEditMode &&
                         activeDocStatus !== "PENDING_VP_APPROVAL" &&
                         activeDocStatus !== "VP_APPROVED" && (
                           <button onClick={sendDocForApproval} disabled={docLoading}
@@ -7745,7 +7823,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           ↩ Revoke Approval
                         </button>
                       )}
-                      {activeDocStatus === "VP_APPROVED" && isProcurement && (
+                      {activeDocStatus === "VP_APPROVED" && canProc(e) && (
                         <button onClick={sendDocToVendor} disabled={!e.vendorEmailEnabled}
                           title={!e.vendorEmailEnabled ? "Email not enabled by VP/Admin" : "Send document to vendor"}
                           style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -7766,6 +7844,107 @@ function Dashboard({ user, onLogout: handleLogout }) {
       )}
 
       {/* ─── VP PENDING DOC APPROVALS MODAL ─── */}
+      {issuedModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }} onClick={() => setIssuedModal(false)}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Issued items"
+            style={{ background: "#fff", borderRadius: 20, width: 1100, maxWidth: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: "#0f172a" }}>📦 Issued Items</div>
+                <div style={{ fontSize: 14, color: "#64748b", marginTop: 2 }}>Item lines of PRs already issued (PO / WO / JO) — pick a project, then search an item.</div>
+              </div>
+              <button onClick={() => setIssuedModal(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 10, width: 38, height: 38, fontSize: 18, cursor: "pointer", color: "#334155" }}>✕</button>
+            </div>
+            <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+              <select value={issuedProject} onChange={e => loadIssuedFor(e.target.value)}
+                style={{ border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", minWidth: 240, background: "#fff" }}>
+                <option value="">Select project…</option>
+                {projects.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input autoFocus value={issuedQuery} onChange={e => setIssuedQuery(e.target.value)} disabled={!issuedProject}
+                placeholder={issuedProject ? "Search item, specification, vendor, doc number or PR #…" : "Select a project first"}
+                style={{ flex: 1, minWidth: 240, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff" }} />
+            </div>
+            <div style={{ overflow: "auto", padding: "16px 24px 22px" }}>
+              {!issuedProject ? (
+                <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontSize: 15 }}>Select a project to see its issued items.</div>
+              ) : issuedLoading ? (
+                <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0", fontSize: 15 }}>Loading…</div>
+              ) : issuedRows.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontSize: 15 }}>No issued PRs in this project yet.</div>
+              ) : (<>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  <span style={{ fontSize: 14, color: "#475569" }}><b>{issuedMatches.length}</b> item line{issuedMatches.length === 1 ? "" : "s"} · <b>{new Set(issuedMatches.map(r => r.entryId)).size}</b> PR{new Set(issuedMatches.map(r => r.entryId)).size === 1 ? "" : "s"}</span>
+                  {issuedQuery.trim() && issuedTotals.slice(0, 6).map(t => (
+                    <span key={t.item + t.unit} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 11px", fontSize: 13, fontWeight: 700 }}>
+                      {t.item}: {Math.round(t.qty * 100) / 100} {t.unit}
+                    </span>
+                  ))}
+                </div>
+                {issuedMatches.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "#94a3b8", padding: "30px 0", fontSize: 15 }}>No issued item matches “{issuedQuery}”.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
+                    <thead>
+                      <tr>{["PR #", "Item", "Qty", "Vendor", "Doc No.", "Date", "Status"].map(h => (
+                        <th key={h} style={{ textAlign: "left", padding: "9px 10px", fontSize: 12.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: .4, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0 }}>{h}</th>
+                      ))}</tr>
+                    </thead>
+                    <tbody>
+                      {issuedMatches.map((r, i) => (
+                        <tr key={i} style={{ background: i % 2 ? "#fcfdff" : "#fff" }}>
+                          <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>#{r.entryId}</td>
+                          <td style={{ padding: "10px", fontSize: 14.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9" }}>
+                            <div style={{ fontWeight: 600 }}>{r.item}</div>
+                            {r.spec && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.spec}</div>}
+                          </td>
+                          <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.qty} {r.unit}</td>
+                          <td style={{ padding: "10px", fontSize: 14.5, color: "#334155", borderBottom: "1px solid #f1f5f9" }}>{r.vendor || "—"}</td>
+                          <td style={{ padding: "10px", fontSize: 14, color: "#334155", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.docNumber || "—"}{r.pwjType ? <span style={{ marginLeft: 6, fontSize: 11.5, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}</td>
+                          <td style={{ padding: "10px", fontSize: 14, color: "#475569", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{fmtDate(r.date)}</td>
+                          <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9" }}><span style={{ fontSize: 12.5, fontWeight: 700, color: r.status === "CLOSED" ? "#475569" : "#047857", background: r.status === "CLOSED" ? "#f1f5f9" : "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>{r.status === "CLOSED" ? "Closed" : "Open"}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reassignModal && (() => {
+        const old = reassignModal.row;
+        const target = procUsers.find(x => x.username === reassignModal.username);
+        return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 310, padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 18, width: 520, maxWidth: "100%", padding: 24, boxShadow: "0 30px 80px rgba(0,0,0,.3)" }} role="dialog" aria-label="Reassign PR">
+            <div style={{ fontWeight: 800, fontSize: 19, color: "#0f172a" }}>
+              {reassignModal.username ? `Reassign PR #${old.id}` : `Remove assignee from PR #${old.id}`}
+            </div>
+            <div style={{ fontSize: 14, color: "#475569", marginTop: 4, marginBottom: 14 }}>
+              {old.allocatedToName || old.allocatedTo} → {reassignModal.username ? (target?.fullName || reassignModal.username) : "unassigned"}.
+              Leave a comment about <b>{old.allocatedToName || old.allocatedTo}</b> — it is added to their profile as a performance comment, which they can accept or appeal within 48 hours.
+            </div>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Comment for {old.allocatedToName || old.allocatedTo} <span style={{ color: "#ef4444" }}>*</span></label>
+            <textarea autoFocus value={reassignComment} onChange={e => setReassignComment(e.target.value)} rows={4} maxLength={900}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && reassignComment.trim() && allocBusy !== old.id) { e.preventDefault(); allocatePr(old, reassignModal.username, reassignComment.trim()); } }}
+              placeholder="Why is this PR being taken from them? (e.g. no progress on vendor finalisation)"
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <button onClick={() => { setReassignModal(null); setReassignComment(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, background: "#f1f5f9", color: "#334155", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={() => allocatePr(old, reassignModal.username, reassignComment.trim())} disabled={allocBusy === old.id || !reassignComment.trim()}
+                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "inherit",
+                  background: reassignComment.trim() ? "#4338ca" : "#cbd5e1", cursor: reassignComment.trim() && allocBusy !== old.id ? "pointer" : "not-allowed" }}>
+                {allocBusy === old.id ? "Saving…" : reassignModal.username ? "Reassign & add comment" : "Remove & add comment"}
+              </button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
       {closureReqModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 310, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 18, width: 520, maxWidth: "100%", padding: 24, boxShadow: "0 30px 80px rgba(0,0,0,.3)" }} role="dialog" aria-label="Request manual closure">
@@ -8243,7 +8422,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {selectedIds.size > 0 && (
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 500, background: "linear-gradient(135deg,#0f172a,#1e3a5f)", borderRadius: 14, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,.35)" }}>
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
-          {(isAdmin || isProcurement) && (
+          {(isAdmin || isProcurement) && entries.filter(x => selectedIds.has(x.id)).every(canProc) && (
             <button onClick={async () => {
                 setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocVendors([""]); setGenDocPwjType("PO");
                 try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
