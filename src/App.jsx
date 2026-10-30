@@ -724,6 +724,8 @@ function LoginPage({ onLogin, logoutMessage }) {
   // One-point-perspective interior (vanishing point 400,430; back wall 230-570 × 300-560).
   // A point on a side/floor/ceiling plane at depth factor f maps to VP + (backPoint − VP) × f.
   const VX = 400, VY = 430;
+  // Ceiling grid cells holding LED panels: [x1, x2, depth1, depth2]
+  const LG_PANELS = [[290,345,1.64,1.93],[455,510,1.64,1.93],[345,400,2.21,2.5],[400,455,2.21,2.5],[290,345,2.21,2.5],[455,510,2.21,2.5]];
   const P = (bx, by, f) => `${VX + (bx - VX) * f},${VY + (by - VY) * f}`;
 
   return (
@@ -836,17 +838,32 @@ function LoginPage({ onLogin, logoutMessage }) {
               {/* back wall: window with mullions */}
               <rect className="d2" x="290" y="325" width="220" height="130" fill="url(#lgWin)" stroke="rgba(186,230,253,.65)" />
 
-              {/* back wall: sofa */}
-              <path className="d2" d="M285 560 V500 a10 10 0 0 1 10 -10 H505 a10 10 0 0 1 10 10 V560" fill="rgba(10,28,54,.85)" stroke="rgba(186,230,253,.6)" />
-              <path className="d3" d="M298 560 V522 H502 V560 M400 522 V490" />
+              {/* office grid ceiling (600×600 tiles) */}
+              <g className="d3" stroke="rgba(186,230,253,.22)">
+                {[345,400,455].map(x => <path key={x} d={`M${P(x,300,1.35)} L${P(x,300,2.5)}`} />)}
+                {[1.64,1.93,2.21].map(f => <path key={f} d={`M${P(290,300,f)} L${P(510,300,f)}`} />)}
+              </g>
 
-              {/* rug + coffee table */}
-              <path className="d3" d={`M${P(285,560,1.12)} L${P(515,560,1.12)} L${P(515,560,1.75)} L${P(285,560,1.75)} Z`} fill="rgba(56,189,248,.05)" stroke="rgba(186,230,253,.35)" />
-              <path className="d3" d={`M${P(345,560,1.3)} L${P(455,560,1.3)} L${P(455,560,1.5)} L${P(345,560,1.5)} Z`} stroke="rgba(186,230,253,.55)" transform="translate(0,-14)" />
+              {/* workstation: desk against the window wall */}
+              <path className="d2" d={`M280 505 L520 505 L${P(520,505,1.18)} L${P(280,505,1.18)} Z`} fill="rgba(12,34,64,.9)" stroke="rgba(186,230,253,.65)" />
+              <path className="d3" d={`M${P(280,505,1.18)} l0 4 L${P(520,509,1.18)} l0 -4 M${P(288,509,1.18)} L${P(288,560,1.18)} M${P(512,509,1.18)} L${P(512,560,1.18)} M282 509 L282 560 M518 509 L518 560`} />
 
-              {/* right wall: shelving unit */}
-              <path className="d2" d={`M${P(570,340,1.22)} L${P(570,340,1.95)} L${P(570,540,1.95)} L${P(570,540,1.22)} Z`} stroke="rgba(186,230,253,.55)" />
-              <g className="d3">{[390,440,490].map(y => <path key={y} d={`M${P(570,y,1.22)} L${P(570,y,1.95)}`} />)}</g>
+              {/* office chair (seen from behind, pulled up to the desk) */}
+              <g className="d3" stroke="rgba(186,230,253,.6)">
+                <rect x="374" y="516" width="52" height="50" rx="10" fill="rgba(12,34,64,.92)" />
+                <path d="M384 528 H416 M384 540 H416" stroke="rgba(186,230,253,.25)" />
+                <ellipse cx="400" cy="574" rx="34" ry="7" fill="rgba(12,34,64,.92)" />
+                <path d="M400 581 V600 M400 600 L368 607 M400 600 L432 607 M400 600 L384 614 M400 600 L416 614" />
+              </g>
+
+              {/* right wall: wall-mounted project dashboard screen */}
+              <path className="d2" d={`M${P(570,350,1.22)} L${P(570,350,1.9)} L${P(570,470,1.9)} L${P(570,470,1.22)} Z`} fill="rgba(12,34,64,.85)" stroke="rgba(186,230,253,.65)" />
+
+              {/* plant in the back-left corner */}
+              <g className="d3" stroke="rgba(134,239,172,.55)">
+                <path d="M238 560 L242 536 H262 L266 560 Z" fill="rgba(12,34,64,.9)" stroke="rgba(186,230,253,.55)" />
+                <path d="M252 536 C246 516 236 506 228 498 M252 536 C254 512 262 500 272 494 M252 536 C250 514 252 498 250 484 M252 536 C244 522 240 514 236 514 M252 536 C260 524 266 518 272 518" />
+              </g>
             </g>
 
             {/* details that fade in once the drawing is done */}
@@ -861,7 +878,8 @@ function LoginPage({ onLogin, logoutMessage }) {
                   <circle cx="462" cy="352" r="11" fill="rgba(254,240,138,.95)" stroke="none" />
                   <circle cx="462" cy="352" r="20" fill="rgba(254,240,138,.25)" stroke="none" />
                 </g>
-                <path d="M290 432 L325 414 L352 424 L392 400 L432 420 L466 406 L510 428 V455 H290 Z" fill="rgba(30,64,110,.55)" stroke="rgba(186,230,253,.35)" />
+                <path d="M290 455 V430 H304 V410 H320 V424 H334 V396 H350 V416 H366 V404 H382 V428 H396 V388 H412 V414 H428 V400 H444 V424 H458 V410 H474 V430 H490 V416 H510 V455 Z" fill="rgba(30,64,110,.65)" stroke="rgba(186,230,253,.35)" />
+                <path d="M338 404 h3 M344 404 h3 M338 412 h3 M400 396 h3 M406 396 h3 M400 404 h3 M406 412 h3 M432 408 h3 M352 424 h3 M462 418 h3" stroke="rgba(253,224,171,.7)" strokeWidth="2" />
               </g>
 
               {/* casement windows — two sashes hinged at the outer frame that swing open */}
@@ -881,14 +899,38 @@ function LoginPage({ onLogin, logoutMessage }) {
                 <rect x="230" y="300" width="340" height="260" fill="rgba(255,236,190,.05)" stroke="none" />
               </g>
 
-              {/* curtains — rod, two draped panels that slide open and closed */}
-              <path d="M272 318 H528" stroke="rgba(186,230,253,.7)" strokeWidth="2" />
-              {[["l",290,"M300 318 V472 M312 318 V472 M324 318 V472 M336 318 V472 M348 318 V472 M360 318 V472 M372 318 V472"],["r",400,"M410 318 V472 M422 318 V472 M434 318 V472 M446 318 V472 M458 318 V472 M470 318 V472 M482 318 V472"]].map(([side,x,folds]) => (
+              {/* vertical blinds — head rail and two stacks of slats that draw open and closed */}
+              <path d="M272 318 H528" stroke="rgba(186,230,253,.7)" strokeWidth="2.5" />
+              {[["l",290],["r",400]].map(([side,x]) => (
                 <g key={side} className={`lg-curtain ${side}`}>
-                  <path d={`M${x} 318 H${x+110} V472 H${x} Z`} fill="rgba(125,180,235,.20)" stroke="rgba(186,230,253,.55)" />
-                  <path d={folds} stroke="rgba(186,230,253,.28)" />
+                  <path d={`M${x} 320 H${x+110} V458 H${x} Z`} fill="rgba(160,200,240,.16)" stroke="rgba(186,230,253,.5)" />
+                  <path d={Array.from({length:13}, (_, k) => `M${x + 8 + k * 8} 320 V458`).join(" ")} stroke="rgba(186,230,253,.32)" />
                 </g>
               ))}
+
+              {/* dual monitors on the desk — screens glow with work */}
+              <g>
+                {[330,410].map((x, i) => (
+                  <g key={x}>
+                    <rect x={x} y="462" width="60" height="36" rx="2" fill="rgba(8,24,48,.95)" stroke="rgba(186,230,253,.75)" />
+                    <rect x={x + 3} y="465" width="54" height="30" fill={i ? "rgba(56,189,248,.18)" : "rgba(129,140,248,.18)"} stroke="none" />
+                    {i
+                      ? <path d={`M${x+8} 489 V483 M${x+16} 489 V476 M${x+24} 489 V480 M${x+32} 489 V471 M${x+40} 489 V474 M${x+48} 489 V468`} stroke="rgba(125,211,252,.85)" strokeWidth="3" />
+                      : <path d={`M${x+7} 471 h26 M${x+7} 477 h38 M${x+7} 483 h20 M${x+7} 489 h32`} stroke="rgba(199,210,254,.7)" strokeWidth="1.6" />}
+                    <path d={`M${x+30} 498 V505 M${x+20} 505 H${x+40}`} stroke="rgba(186,230,253,.7)" />
+                  </g>
+                ))}
+                <path d="M372 503 H428" stroke="rgba(186,230,253,.55)" strokeWidth="2" />
+              </g>
+
+              {/* dashboard content on the right-wall screen: progress bars + trend line */}
+              <g>
+                <path d={`M${P(570,358,1.25)} L${P(570,358,1.87)} L${P(570,462,1.87)} L${P(570,462,1.25)} Z`} fill="rgba(56,189,248,.12)" stroke="none" />
+                {[[1.32,40],[1.42,62],[1.52,48],[1.62,78],[1.72,66],[1.8,90]].map(([f,h]) => (
+                  <path key={f} d={`M${P(570,455,f)} L${P(570,455-h,f)}`} stroke="rgba(125,211,252,.8)" strokeWidth="5" />
+                ))}
+                <path d={`M${P(570,400,1.3)} L${P(570,388,1.45)} L${P(570,392,1.58)} L${P(570,372,1.72)} L${P(570,366,1.84)}`} stroke="rgba(253,224,171,.85)" strokeWidth="1.8" />
+              </g>
 
               {/* door on the left wall: swings out on its near-side hinge, revealing a lit hallway */}
               {(() => {
@@ -902,33 +944,36 @@ function LoginPage({ onLogin, logoutMessage }) {
                       <path d={spill} fill="rgba(253,224,171,.16)" stroke="none" />
                     </g>
                     <g className="lg-cycle lg-doorleaf">
-                      <path d={doorway} fill="rgba(30,64,110,.95)" stroke="rgba(186,230,253,.8)" strokeWidth="1.6" />
-                      <path d={`M${P(230,390,1.36)} L${P(230,445,1.36)} L${P(230,445,1.69)} L${P(230,390,1.69)} Z M${P(230,470,1.36)} L${P(230,540,1.36)} L${P(230,540,1.69)} L${P(230,470,1.69)} Z`} stroke="rgba(186,230,253,.35)" />
-                      <path d={`M${P(230,455,1.36)} L${P(230,478,1.36)}`} stroke="rgba(253,224,171,.9)" strokeWidth="2.4" />
+                      <path d={doorway} fill="rgba(125,180,235,.22)" stroke="rgba(186,230,253,.85)" strokeWidth="2.4" />
+                      <path d={`M${P(230,450,1.3)} L${P(230,450,1.75)} L${P(230,468,1.75)} L${P(230,468,1.3)} Z`} fill="rgba(226,232,240,.28)" stroke="none" />
+                      <path d={`M${P(230,425,1.37)} L${P(230,505,1.37)}`} stroke="rgba(226,232,240,.9)" strokeWidth="2.6" />
                     </g>
                     <path d={doorway} stroke="rgba(186,230,253,.55)" fill="none" />
                   </g>
                 );
               })()}
 
-              {/* recessed ceiling lighting: LED cove + downlights in the false ceiling, wall wash on the back wall — dims in daylight */}
+              {/* office lighting: LED cove + square LED ceiling panels + wall wash — dims in daylight */}
               <g className="lg-cycle" style={{ animationName:"lgLamp" }}>
                 <path d={`M${P(290,300,1.35)} L${P(510,300,1.35)} L${P(510,300,2.5)} L${P(290,300,2.5)} Z`} fill="none" stroke="rgba(253,224,171,.55)" strokeWidth="2.5" style={{ filter:"blur(1.5px)" }} />
                 <rect x="230" y="300" width="340" height="90" fill="url(#lgWash)" stroke="none" />
-                {[[320,1.55],[480,1.55],[320,2.15],[480,2.15]].map(([x,f]) => {
-                  const cx = VX + (x - VX) * f, cy = VY + (300 - VY) * f;
+                {LG_PANELS.map(([x1,x2,f1,f2]) => {
+                  const ix = (x2 - x1) * .14, jf = (f2 - f1) * .14;
+                  const q = `M${P(x1+ix,300,f1+jf)} L${P(x2-ix,300,f1+jf)} L${P(x2-ix,300,f2-jf)} L${P(x1+ix,300,f2-jf)} Z`;
+                  const cx = VX + ((x1 + x2) / 2 - VX) * ((f1 + f2) / 2), cy = VY + (300 - VY) * ((f1 + f2) / 2);
                   return (
-                    <g key={`${x}-${f}`}>
-                      <ellipse cx={cx} cy={cy} rx={4.5 * f} ry={1.6 * f} fill="rgba(255,244,214,.95)" stroke="none" />
-                      <ellipse cx={cx} cy={cy + 3 * f} rx={14 * f} ry={8 * f} fill="url(#lgHalo)" stroke="none" />
+                    <g key={`${x1}-${f1}`}>
+                      <path d={q} fill="rgba(255,248,230,.92)" stroke="none" />
+                      <ellipse cx={cx} cy={cy + 6} rx={34} ry={16} fill="url(#lgHalo)" stroke="none" />
                     </g>
                   );
                 })}
               </g>
-              {/* downlight fittings stay visible (unlit) during the day */}
-              {[[320,1.55],[480,1.55],[320,2.15],[480,2.15]].map(([x,f]) => (
-                <ellipse key={`f${x}-${f}`} cx={VX + (x - VX) * f} cy={VY + (300 - VY) * f} rx={4.5 * f} ry={1.6 * f} fill="none" stroke="rgba(186,230,253,.55)" />
-              ))}
+              {/* panel fittings stay visible (unlit) during the day */}
+              {LG_PANELS.map(([x1,x2,f1,f2]) => {
+                const ix = (x2 - x1) * .14, jf = (f2 - f1) * .14;
+                return <path key={`f${x1}-${f1}`} d={`M${P(x1+ix,300,f1+jf)} L${P(x2-ix,300,f1+jf)} L${P(x2-ix,300,f2-jf)} L${P(x1+ix,300,f2-jf)} Z`} fill="rgba(186,230,253,.06)" stroke="rgba(186,230,253,.5)" />;
+              })}
 
               {/* dust in the light */}
               {[[300,520,0],[352,560,3],[455,540,1.5],[490,590,4.5],[400,600,6],[330,610,7.5]].map(([x,y,d], k) => (
