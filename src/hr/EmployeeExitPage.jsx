@@ -151,7 +151,7 @@ export default function EmployeeExitPage({ user }) {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={th}>Emp No</th>
+                <th style={th}>Person Code</th>
                 <th style={th}>Employee</th>
                 <th style={th}>Role / Designation</th>
                 <th style={th}>Contact</th>
@@ -206,7 +206,7 @@ export default function EmployeeExitPage({ user }) {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={th}>Emp No</th>
+                <th style={th}>Person Code</th>
                 <th style={th}>Employee</th>
                 <th style={th}>Role</th>
                 <th style={th}>Exit Date</th>

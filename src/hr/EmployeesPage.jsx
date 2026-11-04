@@ -108,6 +108,11 @@ export default function EmployeesPage({ user }) {
   const [previewId, setPreviewId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const canExit = ["ADMIN", "VP"].includes(user?.role);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [exitForm, setExitForm] = useState({ exitDate: "", exitType: "RESIGNED", exitReason: "" });
+  const [exitBusy, setExitBusy] = useState(false);
+  const [exitErr, setExitErr] = useState("");
   const [appUsers, setAppUsers] = useState([]);
   const BLANK = { fullName: "", doj: "", dob: "", gender: "", department: "", designation: "", personCode: "", linkedUsername: "" };
   const [form, setForm] = useState(BLANK);
@@ -174,6 +179,26 @@ export default function EmployeesPage({ user }) {
       if (created?.id) setSelectedId(created.id);
     } catch (e) { setFormErr(e.response?.data?.message || "Could not add the employee"); }
     finally { setSaving(false); }
+  };
+
+  const openExit = () => {
+    setExitForm({ exitDate: new Date().toISOString().slice(0, 10), exitType: "RESIGNED", exitReason: "" });
+    setExitErr(""); setExitOpen(true);
+  };
+  const submitExit = async () => {
+    if (!exitForm.exitDate) { setExitErr("Pick the last working day"); return; }
+    setExitBusy(true); setExitErr("");
+    try {
+      await employeeApi.markExit(preview.id, { ...exitForm, markedBy: user?.fullName || user?.username });
+      setExitOpen(false);
+      await load();
+    } catch (e) { setExitErr(e.response?.data?.message || "Could not move the employee to Exited"); }
+    finally { setExitBusy(false); }
+  };
+  const reinstate = async () => {
+    if (!window.confirm(`Reinstate ${preview.fullName}? They go back to the Active list${preview.linkedUsername ? " and their login is restored" : ""}.`)) return;
+    try { await employeeApi.reinstate(preview.id); await load(); }
+    catch (e) { alert(e.response?.data?.message || "Could not reinstate"); }
   };
 
   if (selectedId) {
@@ -269,12 +294,55 @@ export default function EmployeesPage({ user }) {
                     </div>
                   ))}
                 </div>
-                <button className="em-open" onClick={() => setSelectedId(preview.id)}>Open full profile <ChevronRight size={16} /></button>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 22 }}>
+                  <button className="em-open" style={{ marginTop: 0 }} onClick={() => setSelectedId(preview.id)}>Open full profile <ChevronRight size={16} /></button>
+                  {canExit && !exitedPreview && (
+                    <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#b91c1c", border: "1px solid #fecaca" }} onClick={openExit}>Move to Exited</button>
+                  )}
+                  {canExit && exitedPreview && (
+                    <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#047857", border: "1px solid #a7f3d0" }} onClick={reinstate}>Reinstate</button>
+                  )}
+                </div>
               </div>
             </>
           )}
         </div>
       </div>
+
+      {exitOpen && preview && (
+        <div onClick={() => setExitOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Move to exited"
+            style={{ background: "#fff", borderRadius: 16, width: 460, maxWidth: "100%", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Move to Exited — {preview.fullName}</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+              {preview.personCode || "No person code"}{preview.linkedUsername ? " · their app login will be blocked and any live session ended. Records they created stay." : " · no app login is linked."}
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                Last working day *
+                <input type="date" value={exitForm.exitDate} onChange={e => setExitForm(f => ({ ...f, exitDate: e.target.value }))} style={inputS} />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                Exit type
+                <select value={exitForm.exitType} onChange={e => setExitForm(f => ({ ...f, exitType: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
+                  {["RESIGNED", "TERMINATED", "ABSCONDED", "RETIRED", "OTHER"].map(t => <option key={t} value={t}>{t[0] + t.slice(1).toLowerCase()}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                Reason (optional)
+                <input value={exitForm.exitReason} onChange={e => setExitForm(f => ({ ...f, exitReason: e.target.value }))} style={inputS} />
+              </label>
+            </div>
+            {exitErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{exitErr}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button onClick={() => setExitOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={submitExit} disabled={exitBusy} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#b91c1c", cursor: "pointer", fontFamily: "inherit", opacity: exitBusy ? 0.7 : 1 }}>
+                {exitBusy ? "Moving…" : "Move to Exited"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {addOpen && (
         <div onClick={() => setAddOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>

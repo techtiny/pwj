@@ -92,7 +92,7 @@ export function buildPayslipHtml(row, year, month) {
   <table>
     <tr><td class="label">Name</td><td>${row.name}</td><td class="label">Pay Period</td><td>${payPeriod}</td></tr>
     <tr><td class="label">Designation</td><td>${row.designation || "—"}</td><td class="label">Present Days</td><td>${row.workingDays}</td></tr>
-    <tr><td class="label">Employee No.</td><td>${row.employeeNumber || "—"}</td><td class="label">Absent / LOP Days</td><td>${row.lopDays}</td></tr>
+    <tr><td class="label">Person Code</td><td>${row.employeeNumber || "—"}</td><td class="label">Absent / LOP Days</td><td>${row.lopDays}</td></tr>
     <tr><td class="label">PF Applicable</td><td>${Number(row.fixedPf) > 0 ? "Yes" : "No"}</td><td class="label">Total Working Days</td><td>${row.daysInMonth}</td></tr>
   </table>
   <table>
@@ -168,6 +168,9 @@ export const salaryApi = {
   saveStructure: (data)                 => api.post('/salary/structure', data),
   getHistory:    (userId)               => api.get(`/salary/structure/${userId}/history`),
   getSheet:      (year, month)          => api.get('/salary/sheet', { params: { year, month } }),
+  getApproval:   (year, month)          => api.get('/salary/approval', { params: { year, month } }),
+  approve:       (year, month, username) => api.post('/salary/approval/approve', { username }, { params: { year, month } }),
+  reject:        (year, month, username, remark) => api.post('/salary/approval/reject', { username, remark }, { params: { year, month } }),
   adjust:        (userId, year, month, data) =>
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
 };
@@ -191,6 +194,8 @@ export const employeeApi = {
   fromLogin:   (username)       => api.post(`/employees/from-login/${encodeURIComponent(username)}`),
   updatePhoto: (id, photoUrl)   => api.patch(`/employees/${id}/photo`, { photoUrl }),
   link:        (id, username)   => api.patch(`/employees/${id}/link`, { username }),
+  markExit:    (id, data)       => api.post(`/employees/${id}/exit`, data),
+  reinstate:   (id)             => api.post(`/employees/${id}/reinstate`),
   stats:       (id, range)      => api.get(`/employees/${id}/stats`, { params: { range } }),
 };
 

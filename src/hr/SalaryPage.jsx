@@ -16,9 +16,10 @@ const inr0 = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFrac
 // Salary sheet columns. `x` marks the extra columns that stay hidden (and out of the printout)
 // until "Show all columns" is turned on — the default view is the compact payroll sheet.
 const SHEET_COLS = [
-  { k: "employeeNumber", l: "Emp No", left: true, f: (r) => r.employeeNumber || "—" },
+  { k: "sno", l: "S.No", f: (r, i) => i + 1 },
+  { k: "employeeNumber", l: "Person Code", x: true, left: true, f: (r) => r.employeeNumber || "—" },
   { k: "name", l: "Name", left: true, bold: true },
-  { k: "designation", l: "Designation", x: true, left: true },
+  { k: "designation", l: "Designation", left: true, wrap: true },
   { k: "daysInMonth", l: "No. of Days in a month", lines: ["No. Of", "Days", "In a", "Month"], tip: "Actual day count of the 26th–25th payroll cycle" },
   { k: "leaveDays", l: "Leave Days", x: true },
   { k: "freeCasualLeave", l: "Free CL", x: true },
@@ -49,16 +50,16 @@ const SHEET_COLS = [
   { k: "ctc", l: "CTC", money: true, total: true },
   { k: "remarks", l: "Remarks", left: true, remarks: true },
 ];
-// Emp No and Name stay pinned on the left while the sheet scrolls sideways.
-const FREEZE_W = { employeeNumber: 96, name: 170 };
-const FREEZE_W_MOBILE = { employeeNumber: 66, name: 96 };
-const freezeStyle = (k, bg, z = 1, mobile = false) => {
+// S.No, Person Code and Name stay pinned on the left while the sheet scrolls sideways.
+const FREEZE_W = { sno: 56, employeeNumber: 120, name: 170 };
+const FREEZE_W_MOBILE = { sno: 44, employeeNumber: 82, name: 96 };
+const freezeStyle = (k, bg, z = 1, mobile = false, hasCode = true) => {
   const w = mobile ? FREEZE_W_MOBILE : FREEZE_W;
-  return k === "employeeNumber"
-    ? { position: "sticky", left: 0, zIndex: z, background: bg, minWidth: w.employeeNumber, width: w.employeeNumber }
-    : k === "name"
-      ? { position: "sticky", left: w.employeeNumber, zIndex: z, background: bg, minWidth: w.name, width: w.name, boxShadow: "2px 0 0 #e2e8f0" }
-      : null;
+  const pin = (left, width, extra = {}) => ({ position: "sticky", left, zIndex: z, background: bg, minWidth: width, width, ...extra });
+  return k === "sno" ? pin(0, w.sno)
+    : k === "employeeNumber" ? pin(w.sno, w.employeeNumber)
+    : k === "name" ? pin(w.sno + (hasCode ? w.employeeNumber : 0), w.name, { boxShadow: "2px 0 0 #e2e8f0" })
+    : null;
 };
 function useIsMobile(max = 700) {
   const q = `(max-width: ${max}px)`;
@@ -98,14 +99,54 @@ export default function SalaryPage({ user }) {
   const [defModal, setDefModal] = useState(null);  // { emp, mode: 'define'|'revise' }
   const [adjModal, setAdjModal] = useState(null);  // { row }
 
+  const [approval, setApproval] = useState(null);
+
   const loadSheet = useCallback(async () => {
     setLoading(true);
     try {
       const r = await salaryApi.getSheet(year, month);
       setSheet(r.data?.data || []);
     } catch { setSheet([]); }
+    try {
+      const a = await salaryApi.getApproval(year, month);
+      setApproval(a.data?.data || null);
+    } catch { setApproval(null); }
     setLoading(false);
   }, [year, month]);
+
+  const released = !!approval?.released;
+  const role = user?.role;
+  // Admin → OH or VP → CEO (final). Only the role whose turn it is gets the buttons.
+  const myTurn = approval && !released && (
+    (approval.nextStep === "ADMIN" && role === "ADMIN") ||
+    (approval.nextStep === "OH_VP" && (role === "OH" || role === "VP")) ||
+    (approval.nextStep === "CEO" && role === "CEO"));
+
+  async function approveMonth() {
+    const last = approval.nextStep === "CEO";
+    const label = `${MONTHS[month - 1]} ${year}`;
+    if (!window.confirm(last
+      ? `Give final approval and RELEASE the salary for ${label}? The month will be locked and employees will be notified that payslips are available.`
+      : `Approve the salary sheet for ${label}?`)) return;
+    setBusy("approval");
+    try {
+      const r = await salaryApi.approve(year, month, user?.username);
+      setApproval(r.data?.data || null);
+    } catch (e) { alert(e.response?.data?.message || "Could not approve"); }
+    finally { setBusy(null); }
+  }
+
+  async function rejectMonth() {
+    const remark = window.prompt("Reason for rejecting — the sheet goes back to Admin:");
+    if (remark === null) return;
+    if (!remark.trim()) { alert("Enter a reason for rejecting"); return; }
+    setBusy("approval");
+    try {
+      const r = await salaryApi.reject(year, month, user?.username, remark.trim());
+      setApproval(r.data?.data || null);
+    } catch (e) { alert(e.response?.data?.message || "Could not reject"); }
+    finally { setBusy(null); }
+  }
 
   const loadStructures = useCallback(async () => {
     try {
@@ -118,6 +159,7 @@ export default function SalaryPage({ user }) {
   useEffect(() => { loadStructures(); }, [loadStructures]);
 
   const cols = useMemo(() => SHEET_COLS.filter((c) => showAll || !c.x), [showAll]);
+  const hasCode = cols.some((c) => c.k === "employeeNumber");
   const totals = useMemo(() => {
     const acc = {};
     SHEET_COLS.forEach((c) => { if (c.total) acc[c.k] = sheet.reduce((n, r) => n + Number(r[c.k] || 0), 0); });
@@ -128,25 +170,25 @@ export default function SalaryPage({ user }) {
   function printSheet() {
     const title = `HAPPIZO INFRASTRUCTURE AND SOLUTIONS --- SALARY DETAILS FOR THE MONTH OF ${MONTHS[month - 1].toUpperCase()} ${year}`;
     const head = cols.map((c) => `<th${c.remarks ? ' style="width:28%"' : ""}>${c.lines ? c.lines.map(esc).join("<br>") : esc(c.l)}</th>`).join("");
-    const cell = (c, r) => `<td class="c${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r) : r[c.k]))}</td>`;
-    const body = sheet.map((r) => `<tr>${cols.map((c) => cell(c, r)).join("")}</tr>`).join("");
-    const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="c b">${esc(inr(totals[c.k]))}</td>` : `<td class="c b">${i === 0 ? "Total" : ""}</td>`).join("")}</tr>`;
+    const cell = (c, r, i) => `<td class="c${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r, i) : r[c.k]))}</td>`;
+    const body = sheet.map((r, i) => `<tr>${cols.map((c) => cell(c, r, i)).join("")}</tr>`).join("");
+    const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="c b">${esc(inr(totals[c.k]))}</td>` : `<td class="c b">${c.k === "name" ? "Total" : ""}</td>`).join("")}</tr>`;
+    const ap = approval;
+    const approvalLine = ap ? `<p class="ap">${released ? "<b>RELEASED</b> — " : "<b>Not yet released</b> — "}Admin: ${esc(ap.adminApproved ? ap.adminBy : "pending")} · OH/VP: ${esc(ap.reviewApproved ? `${ap.reviewBy} (${ap.reviewRole})` : "pending")} · CEO: ${esc(ap.ceoApproved ? ap.ceoBy : "pending")}</p>` : "";
     const w = window.open("", "_blank");
     if (!w) { alert("Allow pop-ups to print the salary sheet"); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Salary ${MONTHS[month - 1]} ${year}</title>
 <style>@page{size:A3 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#000}
-h1{font-size:15px;text-align:center;margin:0 0 8px}table{border-collapse:collapse;width:100%;font-size:10.5px}
+.logo{display:block;margin:0 auto 6px;height:52px}h1{font-size:15px;text-align:center;margin:0 0 8px}table{border-collapse:collapse;width:100%;font-size:10.5px}
 th,td{border:1px solid #444;padding:4px 6px}th{background:#dbe4f0;text-align:center}td.c{text-align:center}td.b{font-weight:700}
-tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
-<table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table></body></html>`);
+tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><body><img class="logo" src="${window.location.origin}/happizo-logo.png" alt="Happizo"/><h1>${esc(title)}</h1>
+<table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table>${approvalLine}<script>window.onload=function(){window.focus();window.print()}</script></body></html>`);
     w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
   }
 
   function exportCsv() {
     const cols = [
-      ["Emp No", "employeeNumber"], ["Name", "name"], ["Designation", "designation"],
+      ["Person Code", "employeeNumber"], ["Name", "name"], ["Designation", "designation"],
       ["Days", "daysInMonth"], ["Leave Days", "leaveDays"], ["Free CL", "freeCasualLeave"],
       ["Unauthorized", "unauthorizedDays"],
       ["LOP Days", "lopDays"], ["Extra WD", "extraWorkingDays"], ["Working Days", "workingDays"],
@@ -259,11 +301,47 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
           <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
             Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
+          {approval && sheet.length > 0 && (
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  ["Admin", approval.adminApproved, approval.adminBy],
+                  ["OH / VP", approval.reviewApproved, approval.reviewBy ? `${approval.reviewBy} (${approval.reviewRole})` : null],
+                  ["CEO · final", approval.ceoApproved, approval.ceoBy],
+                ].map(([label, done, by], i) => (
+                  <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {i > 0 && <span style={{ color: "#cbd5e1" }}>→</span>}
+                    <span style={{ fontSize: 12.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+                      background: done ? "#dcfce7" : "#f1f5f9", color: done ? "#166534" : "#64748b", border: `1px solid ${done ? "#bbf7d0" : "#e2e8f0"}` }}>
+                      {done ? "✓ " : ""}{label}{done && by ? ` · ${by}` : ""}
+                    </span>
+                  </span>
+                ))}
+                {released && <span style={{ fontSize: 12.5, fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</span>}
+                {myTurn && (
+                  <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8 }}>
+                    <button onClick={approveMonth} disabled={busy === "approval"} style={btn("#166534")}>{approval.nextStep === "CEO" ? "Approve & Release" : "Approve"}</button>
+                    {approval.nextStep !== "ADMIN" && <button onClick={rejectMonth} disabled={busy === "approval"} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca" }}>Reject</button>}
+                  </span>
+                )}
+              </div>
+              {!released && !myTurn && (
+                <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 6 }}>
+                  Waiting for {approval.nextStep === "ADMIN" ? "Admin" : approval.nextStep === "OH_VP" ? "OH or VP" : "the CEO"} to approve.
+                </div>
+              )}
+              {approval.rejectRemark && !released && (
+                <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>
+                  Rejected by {approval.rejectedBy}{approval.rejectedRole ? ` (${approval.rejectedRole})` : ""}: {approval.rejectRemark}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {cols.map((c) => <th key={c.k} style={{ ...th, textAlign: "center", ...(c.lines ? { whiteSpace: "normal", lineHeight: 1.25 } : {}), ...(isMobile ? { padding: "8px 6px", fontSize: 10.5 } : {}), ...freezeStyle(c.k, "#f8fafc", 3, isMobile) }} title={c.tip}>
+                  {cols.map((c) => <th key={c.k} style={{ ...th, textAlign: "center", ...(c.lines ? { whiteSpace: "normal", lineHeight: 1.25 } : {}), ...(isMobile ? { padding: "8px 6px", fontSize: 10.5 } : { fontSize: 14.5 }), ...freezeStyle(c.k, "#f8fafc", 3, isMobile, hasCode) }} title={c.tip}>
                     {c.lines ? c.lines.map((t, i) => <span key={i}>{i > 0 && <br />}{t}</span>) : c.l}
                   </th>)}
                   <th style={th}>Payslip</th>
@@ -277,22 +355,24 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
                   <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canManage ? 2 : 1)}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
-                ) : sheet.map((r) => (
+                ) : sheet.map((r, ri) => (
                   <tr key={r.userId} style={{ background: r.finalized ? "#f0fdf4" : "#fff" }}>
                     {cols.map((c) => {
-                      const val = c.money ? (c.k === "gross" || c.k === "takeHome" ? inr(r[c.k]) : inr0(r[c.k])) : (c.f ? c.f(r) : r[c.k]);
+                      const val = c.money ? (c.k === "gross" || c.k === "takeHome" ? inr(r[c.k]) : inr0(r[c.k])) : (c.f ? c.f(r, ri) : r[c.k]);
                       const flag = (c.k === "unauthorizedDays" || c.k === "lopDays") && Number(r[c.k]) > 0;
-                      const style = c.remarks
+                      const style = c.wrap
+                        ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 130, maxWidth: 170, lineHeight: 1.3 }
+                        : c.remarks
                         ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 380, maxWidth: 520, fontSize: 12, color: "#475569" }
                         : { ...td, textAlign: "center", fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "#64748b" : "#0f172a") };
-                      return <td key={c.k} style={{ ...style, ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : {}), ...(isMobile && c.remarks ? { minWidth: 220 } : {}), ...(isMobile && (c.k === "name" || c.k === "employeeNumber") ? { whiteSpace: "normal" } : {}), ...freezeStyle(c.k, r.finalized ? "#f0fdf4" : "#fff", 1, isMobile) }}>{val}</td>;
+                      return <td key={c.k} style={{ ...style, ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...(isMobile && c.remarks ? { minWidth: 220 } : {}), ...(isMobile && (c.k === "name" || c.k === "employeeNumber") ? { whiteSpace: "normal" } : {}), ...freezeStyle(c.k, r.finalized ? "#f0fdf4" : "#fff", 1, isMobile, hasCode) }}>{val}</td>;
                     })}
                     <td style={td}>
-                      <button onClick={() => downloadPayslip(r, year, month)} title="Download payslip" aria-label="Download payslip" style={{ ...btn("#ecfdf5", "#047857"), padding: "6px 9px" }}>📎</button>
+                      <button onClick={() => downloadPayslip(r, year, month)} disabled={!released} title={released ? "Download payslip" : "Available after the CEO releases this month"} aria-label="Download payslip" style={{ ...btn("#ecfdf5", "#047857"), padding: "6px 9px", opacity: released ? 1 : 0.4, cursor: released ? "pointer" : "not-allowed" }}>📎</button>
                     </td>
                     {canManage && (
                       <td style={td}>
-                        <button onClick={() => setAdjModal({ row: r })} title="Adjust" aria-label="Adjust" style={{ ...btn("#eef2ff", "#4338ca"), padding: "6px 9px" }}>✏️</button>
+                        <button onClick={() => setAdjModal({ row: r })} disabled={released} title={released ? "Released — locked" : "Adjust"} aria-label="Adjust" style={{ ...btn("#eef2ff", "#4338ca"), padding: "6px 9px", opacity: released ? 0.4 : 1, cursor: released ? "not-allowed" : "pointer" }}>✏️</button>
                       </td>
                     )}
                   </tr>
@@ -302,8 +382,8 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
                     {cols.map((c, i) => c.total
-                      ? <td key={c.k} style={{ ...td, textAlign: "center" }}>{inr0(totals[c.k])}</td>
-                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : {}), ...freezeStyle(c.k, "#f8fafc", 1, isMobile) }}>{i === 0 ? `Total (${sheet.length})` : ""}</td>)}
+                      ? <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? {} : { fontSize: 16 }) }}>{inr0(totals[c.k])}</td>
+                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${sheet.length})` : ""}</td>)}
                     <td style={td} colSpan={canManage ? 2 : 1}></td>
                   </tr>
                 </tfoot>
@@ -320,7 +400,7 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={th}>Emp No</th><th style={th}>Name</th><th style={th}>Designation</th>
+                  <th style={th}>Name</th><th style={th}>Designation</th>
                   <th style={thR}>Monthly Gross</th><th style={thR}>Basic</th><th style={thR}>HRA</th><th style={thR}>Other Allow</th>
                   <th style={thR}>PF</th><th style={thR}>PT</th><th style={th}>Effective</th><th style={th}>Note</th>
                   {canManage && <th style={{ ...th, textAlign: "right" }}>Action</th>}
@@ -328,10 +408,9 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
               </thead>
               <tbody>
                 {structures.length === 0 ? (
-                  <tr><td style={td} colSpan={canManage ? 12 : 11}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={canManage ? 11 : 10}>Loading…</td></tr>
                 ) : structures.map((s) => (
                   <tr key={s.userId} style={{ background: s.hasSalary ? "#fff" : "#fffbeb" }}>
-                    <td style={td}>{s.employeeNumber || "—"}</td>
                     <td style={{ ...td, fontWeight: 600 }}>{s.name}</td>
                     <td style={td}>{s.designation}</td>
                     <td style={{ ...tdR, fontWeight: 700 }}>{s.hasSalary ? inr0(s.monthlyGross) : "—"}</td>
@@ -385,7 +464,7 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
         {isRevise ? "Revise Salary (Appraisal)" : "Define Salary"} — {emp.name}
       </div>
       <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 16px" }}>
-        {emp.employeeNumber} · {emp.designation}
+        {emp.designation}
         {isRevise && <> · current {inr0(emp.monthlyGross)}</>}
       </div>
 

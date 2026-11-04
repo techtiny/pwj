@@ -250,7 +250,7 @@ export default function HRDashboard({ user }) {
               <thead>
                 <tr>
                   <th style={th}>#</th>
-                  <th style={th}>Emp No</th>
+                  <th style={th}>Person Code</th>
                   <th style={th}>Name</th>
                   <th style={th}>Designation</th>
                   <th style={th}>Check In</th>
