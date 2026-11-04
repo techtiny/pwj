@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Building2, Briefcase, AtSign } from "lucide-react";
-import { employeeApi, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
+import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Building2, Briefcase, AtSign, Wallet } from "lucide-react";
+import { employeeApi, advanceApi, advanceSummary, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
@@ -158,6 +158,16 @@ export default function EmployeesPage({ user }) {
   // Keep the preview on a visible person: fall back to the first match when the filter hides the current one.
   const preview = filtered.find(e => e.id === previewId) || filtered[0] || null;
 
+  // Salary advance still owed by the selected person (needs a linked login; reviewers only).
+  const [advPending, setAdvPending] = useState(0);
+  useEffect(() => {
+    const u = preview?.linkedUsername;
+    if (!u || !canManage) { setAdvPending(0); return; }
+    let live = true;
+    advanceApi.mine(u).then(r => { if (live) setAdvPending(advanceSummary(r.data?.data || []).pending); }).catch(() => { if (live) setAdvPending(0); });
+    return () => { live = false; };
+  }, [preview?.id, preview?.linkedUsername, canManage]);
+
   const openAdd = () => {
     setForm(BLANK); setFormErr(""); setEditId(null); setAddOpen(true);
     usersApi.getAll().then(r => setAppUsers((r.data?.data || []).filter(u => !u.exited))).catch(() => setAppUsers([]));
@@ -230,6 +240,7 @@ export default function EmployeesPage({ user }) {
     [Cake, "Date of birth", preview.dob ? fmtDate(preview.dob) : null],
     ...(preview.dor ? [[CalendarDays, "Date of exit", fmtDate(preview.dor)]] : []),
     ...(preview.linkedUsername ? [[AtSign, "App login", "@" + preview.linkedUsername]] : []),
+    ...(advPending > 0 ? [[Wallet, "Advance pending", "₹" + advPending.toLocaleString("en-IN", { maximumFractionDigits: 2 })]] : []),
   ] : [];
 
   return (
@@ -335,6 +346,11 @@ export default function EmployeesPage({ user }) {
             <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
               {preview.personCode || "No person code"}{preview.linkedUsername ? " · their app login will be blocked and any live session ended. Records they created stay." : " · no app login is linked."}
             </div>
+            {advPending > 0 && (
+              <div style={{ color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>
+                💰 {preview.fullName} still owes <b>₹{advPending.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</b> of salary advance. Once they leave it can't be recovered from salary — it stays on their profile as pending.
+              </div>
+            )}
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
                 Last working day *

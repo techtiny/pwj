@@ -4,6 +4,7 @@ import AttendancePage from "./AttendancePage";
 import LeavePage from "./LeavePage";
 import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
+import AdvancePage from "./AdvancePage";
 import EmployeeExitPage from "./EmployeeExitPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
@@ -45,10 +46,11 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
     },
     {
       key: "expenses",
-      label: "Claims",
+      label: "Claims/Advance",
       tabs: [
         { key: "petty-cash", label: "Petty Cash" },
         ...(canViewReimbursementTab ? [{ key: "reimbursement", label: "Reimbursement" }] : []),
+        { key: "advance", label: "Advance" },
       ],
     },
     ...(canViewExits ? [{
@@ -156,7 +158,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
             <button key={g.key} onClick={() => setTab(g.tabs[0].key)}
               style={{
                 border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                padding: "14px 26px", fontSize: 17, fontWeight: active ? 700 : 600,
+                padding: "14px 26px", fontSize: 19, fontWeight: active ? 700 : 600,
                 color: "#000",
                 borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                 marginBottom: -1, letterSpacing: 0.1, whiteSpace: "nowrap",
@@ -169,20 +171,24 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
 
       {/* Second-level pills — only shown when the active group has more than one page */}
       {activeGroup.tabs.length > 1 && (
-        <div className="hr-pill-row" style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 32px", display: "flex", gap: 8 }}>
-          {activeGroup.tabs.map(t => {
-            const active = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                style={{
-                  border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 15px",
-                  background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
-                  fontWeight: active ? 700 : 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                }}>
-                {t.label}
-              </button>
-            );
-          })}
+        <div className="hr-pill-row" style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "12px 32px" }}>
+          <div style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, maxWidth: "100%", overflowX: "auto" }}>
+            {activeGroup.tabs.map(t => {
+              const active = tab === t.key;
+              return (
+                <button key={t.key} onClick={() => setTab(t.key)}
+                  style={{
+                    border: "none", borderRadius: 8, padding: "8px 20px",
+                    background: active ? "#fff" : "transparent", color: active ? "#1e3a5f" : "#334155",
+                    boxShadow: active ? "0 1px 3px rgba(15,23,42,.18)" : "none",
+                    fontWeight: active ? 700 : 500, fontSize: 15, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                    transition: "background .15s, color .15s",
+                  }}>
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -191,6 +197,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
       {tab === "attendance"     && <AttendancePage user={user} />}
       {tab === "leaves"         && <LeavePage user={user} />}
       {tab === "petty-cash"     && <PettyCashPage user={user} title="Petty Cash" defaultTab={canViewReimbursement ? "all" : "mine"} />}
+      {tab === "advance"        && <AdvancePage user={user} />}
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}

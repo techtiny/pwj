@@ -44,6 +44,7 @@ const SHEET_COLS = [
   { k: "totalGross", l: "Total Gross", lines: ["Total", "Gross"], money: true, total: true },
   { k: "pf", l: "PF", money: true, total: true },
   { k: "pt", l: "PT", money: true, total: true },
+  { k: "advanceDeduction", l: "Advance", money: true, total: true },
   { k: "totalDed", l: "Total Ded", money: true, total: true },
   { k: "takeHome", l: "Take Home", money: true, total: true, bold: true, color: "#0f172a" },
   { k: "employer", l: "Employer", money: true, total: true },
@@ -197,7 +198,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
       ["Fixed Total Ded", "fixedTotalDed"], ["Fixed Take Home", "fixedTakeHome"],
       ["Fixed Employer", "fixedEmployer"], ["Fixed CTC", "fixedCtc"],
       ["Gross", "gross"], ["Basic", "basic"], ["HRA", "hra"], ["Other Allow", "otherAllowance"],
-      ["PF", "pf"], ["PT", "pt"], ["Total Ded", "totalDed"], ["Take Home", "takeHome"],
+      ["PF", "pf"], ["PT", "pt"], ["Advance", "advanceDeduction"], ["Total Ded", "totalDed"], ["Take Home", "takeHome"],
       ["Employer", "employer"], ["CTC", "ctc"], ["Remarks", "remarks"],
     ];
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;

@@ -65,7 +65,8 @@ export function buildPayslipHtml(row, year, month) {
   // gross; PF/PT below are the prorated (actual) amounts SalaryService computed — their sum
   // nets out to exactly row.takeHome, so Net Pay here always matches the Salary Sheet.
   const lossOfPay = Math.max(0, Number(row.fixedGross || 0) - Number(row.gross || 0));
-  const totalDeductions = lossOfPay + Number(row.pf || 0) + Number(row.pt || 0);
+  const advance = Number(row.advanceDeduction || 0);
+  const totalDeductions = lossOfPay + Number(row.pf || 0) + Number(row.pt || 0) + advance;
   const netPay = row.takeHome;
 
   return `<!doctype html><html><head><meta charset="utf-8"/>
@@ -100,6 +101,7 @@ export function buildPayslipHtml(row, year, month) {
     <tr><td>Basic</td><td class="right">${inrP(row.fixedBasic)}</td><td>Loss of Pay</td><td class="right">${inrP(lossOfPay)}</td></tr>
     <tr><td>HRA</td><td class="right">${inrP(row.fixedHra)}</td><td>Provident Fund (PF)</td><td class="right">${inrP(row.pf)}</td></tr>
     <tr><td>Other Allowance</td><td class="right">${inrP(row.fixedOther)}</td><td>Professional Tax (PT)</td><td class="right">${inrP(row.pt)}</td></tr>
+    ${advance > 0 ? `<tr><td></td><td></td><td>Salary Advance Recovery</td><td class="right">${inrP(advance)}</td></tr>` : ""}
     <tr style="font-weight:700;background:#f8fafc"><td>Total Gross</td><td class="right">${inrP(row.fixedGross)}</td><td>Total Deductions</td><td class="right">${inrP(totalDeductions)}</td></tr>
   </table>
   <table>
@@ -175,6 +177,23 @@ export const salaryApi = {
   reject:        (year, month, username, remark) => api.post('/salary/approval/reject', { username, remark }, { params: { year, month } }),
   adjust:        (userId, year, month, data) =>
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
+};
+
+export const advanceApi = {
+  raise:   (data)       => api.post('/advance', data),
+  mine:    (username)   => api.get(`/advance/my/${encodeURIComponent(username)}`),
+  pending: ()           => api.get('/advance/pending'),
+  all:     ()           => api.get('/advance/all'),
+  approve: (id, data)   => api.put(`/advance/${id}/approve`, data),
+  reject:  (id, data)   => api.put(`/advance/${id}/reject`, data),
+  paid:    (id, data)   => api.put(`/advance/${id}/paid`, data),
+  cancel:  (id, data)   => api.put(`/advance/${id}/cancel`, data),
+};
+
+/** Outstanding salary-advance money for one person: what's been paid out and not yet recovered through salary. */
+export const advanceSummary = (rows = []) => {
+  const open = rows.filter((a) => a.status === "PAID" && Number(a.balance) > 0);
+  return { pending: open.reduce((t, a) => t + Number(a.balance || 0), 0), open };
 };
 
 export const holidayApi = {

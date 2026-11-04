@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { employeeApi, performanceApi, usersApi, uploadImage, attachmentFullUrl, isExitedEmp, tenureMonths, serverDate } from "./hrApi";
+import { employeeApi, performanceApi, advanceApi, advanceSummary, usersApi, uploadImage, attachmentFullUrl, isExitedEmp, tenureMonths, serverDate } from "./hrApi";
 import { PERF_CATEGORIES, CATEGORY_BY_KEY, PARAMETER_SUGGESTIONS, APPEAL_WINDOW_HOURS, scoreOf, CategoryChip, Stars } from "./PerformanceFactors";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
@@ -132,6 +132,15 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
 
   useEffect(() => { load(); loadRemarks(); }, [load, loadRemarks]);
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  // Salary advance still owed — shown to reviewers and to the employee themself; matters most once they've left.
+  const [advances, setAdvances] = useState([]);
+  useEffect(() => {
+    const u = emp?.linkedUsername;
+    const self = !!(u && user?.username && u.toLowerCase() === user.username.toLowerCase());
+    if (!u || !(isReviewer || self)) { setAdvances([]); return; }
+    advanceApi.mine(u).then(r => setAdvances(r.data?.data || [])).catch(() => setAdvances([]));
+  }, [emp?.linkedUsername, isReviewer, user?.username]);
 
   const today = new Date().toISOString().slice(0, 10);
   // Plain comments (no stars, e.g. added from the HR dashboard) don't count towards ratings.
@@ -441,6 +450,32 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
           </div>
         </div>
       </div>
+
+      {(() => {
+        const { pending, open } = advanceSummary(advances);
+        if (!(pending > 0)) return null;
+        const inrA = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+        return (
+          <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: `4px solid ${isExited ? "#dc2626" : "#f59e0b"}`, background: isExited ? "#fef2f2" : "#fff" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: isExited ? "#991b1b" : "#0f172a", marginBottom: 6 }}>
+              💰 Advance pending — {inrA(pending)}
+            </div>
+            {isExited && (
+              <div style={{ fontSize: 14.5, color: "#7f1d1d", marginBottom: 8 }}>
+                {emp.fullName} has left the company with this advance not fully recovered. It no longer comes off a salary, so it has to be settled separately.
+              </div>
+            )}
+            {open.map(a => (
+              <div key={a.id} style={{ fontSize: 14.5, color: "#374151", display: "flex", gap: 18, flexWrap: "wrap", marginTop: 3 }}>
+                <span>Advance <b>{inrA(a.amount)}</b> over <b>{a.termMonths}</b> mo</span>
+                <span>Recovered <b>{inrA(a.recovered)}</b></span>
+                <span>Balance <b>{inrA(a.balance)}</b></span>
+                <span style={{ color: "#64748b" }}>Paid {a.paidAt ? fmtDate(a.paidAt.slice(0, 10)) : ""}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {hasExitHistory && (
         <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: `4px solid ${isExited ? "#dc2626" : "#f59e0b"}` }}>
