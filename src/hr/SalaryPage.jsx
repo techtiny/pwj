@@ -13,6 +13,44 @@ function cycleLabel(year, month) {
 const inr = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const inr0 = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
+// Salary sheet columns. `x` marks the extra columns that stay hidden (and out of the printout)
+// until "Show all columns" is turned on — the default view is the compact payroll sheet.
+const SHEET_COLS = [
+  { k: "employeeNumber", l: "Emp No", x: true, left: true, f: (r) => r.employeeNumber || "—" },
+  { k: "name", l: "Name", left: true, bold: true },
+  { k: "designation", l: "Designation", left: true },
+  { k: "daysInMonth", l: "No. of Days in a month", tip: "Actual day count of the 26th–25th payroll cycle" },
+  { k: "leaveDays", l: "Leave Days", x: true },
+  { k: "freeCasualLeave", l: "Free CL", x: true },
+  { k: "unauthorizedDays", l: "Unauthorized", x: true, tip: "Mon-Sat, no check-in (or check-in with no check-out), no leave applied, not a holiday — 1.5 LOP days each, no free CL" },
+  { k: "lopDays", l: "LOP Days", x: true },
+  { k: "extraWorkingDays", l: "Extra WD", x: true },
+  { k: "workingDays", l: "Working Days", bold: true },
+  { k: "fixedGross", l: "Fixed Gross", x: true, money: true, total: true },
+  { k: "fixedBasic", l: "Fixed Basic", x: true, money: true },
+  { k: "fixedHra", l: "Fixed HRA", x: true, money: true },
+  { k: "fixedOther", l: "Fixed Other", x: true, money: true },
+  { k: "fixedPf", l: "Fixed PF", x: true, money: true },
+  { k: "fixedPt", l: "Fixed PT", x: true, money: true },
+  { k: "fixedTotalDed", l: "Fixed Total Ded", x: true, money: true },
+  { k: "fixedTakeHome", l: "Fixed Take Home", x: true, money: true, total: true },
+  { k: "fixedEmployer", l: "Fixed Employer", x: true, money: true },
+  { k: "fixedCtc", l: "Fixed CTC", x: true, money: true, total: true },
+  { k: "gross", l: "Gross", money: true, total: true, bold: true, color: "#0f766e" },
+  { k: "basic", l: "Basic", money: true, total: true },
+  { k: "hra", l: "HRA", money: true, total: true },
+  { k: "otherAllowance", l: "Other Allow", money: true, total: true },
+  { k: "totalGross", l: "Total Gross", money: true, total: true },
+  { k: "pf", l: "PF", money: true, total: true },
+  { k: "pt", l: "PT", money: true, total: true },
+  { k: "totalDed", l: "Total Ded", money: true, total: true },
+  { k: "takeHome", l: "Take Home", money: true, total: true, bold: true, color: "#0f172a" },
+  { k: "employer", l: "Employer", money: true, total: true },
+  { k: "ctc", l: "CTC", money: true, total: true },
+  { k: "remarks", l: "Remarks", left: true, remarks: true },
+];
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
 const th = { padding: "10px 12px", textAlign: "left", fontSize: 11.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
 const thR = { ...th, textAlign: "right" };
@@ -27,6 +65,7 @@ export default function SalaryPage({ user }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [view, setView] = useState("sheet"); // sheet | structures
+  const [showAll, setShowAll] = useState(false); // false = compact payroll sheet, true = every column
 
   const [sheet, setSheet] = useState([]);
   const [structures, setStructures] = useState([]);
@@ -55,11 +94,32 @@ export default function SalaryPage({ user }) {
   useEffect(() => { loadSheet(); }, [loadSheet]);
   useEffect(() => { loadStructures(); }, [loadStructures]);
 
+  const cols = useMemo(() => SHEET_COLS.filter((c) => showAll || !c.x), [showAll]);
   const totals = useMemo(() => {
-    const acc = { fixedGross: 0, fixedTakeHome: 0, fixedCtc: 0, gross: 0, totalDed: 0, takeHome: 0, ctc: 0 };
-    sheet.forEach((r) => { for (const k in acc) acc[k] += Number(r[k] || 0); });
+    const acc = {};
+    SHEET_COLS.forEach((c) => { if (c.total) acc[c.k] = sheet.reduce((n, r) => n + Number(r[c.k] || 0), 0); });
     return acc;
   }, [sheet]);
+
+  // Prints the columns currently on screen as a clean landscape payroll sheet in its own window.
+  function printSheet() {
+    const title = `HAPPIZO INFRASTRUCTURE AND SOLUTIONS --- SALARY DETAILS FOR THE MONTH OF ${MONTHS[month - 1].toUpperCase()} ${year}`;
+    const head = cols.map((c) => `<th>${esc(c.l)}</th>`).join("");
+    const cell = (c, r) => `<td class="${c.left ? "l" : "r"}${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r) : r[c.k]))}</td>`;
+    const body = sheet.map((r) => `<tr>${cols.map((c) => cell(c, r)).join("")}</tr>`).join("");
+    const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="r b">${esc(inr(totals[c.k]))}</td>` : `<td class="b">${i === 0 ? "Total" : ""}</td>`).join("")}</tr>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("Allow pop-ups to print the salary sheet"); return; }
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Salary ${MONTHS[month - 1]} ${year}</title>
+<style>@page{size:A3 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#000}
+h1{font-size:15px;text-align:center;margin:0 0 8px}table{border-collapse:collapse;width:100%;font-size:10.5px}
+th,td{border:1px solid #444;padding:4px 6px}th{background:#dbe4f0;text-align:center}td.l{text-align:left}td.r{text-align:right}td.b{font-weight:700}
+tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
+<table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table></body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  }
 
   function exportCsv() {
     const cols = [
@@ -93,6 +153,8 @@ export default function SalaryPage({ user }) {
         monthlyGross: Number(form.monthlyGross),
         pfApplicable: form.pfApplicable,
         ptApplicable: form.ptApplicable,
+        pfAmount: form.pfApplicable && form.pfAmount !== "" ? Number(form.pfAmount) : null,
+        ptAmount: form.ptApplicable && form.ptAmount !== "" ? Number(form.ptAmount) : null,
         effectiveFrom: form.effectiveFrom || null,
         note: form.note?.trim() || (defModal.mode === "revise" ? "Appraisal revision" : "Initial structure"),
         actionBy: user?.fullName || user?.username,
@@ -156,6 +218,10 @@ export default function SalaryPage({ user }) {
               {[year - 2, year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             <button onClick={exportCsv} disabled={sheet.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: sheet.length === 0 ? 0.5 : 1 }}>⬇ Export</button>
+            <button onClick={printSheet} disabled={sheet.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: sheet.length === 0 ? 0.5 : 1 }}>🖨 Print</button>
+            <button onClick={() => setShowAll((v) => !v)} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1" }}>
+              {showAll ? "Hide extra columns" : "Unhide all columns"}
+            </button>
           </>
         )}
         {view === "structures" && noStructure.length > 0 && (
@@ -174,64 +240,28 @@ export default function SalaryPage({ user }) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={th}>Emp No</th><th style={th}>Name</th><th style={th}>Designation</th>
-                  <th style={thR} title="Actual day count of the 26th–25th payroll cycle">Days</th>
-                  <th style={thR}>Leave Days</th><th style={thR}>Free CL</th>
-                  <th style={thR} title="Mon-Sat, no check-in (or check-in with no check-out), no leave applied, not a holiday — 1.5 LOP days each, no free CL">Unauthorized</th>
-                  <th style={thR}>LOP Days</th>
-                  <th style={thR}>Extra WD</th><th style={thR}>Working Days</th>
-                  <th style={thR}>Fixed Gross</th><th style={thR}>Fixed Basic</th><th style={thR}>Fixed HRA</th>
-                  <th style={thR}>Fixed Other</th><th style={thR}>Fixed PF</th><th style={thR}>Fixed PT</th>
-                  <th style={thR}>Fixed Total Ded</th><th style={thR}>Fixed Take Home</th>
-                  <th style={thR}>Fixed Employer</th><th style={thR}>Fixed CTC</th>
-                  <th style={thR}>Gross</th><th style={thR}>Basic</th><th style={thR}>HRA</th><th style={thR}>Other Allow</th>
-                  <th style={thR}>PF</th><th style={thR}>PT</th><th style={thR}>Total Ded</th><th style={thR}>Take Home</th>
-                  <th style={thR}>Employer</th><th style={thR}>CTC</th>
-                  <th style={th}>Remarks</th>
+                  {cols.map((c) => <th key={c.k} style={c.left ? th : thR} title={c.tip}>{c.l}</th>)}
                   <th style={th}>Payslip</th>
                   {canManage && <th style={th}>Adjust</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={td} colSpan={canManage ? 33 : 32}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={cols.length + (canManage ? 2 : 1)}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 33 : 32}>
+                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canManage ? 2 : 1)}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : sheet.map((r) => (
                   <tr key={r.userId} style={{ background: r.finalized ? "#f0fdf4" : "#fff" }}>
-                    <td style={td}>{r.employeeNumber || "—"}</td>
-                    <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
-                    <td style={td}>{r.designation}</td>
-                    <td style={tdR}>{r.daysInMonth}</td>
-                    <td style={tdR}>{r.leaveDays}</td>
-                    <td style={tdR}>{r.freeCasualLeave}</td>
-                    <td style={{ ...tdR, color: Number(r.unauthorizedDays) > 0 ? "#b91c1c" : "#64748b", fontWeight: Number(r.unauthorizedDays) > 0 ? 700 : 400 }}>{r.unauthorizedDays}</td>
-                    <td style={{ ...tdR, color: Number(r.lopDays) > 0 ? "#b91c1c" : "#64748b" }}>{r.lopDays}</td>
-                    <td style={tdR}>{r.extraWorkingDays}</td>
-                    <td style={{ ...tdR, fontWeight: 700 }}>{r.workingDays}</td>
-                    <td style={tdR}>{inr0(r.fixedGross)}</td>
-                    <td style={tdR}>{inr0(r.fixedBasic)}</td>
-                    <td style={tdR}>{inr0(r.fixedHra)}</td>
-                    <td style={tdR}>{inr0(r.fixedOther)}</td>
-                    <td style={tdR}>{inr0(r.fixedPf)}</td>
-                    <td style={tdR}>{inr0(r.fixedPt)}</td>
-                    <td style={tdR}>{inr0(r.fixedTotalDed)}</td>
-                    <td style={tdR}>{inr0(r.fixedTakeHome)}</td>
-                    <td style={tdR}>{inr0(r.fixedEmployer)}</td>
-                    <td style={tdR}>{inr0(r.fixedCtc)}</td>
-                    <td style={{ ...tdR, fontWeight: 700, color: "#0f766e" }}>{inr(r.gross)}</td>
-                    <td style={tdR}>{inr0(r.basic)}</td>
-                    <td style={tdR}>{inr0(r.hra)}</td>
-                    <td style={tdR}>{inr0(r.otherAllowance)}</td>
-                    <td style={tdR}>{inr0(r.pf)}</td>
-                    <td style={tdR}>{inr0(r.pt)}</td>
-                    <td style={tdR}>{inr0(r.totalDed)}</td>
-                    <td style={{ ...tdR, fontWeight: 800, color: "#0f172a" }}>{inr(r.takeHome)}</td>
-                    <td style={tdR}>{inr0(r.employer)}</td>
-                    <td style={tdR}>{inr0(r.ctc)}</td>
-                    <td style={{ ...td, whiteSpace: "normal", maxWidth: 220, fontSize: 12, color: "#475569" }}>{r.remarks}</td>
+                    {cols.map((c) => {
+                      const val = c.money ? (c.k === "gross" || c.k === "takeHome" ? inr(r[c.k]) : inr0(r[c.k])) : (c.f ? c.f(r) : r[c.k]);
+                      const flag = (c.k === "unauthorizedDays" || c.k === "lopDays") && Number(r[c.k]) > 0;
+                      const style = c.remarks
+                        ? { ...td, whiteSpace: "normal", maxWidth: 220, fontSize: 12, color: "#475569" }
+                        : { ...(c.left ? td : tdR), fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "#64748b" : "#0f172a") };
+                      return <td key={c.k} style={style}>{val}</td>;
+                    })}
                     <td style={td}>
                       <button onClick={() => downloadPayslip(r, year, month)} style={btn("#ecfdf5", "#047857")}>📄 Payslip</button>
                     </td>
@@ -246,19 +276,10 @@ export default function SalaryPage({ user }) {
               {sheet.length > 0 && (
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
-                    <td style={td} colSpan={10}>Total ({sheet.length})</td>
-                    <td style={tdR}>{inr0(totals.fixedGross)}</td>
-                    <td style={td} colSpan={6}></td>
-                    <td style={tdR}>{inr0(totals.fixedTakeHome)}</td>
-                    <td style={td}></td>
-                    <td style={tdR}>{inr0(totals.fixedCtc)}</td>
-                    <td style={tdR}>{inr0(totals.gross)}</td>
-                    <td style={td} colSpan={5}></td>
-                    <td style={tdR}>{inr0(totals.totalDed)}</td>
-                    <td style={tdR}>{inr0(totals.takeHome)}</td>
-                    <td style={td}></td>
-                    <td style={tdR}>{inr0(totals.ctc)}</td>
-                    <td style={td} colSpan={canManage ? 3 : 2}></td>
+                    {cols.map((c, i) => c.total
+                      ? <td key={c.k} style={tdR}>{inr0(totals[c.k])}</td>
+                      : <td key={c.k} style={td}>{i === 0 ? `Total (${sheet.length})` : ""}</td>)}
+                    <td style={td} colSpan={canManage ? 2 : 1}></td>
                   </tr>
                 </tfoot>
               )}
@@ -276,7 +297,7 @@ export default function SalaryPage({ user }) {
                 <tr>
                   <th style={th}>Emp No</th><th style={th}>Name</th><th style={th}>Designation</th>
                   <th style={thR}>Monthly Gross</th><th style={thR}>Basic</th><th style={thR}>HRA</th><th style={thR}>Other Allow</th>
-                  <th style={th}>PF</th><th style={th}>PT</th><th style={th}>Effective</th><th style={th}>Note</th>
+                  <th style={thR}>PF</th><th style={thR}>PT</th><th style={th}>Effective</th><th style={th}>Note</th>
                   {canManage && <th style={{ ...th, textAlign: "right" }}>Action</th>}
                 </tr>
               </thead>
@@ -292,8 +313,8 @@ export default function SalaryPage({ user }) {
                     <td style={tdR}>{s.hasSalary ? inr0(s.basic) : "—"}</td>
                     <td style={tdR}>{s.hasSalary ? inr0(s.hra) : "—"}</td>
                     <td style={tdR}>{s.hasSalary ? inr0(s.otherAllowance) : "—"}</td>
-                    <td style={td}>{s.hasSalary ? (s.pfApplicable ? "Yes" : "No") : "—"}</td>
-                    <td style={td}>{s.hasSalary ? (s.ptApplicable ? "Yes" : "No") : "—"}</td>
+                    <td style={tdR}>{s.hasSalary ? (s.pfApplicable ? inr0(s.pfAmount) : "No") : "—"}</td>
+                    <td style={tdR}>{s.hasSalary ? (s.ptApplicable ? inr0(s.ptAmount) : "No") : "—"}</td>
                     <td style={td}>{s.hasSalary ? fmtDate(s.effectiveFrom) : "—"}</td>
                     <td style={{ ...td, whiteSpace: "normal", maxWidth: 200, fontSize: 12, color: "#64748b" }}>{s.note || "—"}</td>
                     {canManage && (
@@ -326,6 +347,9 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
     monthlyGross: isRevise ? String(emp.monthlyGross ?? "") : "",
     pfApplicable: isRevise ? !!emp.pfApplicable : true,
     ptApplicable: isRevise ? !!emp.ptApplicable : true,
+    // PF / PT amounts — blank means "use the default" (PF 12% of Basic, PT 208); an edited value wins.
+    pfAmount: isRevise && emp.pfAmount != null ? String(emp.pfAmount) : "",
+    ptAmount: isRevise && emp.ptAmount != null ? String(emp.ptAmount) : "",
     effectiveFrom: new Date().toISOString().slice(0, 8) + "01",
     note: "",
   });
@@ -348,13 +372,23 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
           Basic {inr0(g * 0.5)} · HRA {inr0(g * 0.125)} · Other {inr0(g * 0.375)}
         </div>
       )}
-      <div style={{ display: "flex", gap: 18, marginBottom: 14 }}>
-        <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={form.pfApplicable} onChange={(e) => setForm((f) => ({ ...f, pfApplicable: e.target.checked }))} /> PF (₹1800)
-        </label>
-        <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={form.ptApplicable} onChange={(e) => setForm((f) => ({ ...f, ptApplicable: e.target.checked }))} /> PT (₹208)
-        </label>
+      <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+            <input type="checkbox" checked={form.pfApplicable} onChange={(e) => setForm((f) => ({ ...f, pfApplicable: e.target.checked }))} /> PF (₹)
+          </label>
+          <input type="number" min="0" value={form.pfApplicable ? form.pfAmount : ""} disabled={!form.pfApplicable}
+            onChange={(e) => setForm((f) => ({ ...f, pfAmount: e.target.value }))}
+            placeholder={g > 0 ? `${Math.round(g * 0.06)} (12% of Basic)` : "12% of Basic"} style={{ ...inputS, width: "100%" }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+            <input type="checkbox" checked={form.ptApplicable} onChange={(e) => setForm((f) => ({ ...f, ptApplicable: e.target.checked }))} /> PT (₹)
+          </label>
+          <input type="number" min="0" value={form.ptApplicable ? form.ptAmount : ""} disabled={!form.ptApplicable}
+            onChange={(e) => setForm((f) => ({ ...f, ptAmount: e.target.value }))}
+            placeholder="208" style={{ ...inputS, width: "100%" }} />
+        </div>
       </div>
       <Field label="Effective from">
         <input type="date" value={form.effectiveFrom} onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} style={{ ...inputS, width: "100%" }} />
