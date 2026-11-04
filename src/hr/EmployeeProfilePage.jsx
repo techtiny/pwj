@@ -73,12 +73,12 @@ function StatCard({ icon, label, value, accent, accentBg, hint }) {
   );
 }
 
-function StarRating({ value, onChange, readOnly }) {
+function StarRating({ value, onChange, readOnly, size }) {
   return (
     <div style={{ display: "flex", gap: 2 }}>
       {[1, 2, 3, 4, 5].map(n => (
         <span key={n} onClick={() => !readOnly && onChange && onChange(n)} className={readOnly ? "" : "ep-star"}
-          style={{ fontSize: readOnly ? 17 : 26, cursor: readOnly ? "default" : "pointer", color: n <= value ? "#f59e0b" : "#d1d5db", lineHeight: 1, transition: "transform .1s" }}>★</span>
+          style={{ fontSize: size || (readOnly ? 17 : 26), cursor: readOnly ? "default" : "pointer", color: n <= value ? "#f59e0b" : "#d1d5db", lineHeight: 1, transition: "transform .1s" }}>★</span>
       ))}
     </div>
   );
@@ -99,6 +99,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const [decideFor, setDecideFor] = useState(null); // { id } of the appeal being rejected
   const [decideText, setDecideText] = useState("");
   const [finalRating, setFinalRating] = useState(0);
+  const [drafts, setDrafts] = useState({}); // inline Rating/Category picks per remark id, for rows awaiting the final rating
+  const draftOf = (rid) => drafts[rid] || { rating: 0, category: "" };
+  const setDraft = (rid, patch) => setDrafts((d) => ({ ...d, [rid]: { ...(d[rid] || { rating: 0, category: "" }), ...patch } }));
   const [finalCategory, setFinalCategory] = useState("");
   const [appealFor, setAppealFor] = useState(null); // remark id being appealed
   const [appealText, setAppealText] = useState("");
@@ -202,6 +205,19 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     try {
       await performanceApi.rate(id, remarkId, { rating: finalRating, category: finalCategory, actionBy: user?.fullName || user?.username, role: user?.role });
       setDecideFor(null);
+      await loadRemarks();
+    } catch (e) { alert(e.response?.data?.message || "Could not save rating"); }
+    finally { setBusy(null); }
+  }
+
+  // Inline rating: the Rating + Category sit in the row's own columns, ✓ in Action saves.
+  async function saveInlineRating(remarkId) {
+    const { rating, category } = draftOf(remarkId);
+    if (!rating || !category) return;
+    setBusy("decide");
+    try {
+      await performanceApi.rate(id, remarkId, { rating, category, actionBy: user?.fullName || user?.username, role: user?.role });
+      setDrafts((d) => { const n = { ...d }; delete n[remarkId]; return n; });
       await loadRemarks();
     } catch (e) { alert(e.response?.data?.message || "Could not save rating"); }
     finally { setBusy(null); }
@@ -544,7 +560,22 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                           </td>
                           {withdrawn ? (
                             <td data-label="Score" colSpan={3} style={ptd}><span style={pill("#ecfdf5", "#047857")}>Withdrawn — not scored</span></td>
-                          ) : !r.category || !r.rating ? (
+                          ) : canManage && needsFinal(r) ? (<>
+                            <td data-label="Category" style={ptd}>
+                              <select value={draftOf(r.id).category} onChange={(e) => setDraft(r.id, { category: e.target.value })} style={{ ...inputS, fontSize: 15, background: "#fff", width: "100%", minWidth: 130 }}>
+                                <option value="">Select…</option>
+                                {PERF_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label} ({c.weight}%)</option>)}
+                              </select>
+                            </td>
+                            <td data-label="Rating" style={ptd}>
+                              <StarRating size={20} value={draftOf(r.id).rating} onChange={(n) => setDraft(r.id, { rating: draftOf(r.id).rating === n ? 0 : n })} />
+                            </td>
+                            <td data-label="Score" style={{ ...ptd, whiteSpace: "nowrap" }}>
+                              {scoreOf(draftOf(r.id).rating, draftOf(r.id).category) != null
+                                ? <span style={{ fontWeight: 800 }}>{scoreOf(draftOf(r.id).rating, draftOf(r.id).category)}<span style={{ color: "#94a3b8", fontWeight: 600 }}> / {CATEGORY_BY_KEY[draftOf(r.id).category].weight}</span></span>
+                                : <span style={{ color: "#cbd5e1" }}>—</span>}
+                            </td>
+                          </>) : !r.category || !r.rating ? (
                             <td data-label="Score" colSpan={3} style={ptd}>{pendingCell(r)}</td>
                           ) : (<>
                             <td data-label="Category" style={ptd}><CategoryChip category={r.category} /></td>
@@ -578,7 +609,10 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                               </span>
                             )}
                             {canManage && needsFinal(r) && decideFor?.id !== r.id && (
-                              <button onClick={() => openFinal(r, "rate")} style={{ ...btn("#6d28d9"), padding: "6px 14px", fontSize: 14.5 }}>★&nbsp;Rate</button>
+                              <button title={draftOf(r.id).rating && draftOf(r.id).category ? "Save rating" : "Pick a Rating and Category first"}
+                                onClick={() => saveInlineRating(r.id)}
+                                disabled={busy === "decide" || !draftOf(r.id).rating || !draftOf(r.id).category}
+                                style={{ ...iconBtn("#059669", "#fff", "#059669"), opacity: draftOf(r.id).rating && draftOf(r.id).category ? 1 : 0.35, cursor: draftOf(r.id).rating && draftOf(r.id).category ? "pointer" : "not-allowed" }}>✓</button>
                             )}
                             {!canAppeal(r) && !(canManage && (isPendingAppeal(r) || needsFinal(r))) && <span style={{ color: "#cbd5e1" }}>—</span>}
                           </td>
