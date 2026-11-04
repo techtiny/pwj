@@ -209,6 +209,7 @@ export const performanceApi = {
   rate:    (employeeId, remarkId, data)           => api.put(`/employees/${employeeId}/remarks/${remarkId}/rating`, data),
   appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
   acknowledge: (employeeId, remarkId, data)       => api.post(`/employees/${employeeId}/remarks/${remarkId}/acknowledge`, data),
+  editAccess: (employeeId, remarkId, data)       => api.put(`/employees/${employeeId}/remarks/${remarkId}/edit-access`, data),
   decide:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/decision`, data),
   pendingAppeals: ()                             => api.get('/employees/remarks/appeals/pending'),
 };

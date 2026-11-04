@@ -75,7 +75,7 @@ function StatCard({ icon, label, value, accent, accentBg, hint }) {
 
 function StarRating({ value, onChange, readOnly, size }) {
   return (
-    <div style={{ display: "flex", gap: 2 }}>
+    <div style={{ display: "flex", gap: 2, whiteSpace: "nowrap" }}>
       {[1, 2, 3, 4, 5].map(n => (
         <span key={n} onClick={() => !readOnly && onChange && onChange(n)} className={readOnly ? "" : "ep-star"}
           style={{ fontSize: size || (readOnly ? 17 : 26), cursor: readOnly ? "default" : "pointer", color: n <= value ? "#f59e0b" : "#d1d5db", lineHeight: 1, transition: "transform .1s" }}>★</span>
@@ -99,6 +99,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const [decideFor, setDecideFor] = useState(null); // { id } of the appeal being rejected
   const [decideText, setDecideText] = useState("");
   const [finalRating, setFinalRating] = useState(0);
+  const [editRatingId, setEditRatingId] = useState(null); // VP editing an already-saved rating in place
   const [drafts, setDrafts] = useState({}); // inline Rating/Category picks per remark id, for rows awaiting the final rating
   const draftOf = (rid) => drafts[rid] || { rating: 0, category: "" };
   const setDraft = (rid, patch) => setDrafts((d) => ({ ...d, [rid]: { ...(d[rid] || { rating: 0, category: "" }), ...patch } }));
@@ -211,15 +212,33 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   }
 
   // Inline rating: the Rating + Category sit in the row's own columns, ✓ in Action saves.
-  async function saveInlineRating(remarkId) {
-    const { rating, category } = draftOf(remarkId);
-    if (!rating || !category) return;
+  // Picks update the draft; the moment both Rating and Category are set, it saves on its own.
+  function pickDraft(remarkId, patch) {
+    const next = { ...draftOf(remarkId), ...patch };
+    setDraft(remarkId, patch);
+    if (next.rating && next.category) saveInlineRating(remarkId, next);
+  }
+
+  async function saveInlineRating(remarkId, draft) {
+    const { rating, category } = draft || draftOf(remarkId);
+    if (!rating || !category || busy === "decide") return;
     setBusy("decide");
     try {
       await performanceApi.rate(id, remarkId, { rating, category, actionBy: user?.fullName || user?.username, role: user?.role });
       setDrafts((d) => { const n = { ...d }; delete n[remarkId]; return n; });
+      setEditRatingId(null);
       await loadRemarks();
     } catch (e) { alert(e.response?.data?.message || "Could not save rating"); }
+    finally { setBusy(null); }
+  }
+
+  // VP unlocks / locks one rated entry. Unlocked: VP, Admin, OH and CEO can edit it once.
+  async function toggleEditAccess(r) {
+    setBusy("access");
+    try {
+      await performanceApi.editAccess(id, r.id, { granted: !r.editGranted, actionBy: user?.fullName || user?.username, role: user?.role });
+      await loadRemarks();
+    } catch (e) { alert(e.response?.data?.message || "Could not change edit access"); }
     finally { setBusy(null); }
   }
 
@@ -268,6 +287,21 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   const inFeed = (r) => isPendingAppeal(r) || (!r.appealedAt && !r.acknowledgedAt && !r.rating && hoursLeft(r) > 0);
   const feed = remarks.filter(inFeed);
   const settled = remarks.filter(r => !inFeed(r));
+  // A saved rating is locked for everyone, VP included. Only the VP can unlock an entry; while it is unlocked
+  // VP / Admin / OH / CEO can edit it once, and it locks again.
+  const canEditRating = (r) => canManage && !!r.rating && !!r.category && r.appealStatus !== "ACCEPTED" && !!r.editGranted;
+  // Timestamped trail for the Appeal column: created, accepted, rated, unlocked/edited — the appeal and the reviewer's decision are shown with their own times below.
+  const historyOf = (r) => {
+    const ev = [];
+    if (r.createdAt) ev.push({ at: r.createdAt, text: `Entry created by ${roleLabel(r.createdByRole) || r.createdBy || "—"}` });
+    if (r.acknowledgedAt) ev.push({ at: r.acknowledgedAt, text: `Accepted by ${emp?.fullName || "employee"}` });
+    if (r.ratedAt) ev.push({ at: r.ratedAt, text: `Rated ${r.ratedBy ? "by " + r.ratedBy : ""}`.trim() });
+    (r.editLog || "").split("\n").filter(Boolean).forEach((line) => {
+      const [at, by, role, ...what] = line.split("\t");
+      ev.push({ at, text: `${what.join(" ")} — ${roleLabel(role) || by || ""}` });
+    });
+    return ev.sort((a, b) => new Date(a.at) - new Date(b.at));
+  };
   const openFinal = (r, mode) => { setDecideFor({ id: r.id, mode }); setDecideText(""); setFinalRating(0); setFinalCategory(""); setAppealFor(null); };
   const totals = (() => {
     const counted = remarks.filter(r => r.category && r.rating && r.appealStatus !== "ACCEPTED");
@@ -283,8 +317,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     if (r.appealStatus === "REJECTED") return { label: needsFinal(r) && canManage ? "Appeal rejected · rate now" : "Appeal rejected", accent: "#ef4444", bg: "#fef2f2", color: "#b91c1c" };
     if (isPendingAppeal(r)) return { label: canManage ? "Appeal awaiting your review" : "Appeal under review", accent: "#f59e0b", bg: "#fffbeb", color: "#b45309" };
     if (r.acknowledgedAt) return needsFinal(r)
-      ? { label: canManage ? "Accepted by employee · rate now" : "Accepted · awaiting rating", accent: "#8b5cf6", bg: "#f5f3ff", color: "#6d28d9" }
-      : { label: "Accepted by employee", accent: "#10b981", bg: "#ecfdf5", color: "#047857" };
+      ? { label: canManage ? "No Appeal, Closed" : "Accepted · Closed", accent: "#8b5cf6", bg: "#f5f3ff", color: "#6d28d9" }
+      : { label: `Accepted by ${emp?.fullName || "employee"}`, accent: "#10b981", bg: "#ecfdf5", color: "#047857" };
     const h = hoursLeft(r);
     if (h > 0) {
       const t = h >= 1 ? `${Math.floor(h)}h left` : `${Math.max(1, Math.round(h * 60))}m left`;
@@ -536,8 +570,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                     <th style={{ ...pth, width: 136 }}>Date</th>
                     <th style={{ ...pth, width: "22%" }}>Parameter</th>
                     <th style={{ ...pth, width: 150 }}>Category</th>
-                    <th style={{ ...pth, width: 100 }}>Rating</th>
-                    <th style={{ ...pth, width: 84 }}>Score</th>
+                    <th style={{ ...pth, width: 140 }}>Rating</th>
+                    <th style={{ ...pth, width: 100 }}>Score</th>
                     <th style={pth}>Appeal</th>
                     <th style={{ ...pth, width: 110, textAlign: "center" }}>Action</th>
                   </tr>
@@ -560,15 +594,15 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                           </td>
                           {withdrawn ? (
                             <td data-label="Score" colSpan={3} style={ptd}><span style={pill("#ecfdf5", "#047857")}>Withdrawn — not scored</span></td>
-                          ) : canManage && needsFinal(r) ? (<>
+                          ) : (canManage && needsFinal(r)) || editRatingId === r.id ? (<>
                             <td data-label="Category" style={ptd}>
-                              <select value={draftOf(r.id).category} onChange={(e) => setDraft(r.id, { category: e.target.value })} style={{ ...inputS, fontSize: 15, background: "#fff", width: "100%", minWidth: 130 }}>
+                              <select value={draftOf(r.id).category} onChange={(e) => pickDraft(r.id, { category: e.target.value })} style={{ ...inputS, fontSize: 15, background: "#fff", width: "100%", minWidth: 130 }}>
                                 <option value="">Select…</option>
                                 {PERF_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label} ({c.weight}%)</option>)}
                               </select>
                             </td>
                             <td data-label="Rating" style={ptd}>
-                              <StarRating size={20} value={draftOf(r.id).rating} onChange={(n) => setDraft(r.id, { rating: draftOf(r.id).rating === n ? 0 : n })} />
+                              <StarRating size={18} value={draftOf(r.id).rating} onChange={(n) => pickDraft(r.id, { rating: draftOf(r.id).rating === n ? 0 : n })} />
                             </td>
                             <td data-label="Score" style={{ ...ptd, whiteSpace: "nowrap" }}>
                               {scoreOf(draftOf(r.id).rating, draftOf(r.id).category) != null
@@ -586,6 +620,11 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                           </>)}
                           <td data-label="Appeal" style={ptd}>
                             <span style={pill(status.bg, status.color)}>{status.label}</span>
+                            <div style={{ fontSize: 13, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
+                              {historyOf(r).map((h, i) => (
+                                <div key={i}><span style={{ color: "#94a3b8" }}>{fmtDateTime(h.at)}</span> · {h.text}</div>
+                              ))}
+                            </div>
                             {r.appealedAt && (
                               <div style={{ fontSize: 15.5, color: "#78350f", marginTop: 6 }}>
                                 <b>Appeal by {emp.fullName}:</b> {r.appealText}
@@ -594,7 +633,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             )}
                             {(r.appealStatus === "ACCEPTED" || r.appealStatus === "REJECTED") && (
                               <div style={{ fontSize: 15.5, color: r.appealStatus === "ACCEPTED" ? "#047857" : "#b91c1c", marginTop: 4 }}>
-                                <b>{r.appealStatus === "ACCEPTED" ? "✓" : "✕"} {roleLabel(r.decisionRole) || r.decisionBy}:</b> {r.decisionComment || (r.appealStatus === "ACCEPTED" ? "Agreed" : "")}
+                                <b>{r.appealStatus === "ACCEPTED" ? "✓" : "✕"} {roleLabel(r.decisionRole) || r.decisionBy}:</b> {r.decisionComment || (r.appealStatus === "ACCEPTED" ? "Agreed" : "")}{r.decisionAt && <span style={{ color: "#a8a29e", fontSize: 14 }}> · {fmtDateTime(r.decisionAt)}</span>}
                               </div>
                             )}
                           </td>
@@ -608,13 +647,24 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                                 <button title="Disagree — reject the appeal, then set Rating + Category" onClick={() => openFinal(r, "reject")} style={iconBtn("#fef2f2", "#dc2626", "#fecaca")}>✕</button>
                               </span>
                             )}
-                            {canManage && needsFinal(r) && decideFor?.id !== r.id && (
-                              <button title={draftOf(r.id).rating && draftOf(r.id).category ? "Save rating" : "Pick a Rating and Category first"}
-                                onClick={() => saveInlineRating(r.id)}
-                                disabled={busy === "decide" || !draftOf(r.id).rating || !draftOf(r.id).category}
-                                style={{ ...iconBtn("#059669", "#fff", "#059669"), opacity: draftOf(r.id).rating && draftOf(r.id).category ? 1 : 0.35, cursor: draftOf(r.id).rating && draftOf(r.id).category ? "pointer" : "not-allowed" }}>✓</button>
+                            {canEditRating(r) && editRatingId !== r.id && (
+                              <button title="Edit rating" aria-label="Edit rating"
+                                onClick={() => { setDraft(r.id, { rating: r.rating, category: r.category }); setEditRatingId(r.id); }}
+                                style={{ ...iconBtn("#f5f3ff", "#6d28d9", "#ddd6fe"), fontSize: 16 }}>✏️</button>
                             )}
-                            {!canAppeal(r) && !(canManage && (isPendingAppeal(r) || needsFinal(r))) && <span style={{ color: "#cbd5e1" }}>—</span>}
+                            {user?.role === "VP" && canManage && r.rating && r.category && !withdrawn && editRatingId !== r.id && (
+                              <button disabled={busy === "access"} onClick={() => toggleEditAccess(r)}
+                                title={r.editGranted ? "Unlocked — VP / Admin / OH / CEO can edit once. Click to lock again" : "Locked — nobody can edit. Click to unlock this entry"}
+                                aria-label="Edit access"
+                                style={{ ...iconBtn(r.editGranted ? "#fffbeb" : "#f8fafc", r.editGranted ? "#b45309" : "#64748b", r.editGranted ? "#fcd34d" : "#e2e8f0"), fontSize: 15, marginLeft: 6 }}>{r.editGranted ? "🔓" : "🔒"}</button>
+                            )}
+                            {canManage && needsFinal(r) && editRatingId !== r.id && (
+                              <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>{busy === "decide" ? "Saving…" : "Auto-saves"}</span>
+                            )}
+                            {editRatingId === r.id && (
+                              <button title="Cancel" aria-label="Cancel" onClick={() => setEditRatingId(null)} style={{ ...iconBtn("#fef2f2", "#dc2626", "#fecaca"), marginLeft: 6 }}>✕</button>
+                            )}
+                            {!canAppeal(r) && !(canManage && (isPendingAppeal(r) || needsFinal(r))) && !canEditRating(r) && !(user?.role === "VP" && canManage && r.rating && r.category && !withdrawn) && <span style={{ color: "#cbd5e1" }}>—</span>}
                           </td>
                         </tr>
                         {editing && (
