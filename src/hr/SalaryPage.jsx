@@ -16,16 +16,16 @@ const inr0 = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFrac
 // Salary sheet columns. `x` marks the extra columns that stay hidden (and out of the printout)
 // until "Show all columns" is turned on — the default view is the compact payroll sheet.
 const SHEET_COLS = [
-  { k: "employeeNumber", l: "Emp No", x: true, left: true, f: (r) => r.employeeNumber || "—" },
+  { k: "employeeNumber", l: "Emp No", left: true, f: (r) => r.employeeNumber || "—" },
   { k: "name", l: "Name", left: true, bold: true },
-  { k: "designation", l: "Designation", left: true },
-  { k: "daysInMonth", l: "No. of Days in a month", tip: "Actual day count of the 26th–25th payroll cycle" },
+  { k: "designation", l: "Designation", x: true, left: true },
+  { k: "daysInMonth", l: "No. of Days in a month", lines: ["No. Of", "Days", "In a", "Month"], tip: "Actual day count of the 26th–25th payroll cycle" },
   { k: "leaveDays", l: "Leave Days", x: true },
   { k: "freeCasualLeave", l: "Free CL", x: true },
   { k: "unauthorizedDays", l: "Unauthorized", x: true, tip: "Mon-Sat, no check-in (or check-in with no check-out), no leave applied, not a holiday — 1.5 LOP days each, no free CL" },
   { k: "lopDays", l: "LOP Days", x: true },
   { k: "extraWorkingDays", l: "Extra WD", x: true },
-  { k: "workingDays", l: "Working Days", bold: true },
+  { k: "workingDays", l: "Working Days", lines: ["Working", "days"], bold: true },
   { k: "fixedGross", l: "Fixed Gross", x: true, money: true, total: true },
   { k: "fixedBasic", l: "Fixed Basic", x: true, money: true },
   { k: "fixedHra", l: "Fixed HRA", x: true, money: true },
@@ -39,8 +39,8 @@ const SHEET_COLS = [
   { k: "gross", l: "Gross", money: true, total: true, bold: true, color: "#0f766e" },
   { k: "basic", l: "Basic", money: true, total: true },
   { k: "hra", l: "HRA", money: true, total: true },
-  { k: "otherAllowance", l: "Other Allow", money: true, total: true },
-  { k: "totalGross", l: "Total Gross", money: true, total: true },
+  { k: "otherAllowance", l: "Other Allow", lines: ["Other", "Allow"], money: true, total: true },
+  { k: "totalGross", l: "Total Gross", lines: ["Total", "Gross"], money: true, total: true },
   { k: "pf", l: "PF", money: true, total: true },
   { k: "pt", l: "PT", money: true, total: true },
   { k: "totalDed", l: "Total Ded", money: true, total: true },
@@ -49,6 +49,28 @@ const SHEET_COLS = [
   { k: "ctc", l: "CTC", money: true, total: true },
   { k: "remarks", l: "Remarks", left: true, remarks: true },
 ];
+// Emp No and Name stay pinned on the left while the sheet scrolls sideways.
+const FREEZE_W = { employeeNumber: 96, name: 170 };
+const FREEZE_W_MOBILE = { employeeNumber: 66, name: 96 };
+const freezeStyle = (k, bg, z = 1, mobile = false) => {
+  const w = mobile ? FREEZE_W_MOBILE : FREEZE_W;
+  return k === "employeeNumber"
+    ? { position: "sticky", left: 0, zIndex: z, background: bg, minWidth: w.employeeNumber, width: w.employeeNumber }
+    : k === "name"
+      ? { position: "sticky", left: w.employeeNumber, zIndex: z, background: bg, minWidth: w.name, width: w.name, boxShadow: "2px 0 0 #e2e8f0" }
+      : null;
+};
+function useIsMobile(max = 700) {
+  const q = `(max-width: ${max}px)`;
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const on = () => setM(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [q]);
+  return m;
+}
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
@@ -65,6 +87,7 @@ export default function SalaryPage({ user }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [view, setView] = useState("sheet"); // sheet | structures
+  const isMobile = useIsMobile();
   const [showAll, setShowAll] = useState(false); // false = compact payroll sheet, true = every column
 
   const [sheet, setSheet] = useState([]);
@@ -104,16 +127,16 @@ export default function SalaryPage({ user }) {
   // Prints the columns currently on screen as a clean landscape payroll sheet in its own window.
   function printSheet() {
     const title = `HAPPIZO INFRASTRUCTURE AND SOLUTIONS --- SALARY DETAILS FOR THE MONTH OF ${MONTHS[month - 1].toUpperCase()} ${year}`;
-    const head = cols.map((c) => `<th>${esc(c.l)}</th>`).join("");
-    const cell = (c, r) => `<td class="${c.left ? "l" : "r"}${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r) : r[c.k]))}</td>`;
+    const head = cols.map((c) => `<th${c.remarks ? ' style="width:28%"' : ""}>${c.lines ? c.lines.map(esc).join("<br>") : esc(c.l)}</th>`).join("");
+    const cell = (c, r) => `<td class="c${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r) : r[c.k]))}</td>`;
     const body = sheet.map((r) => `<tr>${cols.map((c) => cell(c, r)).join("")}</tr>`).join("");
-    const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="r b">${esc(inr(totals[c.k]))}</td>` : `<td class="b">${i === 0 ? "Total" : ""}</td>`).join("")}</tr>`;
+    const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="c b">${esc(inr(totals[c.k]))}</td>` : `<td class="c b">${i === 0 ? "Total" : ""}</td>`).join("")}</tr>`;
     const w = window.open("", "_blank");
     if (!w) { alert("Allow pop-ups to print the salary sheet"); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Salary ${MONTHS[month - 1]} ${year}</title>
 <style>@page{size:A3 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#000}
 h1{font-size:15px;text-align:center;margin:0 0 8px}table{border-collapse:collapse;width:100%;font-size:10.5px}
-th,td{border:1px solid #444;padding:4px 6px}th{background:#dbe4f0;text-align:center}td.l{text-align:left}td.r{text-align:right}td.b{font-weight:700}
+th,td{border:1px solid #444;padding:4px 6px}th{background:#dbe4f0;text-align:center}td.c{text-align:center}td.b{font-weight:700}
 tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
 <table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table></body></html>`);
     w.document.close();
@@ -187,7 +210,7 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
   const noStructure = structures.filter((s) => !s.hasSalary);
 
   return (
-    <div className="hr-page" style={{ padding: "24px 32px" }}>
+    <div className="hr-page" style={{ padding: isMobile ? "14px 10px" : "24px 32px" }}>
       {/* Hero */}
       <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 14, borderLeft: "4px solid #0f766e" }}>
         <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#ccfbf1", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>💰</div>
@@ -240,7 +263,9 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {cols.map((c) => <th key={c.k} style={c.left ? th : thR} title={c.tip}>{c.l}</th>)}
+                  {cols.map((c) => <th key={c.k} style={{ ...th, textAlign: "center", ...(c.lines ? { whiteSpace: "normal", lineHeight: 1.25 } : {}), ...(isMobile ? { padding: "8px 6px", fontSize: 10.5 } : {}), ...freezeStyle(c.k, "#f8fafc", 3, isMobile) }} title={c.tip}>
+                    {c.lines ? c.lines.map((t, i) => <span key={i}>{i > 0 && <br />}{t}</span>) : c.l}
+                  </th>)}
                   <th style={th}>Payslip</th>
                   {canManage && <th style={th}>Adjust</th>}
                 </tr>
@@ -258,16 +283,16 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
                       const val = c.money ? (c.k === "gross" || c.k === "takeHome" ? inr(r[c.k]) : inr0(r[c.k])) : (c.f ? c.f(r) : r[c.k]);
                       const flag = (c.k === "unauthorizedDays" || c.k === "lopDays") && Number(r[c.k]) > 0;
                       const style = c.remarks
-                        ? { ...td, whiteSpace: "normal", maxWidth: 220, fontSize: 12, color: "#475569" }
-                        : { ...(c.left ? td : tdR), fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "#64748b" : "#0f172a") };
-                      return <td key={c.k} style={style}>{val}</td>;
+                        ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 380, maxWidth: 520, fontSize: 12, color: "#475569" }
+                        : { ...td, textAlign: "center", fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "#64748b" : "#0f172a") };
+                      return <td key={c.k} style={{ ...style, ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : {}), ...(isMobile && c.remarks ? { minWidth: 220 } : {}), ...(isMobile && (c.k === "name" || c.k === "employeeNumber") ? { whiteSpace: "normal" } : {}), ...freezeStyle(c.k, r.finalized ? "#f0fdf4" : "#fff", 1, isMobile) }}>{val}</td>;
                     })}
                     <td style={td}>
-                      <button onClick={() => downloadPayslip(r, year, month)} style={btn("#ecfdf5", "#047857")}>📄 Payslip</button>
+                      <button onClick={() => downloadPayslip(r, year, month)} title="Download payslip" aria-label="Download payslip" style={{ ...btn("#ecfdf5", "#047857"), padding: "6px 9px" }}>📎</button>
                     </td>
                     {canManage && (
                       <td style={td}>
-                        <button onClick={() => setAdjModal({ row: r })} style={btn("#eef2ff", "#4338ca")}>Adjust</button>
+                        <button onClick={() => setAdjModal({ row: r })} title="Adjust" aria-label="Adjust" style={{ ...btn("#eef2ff", "#4338ca"), padding: "6px 9px" }}>✏️</button>
                       </td>
                     )}
                   </tr>
@@ -277,8 +302,8 @@ tr.t td{background:#f1f5f9}</style></head><body><h1>${esc(title)}</h1>
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
                     {cols.map((c, i) => c.total
-                      ? <td key={c.k} style={tdR}>{inr0(totals[c.k])}</td>
-                      : <td key={c.k} style={td}>{i === 0 ? `Total (${sheet.length})` : ""}</td>)}
+                      ? <td key={c.k} style={{ ...td, textAlign: "center" }}>{inr0(totals[c.k])}</td>
+                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : {}), ...freezeStyle(c.k, "#f8fafc", 1, isMobile) }}>{i === 0 ? `Total (${sheet.length})` : ""}</td>)}
                     <td style={td} colSpan={canManage ? 2 : 1}></td>
                   </tr>
                 </tfoot>
