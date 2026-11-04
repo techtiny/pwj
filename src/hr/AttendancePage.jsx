@@ -19,6 +19,7 @@ const STATUS_COLOR = {
   HALF_DAY: { bg: "#fffbeb", color: "#d97706", label: "Half Day" },
   ON_LEAVE: { bg: "#eff6ff", color: "#2563eb", label: "On Leave" },
   ABSENT:   { bg: "#fef2f2", color: "#dc2626", label: "Absent" },
+  ADJUSTED: { bg: "#f5f3ff", color: "#7c3aed", label: "Adjusted" }, // HR recorded the day as leave the employee never applied for
 };
 
 async function getLocation() {

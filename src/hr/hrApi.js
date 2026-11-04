@@ -168,6 +168,8 @@ export const salaryApi = {
   saveStructure: (data)                 => api.post('/salary/structure', data),
   getHistory:    (userId)               => api.get(`/salary/structure/${userId}/history`),
   getSheet:      (year, month)          => api.get('/salary/sheet', { params: { year, month } }),
+  regularize:    (userId, year, month, data) =>
+    api.post(`/salary/sheet/${userId}/regularize`, data, { params: { year, month } }),
   getApproval:   (year, month)          => api.get('/salary/approval', { params: { year, month } }),
   approve:       (year, month, username) => api.post('/salary/approval/approve', { username }, { params: { year, month } }),
   reject:        (year, month, username, remark) => api.post('/salary/approval/reject', { username, remark }, { params: { year, month } }),
@@ -191,6 +193,7 @@ export const employeeApi = {
   list:        ()               => api.get('/employees'),
   get:         (id)             => api.get(`/employees/${id}`),
   create:      (data)           => api.post('/employees', data),
+  update:      (id, data)       => api.patch(`/employees/${id}`, data),
   fromLogin:   (username)       => api.post(`/employees/from-login/${encodeURIComponent(username)}`),
   updatePhoto: (id, photoUrl)   => api.patch(`/employees/${id}/photo`, { photoUrl }),
   link:        (id, username)   => api.patch(`/employees/${id}/link`, { username }),

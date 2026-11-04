@@ -231,6 +231,19 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
     } finally { setBusy(null); }
   }
 
+  // HR records a day the employee took off without applying as approved leave — it stops being an unauthorized absence.
+  async function regularizeDay(row, date, leaveType) {
+    try {
+      const r = await salaryApi.regularize(row.userId, year, month, { date, leaveType, username: user?.username });
+      const fresh = r.data?.data;
+      if (fresh) {
+        setSheet((rows) => rows.map((x) => (x.userId === fresh.userId ? fresh : x)));
+        setAdjModal((m) => (m ? { ...m, row: fresh } : m));
+      }
+      try { const a = await salaryApi.getApproval(year, month); setApproval(a.data?.data || null); } catch { /* keep old */ }
+    } catch (e) { alert(e.response?.data?.message || "Could not record the leave"); }
+  }
+
   async function submitAdjustment(form) {
     setBusy("adj");
     try {
@@ -439,7 +452,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
       )}
 
       {defModal && <StructureModal modal={defModal} busy={busy === "struct"} onClose={() => setDefModal(null)} onSubmit={submitStructure} />}
-      {adjModal && <AdjustModal row={adjModal.row} monthLabel={`${MONTHS[month - 1]} ${year}`} busy={busy === "adj"} onClose={() => setAdjModal(null)} onSubmit={submitAdjustment} />}
+      {adjModal && <AdjustModal row={adjModal.row} canRegularize={["ADMIN", "VP"].includes(role) && !released} onRegularize={regularizeDay} monthLabel={`${MONTHS[month - 1]} ${year}`} busy={busy === "adj"} onClose={() => setAdjModal(null)} onSubmit={submitAdjustment} />}
     </div>
   );
 }
@@ -505,7 +518,9 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
   );
 }
 
-function AdjustModal({ row, monthLabel, busy, onClose, onSubmit }) {
+function AdjustModal({ row, monthLabel, busy, onClose, onSubmit, canRegularize, onRegularize }) {
+  const [leaveType, setLeaveType] = useState("CASUAL");
+  const [working, setWorking] = useState(null);
   const [form, setForm] = useState({
     extraWorkingDays: "",
     manualLopDays: "",
@@ -519,6 +534,32 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit }) {
       <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 14px" }}>
         {monthLabel} · auto: {row.leaveDays} leave day(s){Number(row.unauthorizedDays) > 0 ? `, ${row.unauthorizedDays} unauthorized absence(s) × 1.5` : ""}, {row.lopDays} LOP, {row.extraWorkingDays} extra WD, {row.workingDays} working days
       </div>
+      {row.unauthorizedDates?.length > 0 && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#991b1b", marginBottom: 4 }}>Unauthorized absences — no leave applied, no check-in</div>
+          <div style={{ fontSize: 12, color: "#7f1d1d", marginBottom: 8 }}>
+            If the employee actually took leave but never applied, record it here. It then counts as ordinary leave (free CL first) instead of an unauthorized absence at 1.5× with no free CL.
+          </div>
+          {canRegularize && (
+            <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} style={{ ...inputS, marginBottom: 8 }}>
+              {[["CASUAL", "Casual leave"], ["SICK", "Sick leave"], ["EARNED", "Earned leave"], ["OTHER", "Other leave"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          )}
+          {row.unauthorizedDates.map((d) => (
+            <div key={d} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "4px 0" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{fmtDate(d)}</span>
+              {canRegularize && (
+                <button disabled={working === d}
+                  onClick={async () => { setWorking(d); await onRegularize(row, d, leaveType); setWorking(null); }}
+                  style={{ ...btn("#fff", "#166534"), border: "1px solid #bbf7d0", padding: "5px 10px", fontSize: 12, opacity: working === d ? 0.6 : 1 }}>
+                  {working === d ? "Saving…" : "Mark as leave"}
+                </button>
+              )}
+            </div>
+          ))}
+          {!canRegularize && <div style={{ fontSize: 12, color: "#7f1d1d", marginTop: 4 }}>Only Admin or VP can record leave for an employee.</div>}
+        </div>
+      )}
       <Field label="Extra working days (override — auto-detected from Sunday/holiday check-in+out)">
         <input type="number" step="0.5" value={form.extraWorkingDays} onChange={(e) => setForm((f) => ({ ...f, extraWorkingDays: e.target.value }))} style={{ ...inputS, width: "100%" }} placeholder="auto" />
       </Field>

@@ -108,6 +108,7 @@ export default function EmployeesPage({ user }) {
   const [previewId, setPreviewId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState(null); // set while the Add/Edit dialog is editing an existing record
   const canExit = ["ADMIN", "VP"].includes(user?.role);
   const [exitOpen, setExitOpen] = useState(false);
   const [exitForm, setExitForm] = useState({ exitDate: "", exitType: "RESIGNED", exitReason: "" });
@@ -158,7 +159,7 @@ export default function EmployeesPage({ user }) {
   const preview = filtered.find(e => e.id === previewId) || filtered[0] || null;
 
   const openAdd = () => {
-    setForm(BLANK); setFormErr(""); setAddOpen(true);
+    setForm(BLANK); setFormErr(""); setEditId(null); setAddOpen(true);
     usersApi.getAll().then(r => setAppUsers((r.data?.data || []).filter(u => !u.exited))).catch(() => setAppUsers([]));
   };
   // Logins not yet attached to an employee record.
@@ -172,15 +173,29 @@ export default function EmployeesPage({ user }) {
     if (!form.doj) { setFormErr("Enter the date of joining"); return; }
     setSaving(true); setFormErr("");
     try {
-      const r = await employeeApi.create(form);
-      setAddOpen(false);
-      await load();
-      const created = r.data?.data;
-      if (created?.id) setSelectedId(created.id);
+      if (editId) {
+        const { linkedUsername, ...details } = form;
+        await employeeApi.update(editId, details);
+        setAddOpen(false); setEditId(null);
+        await load();
+      } else {
+        const r = await employeeApi.create(form);
+        setAddOpen(false);
+        await load();
+        const created = r.data?.data;
+        if (created?.id) setSelectedId(created.id);
+      }
     } catch (e) { setFormErr(e.response?.data?.message || "Could not add the employee"); }
     finally { setSaving(false); }
   };
 
+  const openEdit = () => {
+    setForm({
+      fullName: preview.fullName || "", doj: preview.doj || "", dob: preview.dob || "", gender: preview.gender || "",
+      department: preview.department || "", designation: preview.designation || "", personCode: preview.personCode || "", linkedUsername: "",
+    });
+    setFormErr(""); setEditId(preview.id); setAddOpen(true);
+  };
   const openExit = () => {
     setExitForm({ exitDate: new Date().toISOString().slice(0, 10), exitType: "RESIGNED", exitReason: "" });
     setExitErr(""); setExitOpen(true);
@@ -296,6 +311,9 @@ export default function EmployeesPage({ user }) {
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 22 }}>
                   <button className="em-open" style={{ marginTop: 0 }} onClick={() => setSelectedId(preview.id)}>Open full profile <ChevronRight size={16} /></button>
+                  {canManage && (
+                    <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#1e3a5f", border: "1px solid #cbd5e1" }} onClick={openEdit}>Edit details</button>
+                  )}
                   {canExit && !exitedPreview && (
                     <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#b91c1c", border: "1px solid #fecaca" }} onClick={openExit}>Move to Exited</button>
                   )}
@@ -348,15 +366,15 @@ export default function EmployeesPage({ user }) {
         <div onClick={() => setAddOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add employee"
             style={{ background: "#fff", borderRadius: 16, width: 560, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Add Employee</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Onboard a new employee into the Employee Master. The person code is generated automatically.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>{editId ? "Edit Employee" : "Add Employee"}</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>{editId ? "Update this employee's details. Changing the person code also updates their employee number everywhere." : "Onboard a new employee into the Employee Master. The person code is generated automatically."}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
                 ["fullName", "Full name *", "text", { full: true }],
                 ["doj", "Date of joining *", "date"],
                 ["dob", "Date of birth", "date"],
                 ["gender", "Gender", "select", { options: ["", "M", "F", "Other"] }],
-                ["personCode", "Person code (optional)", "text", { placeholder: "Auto, e.g. H-26-0055" }],
+                ["personCode", editId ? "Person code" : "Person code (optional)", "text", { placeholder: "Auto, e.g. H-26-0055" }],
                 ["department", "Department", "text", { list: "dept-list" }],
                 ["designation", "Designation", "text"],
               ].map(([k, label, type, o = {}]) => (
@@ -371,20 +389,20 @@ export default function EmployeesPage({ user }) {
                   )}
                 </label>
               ))}
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1", fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+              {!editId && <label style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1", fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
                 Link to app login (optional)
                 <select value={form.linkedUsername} onChange={e => setForm(f => ({ ...f, linkedUsername: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
                   <option value="">— None —</option>
                   {freeUsers.map(u => <option key={u.id} value={u.username}>{u.fullName} (@{u.username})</option>)}
                 </select>
-              </label>
+              </label>}
             </div>
             <datalist id="dept-list">{departments.map(d => <option key={d} value={d} />)}</datalist>
             {formErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{formErr}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
               <button onClick={() => setAddOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#1e3a5f", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
-                {saving ? "Saving…" : "Add Employee"}
+                {saving ? "Saving…" : editId ? "Save Changes" : "Add Employee"}
               </button>
             </div>
           </div>
