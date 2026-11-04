@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Building2, Briefcase, AtSign } from "lucide-react";
 import { employeeApi, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
-const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
-const th = { padding: "12px 14px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
-const td = { padding: "10px 14px", fontSize: 14, borderBottom: "1px solid #eef2f7", color: "#0f172a", verticalAlign: "middle" };
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
 
 function fmtDate(d) {
@@ -19,15 +17,86 @@ function tenure(emp) {
   return [y ? `${y}y` : null, m || !y ? `${m}m` : null].filter(Boolean).join(" ");
 }
 
+const AVATAR_TONES = [
+  ["#e0e7ff", "#4338ca"], ["#dcfce7", "#15803d"], ["#fef3c7", "#b45309"], ["#fce7f3", "#be185d"],
+  ["#e0f2fe", "#0369a1"], ["#ede9fe", "#6d28d9"], ["#ffedd5", "#c2410c"], ["#ccfbf1", "#0f766e"],
+];
+const toneFor = (name) => AVATAR_TONES[[...(name || "?")].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
+
 function Avatar({ url, name, size = 36 }) {
+  const [bg, fg] = toneFor(name);
   return url ? (
-    <img src={attachmentFullUrl(url)} alt={name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "1px solid #e2e8f0" }} />
+    <img src={attachmentFullUrl(url)} alt={name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
   ) : (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: "#e0e7ff", color: "#4338ca", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.4 }}>
+    <div style={{ width: size, height: size, borderRadius: "50%", background: bg, color: fg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.4, flexShrink: 0 }}>
       {(name || "?").trim().charAt(0).toUpperCase()}
     </div>
   );
 }
+
+const EM_CSS = `
+.em-head { display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+.em-title { font-size:22px; font-weight:800; color:#0f172a; letter-spacing:-0.3px; }
+.em-sub { font-size:13.5px; color:#64748b; margin-top:2px; }
+.em-add { margin-left:auto; display:inline-flex; align-items:center; gap:6px; border:none; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:700; color:#fff; background:#1e3a5f; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s; }
+.em-add:hover { background:#16304f; }
+
+.em-shell { display:grid; grid-template-columns:380px minmax(0,1fr); background:#fff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden; height:calc(100vh - 250px); min-height:520px; }
+.em-side { display:flex; flex-direction:column; border-right:1px solid #e2e8f0; min-height:0; }
+.em-tools { padding:14px; border-bottom:1px solid #eef2f7; display:flex; flex-direction:column; gap:10px; }
+.em-search { position:relative; }
+.em-search svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; }
+.em-search input { width:100%; box-sizing:border-box; border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; padding:10px 12px 10px 38px; font-size:14px; font-family:inherit; color:#0f172a; outline:none; transition:border-color .15s, background .15s, box-shadow .15s; }
+.em-search input:focus { border-color:#1e3a5f; background:#fff; box-shadow:0 0 0 3px rgba(30,58,95,.12); }
+.em-row2 { display:flex; gap:8px; }
+.em-select { flex:1; min-width:0; border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; padding:8px 10px; font-size:13px; font-family:inherit; color:#0f172a; cursor:pointer; outline:none; }
+.em-seg { display:flex; background:#f1f5f9; border-radius:10px; padding:3px; gap:2px; }
+.em-seg button { flex:1; border:none; background:transparent; border-radius:8px; padding:6px 10px; font-size:12.5px; font-weight:600; color:#64748b; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s, color .15s; }
+.em-seg button.on { background:#fff; color:#0f172a; box-shadow:0 1px 2px rgba(0,0,0,.1); }
+.em-count { padding:9px 16px; font-size:12px; color:#64748b; border-bottom:1px solid #eef2f7; background:#fafbfc; }
+
+.em-list { overflow-y:auto; flex:1; min-height:0; }
+.em-grp { position:sticky; top:0; z-index:1; padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#64748b; background:#f1f5f9; border-bottom:1px solid #e8edf3; display:flex; justify-content:space-between; }
+.em-item { display:flex; align-items:center; gap:12px; padding:10px 16px; cursor:pointer; border-left:3px solid transparent; border-bottom:1px solid #f4f6f9; transition:background .12s; }
+.em-item:hover { background:#f8fafc; }
+.em-item.sel { background:#eef3f9; border-left-color:#1e3a5f; }
+.em-item-main { flex:1; min-width:0; }
+.em-item-name { font-size:14px; font-weight:600; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.em-item-sub { font-size:12.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.em-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.em-dot.active { background:#22c55e; }
+.em-dot.exited { background:#ef4444; }
+.em-item.exited .em-item-name { color:#64748b; }
+
+.em-panel { overflow-y:auto; min-width:0; background:#fafbfc; }
+.em-hero { background:linear-gradient(135deg,#1e3a5f 0%,#2c5282 100%); padding:30px 32px 56px; color:#fff; }
+.em-hero-in { display:flex; align-items:center; gap:20px; }
+.em-hero-av { padding:4px; background:rgba(255,255,255,.2); border-radius:50%; flex-shrink:0; }
+.em-hero-name { font-size:24px; font-weight:800; letter-spacing:-0.3px; }
+.em-hero-role { font-size:15px; opacity:.85; margin-top:3px; }
+.em-badge { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; font-weight:700; padding:4px 11px; border-radius:100px; background:rgba(255,255,255,.18); }
+.em-badge i { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.em-body { margin:-34px 24px 24px; background:#fff; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.06); padding:6px 22px 22px; }
+.em-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 28px; }
+.em-fact { display:flex; align-items:center; gap:14px; padding:15px 0; border-bottom:1px solid #f1f5f9; }
+.em-fact-ic { width:36px; height:36px; border-radius:10px; background:#eef3f9; color:#1e3a5f; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.em-fact-l { font-size:11.5px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+.em-fact-v { font-size:15px; font-weight:600; color:#0f172a; margin-top:2px; }
+.em-open { margin-top:22px; display:inline-flex; align-items:center; gap:6px; border:none; border-radius:10px; padding:11px 20px; font-size:14px; font-weight:700; color:#fff; background:#1e3a5f; cursor:pointer; font-family:inherit; transition:background .15s; }
+.em-open:hover { background:#16304f; }
+.em-none { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#94a3b8; font-size:14px; padding:24px; text-align:center; }
+
+@media (max-width: 900px) {
+  .em-shell { grid-template-columns:1fr; height:auto; }
+  .em-side { border-right:none; }
+  .em-list { max-height:420px; }
+  .em-panel { border-top:1px solid #e2e8f0; }
+  .em-facts { grid-template-columns:1fr; }
+  .em-hero { padding:22px 20px 50px; }
+  .em-body { margin:-30px 14px 16px; }
+}
+@media (max-width: 600px) { .em-add { margin-left:0; width:100%; justify-content:center; } }
+`;
 
 export default function EmployeesPage({ user }) {
   const canManage = ["ADMIN", "VP", "OH", "CEO"].includes(user?.role);
@@ -36,6 +105,7 @@ export default function EmployeesPage({ user }) {
   const [q, setQ] = useState("");
   const [deptF, setDeptF] = useState("");
   const [statusF, setStatusF] = useState("active"); // active | exited | all
+  const [previewId, setPreviewId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [appUsers, setAppUsers] = useState([]);
@@ -68,6 +138,20 @@ export default function EmployeesPage({ user }) {
     });
   }, [employees, q, deptF, statusF]);
 
+  // Grouped by department, people sorted by name within each group.
+  const groups = useMemo(() => {
+    const map = new Map();
+    [...filtered].sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "")).forEach(e => {
+      const k = e.department || "No department";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(e);
+    });
+    return [...map.entries()].sort(([a], [b]) => (a === "No department") - (b === "No department") || a.localeCompare(b));
+  }, [filtered]);
+
+  // Keep the preview on a visible person: fall back to the first match when the filter hides the current one.
+  const preview = filtered.find(e => e.id === previewId) || filtered[0] || null;
+
   const openAdd = () => {
     setForm(BLANK); setFormErr(""); setAddOpen(true);
     usersApi.getAll().then(r => setAppUsers((r.data?.data || []).filter(u => !u.exited))).catch(() => setAppUsers([]));
@@ -96,92 +180,102 @@ export default function EmployeesPage({ user }) {
     return <EmployeeProfilePage id={selectedId} user={user} onBack={() => { setSelectedId(null); load(); }} />;
   }
 
+  const exitedPreview = preview ? isExitedEmp(preview) : false;
+  const facts = preview ? [
+    [Hash, "Person code", preview.personCode],
+    [Building2, "Department", preview.department],
+    [Briefcase, "Designation", preview.designation],
+    [CalendarDays, "Date of joining", preview.doj ? fmtDate(preview.doj) : null],
+    [Hourglass, "Tenure", tenure(preview)],
+    [Cake, "Date of birth", preview.dob ? fmtDate(preview.dob) : null],
+    ...(preview.dor ? [[CalendarDays, "Date of exit", fmtDate(preview.dor)]] : []),
+    ...(preview.linkedUsername ? [[AtSign, "App login", "@" + preview.linkedUsername]] : []),
+  ] : [];
+
   return (
     <div className="hr-page" style={{ padding: "24px 32px" }}>
-      <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 20, display: "flex", alignItems: "center", gap: 14, borderLeft: "4px solid #4338ca" }}>
-        <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#e0e7ff", color: "#4338ca", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>👥</div>
+      <style>{EM_CSS}</style>
+
+      <div className="em-head">
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Employee Master</div>
-          <div style={{ fontSize: 13.5, color: "#64748b", marginTop: 2 }}>
-            Full employment history — active and exited — with PR/attendance stats and daily performance tracking for each person.
+          <div className="em-title">Employee Master</div>
+          <div className="em-sub">Everyone who has worked at Happizo — pick a person to see their summary, open the profile for the full history.</div>
+        </div>
+        {canManage && <button className="em-add" onClick={openAdd}><Plus size={16} strokeWidth={2.5} /> Add Employee</button>}
+      </div>
+
+      <div className="em-shell">
+        <div className="em-side">
+          <div className="em-tools">
+            <div className="em-search">
+              <Search size={16} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code or designation" />
+            </div>
+            <div className="em-row2">
+              <select className="em-select" value={deptF} onChange={(e) => setDeptF(e.target.value)}>
+                <option value="">All departments</option>
+                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="em-seg">
+              {[["active", "Active"], ["exited", "Exited"], ["all", "All"]].map(([k, l]) => (
+                <button key={k} className={statusF === k ? "on" : ""} onClick={() => setStatusF(k)}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="em-count">{loading ? "Loading…" : `${filtered.length} of ${employees.length} employees`}</div>
+          <div className="em-list">
+            {!loading && filtered.length === 0 && <div className="em-none" style={{ height: 160 }}>No employees match your search.</div>}
+            {groups.map(([dept, list]) => (
+              <div key={dept}>
+                <div className="em-grp"><span>{dept}</span><span>{list.length}</span></div>
+                {list.map(e => (
+                  <div key={e.id} className={`em-item ${preview?.id === e.id ? "sel" : ""} ${isExitedEmp(e) ? "exited" : ""}`}
+                    onClick={() => setPreviewId(e.id)} onDoubleClick={() => setSelectedId(e.id)}>
+                    <Avatar url={e.photoUrl} name={e.fullName} size={38} />
+                    <div className="em-item-main">
+                      <div className="em-item-name">{e.fullName}</div>
+                      <div className="em-item-sub">{e.designation || "—"}</div>
+                    </div>
+                    <span className={`em-dot ${isExitedEmp(e) ? "exited" : "active"}`} title={isExitedEmp(e) ? "Exited" : "Active"} />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
-        {canManage && (
-          <button onClick={openAdd} style={{ marginLeft: "auto", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#4338ca", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-            + Add Employee
-          </button>
-        )}
+
+        <div className="em-panel">
+          {!preview ? (
+            <div className="em-none">Select an employee to see their summary.</div>
+          ) : (
+            <>
+              <div className="em-hero">
+                <div className="em-hero-in">
+                  <div className="em-hero-av"><Avatar url={preview.photoUrl} name={preview.fullName} size={88} /></div>
+                  <div>
+                    <div className="em-hero-name">{preview.fullName}</div>
+                    <div className="em-hero-role">{preview.designation || "—"}{preview.department ? ` · ${preview.department}` : ""}</div>
+                    <span className="em-badge"><i style={{ background: exitedPreview ? "#f87171" : "#4ade80" }} />{exitedPreview ? "Exited" : "Active"}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="em-body">
+                <div className="em-facts">
+                  {facts.map(([Icon, l, v]) => (
+                    <div className="em-fact" key={l}>
+                      <div className="em-fact-ic"><Icon size={17} /></div>
+                      <div><div className="em-fact-l">{l}</div><div className="em-fact-v">{v || "—"}</div></div>
+                    </div>
+                  ))}
+                </div>
+                <button className="em-open" onClick={() => setSelectedId(preview.id)}>Open full profile <ChevronRight size={16} /></button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="hr-filter-bar" style={{ ...card, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code, designation…"
-          style={{ ...inputS, minWidth: 220, flex: 1 }} />
-        <select value={deptF} onChange={(e) => setDeptF(e.target.value)} style={{ ...inputS, background: "#fff" }}>
-          <option value="">All Departments</option>
-          {departments.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <div className="hr-pill-row" style={{ display: "flex", gap: 6 }}>
-          {[["active", "Active"], ["exited", "Exited"], ["all", "All"]].map(([k, l]) => (
-            <button key={k} onClick={() => setStatusF(k)}
-              style={{ border: statusF === k ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 14px",
-                background: statusF === k ? "#4338ca" : "#fff", color: statusF === k ? "#fff" : "#374151",
-                fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ ...card, overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", fontSize: 13, color: "#64748b", borderBottom: "1px solid #eef2f7" }}>
-          {filtered.length} of {employees.length} employees
-        </div>
-        <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={th}></th>
-                <th style={th}>Name</th>
-                <th style={th}>Person Code</th>
-                <th style={th}>Department</th>
-                <th style={th}>Designation</th>
-                <th style={th}>DOJ</th>
-                <th style={th}>Tenure</th>
-                <th style={th}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td style={td} colSpan={8}>Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={8}>No employees match.</td></tr>
-              ) : filtered.map(e => (
-                <tr key={e.id} onClick={() => setSelectedId(e.id)} style={{ cursor: "pointer" }}
-                  onMouseEnter={ev => ev.currentTarget.style.background = "#f8fafc"}
-                  onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
-                  <td style={{ ...td, width: 44 }}><Avatar url={e.photoUrl} name={e.fullName} /></td>
-                  <td style={td}>
-                    <div style={{ fontWeight: 700 }}>{e.fullName}</div>
-                    {e.linkedUsername && <div style={{ fontSize: 11.5, color: "#059669" }}>@{e.linkedUsername}</div>}
-                  </td>
-                  <td style={{ ...td, color: "#475569" }}>{e.personCode || "—"}</td>
-                  <td style={td}>{e.department || "—"}</td>
-                  <td style={td}>{e.designation || "—"}</td>
-                  <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(e.doj)}</td>
-                  <td style={td}>{tenure(e)}</td>
-                  <td style={td}>
-                    {isExitedEmp(e) ? (
-                      <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#fef2f2", color: "#b91c1c" }}>Exited</span>
-                    ) : (
-                      <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#ecfdf5", color: "#059669" }}>Active</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
       {addOpen && (
         <div onClick={() => setAddOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add employee"
@@ -221,7 +315,7 @@ export default function EmployeesPage({ user }) {
             {formErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{formErr}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
               <button onClick={() => setAddOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-              <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#4338ca", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+              <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#1e3a5f", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving…" : "Add Employee"}
               </button>
             </div>
