@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { salaryApi, fmtDate, downloadPayslip } from "./hrApi";
+import { salaryApi, fmtDate, downloadPayslip, serverDate } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // Payroll cycle: 26th of the previous month through the 25th of the selected month
@@ -308,9 +308,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em" }}>{st.title}</span>
                       {st.done && st.at && (
                         <span style={{ fontSize: 12, color: "#000", textAlign: "center", lineHeight: 1.25 }}>
-                          {new Date(st.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          {serverDate(st.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}
                           <br />
-                          {new Date(st.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }).toLowerCase()}
+                          {serverDate(st.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).toLowerCase()}
                         </span>
                       )}
                     </div>

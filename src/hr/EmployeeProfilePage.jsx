@@ -489,7 +489,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                 <span>Advance <b>{inrA(a.amount)}</b> over <b>{a.termMonths}</b> mo</span>
                 <span>Recovered <b>{inrA(a.recovered)}</b></span>
                 <span>Balance <b>{inrA(a.balance)}</b></span>
-                <span style={{ color: "#64748b" }}>Paid {a.paidAt ? fmtDate(a.paidAt.slice(0, 10)) : ""}</span>
+                <span style={{ color: "#64748b" }}>Paid {a.paidAt ? serverDate(a.paidAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : ""}</span>
               </div>
             ))}
           </div>

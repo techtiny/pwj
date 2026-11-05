@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { advanceApi, fmtDate } from "./hrApi";
+import { advanceApi, fmtServerDate } from "./hrApi";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const inr = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -180,7 +180,7 @@ export default function AdvancePage({ user }) {
                 return (
                   <Fragment key={a.id}>
                     <tr>
-                      <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate((a.createdAt || "").slice(0, 10))}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtServerDate(a.createdAt)}</td>
                       {showEmployee && <td style={{ ...td, fontWeight: 600 }}>{a.fullName}</td>}
                       <td style={{ ...td, fontWeight: 700, whiteSpace: "nowrap" }}>{inr(a.amount)}</td>
                       <td style={{ ...td, whiteSpace: "nowrap" }}>
@@ -197,7 +197,7 @@ export default function AdvancePage({ user }) {
                       <td style={td}>
                         <span style={pill(st)}>{st.label}</span>
                         {a.approvedBy && <div style={{ fontSize: 14, color: "#000", marginTop: 4 }}>{a.status === "REJECTED" ? "Rejected" : "Approved"} by {a.approvedByRole || a.approvedBy}{a.approvalComment ? ` — ${a.approvalComment}` : ""}</div>}
-                        {a.paidBy && <div style={{ fontSize: 14, color: "#000" }}>Paid by {a.paidBy} · {fmtDate((a.paidAt || "").slice(0, 10))}</div>}
+                        {a.paidBy && <div style={{ fontSize: 14, color: "#000" }}>Paid by {a.paidBy} · {fmtServerDate(a.paidAt)}</div>}
                       </td>
                       <td style={td}>
                         {a.status === "PAID" ? (

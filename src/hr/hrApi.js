@@ -271,6 +271,12 @@ export function fmtServerTime(d) {
   return serverDate(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 }
 
+/** Date only (e.g. "05 Nov 2026") of a server timestamp, in IST — so a request raised just after midnight IST isn't shown a day early. */
+export function fmtServerDate(d) {
+  if (!d) return '';
+  return serverDate(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+}
+
 export function fmtDateTime(d) {
   if (!d) return null;
   const iso = typeof d === 'string' && !d.endsWith('Z') && !d.includes('+') ? d + 'Z' : d;
