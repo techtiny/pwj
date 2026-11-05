@@ -279,7 +279,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
   return (
     <div className="hr-page" style={{ padding: isMobile ? "14px 10px" : "24px 32px" }}>
       {/* Hero */}
-      <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 14, borderLeft: "4px solid #0f766e" }}>
+      <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderLeft: "4px solid #0f766e" }}>
         <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#ccfbf1", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>💰</div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Salary</div>
@@ -287,6 +287,45 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
             Structure per employee, prorated by leaves from the HR module. One casual leave a month is free — extra leave days are loss of pay.
           </div>
         </div>
+        {view === "sheet" && approval && sheet.length > 0 && (
+          <div className="hr-hero-approval" style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+              {approvalSteps.map((st, i) => {
+                const mine = st.key === role && st.open && !released;
+                return (
+                  <Fragment key={st.key}>
+                    {i > 0 && <span style={{ width: 22, height: 2, background: st.done || approvalSteps[i - 1].done ? "#86efac" : "#e2e8f0", marginTop: 21, borderRadius: 2 }} />}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: 64 }}>
+                      {mine ? (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), width: 44, height: 44, fontSize: 24, opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
+                          {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), width: 44, height: 44, fontSize: 24, opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
+                        </div>
+                      ) : (
+                        <span title={st.done ? `${st.title} approved` : `${st.title} — pending`} style={{ width: 44, height: 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800,
+                          color: st.done ? "#fff" : "#94a3b8", background: st.done ? "#16a34a" : "#fff", border: st.done ? "none" : "2.5px solid #cbd5e1", boxShadow: st.done ? "0 1px 3px rgba(22,163,74,.45)" : "none" }}>{st.done ? "✓" : ""}</span>
+                      )}
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em" }}>{st.title}</span>
+                      {st.done && st.at && (
+                        <span style={{ fontSize: 12, color: "#000", textAlign: "center", lineHeight: 1.25 }}>
+                          {new Date(st.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          <br />
+                          {new Date(st.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }).toLowerCase()}
+                        </span>
+                      )}
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+            {released && <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</div>}
+            {approval.rejectRemark && !released && (
+              <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "5px 10px", maxWidth: 360 }}>
+                Rejected by {approval.rejectedRole || approval.rejectedBy}: {approval.rejectRemark}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Controls */}
@@ -326,39 +365,6 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
           <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
             Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
-          {approval && sheet.length > 0 && (
-            <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                {approvalSteps.map((st, i) => {
-                  const mine = st.key === role && st.open && !released;
-                  const tone = st.done ? { bd: "#86efac", bg: "#f0fdf4", fg: "#166534" } : mine ? { bd: "#1e3a5f", bg: "#fff", fg: "#1e3a5f" } : { bd: "#cbd5e1", bg: "#fff", fg: "#000" };
-                  return (
-                    <Fragment key={st.key}>
-                      {i > 0 && <span style={{ alignSelf: "center", color: "#cbd5e1", fontSize: 18 }}>›</span>}
-                      <div style={{ minWidth: 150, border: `1.5px solid ${tone.bd}`, background: tone.bg, borderRadius: 10, padding: "7px 12px", boxShadow: mine ? "0 0 0 3px rgba(30,58,95,.10)" : "none" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800, color: tone.fg, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                          {st.done && <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: "#16a34a" }}>✓</span>}
-                          {st.title}
-                        </div>
-                        {mine && (
-                          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                            <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
-                            {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
-                          </div>
-                        )}
-                      </div>
-                    </Fragment>
-                  );
-                })}
-              </div>
-              {released && <div style={{ fontSize: 13, fontWeight: 800, color: "#166534", marginTop: 10 }}>RELEASED — payslips available</div>}
-              {approval.rejectRemark && !released && (
-                <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "6px 10px", marginTop: 10 }}>
-                  Rejected by {approval.rejectedBy}{approval.rejectedRole ? ` (${approval.rejectedRole})` : ""}: {approval.rejectRemark}
-                </div>
-              )}
-            </div>
-          )}
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
