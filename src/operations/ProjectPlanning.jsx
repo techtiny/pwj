@@ -254,7 +254,9 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
       }).join("");
       return `<tr style="height:20px"><td style="${c}text-align:center;">${r.no}</td><td style="${c}">${esc(r.description)}</td><td style="${c}text-align:center;">${esc(r.material)}</td><td style="${c}text-align:center;">${esc(r.duration)}</td><td style="${c}text-align:center;">${esc(r.start)}</td><td style="${c}text-align:center;">${esc(r.finish)}</td><td style="${c}">${esc(r.remarks)}</td>${cells}</tr>`;
     }).join("");
-    const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
+    // Print only what has a value — no "Revision: —" for an unrevised schedule.
+    const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : ""]]
+      .filter(([, v]) => String(v ?? "").trim() !== "" && v !== "—");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Schedule - ${esc(project.name)}</title>
       <style>@page{size:A3 landscape;margin:8mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
       <table style="width:100%;margin-bottom:6px"><tr>
@@ -783,8 +785,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Project Name", project.name], ["Project WO number", header.woNumber], ["Happizo representative", header.happizoRepresentative],
       ["Project start date", fmtDate(header.startDate)], ["Project completion date", fmtDate(header.completionDate)], ["No of days remaining", daysRemaining ?? ""],
       ["Overall delayed days", totalDelay > 0 ? dayLabel(totalDelay) : "No delay"],
-    ];
-    const infoHtml = [0, 3, 6].map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
+    ].filter(([, v]) => String(v ?? "").trim() !== "" && v !== "—");   // blank header fields (WO number, representative, dates…) are not printed
+    const infoHtml = Array.from({ length: Math.ceil(info.length / 3) }, (_, k) => k * 3).map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Project Schedule - ${esc(project.name)}</title>
       <style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}th,td{overflow-wrap:anywhere}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
       <table style="width:100%;border-bottom:2px solid #111;margin-bottom:8px"><tr>

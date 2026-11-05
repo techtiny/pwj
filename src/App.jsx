@@ -147,6 +147,7 @@ const AUTH_BASE     = `${BACKEND_BASE}/api/v1/auth`;
 const PROJECT_BASE  = `${BACKEND_BASE}/api/v1/projects`;
 const REPORT_BASE   = `${BACKEND_BASE}/api/v1/report`;
 const EXPENSE_BASE  = `${BACKEND_BASE}/api/expenses`;
+const PAYREQ_BASE   = `${BACKEND_BASE}/api/payment-requests`;
 
 const getSessionToken = () => {
   try { return JSON.parse(localStorage.getItem("pwj_user"))?.token || ""; } catch { return ""; }
@@ -259,15 +260,24 @@ const api = {
     fetch(`${EXPENSE_BASE}/pwj-entry/${pwjEntryId}/payment-availability${docNumber ? `?docNumber=${encodeURIComponent(docNumber)}` : ""}`)
       .then(r => (r.ok ? r.json() : null))
       .catch(() => null),
-  sendPwjForPayment: (pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber) =>
-    fetch(`${EXPENSE_BASE}/send-pwj-for-payment`, {
+  // Payment requests on PO / WO: the PR's engineer raises, the allocated procurement person approves → then Accounts → Send for Payment.
+  requestPwjPayment: (username, pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber) =>
+    fetch(PAYREQ_BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "", docNumber: docNumber || "" }),
+      body: JSON.stringify({ username, pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "", docNumber: docNumber || "" }),
     }).then(async r => {
       const data = await r.json().catch(() => null);
-      return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to send for payment" };
+      return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to request payment" };
     }),
+  getPaymentRequests: (username) =>
+    fetch(`${PAYREQ_BASE}?username=${encodeURIComponent(username)}`).then(r => (r.ok ? r.json() : [])).catch(() => []),
+  decidePaymentRequest: (id, action, body) =>
+    fetch(`${PAYREQ_BASE}/${id}/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(async r => {
+        const data = await r.json().catch(() => null);
+        return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Could not update the request" };
+      }),
   allocatePr: (id, body) =>
     fetch(`${API_BASE}/entries/${id}/allocate`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
   requestManualClosure: (id, body) =>
@@ -1951,6 +1961,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [detailRow, setDetailRow]         = useState(null);
   const [approvalModal, setApprovalModal] = useState(null); // { entry }
   const [sendPaymentModal, setSendPaymentModal] = useState(null); // { entry, docOptions }
+  const [paymentRequests, setPaymentRequests] = useState([]); // payment requests this user raised / must decide / (oversight) all
   const [sendPaymentDocNumber, setSendPaymentDocNumber] = useState(""); // selected sub-doc for a multi-vendor/multi-PO entry
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRemarks, setPaymentRemarks] = useState("");
@@ -2360,6 +2371,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const t = setTimeout(() => { setPage(0); fetchEntries(); }, 400);
     return () => clearTimeout(t);
   }, [search]);
+
+  // ── Payment requests (PO / WO): engineer raises → allocated procurement person approves → Send for Payment ──
+  const loadPaymentRequests = useCallback(async () => {
+    if (!user?.username) return;
+    setPaymentRequests(await api.getPaymentRequests(user.username));
+  }, [user?.username]);
+  useEffect(() => { if (mainTab === "entries") loadPaymentRequests(); }, [mainTab, entries, loadPaymentRequests]);
+  const isRaiserOf = (row) => !!row?.raisedBy && [user?.fullName, user?.username].filter(Boolean).some(n => n.toLowerCase() === row.raisedBy.toLowerCase());
+  const payReqsFor = (rowId) => paymentRequests.filter(p => p.pwjEntryId === rowId);
+  const payReqsToDecide = paymentRequests.filter(p => p.status === "PENDING" && p.canDecide);
+  const fmtRupee = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const decidePayReq = async (p, action) => {
+    let body = { username: user?.username };
+    if (action === "approve") {
+      if (!window.confirm(`Approve the payment request of ${fmtRupee(p.amount)} from ${p.requestedByName}? It then goes to Accounts → Send for Payment.`)) return;
+    } else if (action === "reject") {
+      const remark = window.prompt(`Reason for rejecting ${p.requestedByName}'s payment request of ${fmtRupee(p.amount)}:`);
+      if (remark === null) return;
+      if (!remark.trim()) { showToast("Enter a reason for rejecting", "error"); return; }
+      body = { ...body, remark: remark.trim() };
+    } else if (!window.confirm("Withdraw this payment request?")) return;
+    const r = await api.decidePaymentRequest(p.id, action, body);
+    if (r.success) {
+      showToast(action === "approve" ? "Approved — sent to Accounts ✅" : action === "reject" ? "Payment request rejected" : "Payment request withdrawn");
+      loadPaymentRequests();
+      fetchEntries(true);
+    } else showToast(r.message, "error");
+  };
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -3571,11 +3610,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
     const ANCHOR = 4; // min rows kept with header to avoid orphan
     const termRowsAnchor = terms.slice(0, ANCHOR).map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
     const termRowsRest   = terms.slice(ANCHOR).map((t, i) => `<tr><td style="padding:4px 8px;width:22px;font-weight:600;vertical-align:top;">${i+1+ANCHOR}</td><td style="padding:4px 8px;font-size:11px;color:#333;">${t}</td></tr>`).join("");
-    const stageRows = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
-      .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2||""}</div>`).join("");
+    // Print only what has been filled in — an empty field (a blank stage, address, date, GST rate…) never shows.
+    const filled = (x) => String(x ?? "").trim() !== "";
+    const stageList = [["Stage 1",docData.stage1],["Stage 2",docData.stage2],["Stage 3",docData.stage3],["Final stage",docData.stageF]]
+      .filter(([, v2]) => filled(v2));
+    const stageRows = stageList
+      .map(([l,v2]) => `<div style="font-size:11px;margin-bottom:3px;"><strong>${l} -</strong> ${v2}</div>`).join("");
 
     const thBase = `background:#ededeb;color:#111;font-weight:700;font-size:11px;padding:7px 10px;`;
     const tdBase = `padding:7px 10px;border-bottom:1px solid #ddd;`;
+    // GST rows: a rate left blank is not printed (the Amount-in-words cell spans however many rows remain).
+    const taxRows = [["CGST", docData.cgstPct, totals.cgst], ["SGST", docData.sgstPct, totals.sgst], ["IGST", docData.igstPct, totals.igst]]
+      .filter(([, pct]) => filled(pct));
+    const taxRowsHtml = taxRows.map(([n, pct, amt]) => `<tr>
+          <td style="${tdBase}text-align:right;">${n} (${pct}%)</td>
+          <td style="${tdBase}text-align:right;">${fmtCcy(amt)}</td>
+        </tr>`).join("");
+    // Info grid: dates / address / contact — each column only when it has content, the rest share the width.
+    const isWO = e.pwjType === "WO", isPO = e.pwjType === "PO";
+    const extraDates = isPO ? (Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : []).filter(Boolean) : [];
+    const lbl = (t) => `<div style="font-weight:700;margin-bottom:4px;">${t}</div>`;
+    let datesHtml = "";
+    if (isWO && docData.supplyDate) {
+      datesHtml = lbl("Date of Supply") + `<div style="margin-bottom:8px;">${fmtDateDash(docData.supplyDate)}</div>`
+        + (filled(docData.completionDate) ? lbl("Date of Completion") + `<div>${fmtDateDash(docData.completionDate)}</div>` : "");
+    } else {
+      if (filled(docData.completionDate)) datesHtml += lbl(extraDates.length ? "Date of Supply 1" : "Date") + `<div>${fmtDateDash(docData.completionDate)}</div>`;
+      const firstExtra = filled(docData.completionDate) ? 2 : 1;
+      datesHtml += extraDates.map((d, i) => `<div style="margin-top:${i > 0 || filled(docData.completionDate) ? 6 : 0}px;"><span style="font-weight:700;">Date of Supply ${i + firstExtra}</span><div>${fmtDateDash(d)}</div></div>`).join("");
+    }
+    const contactText = docData.contactDetails || raisedByContact;
+    const infoCells = [
+      datesHtml,
+      filled(docData.deliveryAddress) ? lbl(isWO || e.pwjType === "JO" ? "Site address" : "Delivery address") + `<div style="white-space:pre-line;">${docData.deliveryAddress}</div>` : "",
+      filled(contactText) ? lbl("Contact Details") + `<div style="white-space:pre-line;">${contactText}</div>` : "",
+    ].filter(Boolean);
+    const infoGridHtml = infoCells.length
+      ? `<table class="sec" style="border:1px solid #ddd;"><tr>${infoCells.map((c, i) => `<td style="width:${(100 / infoCells.length).toFixed(2)}%;padding:10px 12px;vertical-align:top;${i ? "border-left:1px solid #ddd;" : ""}">${c}</td>`).join("")}</tr></table>`
+      : "";
     const SEC   = `margin-bottom:12px;`;
     const STITLE = `font-weight:700;border-bottom:1px solid #111;padding-bottom:4px;margin:12px 0 6px;`;
     const logoAbsUrl = window.location.origin + HAPPIZO_LOGO_URL;
@@ -3614,7 +3686,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       <tr>
         <td style="vertical-align:top;width:50%;padding-right:16px;">
           <div style="font-weight:700;margin-bottom:4px;">TO:</div>
-          <div style="font-weight:700;">${v?.name || e.vendor || ""}</div>
+          ${(v?.name || e.vendor) ? `<div style="font-weight:700;">${v?.name || e.vendor}</div>` : ""}
           ${(docData.vendorAddress1||v?.street) ? `<div>${docData.vendorAddress1||v.street}</div>` : ""}
           ${(docData.vendorAddress2||(v?.city||v?.state)) ? `<div>${docData.vendorAddress2||[v?.city,v?.state,v?.zipCode].filter(Boolean).join(", ")}</div>` : ""}
           ${(()=>{ const g=docData.gstNumber||v?.gstNumber||""; const p=docData.panNumber||v?.panNumber||""; return (g||p)?`<div>${g?"GST: "+g:""}${g&&p?"&nbsp;&nbsp;&nbsp;":""}${p?"PAN: "+p:""}</div>`:""; })()}
@@ -3649,25 +3721,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
       <tbody>
         ${itemRows}
         <tr>
-          <td colspan="4" rowspan="5" style="${tdBase}border-right:1px solid #ddd;vertical-align:top;">
+          <td colspan="4" rowspan="${2 + taxRows.length}" style="${tdBase}border-right:1px solid #ddd;vertical-align:top;">
             <div style="font-weight:700;font-size:11px;">Amount in words</div>
             <div style="font-size:11px;margin-top:4px;font-style:italic;">${amountToWords(totals.total)}</div>
           </td>
           <td style="${tdBase}text-align:right;font-weight:600;">Sub Total</td>
           <td style="${tdBase}text-align:right;">${fmtCcy(totals.subTotal)}</td>
         </tr>
-        <tr>
-          <td style="${tdBase}text-align:right;">CGST (${docData.cgstPct}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.cgst)}</td>
-        </tr>
-        <tr>
-          <td style="${tdBase}text-align:right;">SGST (${docData.sgstPct}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.sgst)}</td>
-        </tr>
-        <tr>
-          <td style="${tdBase}text-align:right;">IGST (${docData.igstPct || 0}%)</td>
-          <td style="${tdBase}text-align:right;">${fmtCcy(totals.igst)}</td>
-        </tr>
+        ${taxRowsHtml}
         <tr>
           <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">Total <span style="font-weight:400;font-style:italic;font-size:9px;">(Rounded off)</span></td>
           <td style="text-align:right;padding:7px 10px;border-bottom:2px solid #111;font-weight:700;">${fmtTotal(totals.total)}</td>
@@ -3676,25 +3737,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     </table>
 
     <!-- INFO GRID -->
-    <table class="sec" style="border:1px solid #ddd;">
-      <tr>
-        <td style="width:33.33%;padding:10px 12px;vertical-align:top;">
-          ${e.pwjType === "WO" && docData.supplyDate
-            ? `<div style="font-weight:700;margin-bottom:4px;">Date of Supply</div><div style="margin-bottom:8px;">${fmtDateDash(docData.supplyDate)}</div><div style="font-weight:700;margin-bottom:4px;">Date of Completion</div>`
-            : `<div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "PO" && (docData.extraSupplyDates || []).some(Boolean) ? "Date of Supply 1" : "Date"}</div>`}
-          <div>${fmtDateDash(docData.completionDate)}</div>
-          ${e.pwjType === "PO" ? (Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : []).filter(Boolean).map((d, i) => `<div style="margin-top:6px;"><span style="font-weight:700;">Date of Supply ${i + 2}</span><div>${fmtDateDash(d)}</div></div>`).join("") : ""}
-        </td>
-        <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
-          <div style="font-weight:700;margin-bottom:4px;">${e.pwjType === "WO" || e.pwjType === "JO" ? "Site address" : "Delivery address"}</div>
-          <div style="white-space:pre-line;">${docData.deliveryAddress||""}</div>
-        </td>
-        <td style="width:33.33%;padding:10px 12px;vertical-align:top;border-left:1px solid #ddd;">
-          <div style="font-weight:700;margin-bottom:4px;">Contact Details</div>
-          <div style="white-space:pre-line;">${docData.contactDetails||raisedByContact}</div>
-        </td>
-      </tr>
-    </table>
+    ${infoGridHtml}
 
     <div style="page-break-inside:avoid;">
       <div class="stitle">General Terms</div>
@@ -3702,10 +3745,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
     </div>
     ${termRowsRest ? `<table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><tbody>${termRowsRest}</tbody></table>` : ""}
 
-    <div class="sec-block" style="margin-top:8px;">
+    ${stageList.length ? `<div class="sec-block" style="margin-top:8px;">
       <div class="stitle">Payment Terms</div>
       <div class="sec">${stageRows}</div>
-    </div>
+    </div>` : ""}
 
     <div class="sec-block" style="font-size:11px;padding-left:8px;margin-bottom:12px;">
       <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
@@ -4382,7 +4425,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             // One shared look for every tab: muted when idle, navy with an underline when active,
             // soft hover, and a refined count pill.
             const tab = (active, tone) => ({
-              border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", position: "relative",
+              border: "none", cursor: "pointer", fontFamily: "inherit", position: "relative",
               display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
               padding: "0 20px", height: 56, fontSize: 16, fontWeight: active ? 700 : 600, letterSpacing: 0.1,
               color: active ? "#1e3a5f" : (tone || "#1e293b"), background: active ? "#eef3fa" : "transparent",
@@ -4499,6 +4542,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
         )}
 
         {mainTab === "entries" && <>
+        {/* ─── PAYMENT REQUESTS waiting for this procurement person ─── */}
+        {payReqsToDecide.length > 0 && (
+          <div style={{ margin: "20px 32px 0", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 14, padding: "12px 16px" }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>
+              {payReqsToDecide.length} payment request{payReqsToDecide.length === 1 ? "" : "s"} waiting for your approval
+            </div>
+            {payReqsToDecide.map(p => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "6px 0", borderTop: "1px solid #fef3c7" }}>
+                <span style={{ fontSize: 15, color: "#000", flex: "1 1 320px" }}>
+                  <b>{fmtRupee(p.amount)}</b> · PR #{p.pwjEntryId}{p.material ? ` · ${p.material}` : ""} · {p.projectName} · {p.docNumber || p.entryDocNumber || p.pwjType}
+                  <span style={{ color: "#78350f" }}> — requested by {p.requestedByName}{p.paymentStage ? `, ${p.paymentStage.replace("_", " ").toLowerCase()}` : ""}{p.remarks ? ` (${p.remarks})` : ""}</span>
+                </span>
+                <span style={{ display: "inline-flex", gap: 8 }}>
+                  <ApproveBtn title="Approve — send to Accounts" onClick={() => decidePayReq(p, "approve")} />
+                  <RejectBtn title="Reject" onClick={() => decidePayReq(p, "reject")} />
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {/* ─── STATS ─── */}
         <div className="app-statsrow" style={{ display: "flex", gap: 14, padding: "20px 32px 0", flexWrap: "wrap" }}>
           {/* ── Group 1: PR Status ── */}
@@ -4928,7 +4991,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
-                        {canProc(row) && (row.pwjIssued || row.docStatus === "VP_APPROVED") && (() => {
+                        {isRaiserOf(row) && (row.pwjType === "PO" || row.pwjType === "WO") && (row.pwjIssued || row.docStatus === "VP_APPROVED")
+                          && !payReqsFor(row.id).some(p => p.status === "PENDING") && (() => {
+                          // Request Payment: raised by the engineer who raised the PR, on PO and WO documents (not JO).
                           // Multi-vendor/multi-PO entries (incl. Additional POs) have a per-doc
                           // value in docData.docs[] — only a VP-approved sub-doc can be sent for
                           // payment, and the modal lets Procurement pick which one.
@@ -4949,8 +5014,35 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 setSendPaymentDocNumber(docOptions ? docOptions[0].docNumber : "");
                                 setSendPaymentModal({ entry: row, docOptions });
                               }}>
-                              💰 Send for Payment
+                              💰 Request Payment
                             </button>
+                          );
+                        })()}
+                        {(() => {
+                          const reqs = payReqsFor(row.id);
+                          const pending = reqs.filter(p => p.status === "PENDING");
+                          const lastRejected = !pending.length && reqs[0]?.status === "REJECTED" && reqs[0].requestedBy?.toLowerCase() === (user?.username || "").toLowerCase() ? reqs[0] : null;
+                          if (!pending.length && !lastRejected) return null;
+                          return (
+                            <>
+                              {pending.map(p => (
+                                <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "4px 10px" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e", whiteSpace: "nowrap" }}>
+                                    Payment request {fmtRupee(p.amount)} · {p.canDecide ? `from ${p.requestedByName}` : `awaiting ${p.approverName || "procurement"}`}
+                                  </span>
+                                  {p.canDecide && <>
+                                    <ApproveBtn size="sm" title="Approve — send to Accounts" onClick={() => decidePayReq(p, "approve")} />
+                                    <RejectBtn size="sm" title="Reject" onClick={() => decidePayReq(p, "reject")} />
+                                  </>}
+                                  {p.canCancel && <button type="button" onClick={() => decidePayReq(p, "cancel")} style={{ border: "none", background: "none", color: "#92400e", fontSize: 12.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>Withdraw</button>}
+                                </div>
+                              ))}
+                              {lastRejected && (
+                                <span title={lastRejected.decisionRemark || ""} style={{ fontSize: 13, fontWeight: 700, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "4px 10px", whiteSpace: "nowrap" }}>
+                                  Payment request {fmtRupee(lastRejected.amount)} rejected{lastRejected.decisionRemark ? ` — ${lastRejected.decisionRemark}` : ""}
+                                </span>
+                              )}
+                            </>
                           );
                         })()}
                         {(isEngineer || isVP || isOH || isCeo || isProjectManager) && row.docStatus && (() => {
@@ -6218,12 +6310,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={s.modalBox(440)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
-                <div style={s.mTitle}>Send for Payment</div>
+                <div style={s.mTitle}>Request Payment</div>
                 <div style={s.mSub}>Entry #{sendPaymentModal.entry.id} · {sendPaymentModal.entry.materialRequired}</div>
               </div>
               <button style={s.closeBtn} onClick={() => { setSendPaymentModal(null); setSendPaymentDocNumber(""); }}>✕</button>
             </div>
             <div style={s.mBody}>
+              <div style={{ fontSize: 13.5, color: "#0f172a", background: "#f1f5f9", borderRadius: 8, padding: "8px 12px", marginBottom: 12, lineHeight: 1.45 }}>
+                This request goes to <b>{sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "the allocated procurement person"}</b> for approval. Once approved it reaches Accounts → Send for Payment.
+              </div>
               {sendPaymentModal.docOptions ? (
                 <div style={s.formGroup}>
                   <label style={s.label}>PO / Vendor *</label>
@@ -6274,7 +6369,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.pendingRequestId && (
                   <div style={{ fontSize: 11.5, color: "#dc2626", fontWeight: 600, marginTop: 4 }}>
-                    A request of ₹{Number(paymentAvail.pendingAmount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })} for this PR is still pending approval — a new request can be sent once it is approved or rejected.
+                    A request of ₹{Number(paymentAvail.pendingAmount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })} for this PR is still pending approval — a new request can be raised once it is approved or rejected.
                   </div>
                 )}
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved === false && (
@@ -6345,13 +6440,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 onClick={async () => {
                   setPaymentLoading(true);
                   try {
-                    const r = await api.sendPwjForPayment(sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined);
+                    const r = await api.requestPwjPayment(user.username, sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined);
                     if (r.success) {
-                      showToast("Sent for payment ✅");
+                      showToast(`Payment request sent to ${sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "procurement"} for approval ✅`);
+                      loadPaymentRequests();
                       setSendPaymentModal(null);
                       setSendPaymentDocNumber("");
                     } else {
-                      showToast(r.message || "Failed to send for payment", "error");
+                      showToast(r.message || "Failed to request payment", "error");
                     }
                   } catch {
                     showToast("Network error", "error");
@@ -6359,7 +6455,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     setPaymentLoading(false);
                   }
                 }}>
-                {paymentLoading ? "Sending…" : "Send for Payment"}
+                {paymentLoading ? "Requesting…" : "Request Payment"}
               </button>
             </div>
           </div>

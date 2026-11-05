@@ -91,10 +91,23 @@ export function buildPayslipHtml(row, year, month) {
     <div class="title">PAYSLIP FOR ${monthLabel}</div>
   </div>
   <table>
-    <tr><td class="label">Name</td><td>${row.name}</td><td class="label">Pay Period</td><td>${payPeriod}</td></tr>
-    <tr><td class="label">Designation</td><td>${row.designation || "—"}</td><td class="label">Present Days</td><td>${row.workingDays}</td></tr>
-    <tr><td class="label">Person Code</td><td>${row.employeeNumber || "—"}</td><td class="label">Absent / LOP Days</td><td>${row.lopDays}</td></tr>
-    <tr><td class="label">PF Applicable</td><td>${Number(row.fixedPf) > 0 ? "Yes" : "No"}</td><td class="label">Total Working Days</td><td>${row.daysInMonth}</td></tr>
+    ${(() => {
+      // Info grid: two label/value pairs per row; a field with no value (e.g. no designation or person code) is left out.
+      const pairs = [
+        ["Name", row.name], ["Pay Period", payPeriod],
+        ["Designation", row.designation], ["Present Days", row.workingDays],
+        ["Person Code", row.employeeNumber], ["Absent / LOP Days", row.lopDays],
+        ["PF Applicable", Number(row.fixedPf) > 0 ? "Yes" : "No"], ["Total Working Days", row.daysInMonth],
+      ].filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== "" && v !== "—");
+      let html = "";
+      for (let i = 0; i < pairs.length; i += 2) {
+        const [l1, v1] = pairs[i], second = pairs[i + 1];
+        html += second
+          ? `<tr><td class="label">${l1}</td><td>${v1}</td><td class="label">${second[0]}</td><td>${second[1]}</td></tr>`
+          : `<tr><td class="label">${l1}</td><td colspan="3">${v1}</td></tr>`;
+      }
+      return html;
+    })()}
   </table>
   <table>
     <tr class="section-head"><td>Earnings</td><td class="right">Amount (INR)</td><td>Deductions</td><td class="right">Amount (INR)</td></tr>
