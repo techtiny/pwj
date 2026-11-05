@@ -188,6 +188,8 @@ export const advanceApi = {
   reject:  (id, data)   => api.put(`/advance/${id}/reject`, data),
   paid:    (id, data)   => api.put(`/advance/${id}/paid`, data),
   cancel:  (id, data)   => api.put(`/advance/${id}/cancel`, data),
+  startOptions: (advanceId) => api.get('/advance/start-options', { params: advanceId ? { advanceId } : {} }),
+  changeStart: (id, data) => api.put(`/advance/${id}/start`, data),
 };
 
 /** Outstanding salary-advance money for one person: what's been paid out and not yet recovered through salary. */

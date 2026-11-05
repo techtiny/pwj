@@ -42,6 +42,7 @@ export default function AdvancePage({ user }) {
   const [open, setOpen] = useState(null);          // advance id whose repayment schedule is expanded
   const [terms, setTerms] = useState({});          // approver's term change per request id
   const [form, setForm] = useState({ amount: "", termMonths: 3, reason: "" });
+  const [startDlg, setStartDlg] = useState(null);  // { a, mode: "pay" | "change", options, choice } — which payroll month recovery starts in
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,10 +83,28 @@ export default function AdvancePage({ user }) {
     if (!c.trim()) { alert("Enter a reason for rejecting"); return; }
     act("reject", () => advanceApi.reject(a.id, { username: user?.username, comment: c.trim() }));
   };
-  const markPaid = (a) => {
-    if (!window.confirm(`Mark ${inr(a.amount)} as transferred to ${a.fullName}? Repayment of ${inr(a.monthlyInstalment)} a month for ${a.termMonths} month(s) then starts coming off their salary.`)) return;
-    act("mark paid", () => advanceApi.paid(a.id, { username: user?.username }));
-  };
+  // Admin picks the payroll month the first instalment comes off — defaults to the earliest one not yet released.
+  async function openStart(a, mode) {
+    try {
+      const r = await advanceApi.startOptions(a.id);
+      const d = r.data?.data;
+      const cur = mode === "change" ? { year: a.startYear, month: a.startMonth } : d?.default;
+      setStartDlg({ a, mode, options: d?.options || [], choice: cur ? `${cur.year}-${cur.month}` : "" });
+    } catch (e) { alert(e.response?.data?.message || "Could not load payroll months"); }
+  }
+  async function confirmStart() {
+    const { a, mode, choice } = startDlg;
+    if (!choice) { alert("Pick the payroll month"); return; }
+    const [y, m] = choice.split("-").map(Number);
+    setBusy("start");
+    try {
+      if (mode === "pay") await advanceApi.paid(a.id, { username: user?.username, startYear: y, startMonth: m });
+      else await advanceApi.changeStart(a.id, { username: user?.username, startYear: y, startMonth: m });
+      setStartDlg(null);
+      await load();
+    } catch (e) { alert(e.response?.data?.message || "Could not save"); }
+    finally { setBusy(null); }
+  }
   const cancel = (a) => { if (window.confirm("Cancel this advance request?")) act("cancel", () => advanceApi.cancel(a.id, { username: user?.username })); };
 
   const showEmployee = tab !== "mine";
@@ -183,11 +202,15 @@ export default function AdvancePage({ user }) {
                       <td style={td}>
                         {a.status === "PAID" ? (
                           <>
+                            <div style={{ fontSize: 14 }}>Starts <b>{MONTHS[a.startMonth - 1]} {a.startYear}</b> salary</div>
                             <div style={{ fontSize: 15 }}>Recovered <b>{inr(a.recovered)}</b></div>
                             <div style={{ fontSize: 15 }}>Balance <b>{inr(a.balance)}</b></div>
                             <button onClick={() => setOpen(open === a.id ? null : a.id)} style={{ border: "none", background: "none", color: "#0f766e", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                               {open === a.id ? "Hide schedule" : "View schedule"}
                             </button>
+                            {isAdmin && Number(a.recovered) === 0 && (
+                              <div><button onClick={() => openStart(a, "change")} style={{ border: "none", background: "none", color: "#1d4ed8", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Change start month</button></div>
+                            )}
                           </>
                         ) : <span style={{ color: "#cbd5e1" }}>—</span>}
                       </td>
@@ -199,7 +222,7 @@ export default function AdvancePage({ user }) {
                           </span>
                         )}
                         {isAdmin && a.status === "APPROVED" && (
-                          <button onClick={() => markPaid(a)} disabled={!!busy} style={btn("#1d4ed8")}>Mark paid</button>
+                          <button onClick={() => openStart(a, "pay")} disabled={!!busy} style={btn("#1d4ed8")}>Mark paid</button>
                         )}
                         {mine && a.status === "PENDING" && tab === "mine" && (
                           <button onClick={() => cancel(a)} disabled={!!busy} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca" }}>Cancel</button>
@@ -226,6 +249,32 @@ export default function AdvancePage({ user }) {
           </table>
         </div>
       </div>
+      {startDlg && (
+        <div onClick={() => setStartDlg(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" style={{ background: "#fff", borderRadius: 16, width: 440, maxWidth: "100%", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
+              {startDlg.mode === "pay" ? "Mark as paid" : "Change start month"} — {startDlg.a.fullName}
+            </div>
+            <div style={{ fontSize: 14.5, color: "#000", marginBottom: 14 }}>
+              {inr(startDlg.a.amount)} over {startDlg.a.termMonths} month{startDlg.a.termMonths > 1 ? "s" : ""} ({inr(startDlg.a.monthlyInstalment)} a month). Choose the payroll the first instalment comes off. A released month can't take it.
+            </div>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+              First deduction from
+              <select value={startDlg.choice} onChange={(e) => setStartDlg((d) => ({ ...d, choice: e.target.value }))} style={inputS}>
+                {startDlg.options.map((o) => (
+                  <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`} disabled={o.released}>
+                    {MONTHS[o.month - 1]} {o.year} salary{o.released ? " — released" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button onClick={() => setStartDlg(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
+              <button onClick={confirmStart} disabled={busy === "start"} style={{ ...btn("#1d4ed8"), opacity: busy === "start" ? 0.6 : 1 }}>{busy === "start" ? "Saving…" : startDlg.mode === "pay" ? "Mark paid" : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

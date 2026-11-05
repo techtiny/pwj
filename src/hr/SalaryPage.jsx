@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { salaryApi, fmtDate, downloadPayslip } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -117,14 +117,19 @@ export default function SalaryPage({ user }) {
 
   const released = !!approval?.released;
   const role = user?.role;
-  // Admin → OH or VP → CEO (final). Only the role whose turn it is gets the buttons.
-  const myTurn = approval && !released && (
-    (approval.nextStep === "ADMIN" && role === "ADMIN") ||
-    (approval.nextStep === "OH_VP" && (role === "OH" || role === "VP")) ||
-    (approval.nextStep === "CEO" && role === "CEO"));
+  // Admin first, then OH and VP each on their own (neither waits for the other), then the CEO's final approval.
+  // Only the role whose step is open gets its Approve / Reject buttons.
+  const approvalSteps = approval ? [
+    { key: "ADMIN", title: "Admin", done: approval.adminApproved, by: approval.adminBy, at: approval.adminAt, open: !approval.adminApproved, waitsFor: null },
+    { key: "OH", title: "OH", done: approval.ohApproved, by: approval.ohBy, at: approval.ohAt, open: approval.adminApproved && !approval.ohApproved, waitsFor: "Admin" },
+    { key: "VP", title: "VP", done: approval.vpApproved, by: approval.vpBy, at: approval.vpAt, open: approval.adminApproved && !approval.vpApproved, waitsFor: "Admin" },
+    { key: "CEO", title: "CEO · Final", done: approval.ceoApproved, by: approval.ceoBy, at: approval.ceoAt, open: approval.ohApproved && approval.vpApproved && !approval.ceoApproved, waitsFor: "OH and VP" },
+  ] : [];
+  const myStep = approvalSteps.find((st) => st.key === role && st.open && !released);
+  const myTurn = !!myStep;
 
   async function approveMonth() {
-    const last = approval.nextStep === "CEO";
+    const last = role === "CEO";
     const label = `${MONTHS[month - 1]} ${year}`;
     if (!window.confirm(last
       ? `Give final approval and RELEASE the salary for ${label}? The month will be locked and employees will be notified that payslips are available.`
@@ -175,7 +180,7 @@ export default function SalaryPage({ user }) {
     const body = sheet.map((r, i) => `<tr>${cols.map((c) => cell(c, r, i)).join("")}</tr>`).join("");
     const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="c b">${esc(inr(totals[c.k]))}</td>` : `<td class="c b">${c.k === "name" ? "Total" : ""}</td>`).join("")}</tr>`;
     const ap = approval;
-    const approvalLine = ap ? `<p class="ap">${released ? "<b>RELEASED</b> — " : "<b>Not yet released</b> — "}Admin: ${esc(ap.adminApproved ? ap.adminBy : "pending")} · OH/VP: ${esc(ap.reviewApproved ? `${ap.reviewBy} (${ap.reviewRole})` : "pending")} · CEO: ${esc(ap.ceoApproved ? ap.ceoBy : "pending")}</p>` : "";
+    const approvalLine = ap ? `<p class="ap">${released ? "<b>RELEASED</b> — " : "<b>Not yet released</b> — "}Admin: ${esc(ap.adminApproved ? ap.adminBy : "pending")} · OH: ${esc(ap.ohApproved ? ap.ohBy : "pending")} · VP: ${esc(ap.vpApproved ? ap.vpBy : "pending")} · CEO: ${esc(ap.ceoApproved ? ap.ceoBy : "pending")}</p>` : "";
     const w = window.open("", "_blank");
     if (!w) { alert("Allow pop-ups to print the salary sheet"); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Salary ${MONTHS[month - 1]} ${year}</title>
@@ -316,36 +321,38 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
             Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
           {approval && sheet.length > 0 && (
-            <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                {[
-                  ["Admin", approval.adminApproved, approval.adminBy],
-                  ["OH / VP", approval.reviewApproved, approval.reviewBy ? `${approval.reviewBy} (${approval.reviewRole})` : null],
-                  ["CEO · final", approval.ceoApproved, approval.ceoBy],
-                ].map(([label, done, by], i) => (
-                  <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    {i > 0 && <span style={{ color: "#cbd5e1" }}>→</span>}
-                    <span style={{ fontSize: 12.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
-                      background: done ? "#dcfce7" : "#f1f5f9", color: done ? "#166534" : "#64748b", border: `1px solid ${done ? "#bbf7d0" : "#e2e8f0"}` }}>
-                      {done ? "✓ " : ""}{label}{done && by ? ` · ${by}` : ""}
-                    </span>
-                  </span>
-                ))}
-                {released && <span style={{ fontSize: 12.5, fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</span>}
-                {myTurn && (
-                  <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8 }}>
-                    <button onClick={approveMonth} disabled={busy === "approval"} style={btn("#166534")}>{approval.nextStep === "CEO" ? "Approve & Release" : "Approve"}</button>
-                    {approval.nextStep !== "ADMIN" && <button onClick={rejectMonth} disabled={busy === "approval"} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca" }}>Reject</button>}
-                  </span>
-                )}
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
+              <div style={{ display: "flex", alignItems: "stretch", gap: 10, flexWrap: "wrap" }}>
+                {approvalSteps.map((st, i) => {
+                  const mine = st.key === role && st.open && !released;
+                  const tone = st.done ? { bd: "#86efac", bg: "#f0fdf4", fg: "#166534" } : mine ? { bd: "#1e3a5f", bg: "#fff", fg: "#1e3a5f" } : { bd: "#e2e8f0", bg: "#fff", fg: "#64748b" };
+                  return (
+                    <Fragment key={st.key}>
+                      {i > 0 && <span style={{ alignSelf: "center", color: "#cbd5e1", fontSize: 18 }}>›</span>}
+                      <div style={{ minWidth: 168, flex: "1 1 168px", maxWidth: 250, border: `1.5px solid ${tone.bd}`, background: tone.bg, borderRadius: 12, padding: "10px 12px", boxShadow: mine ? "0 0 0 3px rgba(30,58,95,.10)" : "none" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800, color: tone.fg, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: st.done ? "#16a34a" : mine ? "#1e3a5f" : "#cbd5e1" }}>{st.done ? "✓" : i + 1}</span>
+                          {st.title}
+                        </div>
+                        <div style={{ fontSize: 13, color: st.done ? "#166534" : "#64748b", marginTop: 6, minHeight: 34 }}>
+                          {st.done
+                            ? <><b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#4b5563" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}</>
+                            : st.open ? "Awaiting approval" : `Waiting for ${st.waitsFor}`}
+                        </div>
+                        {mine && (
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button onClick={approveMonth} disabled={busy === "approval"} style={{ ...btn("#166534"), flex: 1, padding: "7px 10px", opacity: busy === "approval" ? 0.6 : 1 }}>{st.key === "CEO" ? "Approve & Release" : "Approve"}</button>
+                            {st.key !== "ADMIN" && <button onClick={rejectMonth} disabled={busy === "approval"} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca", padding: "7px 10px" }}>Reject</button>}
+                          </div>
+                        )}
+                      </div>
+                    </Fragment>
+                  );
+                })}
               </div>
-              {!released && !myTurn && (
-                <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 6 }}>
-                  Waiting for {approval.nextStep === "ADMIN" ? "Admin" : approval.nextStep === "OH_VP" ? "OH or VP" : "the CEO"} to approve.
-                </div>
-              )}
+              {released && <div style={{ fontSize: 13, fontWeight: 800, color: "#166534", marginTop: 10 }}>RELEASED — payslips available</div>}
               {approval.rejectRemark && !released && (
-                <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>
+                <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "6px 10px", marginTop: 10 }}>
                   Rejected by {approval.rejectedBy}{approval.rejectedRole ? ` (${approval.rejectedRole})` : ""}: {approval.rejectRemark}
                 </div>
               )}
