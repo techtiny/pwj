@@ -249,11 +249,11 @@ export default function EmployeesPage({ user }) {
     [Building2, "Department", preview.department],
     [Briefcase, "Designation", preview.designation],
     [CalendarDays, "Date of joining", preview.doj ? fmtDate(preview.doj) : null],
+    ...(canManage ? [[Landmark, "Bank", bank?.bankName], [Landmark, "Account number", bank?.bankAccountNumber], [Landmark, "IFSC", bank?.ifscCode]] : []),
     [Hourglass, "Tenure", tenure(preview)],
     [Cake, "Date of birth", preview.dob ? fmtDate(preview.dob) : null],
     ...(preview.dor ? [[CalendarDays, "Date of exit", fmtDate(preview.dor)]] : []),
     ...(preview.linkedUsername ? [[AtSign, "App login", "@" + preview.linkedUsername]] : []),
-    ...(canManage ? [[Landmark, "Bank", bank?.bankName], [Landmark, "Account number", bank?.bankAccountNumber], [Landmark, "IFSC", bank?.ifscCode]] : []),
     ...(advPending > 0 ? [[Wallet, "Advance pending", "₹" + advPending.toLocaleString("en-IN", { maximumFractionDigits: 2 })]] : []),
   ] : [];
 
