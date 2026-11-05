@@ -1,0 +1,9 @@
+/* Table content text size — 17px everywhere, the same as the Bug Tracker table.
+   - Desktop only: on phones the tables keep their compact / card layouts.
+   - Fixed-layout tables (the schedule chart and planning grids, whose columns have set widths) are left alone,
+     since bigger text would clip inside their narrow cells.
+   - Cell text only; table headers keep their own size. Text inside a cell that sets its own size (small badges,
+     secondary lines) keeps it. */
+@media (min-width: 769px) {
+  table:not([style*="table-layout: fixed"]):not([style*="table-layout:fixed"]) td { font-size: 17px !important; }
+}

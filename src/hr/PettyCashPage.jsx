@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { pettyCashApi, projectsApi, uploadDocument, attachmentFullUrl, fmtDate, fmtDateTime } from "./hrApi";
+import { ApproveBtn, DeleteBtn, RejectBtn } from "../ActionButtons";
 
 const CATEGORIES = ["TRAVEL", "FOOD", "OFFICE_SUPPLIES", "UTILITIES", "MAINTENANCE", "OTHERS"];
 
@@ -331,6 +332,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
           .pc-table td[data-label="Action"]::before { margin-bottom: 6px; }
           .pc-table td[data-label="Status"] { flex-direction: column !important; align-items: flex-start !important; }
           .pc-table td[data-label="Proof"] { flex-direction: column !important; align-items: flex-start !important; }
+          .pc-actions { flex-wrap: wrap !important; }
           .pc-view-toggle { gap: 6px !important; }
           .pc-view-toggle button { font-size: 12px !important; padding: 7px 12px !important; }
         }
@@ -681,14 +683,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
                       {/* Action */}
                       <td data-label="Action" style={TD()}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {isMine && entry.status === "PENDING" && !(isReimbursement && raisedByExecRole) && (
-                            <button onClick={() => handleDelete(entry.id)}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
-                              Delete
-                            </button>
-                          )}
-
+                        <div className="pc-actions" style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center", whiteSpace: "nowrap" }}>
                           {/* Approve / Reject on PENDING — not needed for Reimbursement entries
                               raised by VP/OH/CEO; these are self-submitted and need no sign-off. */}
                           {canApprove && entry.status === "PENDING" && !(isReimbursement && raisedByExecRole) && (
@@ -697,17 +692,15 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                                 placeholder="Comment"
                                 value={commentMap[entry.id] || ""}
                                 onChange={e => setCommentMap(m => ({ ...m, [entry.id]: e.target.value }))}
-                                style={{ border: "1.5px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", fontSize: 13, fontFamily: "inherit", outline: "none", width: 90, color: "#374151" }}
+                                style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "0 10px", height: 32, boxSizing: "border-box", fontSize: 15, fontFamily: "inherit", outline: "none", width: 130, color: "#0f172a" }}
                               />
-                              <button onClick={() => handleAction(entry.id, "approve")} disabled={isProc}
-                                style={{ background: "#1e3a5f", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#fff", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
-                                {processing === entry.id + "approve" ? "…" : "Approve"}
-                              </button>
-                              <button onClick={() => handleAction(entry.id, "reject")} disabled={isProc}
-                                style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isProc ? 0.6 : 1 }}>
-                                {processing === entry.id + "reject" ? "…" : "Reject"}
-                              </button>
+                              <ApproveBtn onClick={() => handleAction(entry.id, "approve")} disabled={isProc} title="Approve" />
+                              <RejectBtn onClick={() => handleAction(entry.id, "reject")} disabled={isProc} title="Reject" />
                             </>
+                          )}
+
+                          {isMine && entry.status === "PENDING" && !(isReimbursement && raisedByExecRole) && (
+                            <DeleteBtn onClick={() => handleDelete(entry.id)} title="Delete" />
                           )}
 
                           {/* Mark Cash Transferred on APPROVED */}

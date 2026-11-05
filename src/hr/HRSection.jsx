@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { LayoutDashboard, UserRound, CalendarCheck, CalendarOff, Wallet, Users } from "lucide-react";
+import NavBar from "../NavBar";
 import HRDashboard from "./HRDashboard";
 import AttendancePage from "./AttendancePage";
 import LeavePage from "./LeavePage";
@@ -9,6 +11,9 @@ import EmployeeExitPage from "./EmployeeExitPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import MyProfilePage from "./MyProfilePage";
+
+// One icon per top-level HR menu item.
+const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users };
 
 export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
@@ -83,10 +88,6 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
           /* General page */
           .hr-page { padding: 12px 16px !important; }
 
-          /* Sub-nav */
-          .sub-nav { padding: 0 4px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-          .sub-nav::-webkit-scrollbar { display: none; }
-          .sub-nav button { padding: 10px 12px !important; font-size: 12px !important; white-space: nowrap; }
 
           /* Hero banner */
           .hr-hero { padding: 14px 16px !important; gap: 10px !important; }
@@ -150,24 +151,10 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
           .hr-needs-review { padding: 14px 14px !important; }
         }
       `}</style>
-      {/* Sub-nav — matches main app tab style exactly */}
-      <div className="sub-nav" style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px", display: "flex", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        {groups.map(g => {
-          const active = activeGroup.key === g.key;
-          return (
-            <button key={g.key} onClick={() => setTab(g.tabs[0].key)}
-              style={{
-                border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                padding: "14px 26px", fontSize: 19, fontWeight: active ? 700 : 600,
-                color: "#000",
-                borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
-                marginBottom: -1, letterSpacing: 0.1, whiteSpace: "nowrap",
-              }}>
-              {g.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Top menu bar */}
+      <NavBar ariaLabel="HR menu" active={activeGroup.key}
+        items={groups.map(g => ({ key: g.key, label: g.label, icon: NAV_ICONS[g.key] }))}
+        onChange={key => setTab(groups.find(g => g.key === key).tabs[0].key)} />
 
       {/* Second-level pills — only shown when the active group has more than one page */}
       {activeGroup.tabs.length > 1 && (

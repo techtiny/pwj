@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Save, Trash2, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle, History } from "lucide-react";
+import { Plus, Save, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle, History } from "lucide-react";
 import { getProjectSchedule, saveProjectSchedule, getScheduleRevisions, getScheduleRevision, issueScheduleRevision, restoreScheduleRevision } from "./operationsApi";
+import { DeleteBtn } from "../ActionButtons";
 
 // ── Date helpers (dates travel as "YYYY-MM-DD" strings) ─────────────────────
 const DAY_MS = 86400000;
@@ -1099,9 +1100,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                             title={`Insert before Activity No ${serialByKey[r.key]}`} aria-label="Insert activity above" aria-haspopup="menu" style={{ border: "none", background: "none", cursor: "pointer", color: "#0d9488", padding: 4 }}>
                             <ListPlus size={15} />
                           </button>
-                          <button onClick={() => removeRow(r.key)} title="Remove activity" style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8", padding: 4 }}>
-                            <Trash2 size={15} />
-                          </button>
+                          <DeleteBtn onClick={() => removeRow(r.key)} title="Remove activity" size="sm" />
                         </td>
                       </tr>
                     );

@@ -165,6 +165,14 @@ export const projectsApi = {
   getActive: () => axios.get(`${PROJECTS_BASE}/active`),
 };
 
+/** The payroll month being worked on today. Salary for month M covers the 26th of M-1 to the 25th of M and is still
+ *  being finalised until about the 7th of the next month — so on the 1st–7th it is still LAST month's payroll
+ *  (on 5 Nov the salary in hand is October's), from the 8th it is this month's. Same rule the advance start month uses. */
+export function currentPayrollMonth(d = new Date()) {
+  const m = new Date(d.getFullYear(), d.getMonth() - (d.getDate() <= 7 ? 1 : 0), 1);
+  return { year: m.getFullYear(), month: m.getMonth() + 1 };
+}
+
 export const salaryApi = {
   getStructures: ()                     => api.get('/salary/structures'),
   saveStructure: (data)                 => api.post('/salary/structure', data),
@@ -233,6 +241,7 @@ export const performanceApi = {
   appeal:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/appeal`, data),
   acknowledge: (employeeId, remarkId, data)       => api.post(`/employees/${employeeId}/remarks/${remarkId}/acknowledge`, data),
   editAccess: (employeeId, remarkId, data)       => api.put(`/employees/${employeeId}/remarks/${remarkId}/edit-access`, data),
+  remove:  (employeeId, remarkId, username)        => api.delete(`/employees/${employeeId}/remarks/${remarkId}`, { params: { username } }),
   decide:  (employeeId, remarkId, data)           => api.post(`/employees/${employeeId}/remarks/${remarkId}/decision`, data),
   pendingAppeals: ()                             => api.get('/employees/remarks/appeals/pending'),
 };

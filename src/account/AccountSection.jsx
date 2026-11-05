@@ -1,5 +1,7 @@
 import { useState } from "react";
 import "./account.css";
+import NavBar from "../NavBar";
+import { LayoutDashboard, FolderKanban, Receipt, Landmark, Send, Percent, FileText } from "lucide-react";
 import AccountDashboard from "./Dashboard";
 import AccountProjects from "./ProjectsPage";
 import AccountExpenses from "./ExpensePage";
@@ -24,36 +26,20 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
   const [expCat, setExpCat] = useState("material");
 
   const tabs = [
-    { key: "dashboard",   label: "Dashboard"    },
-    { key: "projects",    label: "Project-wise" },
-    { key: "expenses",    label: "Expenses"     },
-    { key: "fund-mgmt",   label: "Fund Management"},
-    { key: "payments",    label: "Send for Payment"},
-    { key: "tds",         label: "TDS"},
-    { key: "gst",         label: "GST"},
+    { key: "dashboard",   label: "Dashboard",        icon: LayoutDashboard },
+    { key: "projects",    label: "Project-wise",     icon: FolderKanban },
+    { key: "expenses",    label: "Expenses",         icon: Receipt },
+    { key: "fund-mgmt",   label: "Fund Management",  icon: Landmark },
+    { key: "payments",    label: "Send for Payment", icon: Send },
+    { key: "tds",         label: "TDS",              icon: Percent },
+    { key: "gst",         label: "GST",              icon: FileText },
   ];
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 108px)" }}>
 
-      {/* Sub-navigation bar */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px" }}>
-        <div style={{ display: "flex", gap: 0 }}>
-          {tabs.map(t => {
-            const active = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "12px 20px", fontSize: 13.5, fontWeight: active ? 600 : 500,
-                  color: active ? "#6366f1" : "#94a3b8",
-                  borderBottom: active ? "2.5px solid #6366f1" : "2.5px solid transparent",
-                  marginBottom: -1, letterSpacing: 0.1, transition: "color .15s" }}>
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Top menu bar */}
+      <NavBar ariaLabel="Account menu" items={tabs} active={tab} onChange={setTab} />
 
       {/* Expense category sub-nav */}
       {tab === "expenses" && (
@@ -84,7 +70,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
           <div className="page-content">
             {(isAdmin || isVP || isOH || isCeo) && (
               <div style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, marginBottom: 16 }}>
-                {[["vendor", "Vendor Payments"], ["salary", "Salary"]].map(([k, l]) => (
+                {[["vendor", "Vendor Payments"], ["salary", "Team Payments"]].map(([k, l]) => (
                   <button key={k} onClick={() => setPayKind(k)}
                     style={{ border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: 15,
                       background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "#1e3a5f" : "#334155",

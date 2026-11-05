@@ -11,6 +11,7 @@ import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine, loadBoqR
 import { PROJECT_TYPES } from "./operations/operationsApi";
 import HolidaysPage from "./hr/HolidaysPage";
 import CompanyDocumentsPage from "./hr/CompanyDocumentsPage";
+import { ApproveBtn, DeleteBtn, RejectBtn } from "./ActionButtons";
 
 // ── OCR via ocr.space free API (no worker, no installation) ────────
 async function ocrExtractBankFields(imageFile, onProgress) {
@@ -4376,15 +4377,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
         </div>
 
         {/* ─── MAIN TABS ─── */}
-        <div className="app-tabs" style={{ display: "flex", alignItems: "stretch", gap: 4, padding: "0 28px", background: "#fff", borderBottom: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(15,23,42,.04)" }}>
+        <div className="app-tabs" style={{ display: "flex", alignItems: "stretch", gap: 4, padding: "0 24px", background: "#fff", borderBottom: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(15,23,42,.06)" }}>
           {(() => {
             // One shared look for every tab: muted when idle, navy with an underline when active,
             // soft hover, and a refined count pill.
             const tab = (active, tone) => ({
               border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", position: "relative",
               display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
-              padding: "0 18px", height: 52, fontSize: 15, fontWeight: active ? 700 : 600, letterSpacing: 0.1,
-              color: active ? "#1e3a5f" : (tone || "#475569"),
+              padding: "0 20px", height: 56, fontSize: 16, fontWeight: active ? 700 : 600, letterSpacing: 0.1,
+              color: active ? "#1e3a5f" : (tone || "#1e293b"), background: active ? "#eef3fa" : "transparent",
               borderBottom: active ? "3px solid #1e3a5f" : "3px solid transparent", marginBottom: -1,
               transition: "color .15s, background .15s",
             });
@@ -4875,13 +4876,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           row.approvalStatus === "PROCEED"
                             ? <span className="cell-badge" style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
                             : canApprove(row) && (
-                              <button style={s.approveBtn}
-                                onClick={() => {
+                              <ApproveBtn onClick={() => {
                                   setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
                                   setApprovalModal({ entry: row });
-                                }}>
-                                ✅ Approve
-                              </button>
+                                }} title="Approve" />
                             )
                         )}
                         {/* Once issued, "Add an Additional PO" lives inside the Doc Issued
@@ -5000,9 +4998,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           )
                         )}
                         {isAdmin && (
-                          <button
-                            style={{ background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                            onClick={async () => {
+                          <DeleteBtn onClick={async () => {
                               if (!window.confirm(`Delete entry #${row.id} (${row.materialRequired || "this entry"})? This cannot be undone.`)) return;
                               const r = await api.deleteEntry(row.id);
                               if (r.success) {
@@ -5011,9 +5007,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               } else {
                                 showToast(r.message || "Delete failed", "error");
                               }
-                            }}>
-                            🗑️ Delete
-                          </button>
+                            }} title="Delete" />
                         )}
                         {(() => {
                           try {
@@ -5215,10 +5209,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             👁 View
                           </button>
                           {(isVP || isAdmin) && isPending && (<>
-                            <button style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }}>✅</button>
-                            <button style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setApprovedVendors(a => a.filter(x => x.id !== v.id)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }}>❌</button>
+                            <ApproveBtn onClick={async () => { const r = await api.approveVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x)); setApprovedVendors(a => a.some(x => x.id === v.id) ? a.map(x => x.id === v.id ? { ...x, status: "APPROVED" } : x) : [...a, { ...v, status: "APPROVED" }]); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} approved ✅`); } else showToast(r.message || "Failed", "error"); }} title="Approve" />
+                            <RejectBtn onClick={async () => { const r = await api.rejectVendor(v.id); if (r.success) { setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x)); setApprovedVendors(a => a.filter(x => x.id !== v.id)); setPendingVendorCount(c => Math.max(0, c - 1)); showToast(`${v.name} rejected`, "error"); } else showToast(r.message || "Failed", "error"); }} title="Reject" />
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
@@ -5227,16 +5219,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           )}
                           {(isAdmin || isVP) && (
-                            <button
-                              onClick={async () => {
+                            <DeleteBtn onClick={async () => {
                                 if (!window.confirm(`Permanently delete vendor "${v.name}"? This cannot be undone.`)) return;
                                 const r = await api.deleteVendor(v.id);
                                 if (r.success) { setAllVendorsStatus(a => a.filter(x => x.id !== v.id)); showToast("Vendor deleted ✅"); }
                                 else showToast(r.message || "Delete failed", "error");
-                              }}
-                              style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                              🗑️ Delete
-                            </button>
+                              }} title="Delete" />
                           )}
                         </div>
                       </div>
@@ -5425,12 +5413,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
                         {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
                         {(isAdmin || isVP) && (
-                          <button onClick={async () => {
+                          <DeleteBtn onClick={async () => {
                             if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
                             const r = await api.permanentDeleteProject(p.id);
                             if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
                             else showToast(r.message || "Delete failed", "error");
-                          }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                          }} title="Delete" />
                         )}
                         {(isAdmin || isVP) && !p.eligibleForAccounts && (
                           <button
@@ -5582,12 +5570,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <div style={{ display: "flex", gap: 6 }}>
                           {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
                           {(isAdmin || isVP) && (
-                            <button onClick={async () => {
+                            <DeleteBtn onClick={async () => {
                               if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
                               const r = await api.permanentDeleteProject(p.id);
                               if (r.success) { await fetchManagedProjects(); showToast("Project deleted ✅"); }
                               else showToast(r.message || "Delete failed", "error");
-                            }} style={{ background: "#7f1d1d", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#fff", fontFamily: "inherit" }}>🗑️ Delete</button>
+                            }} title="Delete" />
                           )}
                         </div>
                       </div>
@@ -7060,9 +7048,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                         {(isVP || isAdmin) && isPending && (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 16 }}>
-                            <button
-                              style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => {
+                            <ApproveBtn onClick={async () => {
                                 const r = await api.approveVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "APPROVED", active: true } : x));
@@ -7070,12 +7056,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                   setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} approved ✅`);
                                 } else showToast(r.message || "Failed", "error");
-                              }}>
-                              ✅ Approve
-                            </button>
-                            <button
-                              style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-                              onClick={async () => {
+                              }} title="Approve" />
+                            <RejectBtn onClick={async () => {
                                 const r = await api.rejectVendor(v.id);
                                 if (r.success) {
                                   setAllVendorsStatus(a => a.map(x => x.id === v.id ? { ...x, status: "REJECTED", active: false } : x));
@@ -7083,9 +7065,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                   setPendingVendorCount(c => Math.max(0, c - 1));
                                   showToast(`${v.name} rejected`, "error");
                                 } else showToast(r.message || "Failed", "error");
-                              }}>
-                              ❌ Not Approved
-                            </button>
+                              }} title="Not approved" />
                           </div>
                         )}
                       </div>
@@ -7839,14 +7819,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
                           />
                           <div style={{ display: "flex", gap: 10 }}>
-                            <button onClick={() => { (isMulti ? handleSubDocApprove(e.id, safeIdx) : handleDocApprove(e.id)); setDocModal(null); }}
-                              style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                              ✅ Approve
-                            </button>
-                            <button onClick={() => { (isMulti ? handleSubDocReject(e.id, safeIdx) : handleDocReject(e.id)); setDocModal(null); }}
-                              style={{ flex: 1, background: "linear-gradient(135deg,#991b1b,#ef4444)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-                              ❌ Not Approved
-                            </button>
+                            <ApproveBtn onClick={() => { (isMulti ? handleSubDocApprove(e.id, safeIdx) : handleDocApprove(e.id)); setDocModal(null); }} title="Approve" size="lg" />
+                            <RejectBtn onClick={() => { (isMulti ? handleSubDocReject(e.id, safeIdx) : handleDocReject(e.id)); setDocModal(null); }} title="Not approved" size="lg" />
                           </div>
                         </div>
                       );
@@ -8163,14 +8137,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                       <textarea value={closureComment[c.id] || ""} onChange={e => setClosureComment(m => ({ ...m, [c.id]: e.target.value }))} rows={2} placeholder="Comment (optional)…"
                         style={{ flex: 1, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontFamily: "inherit", resize: "none" }} />
-                      <button onClick={() => decideClosure(c.id, true)} disabled={!!closureActing}
-                        style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#15803d", cursor: "pointer", fontFamily: "inherit", opacity: closureActing ? 0.6 : 1 }}>
-                        {closureActing === c.id + "a" ? "…" : "Approve & close"}
-                      </button>
-                      <button onClick={() => decideClosure(c.id, false)} disabled={!!closureActing}
-                        style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", background: "#dc2626", cursor: "pointer", fontFamily: "inherit", opacity: closureActing ? 0.6 : 1 }}>
-                        {closureActing === c.id + "r" ? "…" : "Reject"}
-                      </button>
+                      <ApproveBtn onClick={() => decideClosure(c.id, true)} disabled={!!closureActing} title="Approve & close" />
+                      <RejectBtn onClick={() => decideClosure(c.id, false)} disabled={!!closureActing} title="Reject" />
                     </div>
                   </div>
                 ))}
@@ -8279,8 +8247,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#000", boxSizing: "border-box", marginBottom: 8 }}
                             />
                             <div style={{ display: "flex", gap: 8 }}>
-                              <button onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} style={{ flex: 1, background: "#fff", border: "2px solid #166534", borderRadius: 8, padding: "10px 16px", color: "#166534", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✅ Approve</button>
-                              <button onClick={() => handleSubDocReject(doc.id, subDoc.idx)} style={{ flex: 1, background: "#fff", border: "2px solid #991b1b", borderRadius: 8, padding: "10px 16px", color: "#991b1b", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>❌ Not Approved</button>
+                              <ApproveBtn onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} title="Approve" size="lg" />
+                              <RejectBtn onClick={() => handleSubDocReject(doc.id, subDoc.idx)} title="Not approved" size="lg" />
                             </div>
                           </div>
                         );
@@ -8319,12 +8287,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       />
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => handleDocApprove(doc.id)} style={{ flex: 1, background: "#fff", border: "2px solid #166534", borderRadius: 8, padding: "10px 16px", color: "#166534", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                        ✅ Approve
-                      </button>
-                      <button onClick={() => handleDocReject(doc.id)} style={{ flex: 1, background: "#fff", border: "2px solid #991b1b", borderRadius: 8, padding: "10px 16px", color: "#991b1b", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                        ❌ Not Approved
-                      </button>
+                      <ApproveBtn onClick={() => handleDocApprove(doc.id)} title="Approve" size="lg" />
+                      <RejectBtn onClick={() => handleDocReject(doc.id)} title="Not approved" size="lg" />
                     </div>
                   </div>
                 );
@@ -8525,13 +8489,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </button>
                       )}
                       {canRemove && (
-                        <button onClick={() => deactivateUser(u.id, u.username)}
-                          style={{ background: "#fff1f2", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 13, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
-                          title={`Remove ${u.fullName}`}
-                          onMouseEnter={e => e.currentTarget.style.background = "#ffe4e6"}
-                          onMouseLeave={e => e.currentTarget.style.background = "#fff1f2"}>
-                          Remove
-                        </button>
+                        <DeleteBtn onClick={() => deactivateUser(u.id, u.username)} title={`Remove ${u.fullName}`} />
                       )}
                     </div>
 
@@ -9399,8 +9357,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         onChange={async e => { const f = e.target.files[0]; if (f) { await handleBankPassbook(f); e.target.value = ""; } }} />
                     </label>
                     {avf.bankDocUrl && !avf.bankDocUploading && (
-                      <button type="button" onClick={() => setF("bankDocUrl", "")}
-                        style={{ marginTop: 6, background: "none", border: "none", color: "#dc2626", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>✕ Remove</button>
+                      <DeleteBtn onClick={() => setF("bankDocUrl", "")} title="Remove" />
                     )}
                   </div>
 

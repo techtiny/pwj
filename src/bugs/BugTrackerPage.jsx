@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { bugApi, fmtDateTime } from "./bugApi";
 import { usersApi, uploadDocument, attachmentFullUrl } from "../hr/hrApi";
+import { DeleteBtn } from "../ActionButtons";
 
 const MODULES    = ["Vendors", "Projects", "HR", "Procurement", "Account", "Other"];
 const SEVERITIES = ["Low", "Medium", "High", "Critical"];
@@ -539,15 +540,12 @@ export default function BugTrackerPage({ user }) {
                       </td>
                       {isManager && (
                         <td style={TD()} onClick={e => e.stopPropagation()}>
-                          <div style={{ display: "flex", gap: 6 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                             <button onClick={() => openEdit(b)} disabled={isBusy}
                               style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 17, fontWeight: 600, color: "#2563eb", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
                               Edit
                             </button>
-                            <button onClick={() => handleDelete(b.id)} disabled={isBusy}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 17, fontWeight: 600, color: "#dc2626", fontFamily: "inherit", opacity: isBusy ? 0.6 : 1 }}>
-                              Delete
-                            </button>
+                            <DeleteBtn onClick={() => handleDelete(b.id)} disabled={isBusy} title="Delete" />
                           </div>
                         </td>
                       )}

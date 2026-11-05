@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { employeeApi, performanceApi, advanceApi, advanceSummary, usersApi, uploadImage, attachmentFullUrl, isExitedEmp, tenureMonths, serverDate } from "./hrApi";
 import { PERF_CATEGORIES, CATEGORY_BY_KEY, PARAMETER_SUGGESTIONS, APPEAL_WINDOW_HOURS, scoreOf, CategoryChip, Stars } from "./PerformanceFactors";
+import { DeleteBtn, RejectBtn } from "../ActionButtons";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", fontSize: 15, fontFamily: "inherit", boxSizing: "border-box" };
@@ -246,6 +247,20 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       setEditRatingId(null);
       await loadRemarks();
     } catch (e) { alert(e.response?.data?.message || "Could not save rating"); }
+    finally { setBusy(null); }
+  }
+
+  // Delete a comment: the VP can delete any; the reviewer who wrote it only while it is still plain (not rated / accepted / appealed).
+  const isAuthorOf = (r) => !!r.createdBy && [user?.fullName, user?.username].filter(Boolean).some(n => n.toLowerCase() === r.createdBy.toLowerCase());
+  const canDeleteRemark = (r) => canManage && (user?.role === "VP" || (isAuthorOf(r) && !r.rating && !r.appealedAt && !r.acknowledgedAt));
+  async function deleteRemark(r) {
+    const scored = r.rating || r.appealedAt;
+    if (!window.confirm(`Delete this comment${r.parameter ? ` ("${r.parameter}")` : ""}?${scored ? "\n\nIts rating, score and appeal history are deleted with it." : ""}\n\nThis cannot be undone.`)) return;
+    setBusy("del");
+    try {
+      await performanceApi.remove(id, r.id, user?.username);
+      await loadRemarks();
+    } catch (e) { alert(e.response?.data?.message || "Could not delete the comment"); }
     finally { setBusy(null); }
   }
 
@@ -566,8 +581,13 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                           <span style={{ fontSize: 14, fontWeight: 700, color: "#475569", background: "#f1f5f9", borderRadius: 7, padding: "2px 8px", whiteSpace: "nowrap" }}>{fmtDate(r.remarkDate)}</span>
                           <span style={{ fontSize: 14, color: "#94a3b8", whiteSpace: "nowrap" }}>Comment by {roleLabel(r.createdByRole) || r.createdBy}</span>
                           <span style={{ ...pill(st.bg, st.color), fontSize: 14 }}>{st.label}</span>
+                          {canDeleteRemark(r) && (
+                            <span style={{ marginLeft: "auto" }}>
+                              <DeleteBtn onClick={() => deleteRemark(r)} disabled={busy === "del"} title="Delete this comment" />
+                            </span>
+                          )}
                           {canManage && pendingAppeal && decideFor?.id !== r.id && (
-                            <span style={{ display: "inline-flex", gap: 6, marginLeft: "auto" }}>
+                            <span style={{ display: "inline-flex", gap: 6, marginLeft: canDeleteRemark(r) ? 0 : "auto" }}>
                               <button title="Approve the appeal" onClick={() => decide(r.id, "ACCEPT", "")} disabled={busy === "decide"} style={iconBtn("#ecfdf5", "#059669", "#a7f3d0")}>✓</button>
                               <button title="Reject the appeal with remarks" onClick={() => openFinal(r, "reject")} style={iconBtn("#fef2f2", "#dc2626", "#fecaca")}>✕</button>
                             </span>
@@ -597,7 +617,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                         {decideFor?.id === r.id && (
                           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", marginTop: 10, background: "#fef2f2", borderRadius: 10, padding: 10 }}>
                             <textarea autoFocus value={decideText} onChange={(e) => setDecideText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (decideText.trim()) decide(r.id, "REJECT", decideText); } }} placeholder="Remarks — why is the appeal rejected? (required)" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 44, fontSize: 16.5, borderColor: "#fecaca", background: "#fff" }} />
-                            <button onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide" || !decideText.trim()} style={{ ...btn("#dc2626"), opacity: decideText.trim() ? 1 : .6 }}>{busy === "decide" ? "Saving…" : "✕ Reject appeal"}</button>
+                            <RejectBtn onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide" || !decideText.trim()} title="Reject appeal" />
                             <button onClick={() => setDecideFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
                           </div>
                         )}
@@ -692,6 +712,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             )}
                           </td>
                           <td className="ep-m-action" style={{ ...ptd, textAlign: "center" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "nowrap" }}>
                             {canAppeal(r) && appealFor !== r.id && (
                               <button onClick={() => { setAppealFor(r.id); setAppealText(""); setDecideFor(null); }} style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "6px 12px", fontSize: 14.5 }}>Appeal</button>
                             )}
@@ -710,15 +731,21 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                               <button disabled={busy === "access"} onClick={() => toggleEditAccess(r)}
                                 title={r.editGranted ? "Unlocked — VP / Admin / OH / CEO can edit once. Click to lock again" : "Locked — nobody can edit. Click to unlock this entry"}
                                 aria-label="Edit access"
-                                style={{ ...iconBtn(r.editGranted ? "#fffbeb" : "#f8fafc", r.editGranted ? "#b45309" : "#64748b", r.editGranted ? "#fcd34d" : "#e2e8f0"), fontSize: 15, marginLeft: 6 }}>{r.editGranted ? "🔓" : "🔒"}</button>
+                                style={{ ...iconBtn(r.editGranted ? "#fffbeb" : "#f8fafc", r.editGranted ? "#b45309" : "#64748b", r.editGranted ? "#fcd34d" : "#e2e8f0"), fontSize: 15 }}>{r.editGranted ? "🔓" : "🔒"}</button>
                             )}
                             {canManage && needsFinal(r) && editRatingId !== r.id && (
                               <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>{busy === "decide" ? "Saving…" : "Auto-saves"}</span>
                             )}
                             {editRatingId === r.id && (
-                              <button title="Cancel" aria-label="Cancel" onClick={() => setEditRatingId(null)} style={{ ...iconBtn("#fef2f2", "#dc2626", "#fecaca"), marginLeft: 6 }}>✕</button>
+                              <button title="Cancel" aria-label="Cancel" onClick={() => setEditRatingId(null)} style={{ ...iconBtn("#fef2f2", "#dc2626", "#fecaca") }}>✕</button>
                             )}
-                            {!canAppeal(r) && !(canManage && (isPendingAppeal(r) || needsFinal(r))) && !canEditRating(r) && !(user?.role === "VP" && canManage && r.rating && r.category && !withdrawn) && <span style={{ color: "#cbd5e1" }}>—</span>}
+                            {canDeleteRemark(r) && editRatingId !== r.id && (
+                              <span style={{ display: "inline-flex" }}>
+                                <DeleteBtn onClick={() => deleteRemark(r)} disabled={busy === "del"} title="Delete this comment" />
+                              </span>
+                            )}
+                            {!canAppeal(r) && !canDeleteRemark(r) && !(canManage && (isPendingAppeal(r) || needsFinal(r))) && !canEditRating(r) && !(user?.role === "VP" && canManage && r.rating && r.category && !withdrawn) && <span style={{ color: "#cbd5e1" }}>—</span>}
+                            </div>
                           </td>
                         </tr>
                         {editing && (
@@ -754,7 +781,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                                     Score: <b style={{ color: "#0f172a", fontSize: 17 }}>{scoreOf(finalRating, finalCategory) != null ? `${scoreOf(finalRating, finalCategory)} / ${CATEGORY_BY_KEY[finalCategory].weight}` : "—"}</b>
                                   </div>
                                   {decideFor?.mode === "reject"
-                                    ? <button onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide"} style={btn("#dc2626")}>{busy === "decide" ? "Saving…" : "✕ Reject appeal"}</button>
+                                    ? <RejectBtn onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide"} title="Reject appeal" />
                                     : <button onClick={() => finalizeRating(r.id)} disabled={busy === "decide"} style={btn("#6d28d9")}>{busy === "decide" ? "Saving…" : "Save rating"}</button>}
                                   <button onClick={() => setDecideFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
                                 </div>

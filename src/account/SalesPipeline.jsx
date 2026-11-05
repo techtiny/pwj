@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { salesApi, formatLakh } from "./accountApi";
+import { DeleteBtn } from "../ActionButtons";
 
 const STAGES = [
   { key: "PROSPECT",    label: "Prospect",    color: "#6366f1", bg: "#eef2ff" },
@@ -210,9 +211,9 @@ export default function SalesPipeline() {
                     <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.expectedCloseDate || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.assignedTo || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <button onClick={() => openEdit(lead)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
-                        <button onClick={() => handleDelete(lead.id)} style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#ef4444", fontFamily: "inherit" }}>Delete</button>
+                        <DeleteBtn onClick={() => handleDelete(lead.id)} title="Delete" />
                       </div>
                     </td>
                   </tr>
@@ -344,7 +345,7 @@ function LeadCard({ lead, onEdit, onDelete, onMove }) {
         <div style={{ fontWeight: 600, fontSize: 16, color: "#0f172a", flex: 1, marginRight: 6 }}>{lead.title}</div>
         <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
           <button onClick={() => onEdit(lead)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2, fontSize: 16 }}>✏️</button>
-          <button onClick={() => onDelete(lead.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#fca5a5", padding: 2, fontSize: 16 }}>🗑</button>
+          <DeleteBtn onClick={() => onDelete(lead.id)} title="Delete" size="sm" />
         </div>
       </div>
       {lead.client && <div style={{ fontSize: 14, color: "#64748b", marginBottom: 6 }}>{lead.client}</div>}

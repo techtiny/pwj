@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { leaveApi, fmtDate, fmtDateTime, leaveTypeLabel } from "./hrApi";
+import { ApproveBtn, RejectBtn } from "../ActionButtons";
 
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
@@ -287,14 +288,8 @@ export default function LeaveApprovalPage({ user }) {
                         }}
                       />
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => handleAction(l.id, "approve")} disabled={isProcessing}
-                          style={{ flex: 1, border: "none", borderRadius: 8, padding: "10px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", opacity: isProcessing ? 0.6 : 1 }}>
-                          {processing === l.id + "approve" ? "…" : "Approve"}
-                        </button>
-                        <button onClick={() => handleAction(l.id, "reject")} disabled={isProcessing}
-                          style={{ flex: 1, border: "none", borderRadius: 8, padding: "10px", background: "linear-gradient(135deg,#dc2626,#ef4444)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", opacity: isProcessing ? 0.6 : 1 }}>
-                          {processing === l.id + "reject" ? "…" : "Reject"}
-                        </button>
+                        <ApproveBtn onClick={() => handleAction(l.id, "approve")} disabled={isProcessing} title="Approve" size="lg" />
+                        <RejectBtn onClick={() => handleAction(l.id, "reject")} disabled={isProcessing} title="Reject" size="lg" />
                       </div>
                     </div>
                   )}

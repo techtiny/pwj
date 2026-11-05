@@ -1,0 +1,34 @@
+/* Shared top menu bar — one look for every module (HR, Account, Sales, Operations): icon + label buttons on a white bar,
+   soft hover, navy tint + underline on the active item. */
+.nav-bar {
+  background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+  padding: 0 24px; display: flex; align-items: stretch; gap: 4px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+/* Inline variant — a rounded bar that sits inside a page's content instead of spanning the full width */
+.nav-bar--inline { border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 8px; margin-bottom: 20px; }
+
+.nav-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 9px; border: none; background: transparent; cursor: pointer;
+  font-family: inherit; padding: 0 20px; height: 56px; font-size: 16.5px; font-weight: 600; color: #1e293b; white-space: nowrap; flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.nav-bar--inline .nav-btn { height: 48px; font-size: 15.5px; padding: 0 18px; }
+.nav-btn svg { flex-shrink: 0; color: #64748b; transition: color .15s; }
+.nav-btn:hover { background: #f1f5f9; color: #0f172a; }
+.nav-btn:hover svg { color: #1e3a5f; }
+.nav-btn.active { color: #1e3a5f; background: #eef3fa; font-weight: 700; }
+.nav-btn.active svg { color: #1e3a5f; }
+.nav-btn.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #1e3a5f; border-radius: 3px 3px 0 0; }
+.nav-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.nav-badge {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #fee2e2; color: #b91c1c;
+  font-size: 12.5px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .nav-bar { padding: 0 8px; scrollbar-width: none; }
+  .nav-bar::-webkit-scrollbar { display: none; }
+  .nav-bar .nav-btn { height: 46px; padding: 0 13px; font-size: 13.5px; gap: 6px; }
+  .nav-bar .nav-btn svg { width: 16px; height: 16px; }
+}

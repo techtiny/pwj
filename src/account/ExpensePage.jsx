@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, Save, Send } from 'lucide-react';
+import { Plus, ChevronDown, Save, Send } from 'lucide-react';
 import { projectsApi, pwjDocsApi, expenseItemsApi, vendorsApi } from './accountApi';
 import api from './accountApi';
+import { DeleteBtn } from "../ActionButtons";
 
 const CATEGORY_LABELS = {
   material:     { label: 'Material',      color: '#10b981', bg: '#d1fae5' },
@@ -767,13 +768,9 @@ export default function ExpensePage({ category }) {
             )}
 
             {/* Delete button */}
-            <button
-              onClick={() => isNew
+            <DeleteBtn onClick={() => isNew
                 ? setNewRows(r => r.filter(x => x._key !== rowKey))
-                : deleteRow(item.id)}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: 1 }}>
-              <Trash2 size={11} />
-            </button>
+                : deleteRow(item.id)} title="Delete" size="sm" />
           </div>
         </td>
       </tr>

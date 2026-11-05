@@ -1,0 +1,6 @@
+/* Approve / Reject / Delete icon buttons (see ActionButtons.jsx). Builds on the .appr-btn look from Send for Payment;
+   the doubled class keeps these sizes winning over it regardless of stylesheet order. */
+.appr-btn.act-btn { padding: 0; border-radius: 50%; flex-shrink: 0; }
+.appr-btn.act-btn--sm { width: 24px; height: 24px; min-width: 24px; }
+.appr-btn.act-btn--md { width: 30px; height: 30px; min-width: 30px; }
+.appr-btn.act-btn--lg { width: 40px; height: 40px; min-width: 40px; }

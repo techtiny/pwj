@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { companyDocApi, uploadDocument, attachmentFullUrl } from "./hrApi";
+import { DeleteBtn } from "../ActionButtons";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
 const th = { padding: "12px 14px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
@@ -126,9 +127,7 @@ export default function CompanyDocumentsPage({ user, category, title, icon, desc
                   </td>
                   {canManage && (
                     <td style={{ ...td, textAlign: "right" }}>
-                      <button disabled={busy === d.id} onClick={() => remove(d)} style={btn("#fee2e2", "#b91c1c")}>
-                        {busy === d.id ? "Removing…" : "Remove"}
-                      </button>
+                      <DeleteBtn onClick={() => remove(d)} disabled={busy === d.id} title="Remove" />
                     </td>
                   )}
                 </tr>

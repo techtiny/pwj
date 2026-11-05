@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, Trash2, X, ArrowDownLeft, ArrowUpRight, Scale, CalendarClock } from 'lucide-react';
+import { Plus, X, ArrowDownLeft, ArrowUpRight, Scale, CalendarClock } from 'lucide-react';
 import { fundManagementApi, fundTransferApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
+import { DeleteBtn } from "../ActionButtons";
 
 const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = d => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
@@ -394,10 +395,7 @@ export default function FundManagementPage() {
                     {r.sourceRef?.startsWith('SALARY-') ? (
                       <span title="Created automatically from the approved salary payment — can't be deleted here" style={{ fontSize: 12, color: '#0f172a' }}>Auto</span>
                     ) : (
-                      <button disabled={busyId === r.id} onClick={() => del(r.id)}
-                        title="Delete" style={{ border: 'none', background: '#fee2e2', color: '#b91c1c', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}>
-                        <Trash2 size={13} />
-                      </button>
+                      <DeleteBtn onClick={() => del(r.id)} disabled={busyId === r.id} title="Delete" />
                     )}
                   </td>
                 </tr>

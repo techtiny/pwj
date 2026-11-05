@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Trash2, X, Bell, BellOff, Send } from 'lucide-react';
+import { Plus, X, Bell, BellOff, Send } from 'lucide-react';
 import api, { projectsApi } from './accountApi';
+import { DeleteBtn } from "../ActionButtons";
 
 const STAGES = [
   { value: 'ADVANCE', label: 'Advance' },
@@ -389,11 +390,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                         {!isCeo && (
                           <td>
                             {!isEditing && (
-                              <button onClick={() => handleDelete(row.id)}
-                                style={{ background: '#fff1f2', border: 'none', color: '#f43f5e', cursor: 'pointer', borderRadius: 7, padding: '4px 10px', fontSize: 12, fontFamily: 'inherit' }}
-                                title="Delete">
-                                <Trash2 size={13} />
-                              </button>
+                              <DeleteBtn onClick={() => handleDelete(row.id)} title="Delete" />
                             )}
                           </td>
                         )}

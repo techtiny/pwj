@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { salaryApi, fmtDate, downloadPayslip, serverDate } from "./hrApi";
+import { salaryApi, fmtDate, downloadPayslip, serverDate, currentPayrollMonth } from "./hrApi";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // Payroll cycle: 26th of the previous month through the 25th of the selected month
@@ -88,14 +88,17 @@ const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10p
 export default function SalaryPage({ user }) {
   const canManage = ["ADMIN", "VP"].includes(user?.role);
   const canAdjust = user?.role === "ADMIN"; // only Admin edits the monthly sheet
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const payroll = currentPayrollMonth(); // 1st–7th of a month is still last month's payroll
+  const [year, setYear] = useState(payroll.year);
+  const [month, setMonth] = useState(payroll.month);
   const [view, setView] = useState("sheet"); // sheet | structures
   const isMobile = useIsMobile();
   const [showAll, setShowAll] = useState(false); // false = compact payroll sheet, true = every column
 
   const [sheet, setSheet] = useState([]);
+  const [q, setQ] = useState("");          // sheet filters: search, designation, LOP / unauthorized
+  const [desig, setDesig] = useState("");
+  const [issue, setIssue] = useState("");
   const [structures, setStructures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
@@ -189,18 +192,32 @@ export default function SalaryPage({ user }) {
 
   const cols = useMemo(() => SHEET_COLS.filter((c) => showAll || !c.x), [showAll]);
   const hasCode = cols.some((c) => c.k === "employeeNumber");
+  const designations = useMemo(() => [...new Set(sheet.map((r) => r.designation).filter(Boolean))].sort(), [sheet]);
+  const filtered = !!(q.trim() || desig || issue);
+  // Rows on screen — Print, Export and the totals row all follow the filters.
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return sheet.filter((r) => {
+      if (s && !`${r.name || ""} ${r.employeeNumber || ""} ${r.designation || ""}`.toLowerCase().includes(s)) return false;
+      if (desig && r.designation !== desig) return false;
+      if (issue === "lop" && !(Number(r.lopDays) > 0)) return false;
+      if (issue === "unauth" && !(Number(r.unauthorizedDays) > 0)) return false;
+      if (issue === "leave" && !(Number(r.leaveDays) > 0)) return false;
+      return true;
+    });
+  }, [sheet, q, desig, issue]);
   const totals = useMemo(() => {
     const acc = {};
-    SHEET_COLS.forEach((c) => { if (c.total) acc[c.k] = sheet.reduce((n, r) => n + Number(r[c.k] || 0), 0); });
+    SHEET_COLS.forEach((c) => { if (c.total) acc[c.k] = rows.reduce((n, r) => n + Number(r[c.k] || 0), 0); });
     return acc;
-  }, [sheet]);
+  }, [rows]);
 
   // Prints the columns currently on screen as a clean landscape payroll sheet in its own window.
   function printSheet() {
     const title = `HAPPIZO INFRASTRUCTURE AND SOLUTIONS --- SALARY DETAILS FOR THE MONTH OF ${MONTHS[month - 1].toUpperCase()} ${year}`;
     const head = cols.map((c) => `<th${c.remarks ? ' style="width:28%"' : ""}>${c.lines ? c.lines.map(esc).join("<br>") : esc(c.l)}</th>`).join("");
     const cell = (c, r, i) => `<td class="c${c.bold ? " b" : ""}">${esc(c.money ? inr(r[c.k]) : (c.f ? c.f(r, i) : r[c.k]))}</td>`;
-    const body = sheet.map((r, i) => `<tr>${cols.map((c) => cell(c, r, i)).join("")}</tr>`).join("");
+    const body = rows.map((r, i) => `<tr>${cols.map((c) => cell(c, r, i)).join("")}</tr>`).join("");
     const foot = `<tr class="t">${cols.map((c, i) => c.total ? `<td class="c b">${esc(inr(totals[c.k]))}</td>` : `<td class="c b">${c.k === "name" ? "Total" : ""}</td>`).join("")}</tr>`;
     const ap = approval;
     const approvalLine = ap ? `<p class="ap">${released ? "<b>RELEASED</b> — " : "<b>Not yet released</b> — "}Admin: ${esc(ap.adminApproved ? ap.adminBy : "pending")} · OH: ${esc(ap.ohApproved ? ap.ohBy : "pending")} · VP: ${esc(ap.vpApproved ? ap.vpBy : "pending")} · CEO: ${esc(ap.ceoApproved ? ap.ceoBy : "pending")}</p>` : "";
@@ -210,7 +227,7 @@ export default function SalaryPage({ user }) {
 <style>@page{size:A3 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#000}
 .logo{display:block;margin:0 auto 6px;height:52px}h1{font-size:15px;text-align:center;margin:0 0 8px}table{border-collapse:collapse;width:100%;font-size:10.5px}
 th,td{border:1px solid #444;padding:4px 6px}th{background:#dbe4f0;text-align:center}td.c{text-align:center}td.b{font-weight:700}
-tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><body><img class="logo" src="${window.location.origin}/happizo-logo.png" alt="Happizo"/><h1>${esc(title)}</h1>
+tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><body><img class="logo" src="${window.location.origin}/happizo-logo.png" alt="Happizo"/><h1>${esc(title)}</h1>${filtered ? `<p class="ap">Filtered: showing ${rows.length} of ${sheet.length} employees</p>` : ""}
 <table><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table>${approvalLine}<script>window.onload=function(){window.focus();window.print()}</script></body></html>`);
     w.document.close();
   }
@@ -230,9 +247,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
       ["Employer", "employer"], ["CTC", "ctc"], ["Remarks", "remarks"],
     ];
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = [cols.map(([l]) => l).join(",")];
-    sheet.forEach((r) => rows.push(cols.map(([, k]) => esc(r[k])).join(",")));
-    const blob = new Blob(["﻿" + rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const lines = [cols.map(([l]) => l).join(",")];
+    rows.forEach((r) => lines.push(cols.map(([, k]) => esc(r[k])).join(",")));   // rows = what the filters leave on screen
+    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `salary-${year}-${String(month).padStart(2, "0")}.csv`;
@@ -371,8 +388,8 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
             <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={inputS}>
               {[year - 2, year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <button onClick={exportCsv} disabled={sheet.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: sheet.length === 0 ? 0.5 : 1 }}>⬇ Export</button>
-            <button onClick={printSheet} disabled={sheet.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: sheet.length === 0 ? 0.5 : 1 }}>🖨 Print</button>
+            <button onClick={exportCsv} disabled={rows.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: rows.length === 0 ? 0.5 : 1 }}>⬇ Export</button>
+            <button onClick={printSheet} disabled={rows.length === 0} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1", opacity: rows.length === 0 ? 0.5 : 1 }}>🖨 Print</button>
             <button onClick={() => setShowAll((v) => !v)} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #cbd5e1" }}>
               {showAll ? "Hide extra columns" : "Unhide all columns"}
             </button>
@@ -390,6 +407,31 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
           <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
             Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
+          {sheet.length > 0 && (
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, person code, designation…"
+                style={{ ...inputS, flex: isMobile ? "1 1 100%" : "0 1 280px", minWidth: 0 }} />
+              <select value={desig} onChange={(e) => setDesig(e.target.value)} style={{ ...inputS, flex: isMobile ? "1 1 100%" : "0 1 auto" }}>
+                <option value="">All designations</option>
+                {designations.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select value={issue} onChange={(e) => setIssue(e.target.value)} style={{ ...inputS, flex: isMobile ? "1 1 100%" : "0 1 auto" }}>
+                <option value="">All employees</option>
+                <option value="lop">With LOP days</option>
+                <option value="unauth">With unauthorized absence</option>
+                <option value="leave">With leave taken</option>
+              </select>
+              {filtered && (
+                <button onClick={() => { setQ(""); setDesig(""); setIssue(""); }}
+                  style={{ border: "none", background: "none", color: "#b91c1c", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  Clear filters
+                </button>
+              )}
+              <span style={{ marginLeft: isMobile ? 0 : "auto", fontSize: 13.5, color: "#000" }}>
+                Showing <b>{rows.length}</b> of {sheet.length}
+              </span>
+            </div>
+          )}
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -408,7 +450,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                   <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
-                ) : sheet.map((r, ri) => (
+                ) : rows.length === 0 ? (
+                  <tr><td style={{ ...td, color: "#000" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>No employees match the filters.</td></tr>
+                ) : rows.map((r, ri) => (
                   <tr key={r.userId} style={{ background: r.finalized ? "#f0fdf4" : "#fff" }}>
                     {cols.map((c) => {
                       const val = c.money ? (c.k === "gross" || c.k === "takeHome" ? inr(r[c.k]) : inr0(r[c.k])) : (c.f ? c.f(r, ri) : r[c.k]);
@@ -431,12 +475,12 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                   </tr>
                 ))}
               </tbody>
-              {sheet.length > 0 && (
+              {rows.length > 0 && (
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
                     {cols.map((c, i) => c.total
                       ? <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? {} : { fontSize: 16 }) }}>{inr0(totals[c.k])}</td>
-                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${sheet.length})` : ""}</td>)}
+                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${filtered ? `${rows.length} of ${sheet.length}` : rows.length})` : ""}</td>)}
                     <td style={td} colSpan={canAdjust ? 2 : 1}></td>
                   </tr>
                 </tfoot>

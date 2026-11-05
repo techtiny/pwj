@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { employeeApi, salaryApi, downloadPayslip } from "./hrApi";
+import { employeeApi, salaryApi, downloadPayslip, currentPayrollMonth } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
@@ -11,9 +11,9 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 // matches this logged-in user's own account (by userId, not by the
 // Employee Master link) so it works even if Employee Master isn't linked.
 function MyPayslip({ user }) {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const payroll = currentPayrollMonth(); // 1st–7th of a month is still last month's payroll
+  const [year, setYear] = useState(payroll.year);
+  const [month, setMonth] = useState(payroll.month);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 

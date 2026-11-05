@@ -7,7 +7,9 @@ import {
   saveProjectType, PROJECT_TYPES,
 } from "./operationsApi";
 import ProjectPlanning, { PlanningDashboard, ScheduleChart } from "./ProjectPlanning";
+import NavBar from "../NavBar";
 import { getRecentEntries } from "./operationsApi";
+import { DeleteBtn } from "../ActionButtons";
 
 
 // Mobile layout for the whole Operations module (landing, project tabs, BOQ, planning, dashboard).
@@ -16,7 +18,6 @@ export const OPS_MOBILE_CSS = `
 @media (max-width: 768px) {
   .ops-shell { padding: 14px 10px !important; }
   .ops-title { font-size: 19px !important; }
-  .ops-tabs button { padding: 10px 12px !important; font-size: 13.5px !important; }
   .ops-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
   .ops-card-table th, .ops-card-table td { padding: 8px 8px !important; font-size: 12.5px !important; }
   .ops-boq-table th { font-size: 13px !important; padding: 7px 8px !important; }
@@ -762,28 +763,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       </div>
 
       {/* Sub-tabs */}
-      <div className="ops-tabs" style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
-        {[
-          { key: "dashboard", label: "Dashboard", icon: TrendingUp },
-          { key: "boq", label: "BOQ", icon: ClipboardList },
-          { key: "planning", label: "Project Planning", icon: CalendarClock },
-          { key: "chart", label: "Schedule Chart", icon: GanttChartSquare },
-        ].map(t => {
-          const Icon = t.icon;
-          const active = tab === t.key;
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6, border: "none", background: "none", cursor: "pointer",
-                fontFamily: "inherit", padding: "10px 18px", fontSize: 14.5, fontWeight: active ? 700 : 600, whiteSpace: "nowrap",
-                color: active ? "#0d9488" : "#374151",
-                borderBottom: active ? "2.5px solid #0d9488" : "2.5px solid transparent", marginBottom: -1,
-              }}>
-              <Icon size={16} /> {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <NavBar variant="inline" ariaLabel="Project menu" active={tab} onChange={setTab} items={[
+        { key: "dashboard", label: "Dashboard", icon: TrendingUp },
+        { key: "boq", label: "BOQ", icon: ClipboardList },
+        { key: "planning", label: "Project Planning", icon: CalendarClock },
+        { key: "chart", label: "Schedule Chart", icon: GanttChartSquare },
+      ]} />
 
       {tab === "boq" && (
         <BOQWorkspace
@@ -1342,7 +1327,7 @@ function AdditionalCategoryTable({
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
                 </td>
               </tr>
             ))}
@@ -1430,7 +1415,7 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
                 </td>
               </tr>
             ))}
@@ -1528,7 +1513,7 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.unitRate ? `₹${it.unitRate}` : "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
                 </td>
               </tr>
             ))}
@@ -1618,7 +1603,7 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 700 }}>{it.amount ? `₹${it.amount}` : "—"}</td>
                 <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <button onClick={() => removeItem(it.id)} style={{ border: "none", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                  <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
                 </td>
               </tr>
             ))}
