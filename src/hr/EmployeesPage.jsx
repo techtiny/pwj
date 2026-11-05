@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Building2, Briefcase, AtSign, Wallet } from "lucide-react";
+import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Building2, Briefcase, AtSign, Wallet, Landmark } from "lucide-react";
 import { employeeApi, advanceApi, advanceSummary, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
@@ -160,6 +160,13 @@ export default function EmployeesPage({ user }) {
 
   // Salary advance still owed by the selected person (needs a linked login; reviewers only).
   const [advPending, setAdvPending] = useState(0);
+  const [bank, setBank] = useState(null);
+  useEffect(() => {
+    if (!preview?.id || !canManage) { setBank(null); return; }
+    let live = true;
+    employeeApi.bankDetails(preview.id, user?.username).then(r => { if (live) setBank(r.data?.data || null); }).catch(() => { if (live) setBank(null); });
+    return () => { live = false; };
+  }, [preview?.id, canManage, user?.username]);
   useEffect(() => {
     const u = preview?.linkedUsername;
     if (!u || !canManage) { setAdvPending(0); return; }
@@ -246,6 +253,7 @@ export default function EmployeesPage({ user }) {
     [Cake, "Date of birth", preview.dob ? fmtDate(preview.dob) : null],
     ...(preview.dor ? [[CalendarDays, "Date of exit", fmtDate(preview.dor)]] : []),
     ...(preview.linkedUsername ? [[AtSign, "App login", "@" + preview.linkedUsername]] : []),
+    ...(canManage ? [[Landmark, "Bank", bank?.bankName], [Landmark, "Account number", bank?.bankAccountNumber], [Landmark, "IFSC", bank?.ifscCode]] : []),
     ...(advPending > 0 ? [[Wallet, "Advance pending", "₹" + advPending.toLocaleString("en-IN", { maximumFractionDigits: 2 })]] : []),
   ] : [];
 
