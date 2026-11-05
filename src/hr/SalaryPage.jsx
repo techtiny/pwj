@@ -321,26 +321,26 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
             Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
           {approval && sheet.length > 0 && (
-            <div style={{ padding: "14px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
-              <div style={{ display: "flex", alignItems: "stretch", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", background: released ? "#f0fdf4" : "#f8fafc" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 {approvalSteps.map((st, i) => {
                   const mine = st.key === role && st.open && !released;
-                  const tone = st.done ? { bd: "#86efac", bg: "#f0fdf4", fg: "#166534" } : mine ? { bd: "#1e3a5f", bg: "#fff", fg: "#1e3a5f" } : { bd: "#e2e8f0", bg: "#fff", fg: "#64748b" };
+                  const tone = st.done ? { bd: "#86efac", bg: "#f0fdf4", fg: "#166534" } : mine ? { bd: "#1e3a5f", bg: "#fff", fg: "#1e3a5f" } : { bd: "#cbd5e1", bg: "#fff", fg: "#000" };
                   return (
                     <Fragment key={st.key}>
                       {i > 0 && <span style={{ alignSelf: "center", color: "#cbd5e1", fontSize: 18 }}>›</span>}
-                      <div style={{ minWidth: 168, flex: "1 1 168px", maxWidth: 250, border: `1.5px solid ${tone.bd}`, background: tone.bg, borderRadius: 12, padding: "10px 12px", boxShadow: mine ? "0 0 0 3px rgba(30,58,95,.10)" : "none" }}>
+                      <div style={{ minWidth: 150, border: `1.5px solid ${tone.bd}`, background: tone.bg, borderRadius: 10, padding: "7px 12px", boxShadow: mine ? "0 0 0 3px rgba(30,58,95,.10)" : "none" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800, color: tone.fg, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                           <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: st.done ? "#16a34a" : mine ? "#1e3a5f" : "#cbd5e1" }}>{st.done ? "✓" : i + 1}</span>
                           {st.title}
                         </div>
-                        <div style={{ fontSize: 13, color: st.done ? "#166534" : "#64748b", marginTop: 6, minHeight: 34 }}>
+                        <div style={{ fontSize: 13, color: st.done ? "#166534" : "#000", marginTop: 3 }}>
                           {st.done
-                            ? <><b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#4b5563" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}</>
+                            ? <><b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#000" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}</>
                             : st.open ? "Awaiting approval" : `Waiting for ${st.waitsFor}`}
                         </div>
                         {mine && (
-                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                             <button onClick={approveMonth} disabled={busy === "approval"} style={{ ...btn("#166534"), flex: 1, padding: "7px 10px", opacity: busy === "approval" ? 0.6 : 1 }}>{st.key === "CEO" ? "Approve & Release" : "Approve"}</button>
                             {st.key !== "ADMIN" && <button onClick={rejectMonth} disabled={busy === "approval"} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca", padding: "7px 10px" }}>Reject</button>}
                           </div>
