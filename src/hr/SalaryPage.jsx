@@ -340,11 +340,6 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                           {st.done && <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: "#16a34a" }}>✓</span>}
                           {st.title}
                         </div>
-                        {st.done && (
-                          <div style={{ fontSize: 13, color: "#166534", marginTop: 3 }}>
-                            <b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#000" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}
-                          </div>
-                        )}
                         {mine && (
                           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                             <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
