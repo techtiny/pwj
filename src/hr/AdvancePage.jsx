@@ -112,6 +112,19 @@ export default function AdvancePage({ user }) {
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px" }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .adv-field, .adv-field input, .adv-field select { width: 100% !important; max-width: 100% !important; }
+          .adv-table, .adv-table tbody, .adv-table tr, .adv-table td { display: block; width: 100%; box-sizing: border-box; }
+          .adv-table thead { display: none; }
+          .adv-table tbody tr { border: 1px solid #e2e8f0; border-radius: 12px; margin: 10px; width: auto; padding: 4px 0; background: #fff; }
+          .adv-table td { border-bottom: 1px solid #f1f5f9 !important; padding: 8px 14px !important; white-space: normal !important; max-width: none !important; }
+          .adv-table td:last-child { border-bottom: none !important; }
+          .adv-table td[data-label] { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 10px; align-items: start; text-align: left !important; }
+          .adv-table td[data-label]::before { content: attr(data-label); font-size: 12px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .4px; padding-top: 3px; }
+          .adv-table td.adv-action { text-align: left !important; }
+        }
+      `}</style>
       <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>Advance</div>
       <div style={{ fontSize: 15.5, color: "#000", margin: "2px 0 16px" }}>
         Request a salary advance and choose how many monthly instalments to repay it in. Once it is paid, the instalment is deducted from your salary every month until it's cleared.
@@ -130,15 +143,15 @@ export default function AdvancePage({ user }) {
         <div style={{ ...card, padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 12 }}>Request an advance</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
               Purpose of Advance
               <input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} style={{ ...inputS, width: 300, maxWidth: "100%" }} placeholder="What is the advance for?" />
             </label>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
               Amount (₹)
               <input type="number" min="0" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...inputS, width: 150 }} placeholder="e.g. 10000" />
             </label>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
               Repay over
               <select value={form.termMonths} onChange={(e) => setForm((f) => ({ ...f, termMonths: Number(e.target.value) }))} style={{ ...inputS, width: 150 }}>
                 {TERMS.map((t) => <option key={t} value={t}>{t} month{t > 1 ? "s" : ""}</option>)}
@@ -156,7 +169,7 @@ export default function AdvancePage({ user }) {
 
       <div style={{ ...card, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="adv-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
                 <th style={th}>Raised</th>
@@ -180,10 +193,10 @@ export default function AdvancePage({ user }) {
                 return (
                   <Fragment key={a.id}>
                     <tr>
-                      <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtServerDate(a.createdAt)}</td>
-                      {showEmployee && <td style={{ ...td, fontWeight: 600 }}>{a.fullName}</td>}
-                      <td style={{ ...td, fontWeight: 700, whiteSpace: "nowrap" }}>{inr(a.amount)}</td>
-                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                      <td data-label="Raised" style={{ ...td, whiteSpace: "nowrap" }}>{fmtServerDate(a.createdAt)}</td>
+                      {showEmployee && <td data-label="Employee" style={{ ...td, fontWeight: 600 }}>{a.fullName}</td>}
+                      <td data-label="Amount" style={{ ...td, fontWeight: 700, whiteSpace: "nowrap" }}>{inr(a.amount)}</td>
+                      <td data-label="Repayment term" style={{ ...td, whiteSpace: "nowrap" }}>
                         {tab === "approvals" && a.status === "PENDING" ? (
                           <select value={terms[a.id] ?? a.termMonths} onChange={(e) => setTerms((t) => ({ ...t, [a.id]: Number(e.target.value) }))} style={{ ...inputS, padding: "5px 8px" }}>
                             {TERMS.map((t) => <option key={t} value={t}>{t} month{t > 1 ? "s" : ""}</option>)}
@@ -193,13 +206,13 @@ export default function AdvancePage({ user }) {
                         )}
                         <div style={{ fontSize: 14, color: "#000" }}>{inr(a.monthlyInstalment)} / month</div>
                       </td>
-                      <td style={{ ...td, maxWidth: 240, whiteSpace: "normal", fontSize: 15 }}>{a.reason || "—"}</td>
-                      <td style={td}>
+                      <td data-label="Purpose" style={{ ...td, maxWidth: 240, whiteSpace: "normal", fontSize: 15 }}>{a.reason || "—"}</td>
+                      <td data-label="Status" style={td}>
                         <span style={pill(st)}>{st.label}</span>
                         {a.approvedBy && <div style={{ fontSize: 14, color: "#000", marginTop: 4 }}>{a.status === "REJECTED" ? "Rejected" : "Approved"} by {a.approvedByRole || a.approvedBy}{a.approvalComment ? ` — ${a.approvalComment}` : ""}</div>}
                         {a.paidBy && <div style={{ fontSize: 14, color: "#000" }}>Paid by {a.paidBy} · {fmtServerDate(a.paidAt)}</div>}
                       </td>
-                      <td style={td}>
+                      <td data-label="Repayment status" style={td}>
                         {a.status === "PAID" ? (
                           <>
                             <div style={{ fontSize: 14 }}>Starts <b>{MONTHS[a.startMonth - 1]} {a.startYear}</b> salary</div>
@@ -214,7 +227,7 @@ export default function AdvancePage({ user }) {
                           </>
                         ) : <span style={{ color: "#cbd5e1" }}>—</span>}
                       </td>
-                      <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                      <td data-label="Action" className="adv-action" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
                         {tab === "approvals" && a.status === "PENDING" && !mine && (
                           <span style={{ display: "inline-flex", gap: 8 }}>
                             <button title="Approve" aria-label="Approve" onClick={() => approve(a)} disabled={!!busy} style={iconBtn("#166534", "#fff", "#166534")}>✓</button>
@@ -258,7 +271,7 @@ export default function AdvancePage({ user }) {
             <div style={{ fontSize: 14.5, color: "#000", marginBottom: 14 }}>
               {inr(startDlg.a.amount)} over {startDlg.a.termMonths} month{startDlg.a.termMonths > 1 ? "s" : ""} ({inr(startDlg.a.monthlyInstalment)} a month). Choose the payroll the first instalment comes off. A released month can't take it.
             </div>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
               First deduction from
               <select value={startDlg.choice} onChange={(e) => setStartDlg((d) => ({ ...d, choice: e.target.value }))} style={inputS}>
                 {startDlg.options.map((o) => (

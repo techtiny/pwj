@@ -19,6 +19,15 @@ export const vendorsApi = {
   getApproved: () => api.get('/v1/vendors').then(r => r.data?.data ?? []),
 };
 
+// Salary payments for released months (HR salary module → Accounts → Send for Payment). Bank details come from the Employee Master.
+export const salaryPayoutApi = {
+  list:    (username) => api.get('/v1/hr/salary/payouts', { params: { username } }),
+  approve: (year, month, username) => api.post(`/v1/hr/salary/payouts/${year}/${month}/approve`, { username }),
+  reject:  (year, month, username, remark) => api.post(`/v1/hr/salary/payouts/${year}/${month}/reject`, { username, remark }),
+  // VP reopens the month (before or after the CEO released it) — goes back to Admin, this batch is withdrawn from here.
+  revise:  (year, month, username, remark) => api.post('/v1/hr/salary/approval/revise', { username, remark }, { params: { year, month } }),
+};
+
 export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
   getProjectExpenses: () => api.get('/dashboard/project-expenses'),

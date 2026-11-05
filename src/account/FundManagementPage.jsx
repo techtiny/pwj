@@ -377,6 +377,7 @@ export default function FundManagementPage() {
                   <td style={td}>
                     {r.party}
                     {r.projectId && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
+                    {r.sourceRef?.startsWith('SALARY-') && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 100, padding: '1px 7px' }}>Salary</span>}
                   </td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: isInflow ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.amount)}</td>
                   {!isInflow && (
@@ -390,10 +391,14 @@ export default function FundManagementPage() {
                   {isPlanned && <td style={td}>{r.referenceNo || '—'}</td>}
                   <td style={{ ...td, color: '#475569', maxWidth: 280, whiteSpace: 'pre-wrap' }}>{r.remarks || '—'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
-                    <button disabled={busyId === r.id} onClick={() => del(r.id)}
-                      title="Delete" style={{ border: 'none', background: '#fee2e2', color: '#b91c1c', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}>
-                      <Trash2 size={13} />
-                    </button>
+                    {r.sourceRef?.startsWith('SALARY-') ? (
+                      <span title="Created automatically from the approved salary payment — can't be deleted here" style={{ fontSize: 12, color: '#0f172a' }}>Auto</span>
+                    ) : (
+                      <button disabled={busyId === r.id} onClick={() => del(r.id)}
+                        title="Delete" style={{ border: 'none', background: '#fee2e2', color: '#b91c1c', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

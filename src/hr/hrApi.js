@@ -174,6 +174,7 @@ export const salaryApi = {
     api.post(`/salary/sheet/${userId}/regularize`, data, { params: { year, month } }),
   getApproval:   (year, month)          => api.get('/salary/approval', { params: { year, month } }),
   approve:       (year, month, username) => api.post('/salary/approval/approve', { username }, { params: { year, month } }),
+  revise:        (year, month, username, remark) => api.post('/salary/approval/revise', { username, remark }, { params: { year, month } }),
   reject:        (year, month, username, remark) => api.post('/salary/approval/reject', { username, remark }, { params: { year, month } }),
   adjust:        (userId, year, month, data) =>
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),

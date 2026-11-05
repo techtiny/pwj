@@ -5,6 +5,7 @@ import AccountProjects from "./ProjectsPage";
 import AccountExpenses from "./ExpensePage";
 import CollectionPage from "./CollectionPage";
 import PaymentsPage from "./PaymentsPage";
+import SalaryPayments from "./SalaryPayments";
 import TdsPage from "./TdsPage";
 import GstPage from "./GstPage";
 import FundManagementPage from "./FundManagementPage";
@@ -17,8 +18,9 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "" }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "", username = "" }) {
   const [tab, setTab]     = useState("dashboard");
+  const [payKind, setPayKind] = useState("vendor"); // Send for Payment: vendor payments | salary
   const [expCat, setExpCat] = useState("material");
 
   const tabs = [
@@ -78,7 +80,25 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
         {tab === "projects"   && <div className="page-content"><AccountProjects isCeo={isCeo} /></div>}
         {tab === "expenses"   && <div className="page-content"><AccountExpenses category={expCat} isCeo={isCeo} /></div>}
         {tab === "fund-mgmt"   && <div className="page-content"><FundManagementPage /></div>}
-        {tab === "payments"    && <div className="page-content"><PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} /></div>}
+        {tab === "payments"    && (
+          <div className="page-content">
+            {(isAdmin || isVP || isOH || isCeo) && (
+              <div style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, marginBottom: 16 }}>
+                {[["vendor", "Vendor Payments"], ["salary", "Salary"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setPayKind(k)}
+                    style={{ border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: 15,
+                      background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "#1e3a5f" : "#334155",
+                      fontWeight: payKind === k ? 700 : 500, boxShadow: payKind === k ? "0 1px 3px rgba(15,23,42,.18)" : "none" }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            )}
+            {payKind === "salary" && (isAdmin || isVP || isOH || isCeo)
+              ? <SalaryPayments username={username} isVP={isVP} />
+              : <PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} />}
+          </div>
+        )}
         {tab === "tds"         && <div className="page-content"><TdsPage isAdmin={isAdmin} /></div>}
         {tab === "gst"         && <div className="page-content"><GstPage isAdmin={isAdmin} userName={userName} /></div>}
       </div>

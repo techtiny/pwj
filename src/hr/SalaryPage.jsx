@@ -147,6 +147,24 @@ export default function SalaryPage({ user }) {
     finally { setBusy(null); }
   }
 
+  // VP only — reopens the month even after the CEO released it: approvals clear, payslips lock again, Admin can edit.
+  const canRevise = role === "VP" && !!approval && (approval.adminApproved || released);
+  async function reviseMonth() {
+    const label = `${MONTHS[month - 1]} ${year}`;
+    if (approval?.payoutStatus === "APPROVED" && !window.confirm(
+      `The ${label} salary payment was already approved. Revising removes it from Send for Payment and removes its Actual Outflow from Fund Management — both come back once the corrected salary is released and approved again.\n\nIt does NOT undo a bank transfer that has already been made.\n\nContinue?`)) return;
+    const remark = window.prompt(`Revise the ${label} salary — what needs to change? It goes back to Admin and every approval starts again.${released ? " Payslips are locked until it is released again." : ""}`);
+    if (remark === null) return;
+    if (!remark.trim()) { alert("Enter what needs to be revised"); return; }
+    setBusy("approval");
+    try {
+      const r = await salaryApi.revise(year, month, user?.username, remark.trim());
+      setApproval(r.data?.data || null);
+      await loadSheet();
+    } catch (e) { alert(e.response?.data?.message || "Could not revise"); }
+    finally { setBusy(null); }
+  }
+
   async function rejectMonth() {
     const remark = window.prompt("Reason for rejecting — the sheet goes back to Admin:");
     if (remark === null) return;
@@ -288,21 +306,21 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
           </div>
         </div>
         {view === "sheet" && approval && sheet.length > 0 && (
-          <div className="hr-hero-approval" style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div className="hr-hero-approval" style={{ marginLeft: isMobile ? 0 : "auto", width: isMobile ? "100%" : "auto", display: "flex", flexDirection: "column", alignItems: isMobile ? "center" : "flex-end", gap: 6 }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
               {approvalSteps.map((st, i) => {
                 const mine = st.key === role && st.open && !released;
                 return (
                   <Fragment key={st.key}>
-                    {i > 0 && <span style={{ width: 22, height: 2, background: st.done || approvalSteps[i - 1].done ? "#86efac" : "#e2e8f0", marginTop: 21, borderRadius: 2 }} />}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: 64 }}>
+                    {i > 0 && <span style={{ width: isMobile ? 12 : 22, height: 2, background: st.done || approvalSteps[i - 1].done ? "#86efac" : "#e2e8f0", marginTop: isMobile ? 17 : 21, borderRadius: 2 }} />}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: isMobile ? 54 : 64 }}>
                       {mine ? (
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), width: 44, height: 44, fontSize: 24, opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
-                          {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), width: 44, height: 44, fontSize: 24, opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
+                          <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? 20 : 24, opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
+                          {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? 20 : 24, opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
                         </div>
                       ) : (
-                        <span title={st.done ? `${st.title} approved` : `${st.title} — pending`} style={{ width: 44, height: 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800,
+                        <span title={st.done ? `${st.title} approved` : `${st.title} — pending`} style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 20 : 24, fontWeight: 800,
                           color: st.done ? "#fff" : "#94a3b8", background: st.done ? "#16a34a" : "#fff", border: st.done ? "none" : "2.5px solid #cbd5e1", boxShadow: st.done ? "0 1px 3px rgba(22,163,74,.45)" : "none" }}>{st.done ? "✓" : ""}</span>
                       )}
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em" }}>{st.title}</span>
@@ -318,10 +336,17 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                 );
               })}
             </div>
+            {canRevise && (
+              <button onClick={reviseMonth} disabled={busy === "approval"}
+                title="Send this month back to Admin to correct it"
+                style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "6px 16px", opacity: busy === "approval" ? 0.6 : 1 }}>
+                Revise
+              </button>
+            )}
             {released && <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</div>}
             {approval.rejectRemark && !released && (
               <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "5px 10px", maxWidth: 360 }}>
-                Rejected by {approval.rejectedRole || approval.rejectedBy}: {approval.rejectRemark}
+                Sent back by {approval.rejectedRole || approval.rejectedBy}: {approval.rejectRemark}
               </div>
             )}
           </div>
