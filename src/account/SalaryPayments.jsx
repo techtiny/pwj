@@ -170,7 +170,7 @@ export default function SalaryPayments({ username = '', isVP = false }) {
                   {b.status === 'APPROVED' && b.decidedAt && <> · Approved {fmtWhen(b.decidedAt)}</>}
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 {isVP && b.status !== 'APPROVED' && (
                   <div className="appr-actions">
                     <button disabled={mine} onClick={() => approve(b)} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve" style={{ width: 34, height: 34 }}><Check size={18} strokeWidth={2.75} /></button>

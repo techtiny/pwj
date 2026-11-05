@@ -210,3 +210,19 @@ html, body, #root { max-width: 100vw; overflow-x: hidden; }
 /* ── Smooth scrolling ─────────────────────────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; }
 html { scroll-behavior: smooth; }
+
+
+/* ── Home notifications card, procurement payment-request banner and row badges ───────────────── */
+@media (max-width: 768px) {
+  .home-notifs { margin-bottom: 18px !important; border-radius: 14px !important; }
+  .home-notifs > div:first-child { padding: 11px 14px !important; flex-wrap: wrap; }
+  .home-notifs > div:first-child > span:last-child { display: none; }
+  .home-notifs > button { padding: 11px 14px !important; gap: 10px !important; }
+  .home-notifs > button > span:nth-child(2) { font-size: 14.5px !important; line-height: 1.35; }
+  .home-notifs > button > span:last-child { font-size: 0 !important; }              /* keep just the chevron */
+  .home-notifs > button > span:last-child svg { width: 18px; height: 18px; }
+  .payreq-banner { margin: 12px 12px 0 !important; padding: 10px 12px !important; }
+  .payreq-banner span[style*="flex: 1 1 320px"] { font-size: 14px !important; flex-basis: 100% !important; }
+  .payreq-badge { white-space: normal !important; flex-wrap: wrap; max-width: 100%; }
+  .payreq-badge > span { white-space: normal !important; font-size: 12.5px !important; }
+}

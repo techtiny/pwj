@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import AccountSection from "./account/AccountSection";
-import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload, ChevronDown, Check, X, Pause } from "lucide-react";
+import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload, ChevronDown, Check, X, Pause, Bell, ChevronRight } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton } from "./hr/AttendancePage";
@@ -261,6 +261,10 @@ const api = {
       .then(r => (r.ok ? r.json() : null))
       .catch(() => null),
   // Payment requests on PO / WO: the PR's engineer raises, the allocated procurement person approves → then Accounts → Send for Payment.
+  // HR items waiting on this user (leave, claims, advances, salary, performance feedback) — shown on the Home page.
+  getHrNotifications: (username) =>
+    fetch(`${BACKEND_BASE}/api/v1/hr/notifications?username=${encodeURIComponent(username)}`)
+      .then(r => (r.ok ? r.json() : null)).then(d => d?.data || []).catch(() => []),
   requestPwjPayment: (username, pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber) =>
     fetch(PAYREQ_BASE, {
       method: "POST",
@@ -1667,7 +1671,19 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onManageUsers }) {
+function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onOpenHr, onManageUsers }) {
+  // HR approvals waiting on this user — loaded when Home opens (i.e. right after login) and refreshed every couple of minutes.
+  const [notifs, setNotifs] = useState([]);
+  useEffect(() => {
+    if (!user?.username) return;
+    let live = true;
+    const load = () => api.getHrNotifications(user.username).then(d => { if (live) setNotifs(d); });
+    load();
+    const t = setInterval(load, 120000);
+    return () => { live = false; clearInterval(t); };
+  }, [user?.username]);
+  const openNotif = (n) => (n.module === "hr" ? onOpenHr(n.tab) : onNavigate(n.module));
+  const notifTotal = notifs.reduce((t, n) => t + Number(n.count || 0), 0);
   // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
   // open …/#<module> in a new tab or window (session is shared via localStorage).
   const modClick = (e, key) => {
@@ -1784,6 +1800,26 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
         <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
         <div style={{ fontSize: 14, color: "#374151", marginTop: 8 }}>Select a module to get started</div>
       </div>
+
+      {notifs.length > 0 && (
+        <div className="home-notifs" style={{ width: "100%", maxWidth: 960, boxSizing: "border-box", marginBottom: 28, background: "#fff", border: "1.5px solid #fde68a", borderRadius: 18, boxShadow: "0 2px 12px rgba(15,23,42,.07)", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", background: "linear-gradient(90deg,#fffbeb,#fff)", borderBottom: "1px solid #fef3c7" }}>
+            <Bell size={20} color="#b45309" strokeWidth={2.2} />
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Needs your attention</div>
+            <span style={{ minWidth: 26, height: 26, padding: "0 8px", borderRadius: 999, background: "#dc2626", color: "#fff", fontSize: 14, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{notifTotal}</span>
+            <span style={{ marginLeft: "auto", fontSize: 13.5, color: "#374151" }}>HR approvals waiting on you</span>
+          </div>
+          {notifs.map(n => (
+            <button key={n.key} type="button" onClick={() => openNotif(n)}
+              style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "13px 20px", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }} onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}>
+              <span style={{ minWidth: 34, height: 34, borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 16, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{n.count}</span>
+              <span style={{ flex: 1, fontSize: 16, color: "#0f172a" }}><b>{n.title}</b> <span style={{ color: "#374151" }}>{n.detail}</span></span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, fontWeight: 700, color: "#4f46e5", whiteSpace: "nowrap" }}>Open <ChevronRight size={16} /></span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="home-module-grid" style={{
         display: "grid",
@@ -4493,6 +4529,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             isProcurementEngineer={isProcurementEngineer} isCostingPlanningEngineer={isCostingPlanningEngineer}
             isBillingEngineer={isBillingEngineer}
             onNavigate={key => setMainTab(key)}
+            onOpenHr={tab => { setMainTab("hr"); setHrInitialTab(tab); }}
             onManageUsers={openUserMgmt}
           />
         )}
@@ -4544,7 +4581,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {mainTab === "entries" && <>
         {/* ─── PAYMENT REQUESTS waiting for this procurement person ─── */}
         {payReqsToDecide.length > 0 && (
-          <div style={{ margin: "20px 32px 0", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 14, padding: "12px 16px" }}>
+          <div className="payreq-banner" style={{ margin: "20px 32px 0", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 14, padding: "12px 16px" }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>
               {payReqsToDecide.length} payment request{payReqsToDecide.length === 1 ? "" : "s"} waiting for your approval
             </div>
@@ -5026,7 +5063,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           return (
                             <>
                               {pending.map(p => (
-                                <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "4px 10px" }}>
+                                <div key={p.id} className="payreq-badge" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "4px 10px" }}>
                                   <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e", whiteSpace: "nowrap" }}>
                                     Payment request {fmtRupee(p.amount)} · {p.canDecide ? `from ${p.requestedByName}` : `awaiting ${p.approverName || "procurement"}`}
                                   </span>
