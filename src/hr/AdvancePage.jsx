@@ -217,8 +217,8 @@ export default function AdvancePage({ user }) {
                       <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
                         {tab === "approvals" && a.status === "PENDING" && !mine && (
                           <span style={{ display: "inline-flex", gap: 8 }}>
-                            <button title="Approve" onClick={() => approve(a)} disabled={!!busy} style={iconBtn("#059669", "#fff", "#059669")}>✓</button>
-                            <button title="Reject" onClick={() => reject(a)} disabled={!!busy} style={iconBtn("#fef2f2", "#dc2626", "#fecaca")}>✕</button>
+                            <button title="Approve" aria-label="Approve" onClick={() => approve(a)} disabled={!!busy} style={iconBtn("#166534", "#fff", "#166534")}>✓</button>
+                            <button title="Reject" aria-label="Reject" onClick={() => reject(a)} disabled={!!busy} style={iconBtn("#b91c1c", "#fff", "#b91c1c")}>✕</button>
                           </span>
                         )}
                         {isAdmin && a.status === "APPROVED" && (

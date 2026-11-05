@@ -81,6 +81,8 @@ const thR = { ...th, textAlign: "right" };
 const td = { padding: "9px 12px", fontSize: 13, borderBottom: "1px solid #eef2f7", color: "#0f172a", whiteSpace: "nowrap" };
 const tdR = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 13, fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
+// Approve / reject are always round icon buttons: dark-green circle + white tick, dark-red circle + white cross.
+const apprBtn = (kind) => ({ width: 36, height: 36, borderRadius: "50%", border: "none", background: kind === "ok" ? "#166534" : "#b91c1c", color: "#fff", fontSize: 19, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit", boxShadow: "0 1px 2px rgba(0,0,0,.25)" });
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
 
 export default function SalaryPage({ user }) {
@@ -345,8 +347,8 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                         )}
                         {mine && (
                           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                            <button onClick={approveMonth} disabled={busy === "approval"} style={{ ...btn("#166534"), flex: 1, padding: "7px 10px", opacity: busy === "approval" ? 0.6 : 1 }}>{st.key === "CEO" ? "Approve & Release" : "Approve"}</button>
-                            {st.key !== "ADMIN" && <button onClick={rejectMonth} disabled={busy === "approval"} style={{ ...btn("#fff", "#b91c1c"), border: "1px solid #fecaca", padding: "7px 10px" }}>Reject</button>}
+                            <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
+                            {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
                           </div>
                         )}
                       </div>
