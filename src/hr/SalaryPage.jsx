@@ -85,6 +85,7 @@ const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10p
 
 export default function SalaryPage({ user }) {
   const canManage = ["ADMIN", "VP"].includes(user?.role);
+  const canAdjust = user?.role === "ADMIN"; // only Admin edits the monthly sheet
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -116,6 +117,8 @@ export default function SalaryPage({ user }) {
   }, [year, month]);
 
   const released = !!approval?.released;
+  const inReview = !!approval?.adminApproved && !released; // Admin approved, waiting on OH / VP / CEO — nobody edits
+  const sheetLocked = released || inReview;
   const role = user?.role;
   // Admin first, then OH and VP each on their own (neither waits for the other), then the CEO's final approval.
   // Only the role whose step is open gets its Approve / Reject buttons.
@@ -123,7 +126,7 @@ export default function SalaryPage({ user }) {
     { key: "ADMIN", title: "Admin", done: approval.adminApproved, by: approval.adminBy, at: approval.adminAt, open: !approval.adminApproved, waitsFor: null },
     { key: "OH", title: "OH", done: approval.ohApproved, by: approval.ohBy, at: approval.ohAt, open: approval.adminApproved && !approval.ohApproved, waitsFor: "Admin" },
     { key: "VP", title: "VP", done: approval.vpApproved, by: approval.vpBy, at: approval.vpAt, open: approval.adminApproved && !approval.vpApproved, waitsFor: "Admin" },
-    { key: "CEO", title: "CEO · Final", done: approval.ceoApproved, by: approval.ceoBy, at: approval.ceoAt, open: approval.ohApproved && approval.vpApproved && !approval.ceoApproved, waitsFor: "OH and VP" },
+    { key: "CEO", title: "CEO", done: approval.ceoApproved, by: approval.ceoBy, at: approval.ceoAt, open: approval.ohApproved && approval.vpApproved && !approval.ceoApproved, waitsFor: "OH and VP" },
   ] : [];
   const myStep = approvalSteps.find((st) => st.key === role && st.open && !released);
   const myTurn = !!myStep;
@@ -260,6 +263,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
         remarks: form.remarks?.trim() || null,
         finalized: form.finalized,
         actionBy: user?.fullName || user?.username,
+        username: user?.username,
       });
       setAdjModal(null);
       await loadSheet();
@@ -331,14 +335,14 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                       {i > 0 && <span style={{ alignSelf: "center", color: "#cbd5e1", fontSize: 18 }}>›</span>}
                       <div style={{ minWidth: 150, border: `1.5px solid ${tone.bd}`, background: tone.bg, borderRadius: 10, padding: "7px 12px", boxShadow: mine ? "0 0 0 3px rgba(30,58,95,.10)" : "none" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800, color: tone.fg, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                          <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: st.done ? "#16a34a" : mine ? "#1e3a5f" : "#cbd5e1" }}>{st.done ? "✓" : i + 1}</span>
+                          {st.done && <span style={{ width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", background: "#16a34a" }}>✓</span>}
                           {st.title}
                         </div>
-                        <div style={{ fontSize: 13, color: st.done ? "#166534" : "#000", marginTop: 3 }}>
-                          {st.done
-                            ? <><b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#000" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}</>
-                            : st.open ? "Awaiting approval" : `Waiting for ${st.waitsFor}`}
-                        </div>
+                        {st.done && (
+                          <div style={{ fontSize: 13, color: "#166534", marginTop: 3 }}>
+                            <b>{st.by || "Approved"}</b>{st.at && <div style={{ fontSize: 12, color: "#000" }}>{new Date(st.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</div>}
+                          </div>
+                        )}
                         {mine && (
                           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                             <button onClick={approveMonth} disabled={busy === "approval"} style={{ ...btn("#166534"), flex: 1, padding: "7px 10px", opacity: busy === "approval" ? 0.6 : 1 }}>{st.key === "CEO" ? "Approve & Release" : "Approve"}</button>
@@ -366,14 +370,14 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                     {c.lines ? c.lines.map((t, i) => <span key={i}>{i > 0 && <br />}{t}</span>) : c.l}
                   </th>)}
                   <th style={th}>Payslip</th>
-                  {canManage && <th style={th}>Adjust</th>}
+                  {canAdjust && <th style={th}>Adjust</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={td} colSpan={cols.length + (canManage ? 2 : 1)}>Loading…</td></tr>
+                  <tr><td style={td} colSpan={cols.length + (canAdjust ? 2 : 1)}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canManage ? 2 : 1)}>
+                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : sheet.map((r, ri) => (
@@ -391,9 +395,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                     <td style={td}>
                       <button onClick={() => downloadPayslip(r, year, month)} disabled={!released} title={released ? "Download payslip" : "Available after the CEO releases this month"} aria-label="Download payslip" style={{ ...btn("#ecfdf5", "#047857"), padding: "6px 9px", opacity: released ? 1 : 0.4, cursor: released ? "pointer" : "not-allowed" }}>📎</button>
                     </td>
-                    {canManage && (
+                    {canAdjust && (
                       <td style={td}>
-                        <button onClick={() => setAdjModal({ row: r })} disabled={released} title={released ? "Released — locked" : "Adjust"} aria-label="Adjust" style={{ ...btn("#eef2ff", "#4338ca"), padding: "6px 9px", opacity: released ? 0.4 : 1, cursor: released ? "not-allowed" : "pointer" }}>✏️</button>
+                        <button onClick={() => setAdjModal({ row: r })} disabled={sheetLocked} title={released ? "Released — locked" : inReview ? "In review — opens again only if OH, VP or the CEO rejects it" : "Adjust"} aria-label="Adjust" style={{ ...btn("#eef2ff", "#4338ca"), padding: "6px 9px", opacity: sheetLocked ? 0.4 : 1, cursor: sheetLocked ? "not-allowed" : "pointer" }}>✏️</button>
                       </td>
                     )}
                   </tr>
@@ -405,7 +409,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                     {cols.map((c, i) => c.total
                       ? <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? {} : { fontSize: 16 }) }}>{inr0(totals[c.k])}</td>
                       : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${sheet.length})` : ""}</td>)}
-                    <td style={td} colSpan={canManage ? 2 : 1}></td>
+                    <td style={td} colSpan={canAdjust ? 2 : 1}></td>
                   </tr>
                 </tfoot>
               )}
@@ -460,7 +464,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
       )}
 
       {defModal && <StructureModal modal={defModal} busy={busy === "struct"} onClose={() => setDefModal(null)} onSubmit={submitStructure} />}
-      {adjModal && <AdjustModal row={adjModal.row} canRegularize={["ADMIN", "VP"].includes(role) && !released} onRegularize={regularizeDay} monthLabel={`${MONTHS[month - 1]} ${year}`} busy={busy === "adj"} onClose={() => setAdjModal(null)} onSubmit={submitAdjustment} />}
+      {adjModal && <AdjustModal row={adjModal.row} canRegularize={role === "ADMIN" && !sheetLocked} onRegularize={regularizeDay} monthLabel={`${MONTHS[month - 1]} ${year}`} busy={busy === "adj"} onClose={() => setAdjModal(null)} onSubmit={submitAdjustment} />}
     </div>
   );
 }
