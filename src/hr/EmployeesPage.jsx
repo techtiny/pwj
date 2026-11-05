@@ -115,7 +115,7 @@ export default function EmployeesPage({ user }) {
   const [exitBusy, setExitBusy] = useState(false);
   const [exitErr, setExitErr] = useState("");
   const [appUsers, setAppUsers] = useState([]);
-  const BLANK = { fullName: "", doj: "", dob: "", gender: "", department: "", designation: "", personCode: "", linkedUsername: "" };
+  const BLANK = { fullName: "", doj: "", dob: "", gender: "", department: "", designation: "", personCode: "", linkedUsername: "", bankName: "", bankAccountNumber: "", ifscCode: "" };
   const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState("");
@@ -185,11 +185,11 @@ export default function EmployeesPage({ user }) {
     try {
       if (editId) {
         const { linkedUsername, ...details } = form;
-        await employeeApi.update(editId, details);
+        await employeeApi.update(editId, { ...details, actorUsername: user?.username });
         setAddOpen(false); setEditId(null);
         await load();
       } else {
-        const r = await employeeApi.create(form);
+        const r = await employeeApi.create({ ...form, actorUsername: user?.username });
         setAddOpen(false);
         await load();
         const created = r.data?.data;
@@ -199,12 +199,18 @@ export default function EmployeesPage({ user }) {
     finally { setSaving(false); }
   };
 
-  const openEdit = () => {
+  const openEdit = async () => {
     setForm({
       fullName: preview.fullName || "", doj: preview.doj || "", dob: preview.dob || "", gender: preview.gender || "",
       department: preview.department || "", designation: preview.designation || "", personCode: preview.personCode || "", linkedUsername: "",
+      bankName: "", bankAccountNumber: "", ifscCode: "",
     });
     setFormErr(""); setEditId(preview.id); setAddOpen(true);
+    try { // bank details are served separately (never with the roster)
+      const r = await employeeApi.bankDetails(preview.id, user?.username);
+      const b = r.data?.data || {};
+      setForm(f => ({ ...f, bankName: b.bankName || "", bankAccountNumber: b.bankAccountNumber || "", ifscCode: b.ifscCode || "" }));
+    } catch { /* leave blank */ }
   };
   const openExit = () => {
     setExitForm({ exitDate: new Date().toISOString().slice(0, 10), exitType: "RESIGNED", exitReason: "" });
@@ -393,6 +399,9 @@ export default function EmployeesPage({ user }) {
                 ["personCode", editId ? "Person code" : "Person code (optional)", "text", { placeholder: "Auto, e.g. H-26-0055" }],
                 ["department", "Department", "text", { list: "dept-list" }],
                 ["designation", "Designation", "text"],
+                ["bankName", "Bank name", "text"],
+                ["bankAccountNumber", "Account number", "text", { placeholder: "9–18 digits" }],
+                ["ifscCode", "IFSC code", "text", { placeholder: "e.g. HDFC0001234" }],
               ].map(([k, label, type, o = {}]) => (
                 <label key={k} style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: o.full ? "1 / -1" : undefined, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
                   {label}

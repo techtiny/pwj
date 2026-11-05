@@ -133,6 +133,14 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
   useEffect(() => { load(); loadRemarks(); }, [load, loadRemarks]);
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  // Bank details (salary credit) — reviewers and the employee themself only; served by a separate access-checked endpoint.
+  const [bank, setBank] = useState(null);
+  useEffect(() => {
+    const self = !!(emp?.linkedUsername && user?.username && emp.linkedUsername.toLowerCase() === user.username.toLowerCase());
+    if (!emp?.id || !(isReviewer || self)) { setBank(null); return; }
+    employeeApi.bankDetails(emp.id, user?.username).then(r => setBank(r.data?.data || null)).catch(() => setBank(null));
+  }, [emp?.id, emp?.linkedUsername, isReviewer, user?.username]);
+
   // Salary advance still owed — shown to reviewers and to the employee themself; matters most once they've left.
   const [advances, setAdvances] = useState([]);
   useEffect(() => {
@@ -450,6 +458,17 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
           </div>
         </div>
       </div>
+
+      {bank && (bank.bankAccountNumber || bank.ifscCode || bank.bankName) && (
+        <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: "4px solid #1e3a5f" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>🏦 Bank Details</div>
+          <div style={{ fontSize: 15, color: "#374151", display: "flex", gap: 28, flexWrap: "wrap" }}>
+            <span>Bank: <b>{bank.bankName || "—"}</b></span>
+            <span>Account number: <b style={{ fontVariantNumeric: "tabular-nums", letterSpacing: 0.5 }}>{bank.bankAccountNumber || "—"}</b></span>
+            <span>IFSC: <b>{bank.ifscCode || "—"}</b></span>
+          </div>
+        </div>
+      )}
 
       {(() => {
         const { pending, open } = advanceSummary(advances);

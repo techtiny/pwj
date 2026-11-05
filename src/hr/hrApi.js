@@ -213,6 +213,7 @@ export const employeeApi = {
   get:         (id)             => api.get(`/employees/${id}`),
   create:      (data)           => api.post('/employees', data),
   update:      (id, data)       => api.patch(`/employees/${id}`, data),
+  bankDetails: (id, username)   => api.get(`/employees/${id}/bank-details`, { params: { username } }),
   fromLogin:   (username)       => api.post(`/employees/from-login/${encodeURIComponent(username)}`),
   updatePhoto: (id, photoUrl)   => api.patch(`/employees/${id}/photo`, { photoUrl }),
   link:        (id, username)   => api.patch(`/employees/${id}/link`, { username }),
