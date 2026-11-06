@@ -28,10 +28,8 @@ const AUTO_FILL_TYPES = {
 };
 
 // Allowed target categories per doc type (for "Move to" / "Save to" selectors)
-const MOVE_OPTIONS = {
-  WO: ['SUBCONTRACT', 'LABOUR', 'CONSULTANTS'],
-  JO: ['MATERIAL', 'LABOUR', 'MISCELLANEOUS'],
-};
+const ALL_CATEGORIES = ['MATERIAL', 'LABOUR', 'SUBCONTRACT', 'CONSULTANTS', 'MISCELLANEOUS'];
+const MOVE_OPTIONS = { PO: ALL_CATEGORIES, WO: ALL_CATEGORIES, JO: ALL_CATEGORIES };
 
 const CAT_LABELS = {
   MATERIAL: 'Material', LABOUR: 'Labour',
