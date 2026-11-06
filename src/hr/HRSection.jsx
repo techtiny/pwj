@@ -15,7 +15,10 @@ import MyProfilePage from "./MyProfilePage";
 // One icon per top-level HR menu item.
 const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users };
 
-export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
+export default function HRSection({ user, initialTab, onConsumeInitialTab, notifs = [] }) {
+  // Pending counts per sub-tab (notification.tab) — shown on the pill, and summed onto its top-menu group.
+  const tabCount = {};
+  notifs.filter(n => n.module === "hr").forEach(n => { tabCount[n.tab] = (tabCount[n.tab] || 0) + Number(n.count || 0); });
   const isApprover  = ["VP", "OH", "ADMIN", "CEO"].includes(user?.role);
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO", "PROJECT_MANAGER"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
@@ -153,7 +156,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
       `}</style>
       {/* Top menu bar */}
       <NavBar ariaLabel="HR menu" active={activeGroup.key}
-        items={groups.map(g => ({ key: g.key, label: g.label, icon: NAV_ICONS[g.key] }))}
+        items={groups.map(g => ({ key: g.key, label: g.label, icon: NAV_ICONS[g.key], badge: g.tabs.reduce((t, x) => t + (tabCount[x.key] || 0), 0) }))}
         onChange={key => setTab(groups.find(g => g.key === key).tabs[0].key)} />
 
       {/* Second-level pills — only shown when the active group has more than one page */}
@@ -172,6 +175,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab }) {
                     transition: "background .15s, color .15s",
                   }}>
                   {t.label}
+                  {tabCount[t.key] > 0 && <span className="nav-badge" style={{ marginLeft: 8 }}>{tabCount[t.key] > 99 ? "99+" : tabCount[t.key]}</span>}
                 </button>
               );
             })}

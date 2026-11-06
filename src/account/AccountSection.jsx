@@ -20,7 +20,11 @@ const EXPENSE_CATS = [
   { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
 ];
 
-export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "", username = "" }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "", username = "", notifs = [] }) {
+  // Pending counts per tab (notification.tab) — the VP's salary payments sit under Send for Payment → Team Payments.
+  const tabCount = {};
+  notifs.filter(n => n.module === "account").forEach(n => { tabCount[n.tab || "payments"] = (tabCount[n.tab || "payments"] || 0) + Number(n.count || 0); });
+  const teamPayCount = notifs.filter(n => n.key === "salary-pay").reduce((t, n) => t + Number(n.count || 0), 0);
   const [tab, setTab]     = useState("dashboard");
   const [payKind, setPayKind] = useState("vendor"); // Send for Payment: vendor payments | salary
   const [expCat, setExpCat] = useState("material");
@@ -39,7 +43,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Top menu bar */}
-      <NavBar ariaLabel="Account menu" items={tabs} active={tab} onChange={setTab} />
+      <NavBar ariaLabel="Account menu" items={tabs.map(t => ({ ...t, badge: tabCount[t.key] || 0 }))} active={tab} onChange={setTab} />
 
       {/* Expense category sub-nav */}
       {tab === "expenses" && (
@@ -76,6 +80,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
                       background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "#1e3a5f" : "#334155",
                       fontWeight: payKind === k ? 700 : 500, boxShadow: payKind === k ? "0 1px 3px rgba(15,23,42,.18)" : "none" }}>
                     {l}
+                    {k === "salary" && teamPayCount > 0 && <span className="nav-badge" style={{ marginLeft: 8 }}>{teamPayCount}</span>}
                   </button>
                 ))}
               </div>

@@ -1671,19 +1671,9 @@ export default function PWJTracker() {
 }
 
 // ─── HOME DASHBOARD ───
-function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onOpenHr, onManageUsers }) {
-  // HR approvals waiting on this user — loaded when Home opens (i.e. right after login) and refreshed every couple of minutes.
-  const [notifs, setNotifs] = useState([]);
-  useEffect(() => {
-    if (!user?.username) return;
-    let live = true;
-    const load = () => api.getHrNotifications(user.username).then(d => { if (live) setNotifs(d); });
-    load();
-    const t = setInterval(load, 120000);
-    return () => { live = false; clearInterval(t); };
-  }, [user?.username]);
-  const openNotif = (n) => (n.module === "hr" ? onOpenHr(n.tab) : onNavigate(n.module));
-  const notifTotal = notifs.reduce((t, n) => t + Number(n.count || 0), 0);
+function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onOpenHr, onManageUsers, notifs, procurementPending = 0 }) {
+  // Pending count per module tile (key = n.module) — shown as a red number on the tile's icon.
+  const tileCounts = notifs.reduce((m, n) => { m[n.module] = (m[n.module] || 0) + Number(n.count || 0); return m; }, { entries: procurementPending });
   // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
   // open …/#<module> in a new tab or window (session is shared via localStorage).
   const modClick = (e, key) => {
@@ -1801,26 +1791,6 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
         <div style={{ fontSize: 14, color: "#374151", marginTop: 8 }}>Select a module to get started</div>
       </div>
 
-      {notifs.length > 0 && (
-        <div className="home-notifs" style={{ width: "100%", maxWidth: 960, boxSizing: "border-box", marginBottom: 28, background: "#fff", border: "1.5px solid #fde68a", borderRadius: 18, boxShadow: "0 2px 12px rgba(15,23,42,.07)", overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", background: "linear-gradient(90deg,#fffbeb,#fff)", borderBottom: "1px solid #fef3c7" }}>
-            <Bell size={20} color="#b45309" strokeWidth={2.2} />
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Needs your attention</div>
-            <span style={{ minWidth: 26, height: 26, padding: "0 8px", borderRadius: 999, background: "#dc2626", color: "#fff", fontSize: 14, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{notifTotal}</span>
-            <span style={{ marginLeft: "auto", fontSize: 13.5, color: "#374151" }}>HR approvals waiting on you</span>
-          </div>
-          {notifs.map(n => (
-            <button key={n.key} type="button" onClick={() => openNotif(n)}
-              style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "13px 20px", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", cursor: "pointer", fontFamily: "inherit" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }} onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}>
-              <span style={{ minWidth: 34, height: 34, borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 16, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{n.count}</span>
-              <span style={{ flex: 1, fontSize: 16, color: "#0f172a" }}><b>{n.title}</b> <span style={{ color: "#374151" }}>{n.detail}</span></span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, fontWeight: 700, color: "#4f46e5", whiteSpace: "nowrap" }}>Open <ChevronRight size={16} /></span>
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="home-module-grid" style={{
         display: "grid",
         gridTemplateColumns: `repeat(${Math.min(modules.length, 4)}, 1fr)`,
@@ -1850,8 +1820,13 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
           const hoverOut = e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(15,23,42,.07)"; };
           const inner = (
             <>
-              <div style={{ width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${shadow}` }}>
+              <div style={{ position: "relative", width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: tileCounts[key] ? `0 0 0 4px #fecaca, 0 8px 24px ${shadow}` : `0 8px 24px ${shadow}` }}>
                 <Icon size={32} color="#fff" strokeWidth={1.8} />
+                {tileCounts[key] > 0 && (
+                  <span title={`${tileCounts[key]} waiting on you`} style={{ position: "absolute", top: -10, right: -10, minWidth: 28, height: 28, padding: "0 7px", boxSizing: "border-box", borderRadius: 999, background: "#dc2626", color: "#fff", border: "2.5px solid #fff", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, boxShadow: "0 2px 8px rgba(220,38,38,.5)" }}>
+                    {tileCounts[key] > 99 ? "99+" : tileCounts[key]}
+                  </span>
+                )}
               </div>
               <div>
                 <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
@@ -1970,6 +1945,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   const [mainTab, setMainTab] = useState(readTabFromHash);
   const [happizoInfoTab, setHappizoInfoTab] = useState("general"); // "general" | "policies" | "sop"
+  // Pending HR / Accounts approvals waiting on this user — drives the red counts on the Home tiles and on the matching
+  // tabs inside HR and Account. Loaded after login, refreshed on every module switch and every couple of minutes.
+  const [notifs, setNotifs] = useState([]);
+  useEffect(() => {
+    if (!user?.username) return;
+    let live = true;
+    api.getHrNotifications(user.username).then(d => { if (live) setNotifs(d); });
+    const t = setInterval(() => api.getHrNotifications(user.username).then(d => { if (live) setNotifs(d); }), 120000);
+    return () => { live = false; clearInterval(t); };
+  }, [user?.username, mainTab]);
   const [hrInitialTab, setHrInitialTab] = useState(null); // forces HRSection to a sub-tab once, e.g. from the header avatar
 
   // hash → state (deep link, browser back/forward, editing the URL)
@@ -2413,10 +2398,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
     if (!user?.username) return;
     setPaymentRequests(await api.getPaymentRequests(user.username));
   }, [user?.username]);
-  useEffect(() => { if (mainTab === "entries") loadPaymentRequests(); }, [mainTab, entries, loadPaymentRequests]);
+  useEffect(() => { if (mainTab === "entries" || mainTab === "home") loadPaymentRequests(); }, [mainTab, entries, loadPaymentRequests]);
   const isRaiserOf = (row) => !!row?.raisedBy && [user?.fullName, user?.username].filter(Boolean).some(n => n.toLowerCase() === row.raisedBy.toLowerCase());
   const payReqsFor = (rowId) => paymentRequests.filter(p => p.pwjEntryId === rowId);
   const payReqsToDecide = paymentRequests.filter(p => p.status === "PENDING" && p.canDecide);
+  // Everything waiting on this user in Procurement — OH approvals, VP closure / doc approvals, payment requests to decide.
+  const procurementPending = pendingOHCount + pendingClosures.length + pendingDocCount + payReqsToDecide.length;
   const fmtRupee = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const decidePayReq = async (p, action) => {
     let body = { username: user?.username };
@@ -4470,7 +4457,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             });
             const hover = (e, on) => { if (!e.currentTarget.dataset.active) e.currentTarget.style.background = on ? "#f1f5f9" : "transparent"; };
             const pill = (n) => n ? (
-              <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 999, background: "#fee2e2", color: "#b91c1c", fontSize: 12.5, fontWeight: 800,
+              <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 999, background: "#dc2626", color: "#fff", boxShadow: "0 2px 6px rgba(220,38,38,.45)", fontSize: 12.5, fontWeight: 800,
                 display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{n > 99 ? "99+" : n}</span>
             ) : null;
             const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", bugs: "Bug Tracker" };
@@ -4531,6 +4518,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
             onNavigate={key => setMainTab(key)}
             onOpenHr={tab => { setMainTab("hr"); setHrInitialTab(tab); }}
             onManageUsers={openUserMgmt}
+            notifs={notifs}
+            procurementPending={procurementPending}
           />
         )}
 
@@ -4541,7 +4530,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         )}
 
         {mainTab === "hr" && (
-          <HRSection user={user} initialTab={hrInitialTab} onConsumeInitialTab={() => setHrInitialTab(null)} />
+          <HRSection user={user} notifs={notifs} initialTab={hrInitialTab} onConsumeInitialTab={() => setHrInitialTab(null)} />
         )}
 
         {mainTab === "bugs" && <BugTrackerPage user={user} />}
@@ -6021,7 +6010,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} userName={user.fullName || user.username} username={user.username} />}
+        {mainTab === "account" && <AccountSection notifs={notifs} isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} userName={user.fullName || user.username} username={user.username} />}
         {mainTab === "sales"   && <SalesPage />}
 
       </div>
