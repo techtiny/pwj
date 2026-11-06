@@ -201,6 +201,16 @@ export const salaryApi = {
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
 };
 
+export const statementApi = {
+  request:    (data)     => api.post('/salary-statement', data),
+  mine:       (username) => api.get(`/salary-statement/my/${encodeURIComponent(username)}`),
+  pending:    (username) => api.get('/salary-statement/pending', { params: { username } }),
+  all:        (username) => api.get('/salary-statement/all', { params: { username } }),
+  approve:    (id, data) => api.put(`/salary-statement/${id}/approve`, data),
+  reject:     (id, data) => api.put(`/salary-statement/${id}/reject`, data),
+  downloaded: (id, data) => api.post(`/salary-statement/${id}/downloaded`, data),
+};
+
 export const advanceApi = {
   raise:   (data)       => api.post('/advance', data),
   mine:    (username)   => api.get(`/advance/my/${encodeURIComponent(username)}`),
@@ -212,6 +222,9 @@ export const advanceApi = {
   cancel:  (id, data)   => api.put(`/advance/${id}/cancel`, data),
   startOptions: (advanceId) => api.get('/advance/start-options', { params: advanceId ? { advanceId } : {} }),
   changeStart: (id, data) => api.put(`/advance/${id}/start`, data),
+  enabled: (username)   => api.get(`/advance/enabled/${encodeURIComponent(username)}`),
+  eligibility: (username) => api.get('/advance/eligibility', { params: { username } }),
+  setEnabled: (target, data) => api.put(`/advance/eligibility/${encodeURIComponent(target)}`, data),
 };
 
 /** Outstanding salary-advance money for one person: what's been paid out and not yet recovered through salary. */

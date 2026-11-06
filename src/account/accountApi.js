@@ -81,6 +81,36 @@ export const salesApi = {
   delete:    (id)       => api.delete(`/sales/${id}`),
 };
 
+// Sales CRM — People / Companies. list = "people" | "companies"
+export const crmApi = {
+  getAll: (list)         => api.get(`/crm/${list}`),
+  create: (list, data)   => api.post(`/crm/${list}`, data),
+  update: (list, id, data) => api.put(`/crm/${list}/${id}`, data),
+  delete: (list, id)     => api.delete(`/crm/${list}/${id}`),
+};
+
+// Sales → Campaigns (OH / VP / CEO only — each role has its own contact list and campaigns). Every call carries the
+// signed-in username; the backend reads the role from that account. CampaignsPage sets it via setCampaignUser().
+let campaignUser = '';
+export const setCampaignUser = (u) => { campaignUser = u || ''; };
+const q = (extra = {}) => ({ params: { username: campaignUser, ...extra } });
+export const campaignApi = {
+  waStatus:      ()          => api.get('/campaign/whatsapp/status', q()),
+  waLogout:      ()          => api.post('/campaign/whatsapp/logout', null, q()),
+  contacts:      ()          => api.get('/campaign/contacts', q()),
+  addContact:    (data)      => api.post('/campaign/contacts', data, q()),
+  updateContact: (id, data)  => api.put(`/campaign/contacts/${id}`, data, q()),
+  deleteContact: (id)        => api.delete(`/campaign/contacts/${id}`, q()),
+  importContacts:(list, ids) => api.post('/campaign/contacts/import', { list, ids }, q()),
+  list:          ()          => api.get('/campaign', q()),
+  detail:        (id)        => api.get(`/campaign/${id}`, q()),
+  create:        (data)      => api.post('/campaign', data, q()),
+  start:         (id)        => api.post(`/campaign/${id}/start`, null, q()),
+  stop:          (id)        => api.post(`/campaign/${id}/stop`, null, q()),
+  retryFailed:   (id)        => api.post(`/campaign/${id}/retry-failed`, null, q()),
+  remove:        (id)        => api.delete(`/campaign/${id}`, q()),
+};
+
 export const collectionsApi = {
   getByProject:       (projectId) => api.get(`/collections/project/${projectId}`),
   getTotalsByProject: ()          => api.get('/collections/totals-by-project').then(r => r.data || {}),

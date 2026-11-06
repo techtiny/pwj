@@ -29,11 +29,13 @@ export default function AdvancePage({ user }) {
   const isAdmin = role === "ADMIN";
   const canRaise = role !== "CEO";
   const canSeeAll = isAdmin || isApprover || role === "CEO";
+  const canManage = isAdmin || role === "VP";   // Admin / VP switch advance on per employee
 
   const tabs = [
     ...(canRaise ? [["mine", "My Advances"]] : []),
     ...(isApprover ? [["approvals", "Approvals"]] : []),
     ...(canSeeAll ? [["all", "All Advances"]] : []),
+    ...(canManage ? [["eligibility", "Enable for Employees"]] : []),
   ];
   const [tab, setTab] = useState(isAdmin ? "all" : (canRaise ? "mine" : "all"));
   const [rows, setRows] = useState([]);
@@ -44,7 +46,34 @@ export default function AdvancePage({ user }) {
   const [form, setForm] = useState({ amount: "", termMonths: 3, reason: "" });
   const [startDlg, setStartDlg] = useState(null);  // { a, mode: "pay" | "change", options, choice } — which payroll month recovery starts in
 
+  // Salary advance is off until Admin / VP enables it for this employee.
+  const [enabled, setEnabled] = useState(null);   // null = still checking
+  useEffect(() => {
+    if (!user?.username) return;
+    advanceApi.enabled(user.username).then((r) => setEnabled(!!r.data?.data)).catch(() => setEnabled(false));
+  }, [user?.username]);
+  const [people, setPeople] = useState([]);
+  const [pick, setPick] = useState("");
+  const [peopleErr, setPeopleErr] = useState("");
+  const pickedP = people.find((p) => p.username === pick);
+  const loadPeople = useCallback(async () => {
+    setPeopleErr("");
+    try { setPeople((await advanceApi.eligibility(user?.username)).data?.data || []); }
+    catch (e) { setPeople([]); setPeopleErr(e.response?.data?.message || "Could not load employees — make sure the backend is updated and restarted."); }
+  }, [user?.username]);
+  useEffect(() => { if (tab === "eligibility") loadPeople(); }, [tab, loadPeople]);
+  async function toggle(p) {
+    setBusy("toggle-" + p.username);
+    try {
+      await advanceApi.setEnabled(p.username, { username: user?.username, enabled: !p.enabled });
+      setPeople((l) => l.map((x) => (x.username === p.username ? { ...x, enabled: !p.enabled } : x)));
+      if (p.username === user?.username) setEnabled(!p.enabled);
+    } catch (e) { alert(e.response?.data?.message || "Could not update"); }
+    finally { setBusy(null); }
+  }
+
   const load = useCallback(async () => {
+    if (tab === "eligibility") { setLoading(false); return; }
     setLoading(true);
     try {
       const r = tab === "mine" ? await advanceApi.mine(user?.username)
@@ -139,7 +168,13 @@ export default function AdvancePage({ user }) {
         </div>
       )}
 
-      {tab === "mine" && canRaise && (
+      {tab === "mine" && canRaise && enabled === false && (
+        <div style={{ ...card, padding: 16, marginBottom: 16, background: "#fffbeb", borderColor: "#fde68a", color: "#92400e", fontSize: 15.5 }}>
+          Salary advance isn't enabled for you. Ask Admin or VP to enable it before you can request one.
+        </div>
+      )}
+
+      {tab === "mine" && canRaise && enabled && (
         <div style={{ ...card, padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 12 }}>Request an advance</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -167,7 +202,40 @@ export default function AdvancePage({ user }) {
         </div>
       )}
 
-      <div style={{ ...card, overflow: "hidden" }}>
+      {tab === "eligibility" && (
+        <div style={{ ...card, padding: 16 }}>
+          <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 4 }}>Enable salary advance for an employee</div>
+          <div style={{ fontSize: 14.5, color: "#000", marginBottom: 12 }}>Employees can request a salary advance only while it is switched on for them.</div>
+          {peopleErr && <div style={{ color: "#b91c1c", fontSize: 14.5, marginBottom: 10 }}>{peopleErr}</div>}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <select value={pick} onChange={(e) => setPick(e.target.value)} style={{ ...inputS, width: 340, maxWidth: "100%" }}>
+              <option value="">Select employee…</option>
+              {people.map((p) => (
+                <option key={p.username} value={p.username}>{p.fullName}{p.designation ? ` — ${p.designation}` : ""}{p.enabled ? "  ✓ enabled" : ""}</option>
+              ))}
+            </select>
+            {pickedP && (
+              <button onClick={() => toggle(pickedP)} disabled={busy === "toggle-" + pickedP.username}
+                style={{ ...btn(pickedP.enabled ? "#b91c1c" : "#0f766e"), opacity: busy === "toggle-" + pickedP.username ? 0.6 : 1 }}>
+                {pickedP.enabled ? "Disable advance" : "Enable advance"}
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#000", margin: "18px 0 8px" }}>Currently enabled ({people.filter((p) => p.enabled).length})</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {people.filter((p) => p.enabled).map((p) => (
+              <span key={p.username} style={{ ...pill(STATUS.PAID), display: "inline-flex", alignItems: "center", gap: 8 }}>
+                {p.fullName}
+                <button onClick={() => toggle(p)} title="Disable" aria-label={`Disable ${p.fullName}`} disabled={busy === "toggle-" + p.username}
+                  style={{ border: "none", background: "transparent", color: "#047857", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0, lineHeight: 1 }}>✕</button>
+              </span>
+            ))}
+            {!people.some((p) => p.enabled) && <span style={{ fontSize: 14.5, color: "#475569" }}>No one yet.</span>}
+          </div>
+        </div>
+      )}
+
+      {tab !== "eligibility" && <div style={{ ...card, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table className="adv-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -261,7 +329,7 @@ export default function AdvancePage({ user }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
       {startDlg && (
         <div onClick={() => setStartDlg(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} role="dialog" style={{ background: "#fff", borderRadius: 16, width: 440, maxWidth: "100%", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>

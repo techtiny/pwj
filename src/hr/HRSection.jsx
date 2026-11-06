@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, UserRound, CalendarCheck, CalendarOff, Wallet, Users } from "lucide-react";
+import { LayoutDashboard, UserRound, CalendarCheck, CalendarOff, Wallet, Users, FileText } from "lucide-react";
 import NavBar from "../NavBar";
 import HRDashboard from "./HRDashboard";
 import AttendancePage from "./AttendancePage";
@@ -7,13 +7,14 @@ import LeavePage from "./LeavePage";
 import LeaveApprovalPage from "./LeaveApprovalPage";
 import PettyCashPage from "./PettyCashPage";
 import AdvancePage from "./AdvancePage";
+import SalaryStatementsPage from "./SalaryStatementsPage";
 import EmployeeExitPage from "./EmployeeExitPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import MyProfilePage from "./MyProfilePage";
 
 // One icon per top-level HR menu item.
-const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users };
+const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users, "salary-statements": FileText };
 
 export default function HRSection({ user, initialTab, onConsumeInitialTab, notifs = [] }) {
   // Pending counts per sub-tab (notification.tab) — shown on the pill, and summed onto its top-menu group.
@@ -61,6 +62,11 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
         { key: "advance", label: "Advance" },
       ],
     },
+    ...(["ADMIN", "VP", "OH", "CEO"].includes(user?.role) ? [{
+      key: "salary-statements",
+      label: "Salary Statements",
+      tabs: [{ key: "salary-statements", label: "Salary Statements" }],
+    }] : []),
     ...(canViewExits ? [{
       key: "people",
       label: "Employee Master",
@@ -189,6 +195,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
       {tab === "leaves"         && <LeavePage user={user} />}
       {tab === "petty-cash"     && <PettyCashPage user={user} title="Petty Cash" defaultTab={canViewReimbursement ? "all" : "mine"} />}
       {tab === "advance"        && <AdvancePage user={user} />}
+      {tab === "salary-statements" && <SalaryStatementsPage user={user} />}
       {tab === "reimbursement"  && <PettyCashPage user={user} title="Reimbursement" defaultTab="mine" />}
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}

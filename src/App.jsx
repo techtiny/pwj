@@ -6011,7 +6011,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
         {/* ─── ACCOUNT MODULE ─── */}
         {mainTab === "account" && <AccountSection notifs={notifs} isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} userName={user.fullName || user.username} username={user.username} />}
-        {mainTab === "sales"   && <SalesPage />}
+        {mainTab === "sales"   && <SalesPage userName={user.fullName || user.username} username={user.username} role={user.role} />}
 
       </div>
 

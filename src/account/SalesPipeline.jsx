@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { salesApi, formatLakh } from "./accountApi";
 import { DeleteBtn } from "../ActionButtons";
+import { usersApi } from "../hr/hrApi";
 
 const STAGES = [
   { key: "PROSPECT",    label: "Prospect",    color: "#6366f1", bg: "#eef2ff" },
@@ -12,7 +13,7 @@ const STAGES = [
 ];
 
 const SOURCES        = ["REFERRAL", "DIRECT", "TENDER", "ONLINE", "OTHER"];
-const BUSINESS_TYPES = ["Infrastructure", "Electrical", "Civil", "Mechanical", "IT", "Consulting", "Other"];
+const BUSINESS_TYPES = ["Commercial Interior", "Residential", "Construction", "Renovation"];
 
 const EMPTY_FORM = {
   title: "", client: "", contactPerson: "", contactPhone: "", contactEmail: "",
@@ -45,6 +46,14 @@ export default function SalesPipeline() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // "Assigned To" is picked from the active Costing & Planning Engineers.
+  const [costingEngineers, setCostingEngineers] = useState([]);
+  useEffect(() => {
+    usersApi.getAll()
+      .then(r => setCostingEngineers((r.data?.data || []).filter(u => u.role === "COSTING_PLANNING_ENGINEER" && u.active !== false && !u.exited)))
+      .catch(() => setCostingEngineers([]));
+  }, []);
 
   const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setErrors({}); setShowModal(true); };
   const openEdit = (lead) => {
@@ -124,6 +133,7 @@ export default function SalesPipeline() {
 
   return (
     <div style={{ padding: "16px 16px", background: "#f8fafc", minHeight: "calc(100vh - 148px)" }}>
+      <style>{`@media (max-width: 768px) { .sales-lead-form { grid-template-columns: 1fr !important; padding: 16px !important; } .sales-lead-form > div { grid-column: 1 / -1 !important; } }`}</style>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -237,7 +247,7 @@ export default function SalesPipeline() {
               <div style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>{editing ? "Edit Lead" : "New Sales Lead"}</div>
               <button onClick={() => setShowModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 22.5, color: "#64748b" }}>×</button>
             </div>
-            <form onSubmit={handleSubmit} style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <form onSubmit={handleSubmit} className="sales-lead-form" style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Lead Title *</label>
                 <input style={{ ...inp, borderColor: errors.title ? "#ef4444" : "#e2e8f0" }} value={form.title} onChange={e => f({ title: e.target.value })} placeholder="e.g. Electrical work – XYZ Tower" />
@@ -282,19 +292,34 @@ export default function SalesPipeline() {
               </div>
               <div>
                 <label style={lbl}>Assigned To</label>
-                <input style={inp} value={form.assignedTo} onChange={e => f({ assignedTo: e.target.value })} placeholder="Team member" />
+                <select style={inp} value={form.assignedTo} onChange={e => f({ assignedTo: e.target.value })}>
+                  <option value="">— Select Costing & Planning Engineer —</option>
+                  {/* keep a previously typed name selectable so editing an older lead doesn't wipe it */}
+                  {form.assignedTo && !costingEngineers.some(u => u.fullName === form.assignedTo) && <option value={form.assignedTo}>{form.assignedTo}</option>}
+                  {costingEngineers.map(u => (
+                    <option key={u.id} value={u.fullName}>{u.fullName}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label style={lbl}>Lead Source</label>
-                <select style={inp} value={form.source} onChange={e => f({ source: e.target.value })}>
+                {/* "Other" takes any value — a source that isn't one of the standard options is shown as Other + its text */}
+                <select style={inp} value={form.source && !SOURCES.includes(form.source) ? "OTHER" : form.source} onChange={e => f({ source: e.target.value })}>
                   <option value="">— Select —</option>
                   {SOURCES.map(s => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}
                 </select>
+                {(form.source === "OTHER" || (form.source && !SOURCES.includes(form.source))) && (
+                  <input style={{ ...inp, marginTop: 6 }} value={form.source === "OTHER" ? "" : form.source}
+                    onChange={e => f({ source: e.target.value.trim() ? e.target.value : "OTHER" })}
+                    placeholder="Enter the lead source" autoFocus />
+                )}
               </div>
               <div>
                 <label style={lbl}>Business Type</label>
                 <select style={inp} value={form.businessType} onChange={e => f({ businessType: e.target.value })}>
                   <option value="">— Select —</option>
+                  {/* keep an older lead's previous type selectable so editing doesn't wipe it */}
+                  {form.businessType && !BUSINESS_TYPES.includes(form.businessType) && <option value={form.businessType}>{form.businessType}</option>}
                   {BUSINESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -338,7 +363,9 @@ export default function SalesPipeline() {
 
 function LeadCard({ lead, onEdit, onDelete, onMove }) {
   const st        = stageOf(lead.stage);
-  const nextStage = STAGES[STAGES.findIndex(s => s.key === lead.stage) + 1];
+  // Forward moves: each stage goes to the next one; Negotiation closes as either Won or Lost; Won / Lost are final.
+  const NEXT = { PROSPECT: ["QUALIFIED"], QUALIFIED: ["PROPOSAL"], PROPOSAL: ["NEGOTIATION"], NEGOTIATION: ["WON", "LOST"] };
+  const nextStages = (NEXT[lead.stage] || []).map(stageOf);
   return (
     <div style={{ background: "#f8fafc", borderRadius: 10, padding: 12, border: "1px solid #e2e8f0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
@@ -354,11 +381,15 @@ function LeadCard({ lead, onEdit, onDelete, onMove }) {
         {lead.probabilityPct != null && <div style={{ fontSize: 14, color: st.color, fontWeight: 600 }}>{lead.probabilityPct}%</div>}
       </div>
       {lead.expectedCloseDate && <div style={{ fontSize: 14, color: "#94a3b8", marginTop: 4 }}>Close: {lead.expectedCloseDate}</div>}
-      {nextStage && (
-        <button onClick={() => onMove(lead, nextStage.key)}
-          style={{ marginTop: 8, width: "100%", background: nextStage.bg, color: nextStage.color, border: `1px solid ${nextStage.color}33`, borderRadius: 6, padding: "4px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-          → {nextStage.label}
-        </button>
+      {nextStages.length > 0 && (
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          {nextStages.map(n => (
+            <button key={n.key} onClick={() => onMove(lead, n.key)}
+              style={{ flex: 1, background: n.bg, color: n.color, border: `1px solid ${n.color}33`, borderRadius: 6, padding: "4px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              → {n.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
