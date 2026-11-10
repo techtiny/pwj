@@ -5017,9 +5017,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             </button>
                           );
                         })()}
-                        {isRaiserOf(row) && (row.pwjType === "PO" || row.pwjType === "WO") && (row.pwjIssued || row.docStatus === "VP_APPROVED")
+                        {(isRaiserOf(row) || isProcurementEngineer || isProcurement || isAdmin)
+                          && ((isProcurementEngineer || isProcurement || isAdmin) ? ["PO","WO","JO"] : ["WO","JO"]).includes(row.pwjType) && (row.pwjIssued || row.docStatus === "VP_APPROVED")
                           && !payReqsFor(row.id).some(p => p.status === "PENDING") && (() => {
-                          // Request Payment: raised by the engineer who raised the PR, on PO and WO documents (not JO).
+                          // Request Payment: raised by the engineer who raised the PR, procurement engineers on PO/WO/JO, site engineers on WO/JO only.
                           // Multi-vendor/multi-PO entries (incl. Additional POs) have a per-doc
                           // value in docData.docs[] — only a VP-approved sub-doc can be sent for
                           // payment, and the modal lets Procurement pick which one.
@@ -6468,7 +6469,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   try {
                     const r = await api.requestPwjPayment(user.username, sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined);
                     if (r.success) {
-                      showToast(`Payment request sent to ${sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "procurement"} for approval ✅`);
+                      showToast((isProcurementEngineer || isProcurement || isAdmin) ? "Payment sent to Accounts ✅" : `Payment request sent to ${sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "procurement"} for approval ✅`);
                       loadPaymentRequests();
                       setSendPaymentModal(null);
                       setSendPaymentDocNumber("");
