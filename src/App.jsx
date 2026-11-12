@@ -5092,7 +5092,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           );
                         })()}
                         {(isRaiserOf(row) || isProcurementEngineer || isProcurement || isAdmin)
-                          && ((isProcurementEngineer || isProcurement || isAdmin) ? ["PO","WO","JO"] : ["WO","JO"]).includes(row.pwjType) && (row.pwjIssued || row.docStatus === "VP_APPROVED")
+                          && ((isProcurementEngineer || isProcurement || isAdmin) ? ["PO","WO","JO"] : ["WO","JO"]).includes(row.pwjType) && (row.pwjIssued || row.docStatus === "VP_APPROVED" || (() => { try { const p = JSON.parse(row.docData || "{}"); return !!(p.multiVendor && Array.isArray(p.docs) && p.docs.some(d => d.docStatus === "VP_APPROVED")); } catch { return false; } })())
                           && !payReqsFor(row.id).some(p => p.status === "PENDING") && (() => {
                           // Request Payment: raised by the engineer who raised the PR, procurement engineers on PO/WO/JO, site engineers on WO/JO only.
                           // Multi-vendor/multi-PO entries (incl. Additional POs) have a per-doc
