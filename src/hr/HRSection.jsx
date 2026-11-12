@@ -24,10 +24,10 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
   const canViewAll  = ["VP", "OH", "ADMIN", "CEO", "PROJECT_MANAGER"].includes(user?.role);
   const hidePersonal = ["CEO", "OH", "VP"].includes(user?.role);
   const canViewReimbursement = ["CEO", "VP", "OH", "ADMIN"].includes(user?.role);
-  // Reimbursement tab itself is open to every Engineer-type role too (ENGINEER,
+  // Reimbursement tab itself is open to Project Managers and every Engineer-type role too (ENGINEER,
   // PROCUREMENT_ENGINEER, COSTING_PLANNING_ENGINEER, ...), but they still default to
   // "My Entries" (only canViewReimbursement above decides Petty Cash's default "all" vs "mine").
-  const canViewReimbursementTab = canViewReimbursement || (user?.role || "").includes("ENGINEER");
+  const canViewReimbursementTab = canViewReimbursement || (user?.role || "").includes("ENGINEER") || user?.role === "PROJECT_MANAGER";
   const canViewExits = ["ADMIN", "VP", "CEO", "OH"].includes(user?.role);
 
   // Grouped nav: a handful of top-level tabs, each holding the related pages
