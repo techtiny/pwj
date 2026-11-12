@@ -4,7 +4,8 @@ import AccountSection from "./account/AccountSection";
 import { FileText, Building2, FolderKanban, BarChart2, Home, Users, UserCog, Settings2, Bot, TrendingUp, Download, Clock, FileCheck, Database, Plus, LogOut, Bug, Info, Lock, Mail, Upload, ChevronDown, Check, X, Pause, Bell, ChevronRight } from "lucide-react";
 import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
-import { AttendanceIconButton } from "./hr/AttendancePage";
+import { AttendanceIconButton, TodayAttendanceCard, EXCLUDED_USERNAMES as ATTENDANCE_EXEMPT_USERNAMES } from "./hr/AttendancePage";
+import { attendanceApi } from "./hr/hrApi";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine, loadBoqRequested, computeBoqRequested, roundQty } from "./operations/OperationsSection";
@@ -1869,6 +1870,49 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const isBillingEngineer          = user?.role === "BILLING_ENGINEER";
 
   const roleMeta = ROLE_META[user.role] || ROLE_META.ENGINEER;
+
+  // Previous-day check-out gate: if an earlier day was left without a check-out, the employee must check out for it
+  // before using the dashboard (VP / CEO / OH never). Fails open if attendance can't be read.
+  const [pendingPrev, setPendingPrev] = useState([]);
+  const [prevBusy, setPrevBusy] = useState(false);
+  const checkInExempt = isVP || isOH || isCeo || ATTENDANCE_EXEMPT_USERNAMES.has((user?.username || "").toLowerCase());
+  useEffect(() => {
+    if (!user?.username || checkInExempt) { setPendingPrev([]); return; }
+    let live = true;
+    const refresh = async () => {
+      try {
+        const r = await attendanceApi.getPendingCheckout(user.username);
+        if (live) setPendingPrev(r.data?.data || []);
+      } catch { if (live) setPendingPrev([]); }
+    };
+    refresh();
+    window.addEventListener("attendance-changed", refresh);
+    return () => { live = false; window.removeEventListener("attendance-changed", refresh); };
+  }, [user?.username, checkInExempt]);
+  // Today's check-in gate: everyone except VP / CEO / OH must be checked in for today before using the dashboard.
+  // todayAtt === undefined while loading; the gate fails open if attendance can't be read.
+  const [todayAtt, setTodayAtt] = useState(undefined);
+  useEffect(() => {
+    if (!user?.username || checkInExempt) { setTodayAtt(undefined); return; }
+    let live = true;
+    const refresh = async () => {
+      try {
+        const r = await attendanceApi.getToday(user.username);
+        if (live) setTodayAtt(r.data?.data || null);
+      } catch { if (live) setTodayAtt(undefined); }
+    };
+    refresh();
+    window.addEventListener("attendance-changed", refresh);
+    return () => { live = false; window.removeEventListener("attendance-changed", refresh); };
+  }, [user?.username, checkInExempt]);
+  const needsCheckIn = !checkInExempt && pendingPrev.length === 0 && todayAtt !== undefined
+    && !todayAtt?.checkInTime && todayAtt?.status !== "ON_LEAVE";
+  const checkOutPreviousDay = async () => {
+    setPrevBusy(true);
+    try { await attendanceApi.checkOutPrevious({ username: user.username }); setPendingPrev([]); window.dispatchEvent(new Event("attendance-changed")); }
+    catch (e) { alert(e.response?.data?.message || e.message); }
+    finally { setPrevBusy(false); }
+  };
 
   const [entries, setEntries]         = useState([]);
   const [stats, setStats]             = useState({});
@@ -4221,6 +4265,36 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
   return (
     <>
+      {pendingPrev.length > 0 && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(15,23,42,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🏠</div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Check out for the previous day</div>
+            <div style={{ fontSize: 14, color: "#64748b", marginBottom: 18 }}>
+              You did not check out on {pendingPrev.map(p => p.workDate).join(", ")}. Please check out for {pendingPrev.length > 1 ? "those days" : "that day"} to continue.
+            </div>
+            <button onClick={checkOutPreviousDay} disabled={prevBusy}
+              style={{ border: "none", borderRadius: 10, padding: "11px 22px", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: prevBusy ? "default" : "pointer", fontFamily: "inherit", opacity: prevBusy ? 0.7 : 1 }}>
+              {prevBusy ? "Checking out…" : "Check out previous day"}
+            </button>
+            <div style={{ marginTop: 14 }}>
+              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#64748b", fontSize: 13, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {needsCheckIn && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(15,23,42,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
+          <div style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
+            <div style={{ color: "#fff", fontSize: 19, fontWeight: 800, marginBottom: 4 }}>Check in to start your day</div>
+            <div style={{ color: "#cbd5e1", fontSize: 14, marginBottom: 14 }}>You need to check in for today before you can use the dashboard.</div>
+            <TodayAttendanceCard user={user} style={{ margin: "0 auto", textAlign: "left" }} />
+            <div style={{ marginTop: 14 }}>
+              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#cbd5e1", fontSize: 13, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{FONT}</style>
       <style>{`
         @keyframes slideUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }

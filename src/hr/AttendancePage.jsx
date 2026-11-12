@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { attendanceApi, fmtTime, fmtDate, fmtHours } from "./hrApi";
 
-const EXCLUDED_USERNAMES = new Set(["techtiny", "techtinyproc", "tec123", "shobana"]);
+export const EXCLUDED_USERNAMES = new Set(["techtiny", "techtinyproc", "tec123", "shobana"]);
 // Attendance records don't carry employeeNumber, and usernames can differ from what's shown
 // as the display name — so also match by full name (EMP0009 Shobana, EMP0019 techtinyproc)
 // to make sure these two stay excluded regardless of their actual username.
@@ -69,8 +69,18 @@ export function TodayAttendanceCard({ user, style }) {
         ? `\n\n⚠️ Low GPS accuracy (±${Math.round(accuracy)}m). Move outdoors for a better signal, then try again.`
         : "";
       if (accuracyNote && !window.confirm(`📍 ${address}${accuracyNote}\n\nProceed anyway?`)) return;
-      const r = await apiFn({ username, lat, lng, address });
-      if (r.data?.success) await load();
+      let r;
+      try { r = await apiFn({ username, lat, lng, address }); }
+      catch (err) {
+        // Checking in while an earlier day was never checked out: check out for that day first, then check in.
+        const m = err.response?.data?.message || "";
+        if (!m.startsWith("PREVIOUS_CHECKOUT_PENDING:")) throw err;
+        const day = m.split(":")[1];
+        if (!window.confirm(`You did not check out on ${day}.\n\nCheck out for ${day} first, then check in for today?`)) return;
+        await attendanceApi.checkOutPrevious({ username });
+        r = await apiFn({ username, lat, lng, address });
+      }
+      if (r.data?.success) { await load(); window.dispatchEvent(new Event("attendance-changed")); }
       else alert(r.data?.message || `${label} failed`);
     } catch (e) { alert(e.message); }
     finally { setLoading(false); setLocMsg(""); }
@@ -184,9 +194,9 @@ export function AttendanceIconButton({ user, compact = false }) {
         : "";
       if (accuracyNote && !window.confirm(`📍 ${address}${accuracyNote}\n\nProceed anyway?`)) return;
       const r = await apiFn({ username, lat, lng, address });
-      if (r.data?.success) await load();
+      if (r.data?.success) { await load(); window.dispatchEvent(new Event("attendance-changed")); }
       else alert(r.data?.message || `${label} failed`);
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(e.response?.data?.message || e.message); }
     finally { setLoading(false); }
   };
 

@@ -24,7 +24,7 @@ const ROW_FIELDS = [
   "plannedStart", "plannedFinish", "actualStart", "actualFinish", "status", "remarks",
 ];
 const OTHER_GROUP = "__other__";
-const DEPENDENCIES = ["Architect", "Consultant", "Client"];
+const DEPENDENCIES = ["Architect", "Consultant", "Client", "Procurement"];
 const OTHERS = "__others__";
 const isOtherDep = (r) => !!r.depOtherMode; // text box open (typing a custom value)
 
@@ -525,6 +525,33 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef(null);
+  // Scrolling down the schedule hides the project header/revisions above the table and freezes the
+  // table header; scrolling back up brings them back.
+  const [compact, setCompact] = useState(false);
+  const tableScrollRef = useRef(null);
+  const toolbarRef = useRef(null);
+  const lastScrollTop = useRef(0);
+  const lockUntil = useRef(0);
+  const onTableScroll = (e) => {
+    const top = e.currentTarget.scrollTop;
+    const prev = lastScrollTop.current;
+    lastScrollTop.current = top;
+    if (Date.now() < lockUntil.current) return;
+    if (!compact && top > 30 && top > prev) {
+      lockUntil.current = Date.now() + 500;
+      setCompact(true);
+      requestAnimationFrame(() => toolbarRef.current?.scrollIntoView({ block: "start" }));
+    } else if (compact && (top <= 0 || top < prev - 2)) {
+      lockUntil.current = Date.now() + 500;
+      setCompact(false);
+      requestAnimationFrame(() => {
+        for (let el = toolbarRef.current?.parentElement; el; el = el.parentElement) {
+          if (el.scrollTop > 0) el.scrollTop = 0;
+        }
+        window.scrollTo(0, 0);
+      });
+    }
+  };
   const [insertMenu, setInsertMenu] = useState(null); // { key, x, y } — row-level Insert menu
   const [insertAtKey, setInsertAtKey] = useState(null);
   const [missingOpen, setMissingOpen] = useState(false);
@@ -656,12 +683,12 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     touch();
   };
 
-  // "+" on a row: add a new activity directly below it, under the same BOQ item.
+  // "+" on a row: add a new activity directly below it, with the BOQ link left empty.
   const addRowAfter = (key) => {
     setRows(rs => {
       const i = rs.findIndex(r => r.key === key);
       if (i < 0) return rs;
-      const row = { ...blankRow(null), boqNo: rs[i].boqNo || "", boqDescription: rs[i].boqDescription || "" };
+      const row = blankRow(null);
       return [...rs.slice(0, i + 1), row, ...rs.slice(i + 1)];
     });
     touch();
@@ -786,17 +813,17 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       ["Project start date", fmtDate(header.startDate)], ["Project completion date", fmtDate(header.completionDate)], ["No of days remaining", daysRemaining ?? ""],
       ["Overall delayed days", totalDelay > 0 ? dayLabel(totalDelay) : "No delay"],
     ].filter(([, v]) => String(v ?? "").trim() !== "" && v !== "—");   // blank header fields (WO number, representative, dates…) are not printed
-    const infoHtml = Array.from({ length: Math.ceil(info.length / 3) }, (_, k) => k * 3).map(i => `<tr>${info.slice(i, i + 3).map(([k, v]) => `<td style="font-size:10px;padding:2px 8px 2px 0;color:#475569;">${esc(k)}</td><td style="font-size:10px;padding:2px 22px 2px 0;font-weight:700;">${esc(v)}</td>`).join("")}</tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Project Schedule - ${esc(project.name)}</title>
       <style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:0}table{border-collapse:collapse}th,td{overflow-wrap:anywhere}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
-      <table style="width:100%;border-bottom:2px solid #111;margin-bottom:8px"><tr>
-        <td style="width:40%"><img src="${window.location.origin}/happizo-logo.png" alt="Happizo" style="width:120px;height:auto" /></td>
-        <td style="text-align:right;font-size:10.5px;line-height:1.5"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}<br/>${esc(COMPANY.addr2)}<br/>GSTIN: ${esc(COMPANY.gst)}</td></tr></table>
-      <div style="font-size:15px;font-weight:800;margin-bottom:6px">Project Schedule</div>
-      <table style="margin-bottom:8px">${infoHtml}</table>
       <table style="width:100%;table-layout:fixed">
         <colgroup>${["5%","3%","10%","7%","7%","7%","5%","7%","7%","5%","6%","6%","6%","6%","7%","7%","7%"].map(w => `<col style="width:${w}">`).join("")}</colgroup>
         <thead>
+          <tr><td colspan="17" style="padding:0 0 6px 0;border:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:3px;margin-bottom:4px">
+        <img src="${window.location.origin}/happizo-logo.png" alt="Happizo" style="width:46px;height:auto" />
+        <div style="text-align:right;font-size:8.5px;line-height:1.3"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}, ${esc(COMPANY.addr2)}<br/>GSTIN: ${esc(COMPANY.gst)}</div></div>
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 18px;text-align:left;margin-bottom:2px"><span style="font-size:13px;font-weight:800">Project Schedule</span>${info.map(([k, v]) => `<span style="font-size:9px;font-weight:400"><span style="color:#475569">${esc(k)}</span> <b style="margin-left:4px">${esc(v)}</b></span>`).join("")}</div>
+          </td></tr>
           <tr><th rowspan="2" style="${th}">BOQ No</th><th rowspan="2" style="${th}">Activity No</th><th rowspan="2" style="${th}">Description of Activity</th><th rowspan="2" style="${th}">Dependency By</th><th rowspan="2" style="${th}">Dependency Start Date</th><th rowspan="2" style="${th}">Dependency Target Date</th><th rowspan="2" style="${th}">Material Lead Days</th><th rowspan="2" style="${th}">Material Lead Date</th><th rowspan="2" style="${th}">Material Delivery Date</th><th rowspan="2" style="${th}">Activity Duration (Days)</th><th colspan="2" style="${th}">Planned date</th><th colspan="2" style="${th}">Actual</th><th colspan="2" style="${th}">Status</th><th rowspan="2" style="${th}">Remarks</th></tr>
           <tr><th style="${th}">Start Date</th><th style="${th}">Finish Date</th><th style="${th}">Started Date</th><th style="${th}">Finished Date</th><th style="${th}">Completed</th><th style="${th}">Not Completed</th></tr>
         </thead><tbody>${body}</tbody></table>
@@ -860,9 +887,9 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
 
   return (
     <div>
-      {revStrip}
+      {!compact && revStrip}
       {/* ── Header block ── */}
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 16 }}>
+      {!compact && <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div className="pp-header-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px 24px" }}>
           <Field label="Project Name"><div style={{ ...roSt, fontWeight: 700 }}>{project.name}</div></Field>
           <Field label="Project WO number"><input style={inpSt} value={header.woNumber} onChange={e => setH("woNumber", e.target.value)} placeholder="e.g. WO/2026/014" /></Field>
@@ -884,10 +911,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             </div>
           </Field>
         </div>
-      </div>
+      </div>}
 
       {/* ── Toolbar ── */}
-      <div className="pp-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+      <div ref={toolbarRef} className="pp-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         <div ref={addMenuRef} style={{ position: "relative" }}>
           <button onClick={() => setAddMenuOpen(o => !o)} style={btn("secondary")} aria-haspopup="menu" aria-expanded={addMenuOpen}>
             <Plus size={15} /> Add Activities <ChevronDown size={14} />
@@ -991,10 +1018,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           </div>
         </div>
       ) : (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }} className="pp-scroll">
+        <div ref={tableScrollRef} onScroll={onTableScroll} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: compact ? "calc(100vh - 80px)" : "calc(100vh - 120px)" }} className="pp-scroll">
           <table className="pp-table" style={{ borderCollapse: "collapse", width: "100%", minWidth: 1468, tableLayout: "fixed" }}>
             <colgroup><col style={{ width: 64 }} /><col style={{ width: 48 }} /><col style={{ width: 130 }} /><col style={{ width: 126 }} /><col style={{ width: 88 }} /><col style={{ width: 88 }} /><col style={{ width: 52 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 56 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: 84 }} /><col style={{ width: 92 }} /><col style={{ width: 120 }} /><col style={{ width: 96 }} /></colgroup>
-                        <thead>
+                        <thead style={{ position: "sticky", top: 0, zIndex: 5 }}>
               <tr>
                 <th rowSpan={2} style={{ ...th }}>BOQ No</th>
                 <th rowSpan={2} style={{ ...th }}>Activity No</th>

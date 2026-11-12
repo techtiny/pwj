@@ -138,6 +138,8 @@ export function downloadPayslip(row, year, month) {
 export const attendanceApi = {
   checkIn:       (data)      => api.post('/attendance/checkin', data),
   checkOut:      (data)      => api.post('/attendance/checkout', data),
+  checkOutPrevious: (data)   => api.post('/attendance/checkout-previous', data),
+  getPendingCheckout: (username) => api.get(`/attendance/pending-checkout/${username}`),
   getToday:      (username)  => api.get(`/attendance/today/${username}`),
   getHistory:    (username)  => api.get(`/attendance/history/${username}`),
   getTodayAll:   ()          => api.get('/attendance/today-all'),
