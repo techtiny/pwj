@@ -5030,7 +5030,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </td>
                     {/* ★ ACTION COLUMN */}
                     <td style={s.td} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div className="pwj-actions">
                         {/* Engineer / PM edit button — own entries only, locked once OH approves (PROCEED) */}
                         {(isEngineer || isProjectManager) && row.raisedBy === (user?.fullName || user?.username) && (
                           row.approvalStatus === "PROCEED" ? (
@@ -5038,19 +5038,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               disabled
                               title="Editing locked — entry has been OH approved"
                               style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                              🔒 Locked
+                              Locked
                             </button>
                           ) : (
                             <button
                               style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openEditEntry(row)}>
-                              ✏️ Edit
+                              Edit
                             </button>
                           )
                         )}
                         {isOH && (
                           row.approvalStatus === "PROCEED"
-                            ? <span className="cell-badge" style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
+                            ? <span className="cell-badge" style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✓ Approved</span>
                             : canApprove(row) && (
                               <ApproveBtn onClick={() => {
                                   setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
@@ -5066,13 +5066,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               disabled
                               title="OH approval pending — vendor can be assigned only after OH approves"
                               style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                              ⏳ Pending OH
+                              Pending OH
                             </button>
                           ) : (
                             <button
                               style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openAssign(row)}>
-                              ✏️ Assign
+                              Assign
                             </button>
                           )
                         )}
@@ -5083,12 +5083,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             return <>
                               <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                                 onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
-                                📎 Clubs #{clubbedWithId}
+                                Clubs #{clubbedWithId}
                               </button>
                               <button title="Unclub — pull this PR back out as an independent entry"
                                 style={{ background: "#fff", border: "1.5px solid #c4b5fd", borderRadius: 7, padding: "5px 8px", color: "#7c3aed", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                                 onClick={() => unclubEntry(row.id)}>
-                                ✂️ Unclub
+                                Unclub
                               </button>
                             </>;
                           }
@@ -5100,7 +5100,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openDocModal(row)}>
-                              📄 {lbl}
+                              {lbl}
                             </button>
                           );
                         })()}
@@ -5128,7 +5128,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 setSendPaymentDocNumber(docOptions ? docOptions[0].docNumber : "");
                                 setSendPaymentModal({ entry: row, docOptions });
                               }}>
-                              💰 Request Payment
+                              Request Payment
                             </button>
                           );
                         })()}
@@ -5165,7 +5165,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             const primary = entries.find(e => e.id === clubbedWithId);
                             return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info"); }}>
-                              📎 Clubs #{clubbedWithId}
+                              Clubs #{clubbedWithId}
                             </button>;
                           }
                           const rowDocs = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) ? p.docs : null; } catch { return null; } })();
@@ -5176,7 +5176,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); openDocModal(row); }}>
-                              📄 {lbl}
+                              {lbl}
                             </button>
                           );
                         })()}
@@ -5184,22 +5184,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <select value={row.allocatedTo || ""} disabled={allocBusy === row.id}
                             onChange={e => allocatePr(row, e.target.value)} title="Allocate this PR to a procurement user"
                             style={{ border: `1.5px solid ${row.allocatedTo ? "#a5b4fc" : "#e2e8f0"}`, background: row.allocatedTo ? "#eef2ff" : "#fff", color: row.allocatedTo ? "#3730a3" : "var(--hz-muted)", borderRadius: 7, padding: "4px 6px", fontSize: "var(--hz-text-sm)", fontWeight: 600, fontFamily: "inherit", maxWidth: 150, cursor: "pointer" }}>
-                            <option value="">👤 Allocate…</option>
+                            <option value="">Allocate to…</option>
                             {procUsers.map(u => <option key={u.id} value={u.username}>{u.fullName || u.username}</option>)}
                             {row.allocatedTo && !procUsers.some(u => u.username === row.allocatedTo) && <option value={row.allocatedTo}>{row.allocatedToName || row.allocatedTo}</option>}
                           </select>
                         ) : row.allocatedToName ? (
-                          <span title={`Allocated by ${row.allocatedBy || "—"}`} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>👤 {row.allocatedToName}</span>
+                          <span title={`Allocated by ${row.allocatedBy || "—"}`} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>{row.allocatedToName}</span>
                         ) : null}
                         {isAdmin && row.status === "OPEN" && (
                           row.closureRequestStatus === "PENDING" ? (
-                            <span title={row.closureReason} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>⏳ Closure pending VP</span>
+                            <span title={row.closureReason} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>Closure pending VP</span>
                           ) : (
                             <button
                               style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               title={row.closureRequestStatus === "REJECTED" ? `VP rejected the last request${row.closureDecisionComment ? `: ${row.closureDecisionComment}` : ""}` : "Close this PR manually (needs VP approval)"}
                               onClick={() => { setClosureReason(""); setClosureReqModal(row); }}>
-                              🔒 Close PR
+                              Close PR
                             </button>
                           )
                         )}

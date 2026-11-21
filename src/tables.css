@@ -27,3 +27,25 @@
   .ops-boq-table--linked th:nth-child(6), .ops-boq-table--linked th:nth-child(8) { width: 26% !important; }
   .ops-boq-table--linked th:nth-child(7) { width: 150px !important; }
 }
+
+/* ── PWJ tracker ▸ Action column: one consistent stack (same width, height, radius, type) ── */
+.pwj-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 172px; }
+.pwj-actions > button:not(.appr-btn),
+.pwj-actions > select,
+.pwj-actions > .cell-badge,
+.pwj-actions > .payreq-badge,
+.pwj-actions > span {
+  box-sizing: border-box; width: 100% !important; max-width: 100% !important; min-height: 34px;
+  display: inline-flex !important; align-items: center; justify-content: center; text-align: center;
+  padding: 0 12px !important; border-radius: 8px !important;
+  font-size: var(--hz-text-sm) !important; font-weight: 700 !important; letter-spacing: .01em; line-height: 1.2;
+  white-space: normal !important; box-shadow: none !important;
+}
+.pwj-actions > select { text-align: left; justify-content: flex-start; cursor: pointer; font-weight: 600 !important; }
+.pwj-actions > button:not(.appr-btn):not(:disabled):hover { filter: brightness(1.06); }
+.pwj-actions > .payreq-badge { flex-wrap: wrap; gap: 6px; padding: 8px 10px !important; }
+/* approve / reject / delete icon buttons: same full-width pill footprint as every other item in the column (icon only, tooltip carries the word) */
+.pwj-actions > .appr-btn.act-btn {
+  width: 100% !important; min-width: 0; height: 34px; border-radius: 8px !important; align-self: stretch;
+  display: inline-flex; align-items: center; justify-content: center;
+}
