@@ -65,11 +65,33 @@ const remarkText = it => {
   return parts.join(' / ');
 };
 
+// A payment goes into the bank file on the day it was sent — unless its Required By date is more than BANK_CYCLE_DAYS later,
+// then it waits for its own cycle (Required By − BANK_CYCLE_DAYS). Mirrors ExpenseItemService.bankFileDay on the backend.
+const BANK_CYCLE_DAYS = 7;
+function bankFileDay(it) {
+  if (!it.sentAt) return null;
+  const sent = new Date(it.sentAt).toLocaleDateString('en-CA');
+  if (it.requiredByDate) {
+    const d = new Date(it.requiredByDate + 'T00:00:00'); d.setDate(d.getDate() - BANK_CYCLE_DAYS);
+    const pushed = d.toLocaleDateString('en-CA');
+    if (pushed > sent) return pushed;
+  }
+  return sent;
+}
+
 export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = false, isCeo = false, readOnly = false }) {
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [rejectFor, setRejectFor] = useState(null); // { item, level } — rejection reason dialog
   const [rejectText, setRejectText] = useState('');
+  const [dedEdit, setDedEdit] = useState(null); // { id, mode: 'add' | 'set' } — Admin deduction editor
+  const [dedVal, setDedVal] = useState('');
+  const [dedNote, setDedNote] = useState('');
+  const [dedAddFor, setDedAddFor] = useState(null); // item — "+" dialog: amount + remarks
+  const [reviseFor, setReviseFor] = useState(null); // { item } — VP Revise dialog (pick Required By date)
+  const [reviseDate, setReviseDate] = useState('');
+  const [vpMode, setVpMode] = useState('RESCHEDULE'); // Level 3 (VP): move to next cycle, or reject outright
+  const [rescheduleDate, setRescheduleDate] = useState('');
   const [detail, setDetail]   = useState(null); // entry whose detail window is open
   const [busy, setBusy]       = useState({});  // id -> true while an approval call is in flight
 
@@ -142,10 +164,51 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
   }
 
-  async function handleVpRevise(item) {
+  async function handleVpReschedule(item, date, remark, level = 'VP') {
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      await expenseItemsApi.reviseAtVp(item.id);
+      await (level === 'ADMIN' ? expenseItemsApi.rescheduleAtAdmin : expenseItemsApi.rescheduleAtVp)(item.id, date, remark);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || e.response?.data?.message || 'Rescheduling failed');
+    } finally {
+      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
+    }
+  }
+
+  // Admin edits TDS % / TDS Amt / Deduction right here. Amounts changed → Admin, VP and CEO approvals restart (OH's stays).
+  async function saveDeductions(item, { pct, tdsAmt, ded, remarks }) {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try {
+      await expenseItemsApi.setDeductions(
+        item.id,
+        pct !== undefined ? pct : (tdsAmt !== undefined ? null : (item.tdsPercent != null ? Number(item.tdsPercent) : null)),
+        ded !== undefined ? ded : (item.deductionAmount != null ? Number(item.deductionAmount) : null),
+        !!item.gstDeducted,
+        tdsAmt,
+        remarks,
+      );
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || e.response?.data?.message || 'Could not save the deduction');
+    } finally {
+      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
+      setDedEdit(null);
+    }
+  }
+
+  async function handleSetRequiredDate(item, date) {
+    if (!date) return;
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try { await expenseItemsApi.setRequiredDate(item.id, date); load(); }
+    catch (e) { alert(e.response?.data?.error || 'Could not change the Required By date'); }
+    finally { setBusy(p => { const c = { ...p }; delete c[item.id]; return c; }); }
+  }
+
+  async function handleVpRevise(item, date) {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try {
+      await expenseItemsApi.reviseAtVp(item.id, date);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'Sending back for revision failed');
@@ -289,7 +352,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   const approvedToday = useMemo(() => {
     const today = new Date().toLocaleDateString('en-CA');
     return approvedForExport
-      .filter(it => it.sentAt && new Date(it.sentAt).toLocaleDateString('en-CA') === today)
+      .filter(it => bankFileDay(it) === today)
       .sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
   }, [approvedForExport]);
 
@@ -377,27 +440,105 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
               {row('Item description', <span style={{ whiteSpace: 'pre-wrap' }}>{d.description || '—'}</span>)}
               {row('Stage / Against', `${fmtStage(d.paymentStage)} · ${fmtPaymentAgainst(d.paymentMadeAgainst)}`)}
               {row('Payment requested', fmt(d.sentAmount))}
+              {(() => {
+                const t = d.tdsAmount != null ? Number(d.tdsAmount) : (d.tdsPercent ? Number(d.sentAmount || 0) * Number(d.tdsPercent) / 100 : 0);
+                return <>
+                  {row('TDS %', d.tdsPercent != null ? `${Number(d.tdsPercent)}%` : '—')}
+                  {row('TDS Amt', t ? fmt(t) : '—')}
+                </>;
+              })()}
+              {(() => {
+                const t = d.tdsAmount != null ? Number(d.tdsAmount) : (d.tdsPercent ? Number(d.sentAmount || 0) * Number(d.tdsPercent) / 100 : 0);
+                const o = Number(d.deductionAmount || 0);
+                return (t || o) ? row('Deduction', `${fmt(t + o)} = TDS ${fmt(t)}${d.tdsPercent != null ? ` (${Number(d.tdsPercent)}%)` : ''} + Other ${fmt(o)}`) : null;
+              })()}
               {row('Paid amount', fmt(paidAmt(d)))}
               {row('Remarks', remarkText(d) || '—')}
-              {d.rejectionRemark && row(`Rejected (${d.rejectedAtLevel === 'ADMIN' ? 'Admin' : d.rejectedAtLevel || ''})`, <span style={{ color: '#991b1b' }}>{d.rejectionRemark}</span>)}
+              {d.deductionRemarks && row('Deduction remarks', <span style={{ whiteSpace: 'pre-wrap' }}>{d.deductionRemarks}</span>)}
+              {d.rejectionRemark && row(d.rejectedAtLevel === 'VP_RESCHEDULE' ? 'Rescheduled by VP' : d.rejectedAtLevel === 'ADMIN_RESCHEDULE' ? 'Rescheduled by Admin' : `Rejected (${d.rejectedAtLevel === 'ADMIN' ? 'Admin' : d.rejectedAtLevel || ''})`, <span style={{ color: '#991b1b' }}>{d.rejectionRemark}</span>)}
               {row('Approvals', `OH/VP: ${d.ohApprovalStatus || 'PENDING'} · Admin: ${d.adminApprovalStatus || 'PENDING'} · VP: ${d.vpApprovalStatus || 'PENDING'} · CEO: ${d.ceoApprovalStatus || 'PENDING'}`)}
             </div>
           </div>
         );
       })()}
+      {dedAddFor && (() => {
+        const it = dedAddFor; const cur = Number(it.deductionAmount || 0);
+        const valid = Number(dedVal) > 0 && dedNote.trim();
+        return (
+          <div onClick={() => setDedAddFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 420, padding: '18px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+              <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>Add deduction</div>
+              <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>{it.partyName || ''} · {fmt(it.sentAmount)}{cur ? ` — current deduction ${fmt(cur)}` : ''}</div>
+              <label style={{ display: 'block', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: 'var(--hz-ink-2)', marginBottom: 4 }}>Deduction amount <span style={{ color: '#dc2626' }}>*</span></label>
+              <input autoFocus type="number" min="0" step="0.01" value={dedVal} onChange={e => setDedVal(e.target.value)} placeholder="₹ 0.00"
+                style={{ width: '100%', boxSizing: 'border-box', height: 38, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit', marginBottom: 10 }} />
+              <label style={{ display: 'block', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: 'var(--hz-ink-2)', marginBottom: 4 }}>Remarks <span style={{ color: '#dc2626' }}>*</span></label>
+              <textarea rows={3} value={dedNote} onChange={e => setDedNote(e.target.value)} placeholder="Why is this deducted? (e.g. damaged material, retention)…"
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit', resize: 'vertical' }} />
+              {cur > 0 && Number(dedVal) > 0 && <div style={{ fontSize: "var(--hz-text-xs)", color: '#b45309', marginTop: 6 }}>New total deduction: <b>{fmt(cur + Number(dedVal))}</b></div>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+                <button onClick={() => setDedAddFor(null)} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Cancel</button>
+                <button disabled={!valid} onClick={() => {
+                  const line = `${fmt(Number(dedVal))} — ${dedNote.trim()}`;
+                  setDedAddFor(null);
+                  saveDeductions(it, { ded: cur + Number(dedVal), remarks: it.deductionRemarks ? `${it.deductionRemarks}\n${line}` : line });
+                }} style={{ border: 'none', background: valid ? '#c2410c' : '#fdba74', color: 'var(--hz-on-dark)', borderRadius: 8, padding: '8px 14px', cursor: valid ? 'pointer' : 'not-allowed', fontWeight: 700, fontFamily: 'inherit' }}>Add deduction</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {reviseFor && (
+        <div onClick={() => setReviseFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 420, padding: '18px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>Revise payment</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>{reviseFor.item.partyName || ''} · {fmt(reviseFor.item.sentAmount)} — set the new Required By date. It is revised and approved at your level in one step; earlier approvals are kept.</div>
+            <label style={{ display: 'block', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: 'var(--hz-ink-2)', marginBottom: 4 }}>Required By date</label>
+            <input type="date" value={reviseDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setReviseDate(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', height: 38, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+              <button onClick={() => setReviseFor(null)} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Cancel</button>
+              <button disabled={!reviseDate} onClick={() => { const it = reviseFor.item; setReviseFor(null); handleVpRevise(it, reviseDate); }}
+                style={{ border: 'none', background: reviseDate ? '#15803d' : '#86efac', color: 'var(--hz-on-dark)', borderRadius: 8, padding: '8px 14px', cursor: reviseDate ? 'pointer' : 'not-allowed', fontWeight: 700, fontFamily: 'inherit' }}>Revise &amp; Approve</button>
+            </div>
+          </div>
+        </div>
+      )}
       {rejectFor && (
         <div onClick={() => setRejectFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 420, padding: '18px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>Reject payment</div>
-            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 10 }}>{rejectFor.item.partyName || ''} · {fmt(rejectFor.item.sentAmount)} — tell the requester why.</div>
-            <textarea autoFocus rows={4} value={rejectText} onChange={e => setRejectText(e.target.value)} placeholder="Reason for rejection (required)…"
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>{(rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' ? 'Reschedule to next cycle' : 'Reject payment'}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 10 }}>{rejectFor.item.partyName || ''} · {fmt(rejectFor.item.sentAmount)} — {(rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' ? 'the payment moves to the date you pick and comes back for approval in that cycle.' : 'tell the requester why.'}</div>
+            {(rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && (
+              <>
+                <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 9, padding: 3, marginBottom: 12 }}>
+                  {[['RESCHEDULE', 'Reschedule'], ['REJECT', 'Reject']].map(([k, l]) => (
+                    <button key={k} type="button" onClick={() => setVpMode(k)}
+                      style={{ flex: 1, border: 'none', borderRadius: 7, padding: '7px 10px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', fontSize: "var(--hz-text-sm)",
+                        background: vpMode === k ? '#fff' : 'transparent', color: vpMode === k ? (k === 'REJECT' ? '#dc2626' : '#1d4ed8') : 'var(--hz-ink-2)', boxShadow: vpMode === k ? '0 1px 2px rgba(15,23,42,.12)' : 'none' }}>{l}</button>
+                  ))}
+                </div>
+                {vpMode === 'RESCHEDULE' && (
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: 'var(--hz-ink-2)', marginBottom: 4 }}>
+                      New payment date (next cycle) <span style={{ color: '#dc2626' }}>*</span>
+                      {rejectFor.item.requiredByDate && <span style={{ fontWeight: 500, color: 'var(--hz-muted)' }}> · currently {new Date(rejectFor.item.requiredByDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+                    </label>
+                    <input type="date" value={rescheduleDate} min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} onChange={e => setRescheduleDate(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', height: 38, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit' }} />
+                  </div>
+                )}
+              </>
+            )}
+            <textarea autoFocus rows={4} value={rejectText} onChange={e => setRejectText(e.target.value)} placeholder={(rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' ? 'Reason for rescheduling (required)…' : 'Reason for rejection (required)…'}
               style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit', resize: 'vertical' }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <button onClick={() => setRejectFor(null)} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Cancel</button>
-              <button disabled={!rejectText.trim()} onClick={() => {
+              <button disabled={!rejectText.trim() || ((rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' && !rescheduleDate)} onClick={() => {
                 const { item, level } = rejectFor; const remark = rejectText.trim(); setRejectFor(null);
+                if ((level === 'VP' || level === 'ADMIN') && vpMode === 'RESCHEDULE') { handleVpReschedule(item, rescheduleDate, remark, level); return; }
                 (level === 'OH' ? handleOhDecision : level === 'ADMIN' ? handleAdminDecision : level === 'CEO' ? handleCeoDecision : handleVpDecision)(item, 'REJECTED', remark);
-              }} style={{ border: 'none', background: rejectText.trim() ? '#dc2626' : '#fca5a5', color: "var(--hz-on-dark)", borderRadius: 8, padding: '8px 14px', cursor: rejectText.trim() ? 'pointer' : 'not-allowed', fontWeight: 700, fontFamily: 'inherit' }}>Reject</button>
+              }} style={{ border: 'none', background: (!rejectText.trim() || ((rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' && !rescheduleDate)) ? '#fca5a5' : ((rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' ? '#1d4ed8' : '#dc2626'), color: "var(--hz-on-dark)", borderRadius: 8, padding: '8px 14px', cursor: rejectText.trim() ? 'pointer' : 'not-allowed', fontWeight: 700, fontFamily: 'inherit' }}>{(rejectFor.level === 'VP' || rejectFor.level === 'ADMIN') && vpMode === 'RESCHEDULE' ? 'Reschedule' : 'Reject'}</button>
             </div>
           </div>
         </div>
@@ -537,10 +678,10 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th title="Date the requesting engineer needs this payment made by">Required<br />By</th>
                   <th>Payment<br />Requested</th>
                   <th>Level 1<br />OH/VP</th>
-                  <th title="TDS rate applied on Payment Requested — set on the TDS tab">TDS %</th>
+                  <th title="TDS rate applied on Payment Requested — Admin can change it here">TDS %</th>
                   <th title="Payment Requested × TDS %">TDS Amt</th>
-                  <th title="Manual deduction — set on the TDS tab">Deduction</th>
-                  <th title="Payment Requested − TDS Amt − GST Amt − Deduction">Approved<br />Value</th>
+                  <th title="Total deduction = TDS Amt + any other deduction — Admin: click to set the other deduction, + to add one">Deduction</th>
+                  <th title="Payment Requested − Deduction (TDS + other) − GST Amt">Approved<br />Value</th>
                   <th>Level 2<br />Admin</th>
                   <th>Level 3<br />VP</th>
                   <th>Level 4<br />CEO</th>
@@ -550,6 +691,8 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
               <tbody>
                 {filtered.map((it, i) => {
                   const isBusy = !!busy[it.id];
+                  const adminEdits = isAdmin && !readOnly && (it.ceoApprovalStatus || 'PENDING') !== 'APPROVED' && it.ohApprovalStatus === 'APPROVED'
+                    && it.adminApprovalStatus !== 'REJECTED' && it.vpApprovalStatus !== 'REJECTED' && it.ceoApprovalStatus !== 'REJECTED';
                   const ohPending = (it.ohApprovalStatus || 'PENDING') === 'PENDING';
                   const adminEligible = it.ohApprovalStatus === 'APPROVED' && (it.adminApprovalStatus || 'PENDING') === 'PENDING';
                   const vpEligible = it.adminApprovalStatus === 'APPROVED' && (it.vpApprovalStatus || 'PENDING') === 'PENDING';
@@ -566,7 +709,16 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       <td className="col-wrap" style={{ fontSize: "var(--hz-text-sm)" }}>{it.partyName || '—'}</td>
                       <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: '#0f766e' }}>{fmt(paidAmt(it))}</td>
                       <td style={{ fontSize: "var(--hz-text-xs)", color: '#0f766e', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {it.requiredByDate ? new Date(it.requiredByDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        {(isAdmin || isVP) && !readOnly && (it.ceoApprovalStatus || 'PENDING') !== 'APPROVED' && it.vpApprovalStatus !== 'REJECTED' && it.adminApprovalStatus !== 'REJECTED' && it.ohApprovalStatus !== 'REJECTED' ? (
+                          <input type="date" disabled={isBusy} value={it.requiredByDate || ''} min={new Date().toISOString().slice(0, 10)} title="Choose the Required By date"
+                            onChange={e => handleSetRequiredDate(it, e.target.value)}
+                            style={{ height: 30, border: '1px solid #cbd5e1', borderRadius: 7, padding: '0 6px', fontSize: "var(--hz-text-xs)", fontFamily: 'inherit', color: '#0f766e', fontWeight: 600, background: '#fff' }} />
+                        ) : (
+                          it.requiredByDate ? new Date(it.requiredByDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+                        )}
+                        {it.sentAt && bankFileDay(it) > new Date().toLocaleDateString('en-CA') && (
+                          <div style={{ fontSize: "var(--hz-text-2xs)", color: '#b45309', fontWeight: 700 }} title={`Goes into the bank file on ${new Date(bankFileDay(it) + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`}>Payment rescheduled</div>
+                        )}
                       </td>
                       <td style={{ fontWeight: 800, color: '#2563eb', fontSize: "var(--hz-text-md)" }}>{fmt(it.sentAmount)}</td>
 
@@ -583,15 +735,54 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       </td>
 
 
-                      {/* TDS % — read-only; set from the TDS tab */}
+                      {/* TDS % — Admin can change it here (otherwise read-only) */}
                       <td>
-                        <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                        {adminEdits ? (
+                          <select disabled={isBusy} value={it.tdsPercent != null ? String(Number(it.tdsPercent)) : ''}
+                            onChange={e => saveDeductions(it, { pct: e.target.value === '' ? null : Number(e.target.value) })}
+                            style={{ height: 30, border: '1px solid #cbd5e1', borderRadius: 7, padding: '0 4px', fontSize: "var(--hz-text-xs)", fontFamily: 'inherit', background: '#fff' }}>
+                            <option value="">—</option>
+                            {[1, 2, 10].map(pc => <option key={pc} value={String(pc)}>{pc}%</option>)}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                        )}
                       </td>
-                      {/* TDS Amt */}
-                      <td style={{ fontSize: "var(--hz-text-xs)", color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
-                      {/* Deduction — read-only; set from the TDS tab */}
+                      {/* TDS Amt — Admin can type an amount directly */}
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: '#b45309' }}>
+                        {adminEdits ? (
+                          <input key={`tds-${it.id}-${tdsAmt}`} type="number" min="0" step="0.01" disabled={isBusy} defaultValue={tdsAmt ? Number(tdsAmt).toFixed(2) : ''} placeholder="0.00"
+                            onBlur={e => { const v = e.target.value === '' ? 0 : Number(e.target.value); if (Number(v.toFixed(2)) !== Number(Number(tdsAmt || 0).toFixed(2))) saveDeductions(it, { tdsAmt: v }); }}
+                            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                            style={{ width: 96, height: 30, border: '1px solid #cbd5e1', borderRadius: 7, padding: '0 6px', fontSize: "var(--hz-text-xs)", fontFamily: 'inherit', color: '#b45309', background: '#fff' }} />
+                        ) : (tdsAmt ? fmt(tdsAmt) : '—')}
+                      </td>
+                      {/* Deduction — Admin: click the value to set it, "+" to add an amount on top */}
                       <td>
-                        <span style={{ fontSize: "var(--hz-text-xs)", color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
+                        {adminEdits && dedEdit?.id === it.id ? (
+                          <input autoFocus type="number" min="0" step="0.01" value={dedVal} onChange={e => setDedVal(e.target.value)} placeholder="Other deduction ₹" disabled={isBusy}
+                            onKeyDown={e => { if (e.key === 'Escape') setDedEdit(null); if (e.key === 'Enter') e.target.blur(); }}
+                            onBlur={() => {
+                              const v = dedVal === '' ? 0 : Math.max(0, Number(dedVal));
+                              if (dedEdit?.id !== it.id) return;
+                              if (Number(v.toFixed(2)) === Number(deductionAmt.toFixed(2))) { setDedEdit(null); return; }
+                              saveDeductions(it, { ded: v });
+                            }}
+                            style={{ width: 96, height: 30, border: '1px solid #cbd5e1', borderRadius: 7, padding: '0 6px', fontSize: "var(--hz-text-xs)", fontFamily: 'inherit' }} />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div>
+                              <span onClick={adminEdits ? () => { setDedVal(deductionAmt ? String(deductionAmt) : ''); setDedEdit({ id: it.id, mode: 'set' }); } : undefined}
+                                title={[`TDS ${fmt(tdsAmt || 0)}${deductionAmt ? ` + other deduction ${fmt(deductionAmt)}` : ''}`, it.deductionRemarks, adminEdits ? 'Click to set the other deduction (TDS is set in TDS % / TDS Amt)' : ''].filter(Boolean).join('\n')}
+                                style={{ fontSize: "var(--hz-text-xs)", color: '#b45309', fontWeight: 700, cursor: adminEdits ? 'pointer' : 'default', textDecoration: adminEdits ? 'underline dotted' : 'none' }}>{(tdsAmt || deductionAmt) ? fmt((tdsAmt || 0) + deductionAmt) : '—'}</span>
+                            </div>
+                            {adminEdits && (
+                              <button type="button" disabled={isBusy} title="Add a deduction amount" aria-label="Add deduction"
+                                onClick={() => { setDedVal(''); setDedNote(''); setDedAddFor(it); }}
+                                style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #fdba74', background: '#fff7ed', color: '#c2410c', fontWeight: 800, lineHeight: 1, cursor: 'pointer', padding: 0 }}>+</button>
+                            )}
+                          </div>
+                        )}
                       </td>
                       {/* Approved Value */}
                       <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
@@ -601,7 +792,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                         {isAdmin && adminEligible ? (
                           <div className="appr-actions">
                             <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'ADMIN' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setVpMode('RESCHEDULE'); setRescheduleDate(''); setRejectFor({ item: it, level: 'ADMIN' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                           </div>
                         ) : it.ohApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.adminApprovalStatus} />
@@ -615,8 +806,8 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                         {isVP && vpEligible ? (
                           <div className="appr-actions">
                             <button disabled={isBusy} onClick={() => handleVpDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'VP' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => handleVpRevise(it)} className="appr-btn appr-btn--revise" title="Send back to Admin to adjust TDS/Deduction">Revise</button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setVpMode('RESCHEDULE'); setRescheduleDate(''); setRejectFor({ item: it, level: 'VP' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setReviseDate(it.requiredByDate || ''); setReviseFor({ item: it }); }} className="appr-btn appr-btn--revise" title="Revise the Required By date and approve">Revise</button>
                           </div>
                         ) : it.adminApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.vpApprovalStatus} />

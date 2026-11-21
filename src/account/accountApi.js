@@ -49,8 +49,11 @@ export const expenseItemsApi = {
   setAdminApproval: (id, status, remark) => api.patch(`/expenses/${id}/admin-approval`, { status, remark }),
   setVpApproval: (id, status, remark) => api.patch(`/expenses/${id}/vp-approval`, { status, remark }),
   setCeoApproval: (id, status, remark) => api.patch(`/expenses/${id}/ceo-approval`, { status, remark }),
-  reviseAtVp: (id) => api.patch(`/expenses/${id}/vp-revise`),
-  setDeductions: (id, tdsPercent, deductionAmount, gstDeducted) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, deductionAmount, gstDeducted }),
+  rescheduleAtAdmin: (id, date, remark) => api.patch(`/expenses/${id}/admin-reschedule`, { date, remark }),
+  rescheduleAtVp: (id, date, remark) => api.patch(`/expenses/${id}/vp-reschedule`, { date, remark }),
+  reviseAtVp: (id, date) => api.patch(`/expenses/${id}/vp-revise`, date ? { date } : {}),
+  setRequiredDate: (id, date) => api.patch(`/expenses/${id}/required-date`, { date }),
+  setDeductions: (id, tdsPercent, deductionAmount, gstDeducted, tdsAmount, deductionRemarks) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, deductionAmount, gstDeducted, ...(tdsAmount !== undefined ? { tdsAmount } : {}), ...(deductionRemarks !== undefined ? { deductionRemarks } : {}) }),
   setTdsFiling: (id, invoiceNo, tdsPaidDate, tdsFiled, remarks) => api.patch(`/expenses/${id}/tds-filing`, { invoiceNo, tdsPaidDate, tdsFiled, remarks }),
   setGstFiling: (id, gstInvoiceNo, gstInputStatus, gstInputDate, gstPaidToVendorDate, gstPaidStatus, gstRemarks) =>
     api.patch(`/expenses/${id}/gst-filing`, { gstInvoiceNo, gstInputStatus, gstInputDate, gstPaidToVendorDate, gstPaidStatus, gstRemarks }),

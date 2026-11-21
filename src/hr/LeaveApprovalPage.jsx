@@ -211,92 +211,76 @@ export default function LeaveApprovalPage({ user }) {
             : tab === "approved" ? "No approved requests yet" : tab === "rejected" ? "No requests have been rejected" : "No leave requests found"}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {list.map(l => {
-            const s = STATUS_CFG[l.status] || STATUS_CFG.PENDING;
-            const isProcessing = processing === l.id + "approve" || processing === l.id + "reject";
-            const initials = (l.fullName || l.username || "?").charAt(0).toUpperCase();
-            return (
-              <div key={l.id} className="hr-approval-card" style={{ ...card, padding: "20px 24px" }}>
-                <div className="hr-approval-body" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
-
-                  {/* Employee info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: 10,
-                        background: "#1e3a5f",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-lg)", flexShrink: 0,
-                      }}>
-                        {initials}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>{l.fullName || l.username}</div>
-                        <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>Applied: {fmtDate(l.createdAt)}</div>
-                      </div>
-                      <span style={badge(s)}>{s.label}</span>
-                    </div>
-
-                    <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: "var(--hz-text-md)" }}>
-                      <div><span style={{ color: "var(--hz-ink-2)" }}>Type: </span><strong style={{ color: l.leaveType === "PERMISSION" ? "#7c3aed" : "var(--hz-ink)" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
-                      <div><span style={{ color: "var(--hz-ink-2)" }}>Date: </span><strong style={{ color: "var(--hz-ink)" }}>{fmtDate(l.fromDate)}</strong></div>
-                      {l.leaveType === "PERMISSION" ? (
+        <div style={{ ...card, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="hr-approval-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  {["Employee", "Applied", "Type", "From", "To / Time", "Days / Hrs", "Reason", "Status", tab === "pending" ? "Comment" : "Decision", tab === "pending" ? "Action" : ""].map((h, i) => (
+                    <th key={i} style={{ textAlign: "left", padding: "12px 14px", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: ".04em", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {list.map(l => {
+                  const s = STATUS_CFG[l.status] || STATUS_CFG.PENDING;
+                  const isProcessing = processing === l.id + "approve" || processing === l.id + "reject";
+                  const isPerm = l.leaveType === "PERMISSION";
+                  const td = { padding: "12px 14px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
+                  return (
+                    <tr key={l.id}>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#1e3a5f", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", flexShrink: 0 }}>
+                            {(l.fullName || l.username || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <strong>{l.fullName || l.username}</strong>
+                        </div>
+                      </td>
+                      <td style={{ ...td, whiteSpace: "nowrap", color: "var(--hz-ink-2)" }}>{fmtDate(l.createdAt)}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 700, color: isPerm ? "#7c3aed" : "var(--hz-ink)" }}>{leaveTypeLabel(l.leaveType)}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(l.fromDate)}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>{isPerm ? (l.fromTime && l.toTime ? `${l.fromTime} – ${l.toTime}` : "—") : fmtDate(l.toDate)}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 700, color: isPerm ? "#7c3aed" : "var(--hz-ink)" }}>{isPerm ? `${l.permissionHours || "—"} h` : l.totalDays}</td>
+                      <td style={{ ...td, minWidth: 220, maxWidth: 340, color: "var(--hz-ink-2)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{l.reason}</td>
+                      <td style={td}><span style={badge(s)}>{s.label}</span></td>
+                      {tab === "pending" ? (
                         <>
-                          <div><span style={{ color: "var(--hz-ink-2)" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
-                          {l.fromTime && l.toTime && (
-                            <div><span style={{ color: "var(--hz-ink-2)" }}>Away: </span><strong style={{ color: "var(--hz-ink)" }}>{l.fromTime} – {l.toTime}</strong></div>
-                          )}
+                          <td style={{ ...td, minWidth: 190 }}>
+                            {l.status === "PENDING" && (
+                              <input value={commentMap[l.id] || ""} onChange={e => setCommentMap(m => ({ ...m, [l.id]: e.target.value }))} placeholder="Comment (optional)"
+                                style={{ width: "100%", boxSizing: "border-box", height: 36, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink-2)" }} />
+                            )}
+                          </td>
+                          <td style={{ ...td, whiteSpace: "nowrap" }}>
+                            {l.status === "PENDING" && (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <ApproveBtn onClick={() => handleAction(l.id, "approve")} disabled={isProcessing} title="Approve" size="md" />
+                                <RejectBtn onClick={() => handleAction(l.id, "reject")} disabled={isProcessing} title="Reject" size="md" />
+                              </div>
+                            )}
+                          </td>
                         </>
                       ) : (
-                        <>
-                          <div><span style={{ color: "var(--hz-ink-2)" }}>To: </span><strong style={{ color: "var(--hz-ink)" }}>{fmtDate(l.toDate)}</strong></div>
-                          <div><span style={{ color: "var(--hz-ink-2)" }}>Days: </span><strong style={{ color: "var(--hz-ink)" }}>{l.totalDays}</strong></div>
-                        </>
+                        <td style={{ ...td, minWidth: 200, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
+                          {l.approvalComment && <div style={{ color: s.color, fontWeight: 600, marginBottom: 2 }}>{l.approvalComment}</div>}
+                          {(l.approvedBy || l.approvedAt) ? <div>{l.approvedBy ? `by ${l.approvedBy}` : ""}{l.approvedAt ? ` · ${fmtDateTime(l.approvedAt)}` : ""}</div> : (!l.approvalComment && "—")}
+                        </td>
                       )}
-                    </div>
-
-                    <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 14px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: l.status === "PENDING" ? 10 : 0, border: "1px solid #f1f5f9" }}>
-                      <span style={{ fontWeight: 600, color: "var(--hz-ink)" }}>Reason: </span>{l.reason}
-                    </div>
-
-                    {(l.approvalComment || l.approvedAt) && (
-                      <div style={{ background: s.bg, borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", color: s.color, marginTop: 8 }}>
-                        {l.approvalComment && <div><strong>Comment: </strong>{l.approvalComment}</div>}
-                        <div style={{ fontSize: "var(--hz-text-sm)", marginTop: l.approvalComment ? 4 : 0, opacity: 0.85 }}>
-                          {l.status === "APPROVED" ? "✓ Approved" : l.status === "REJECTED" ? "✕ Rejected" : "Updated"}
-                          {l.approvedBy && <span> by {l.approvedBy}</span>}
-                          {l.approvedAt && <span> · {fmtDateTime(l.approvedAt)}</span>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action area */}
-                  {l.status === "PENDING" && (
-                    <div className="hr-approval-action" style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 220 }}>
-                      <textarea
-                        value={commentMap[l.id] || ""}
-                        onChange={e => setCommentMap(m => ({ ...m, [l.id]: e.target.value }))}
-                        placeholder="Add comment (optional)…"
-                        rows={2}
-                        style={{
-                          border: "1.5px solid #e2e8f0", borderRadius: 8,
-                          padding: "8px 10px", fontSize: "var(--hz-text-md)",
-                          fontFamily: "inherit", outline: "none", resize: "none",
-                          color: "var(--hz-ink-2)",
-                        }}
-                      />
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <ApproveBtn onClick={() => handleAction(l.id, "approve")} disabled={isProcessing} title="Approve" size="lg" />
-                        <RejectBtn onClick={() => handleAction(l.id, "reject")} disabled={isProcessing} title="Reject" size="lg" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      {tab !== "pending" && <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        {l.status === "PENDING" && (
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <ApproveBtn onClick={() => handleAction(l.id, "approve")} disabled={isProcessing} title="Approve" size="md" />
+                            <RejectBtn onClick={() => handleAction(l.id, "reject")} disabled={isProcessing} title="Reject" size="md" />
+                          </div>
+                        )}
+                      </td>}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
