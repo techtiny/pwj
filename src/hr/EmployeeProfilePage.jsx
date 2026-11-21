@@ -4,15 +4,15 @@ import { PERF_CATEGORIES, CATEGORY_BY_KEY, PARAMETER_SUGGESTIONS, APPEAL_WINDOW_
 import { DeleteBtn, RejectBtn } from "../ActionButtons";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
-const inputS = { border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", fontSize: 15, fontFamily: "inherit", boxSizing: "border-box" };
-const lbl = { display: "block", fontSize: 14.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: .4, marginBottom: 6 };
-const pill = (bg, color) => ({ display: "inline-block", background: bg, color, borderRadius: 999, padding: "3px 11px", fontSize: 14.5, fontWeight: 700, whiteSpace: "nowrap" });
-const iconBtn = (bg, color, border) => ({ width: 34, height: 34, borderRadius: "50%", border: `1.5px solid ${border}`, background: bg, color, fontSize: 19, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit" });
+const inputS = { border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", boxSizing: "border-box" };
+const lbl = { display: "block", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: .4, marginBottom: 6 };
+const pill = (bg, color) => ({ display: "inline-block", background: bg, color, borderRadius: 999, padding: "3px 11px", fontSize: "var(--hz-text-md)", fontWeight: 700, whiteSpace: "nowrap" });
+const iconBtn = (bg, color, border) => ({ width: 34, height: 34, borderRadius: "50%", border: `1.5px solid ${border}`, background: bg, color, fontSize: "var(--hz-text-xl)", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit" });
 const ROLE_SHORT = { VP: "VP", OH: "OH", CEO: "CEO", ADMIN: "Admin" };
 const roleLabel = (role) => (role ? ROLE_SHORT[role.toUpperCase()] || role : "");
-const pth = { padding: "11px 12px", textAlign: "left", fontSize: 14.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: .4, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 1 };
-const ptd = { padding: "12px 12px", fontSize: 16.5, color: "#1e293b", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
-const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 15, fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
+const pth = { padding: "11px 12px", textAlign: "left", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: .4, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 1 };
+const ptd = { padding: "12px 12px", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
+const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
 
 function fmtDate(d) {
   if (!d) return "—";
@@ -52,9 +52,9 @@ const RANGE_LABEL = { cycle: "This Payroll Cycle", "30d": "Last 30 Days", all: "
 function InfoChip({ icon, label, value }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 7, background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 10, padding: "6px 12px" }}>
-      <span style={{ fontSize: 16 }}>{icon}</span>
-      <span style={{ fontSize: 14.5, color: "#64748b" }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{value}</span>
+      <span style={{ fontSize: "var(--hz-text-lg)" }}>{icon}</span>
+      <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)" }}>{label}</span>
+      <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>{value}</span>
     </div>
   );
 }
@@ -62,13 +62,13 @@ function InfoChip({ icon, label, value }) {
 function StatCard({ icon, label, value, accent, accentBg, hint }) {
   return (
     <div className="ep-statcard" style={{ ...card, padding: "16px 18px", flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 11, background: accentBg, color: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 11, background: accentBg, color: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-xl)" }}>
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: 14.5, color: "#64748b", fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 29, fontWeight: 800, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{value}</div>
-        {hint && <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{hint}</div>}
+        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: "var(--hz-text-3xl)", fontWeight: 800, color: "var(--hz-ink)", marginTop: 2, lineHeight: 1.1 }}>{value}</div>
+        {hint && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-faint)", marginTop: 3 }}>{hint}</div>}
       </div>
     </div>
   );
@@ -160,8 +160,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     if (prior.length === 0) return null;
     const avg = (arr) => arr.reduce((s, r) => s + r.rating, 0) / arr.length;
     const diff = avg(recent) - avg(prior);
-    if (Math.abs(diff) < 0.25) return { label: "Steady", icon: "→", color: "#64748b" };
-    return diff > 0 ? { label: "Improving", icon: "▲", color: "#059669" } : { label: "Declining", icon: "▼", color: "#dc2626" };
+    if (Math.abs(diff) < 0.25) return { label: "Steady", icon: "→", color: "var(--hz-muted)" };
+    return diff > 0 ? { label: "Improving", icon: "▲", color: "#059669" } : { label: "Declining", icon: "▼", color: "var(--hz-danger)" };
   }, [rated]);
   const avgRating = rated.length ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : null;
 
@@ -342,7 +342,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
     return { total, max, pct: max ? Math.round((total / max) * 100) : 0 };
   })();
   const pendingCell = (r) => inReviewFlow(r)
-    ? <span style={{ fontSize: 15, color: "#94a3b8", fontStyle: "italic" }}>Awaiting rating</span>
+    ? <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", fontStyle: "italic" }}>Awaiting rating</span>
     : <span style={{ color: "#cbd5e1" }}>—</span>;
   const appealState = (r) => {
     if (r.appealStatus === "ACCEPTED") return { label: "Appeal accepted", accent: "#10b981", bg: "#ecfdf5", color: "#047857" };
@@ -357,7 +357,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       return { label: `Appeal window open · ${t}`, accent: "#3b82f6", bg: "#eff6ff", color: "#1d4ed8" };
     }
     if (needsFinal(r)) return { label: canManage ? "No response in 48h · rate now" : "No response · awaiting rating", accent: "#8b5cf6", bg: "#f5f3ff", color: "#6d28d9" };
-    return { label: "Closed · no appeal", accent: "#cbd5e1", bg: "#f1f5f9", color: "#64748b" };
+    return { label: "Closed · no appeal", accent: "#cbd5e1", bg: "#f1f5f9", color: "var(--hz-muted)" };
   };
 
   return (
@@ -425,7 +425,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
               </div>
             )}
             {(isReviewer || isSelf) && (
-              <label className="ep-banner-btn" style={{ position: "absolute", bottom: 2, right: 2, background: "linear-gradient(135deg,#1e3a5f,#0f766e)", color: "#fff", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>
+              <label className="ep-banner-btn" style={{ position: "absolute", bottom: 2, right: 2, background: "linear-gradient(135deg,#1e3a5f,#0f766e)", color: "var(--hz-on-dark)", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "var(--hz-text-md)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>
                 {busy === "photo" ? "…" : "📷"}
                 <input type="file" accept="image/*" hidden onChange={(e) => handlePhoto(e.target.files?.[0])} />
               </label>
@@ -433,23 +433,23 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
           </div>
           <div style={{ flex: 1, minWidth: 220, paddingTop: 48 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 23, fontWeight: 800, color: "#0f172a" }}>{emp.fullName}</div>
-              <span style={{ fontSize: 13.5, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: isExited ? "#fef2f2" : "#ecfdf5", color: isExited ? "#b91c1c" : "#059669", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>{emp.fullName}</div>
+              <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: isExited ? "#fef2f2" : "#ecfdf5", color: isExited ? "#b91c1c" : "#059669", display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: isExited ? "#b91c1c" : "#059669", display: "inline-block" }} />
                 {isExited ? "Exited" : "Active"}
               </span>
               {birthdaySoon !== false && (
-                <span style={{ fontSize: 13.5, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "linear-gradient(135deg,#fef3c7,#fde68a)", color: "#92400e" }}>
+                <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "linear-gradient(135deg,#fef3c7,#fde68a)", color: "#92400e" }}>
                   🎂 {birthdaySoon === 0 ? "Birthday today!" : `Birthday in ${birthdaySoon}d`}
                 </span>
               )}
               {isSelf && (
-                <span style={{ fontSize: 13.5, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "#eff6ff", color: "#1d4ed8" }}>
+                <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "#eff6ff", color: "#1d4ed8" }}>
                   This is you
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 16, color: "#475569", marginTop: 3, fontWeight: 600 }}>{emp.designation || "—"} · {emp.department || "—"}</div>
+            <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)", marginTop: 3, fontWeight: 600 }}>{emp.designation || "—"} · {emp.department || "—"}</div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
               <InfoChip icon="🪪" label="Code" value={emp.personCode || "—"} />
@@ -460,14 +460,14 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             </div>
 
             {emp.linkedUsername ? (
-              <div style={{ fontSize: 14.5, color: "#059669", marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: "var(--hz-text-md)", color: "#059669", marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
                 ✓ Linked to app account <b>@{emp.linkedUsername}</b>
-                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 14, textDecoration: "underline" }}>change</button>}
+                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "var(--hz-muted)", cursor: "pointer", fontSize: "var(--hz-text-md)", textDecoration: "underline" }}>change</button>}
               </div>
             ) : (
-              <div style={{ fontSize: 14.5, color: "#92400e", marginTop: 12, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: "var(--hz-text-md)", color: "#92400e", marginTop: 12, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 Not linked to an app account — PR/attendance stats unavailable.
-                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#92400e", cursor: "pointer", fontSize: 14, fontWeight: 700, textDecoration: "underline" }}>Link now</button>}
+                {isReviewer && <button onClick={openLinkModal} style={{ background: "none", border: "none", color: "#92400e", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 700, textDecoration: "underline" }}>Link now</button>}
               </div>
             )}
           </div>
@@ -476,8 +476,8 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
 
       {bank && (
         <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: "4px solid #1e3a5f" }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>🏦 Bank Details</div>
-          <div style={{ fontSize: 15, color: "#374151", display: "flex", gap: 28, flexWrap: "wrap" }}>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 8 }}>🏦 Bank Details</div>
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", display: "flex", gap: 28, flexWrap: "wrap" }}>
             <span>Bank: <b>{bank.bankName || "—"}</b></span>
             <span>Account number: <b style={{ fontVariantNumeric: "tabular-nums", letterSpacing: 0.5 }}>{bank.bankAccountNumber || "—"}</b></span>
             <span>IFSC: <b>{bank.ifscCode || "—"}</b></span>
@@ -491,20 +491,20 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         const inrA = (v) => "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
         return (
           <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: `4px solid ${isExited ? "#dc2626" : "#f59e0b"}`, background: isExited ? "#fef2f2" : "#fff" }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: isExited ? "#991b1b" : "#0f172a", marginBottom: 6 }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: isExited ? "#991b1b" : "var(--hz-ink)", marginBottom: 6 }}>
               💰 Advance pending — {inrA(pending)}
             </div>
             {isExited && (
-              <div style={{ fontSize: 14.5, color: "#7f1d1d", marginBottom: 8 }}>
+              <div style={{ fontSize: "var(--hz-text-md)", color: "#7f1d1d", marginBottom: 8 }}>
                 {emp.fullName} has left the company with this advance not fully recovered. It no longer comes off a salary, so it has to be settled separately.
               </div>
             )}
             {open.map(a => (
-              <div key={a.id} style={{ fontSize: 14.5, color: "#374151", display: "flex", gap: 18, flexWrap: "wrap", marginTop: 3 }}>
+              <div key={a.id} style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", display: "flex", gap: 18, flexWrap: "wrap", marginTop: 3 }}>
                 <span>Advance <b>{inrA(a.amount)}</b> over <b>{a.termMonths}</b> mo</span>
                 <span>Recovered <b>{inrA(a.recovered)}</b></span>
                 <span>Balance <b>{inrA(a.balance)}</b></span>
-                <span style={{ color: "#64748b" }}>Paid {a.paidAt ? serverDate(a.paidAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : ""}</span>
+                <span style={{ color: "var(--hz-muted)" }}>Paid {a.paidAt ? serverDate(a.paidAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : ""}</span>
               </div>
             ))}
           </div>
@@ -513,27 +513,27 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
 
       {hasExitHistory && (
         <div style={{ ...card, padding: "16px 20px", marginBottom: 20, borderLeft: `4px solid ${isExited ? "#dc2626" : "#f59e0b"}` }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8, display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 8, display: "flex", alignItems: "center", gap: 7 }}>
             🚪 {isExited ? "Exit Details" : "Exit & Rejoin History"}
           </div>
-          <div style={{ fontSize: 15, color: "#374151", display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", display: "flex", gap: 24, flexWrap: "wrap" }}>
             <span>DOR: <b>{fmtDate(emp.dor) || emp.dorRaw}</b></span>
             <span>Designation at exit: <b>{emp.designationAtExit || "—"}</b></span>
             {emp.doj2 && <span>Rejoined: <b>{fmtDate(emp.doj2)}</b> as <b>{emp.currentDesignation || "—"}</b></span>}
           </div>
-          {emp.sheetRemarks && <div style={{ fontSize: 15, color: "#7c2d12", marginTop: 8, fontStyle: "italic" }}>"{emp.sheetRemarks}"</div>}
+          {emp.sheetRemarks && <div style={{ fontSize: "var(--hz-text-md)", color: "#7c2d12", marginTop: 8, fontStyle: "italic" }}>"{emp.sheetRemarks}"</div>}
         </div>
       )}
 
       {/* Stats */}
       <div style={{ marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: 7 }}>📊 Performance Stats</div>
+        <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", display: "flex", alignItems: "center", gap: 7 }}>📊 Performance Stats</div>
         <div style={{ display: "flex", gap: 6, background: "#fff", padding: 3, borderRadius: 22, border: "1px solid #e2e8f0" }}>
           {Object.entries(RANGE_LABEL).map(([k, l]) => (
             <button key={k} onClick={() => setRange(k)}
               style={{ border: "none", borderRadius: 20, padding: "6px 13px",
-                background: range === k ? "#1e3a5f" : "transparent", color: range === k ? "#fff" : "#374151",
-                fontWeight: 600, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit" }}>
+                background: range === k ? "#1e3a5f" : "transparent", color: range === k ? "var(--hz-on-dark)" : "var(--hz-ink-2)",
+                fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
               {l}
             </button>
           ))}
@@ -548,7 +548,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         <StatCard icon="⭐" label="Avg. Performance" value={canSeeRemarks && avgRating ? `${avgRating} ★` : "—"} accent="#d97706" accentBg="#fffbeb" hint={canSeeRemarks ? (trend ? `${trend.icon} ${trend.label}` : `${rated.length} rated · ${remarks.length} comment(s)`) : undefined} />
       </div>
       {stats && !stats.linked && (
-        <div style={{ fontSize: 14.5, color: "#94a3b8", marginTop: -14, marginBottom: 20 }}>
+        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", marginTop: -14, marginBottom: 20 }}>
           These stats need an app account link to compute — see above.
         </div>
       )}
@@ -564,9 +564,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
             <div style={{ marginTop: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span className="ep-live-dot" />
-                <span style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Running comments</span>
+                <span style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Running comments</span>
                 <span style={pill("#eff6ff", "#1d4ed8")}>{feed.length}</span>
-                <span style={{ fontSize: 15, color: "#64748b" }}>
+                <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)" }}>
                   {isSelf ? "— ✓ to accept, or Appeal, within 48 hours" : "— waiting on the employee, or on your ✓ / ✕ for appeals"}
                 </span>
               </div>
@@ -578,9 +578,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                     return (
                       <div key={`${r.id}-${k}`} className="ep-feed-card" style={{ background: "#fff", border: "1px solid #e2e8f0", borderLeft: `4px solid ${st.accent}`, borderRadius: 12, padding: "11px 13px", boxShadow: "0 1px 2px rgba(15,23,42,.04)", display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#475569", background: "#f1f5f9", borderRadius: 7, padding: "2px 8px", whiteSpace: "nowrap" }}>{fmtDate(r.remarkDate)}</span>
-                          <span style={{ fontSize: 14, color: "#94a3b8", whiteSpace: "nowrap" }}>Comment by {roleLabel(r.createdByRole) || r.createdBy}</span>
-                          <span style={{ ...pill(st.bg, st.color), fontSize: 14 }}>{st.label}</span>
+                          <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink-2)", background: "#f1f5f9", borderRadius: 7, padding: "2px 8px", whiteSpace: "nowrap" }}>{fmtDate(r.remarkDate)}</span>
+                          <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", whiteSpace: "nowrap" }}>Comment by {roleLabel(r.createdByRole) || r.createdBy}</span>
+                          <span style={{ ...pill(st.bg, st.color), fontSize: "var(--hz-text-md)" }}>{st.label}</span>
                           {canDeleteRemark(r) && (
                             <span style={{ marginLeft: "auto" }}>
                               <DeleteBtn onClick={() => deleteRemark(r)} disabled={busy === "del"} title="Delete this comment" />
@@ -593,11 +593,11 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             </span>
                           )}
                         </div>
-                        {r.parameter && <div style={{ fontSize: 17.5, fontWeight: 700, color: "#0f172a", marginTop: 8 }}>{r.parameter}</div>}
-                        <div style={{ fontSize: 17, color: "#334155", marginTop: r.parameter ? 2 : 8 }}>{r.notes}</div>
+                        {r.parameter && <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", marginTop: 8 }}>{r.parameter}</div>}
+                        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)", marginTop: r.parameter ? 2 : 8 }}>{r.notes}</div>
                         {r.appealedAt && (
-                          <div style={{ marginTop: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 9, padding: "7px 11px", fontSize: 16, color: "#78350f" }}>
-                            <b>Appeal by {emp.fullName}:</b> {r.appealText} <span style={{ color: "#a8a29e", fontSize: 14 }}>· {fmtDateTime(r.appealedAt)}</span>
+                          <div style={{ marginTop: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 9, padding: "7px 11px", fontSize: "var(--hz-text-lg)", color: "#78350f" }}>
+                            <b>Appeal by {emp.fullName}:</b> {r.appealText} <span style={{ color: "#a8a29e", fontSize: "var(--hz-text-md)" }}>· {fmtDateTime(r.appealedAt)}</span>
                           </div>
                         )}
                         {/* actions */}
@@ -609,14 +609,14 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                         )}
                         {appealFor === r.id && (
                           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-                            <textarea autoFocus value={appealText} onChange={(e) => setAppealText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAppeal(r.id); } }} placeholder="Explain why you disagree with this comment" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 44, fontSize: 16.5 }} />
+                            <textarea autoFocus value={appealText} onChange={(e) => setAppealText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAppeal(r.id); } }} placeholder="Explain why you disagree with this comment" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 44, fontSize: "var(--hz-text-lg)" }} />
                             <button onClick={() => submitAppeal(r.id)} disabled={busy === "appeal"} style={btn("#b45309")}>{busy === "appeal" ? "Submitting…" : "Submit appeal"}</button>
                             <button onClick={() => setAppealFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
                           </div>
                         )}
                         {decideFor?.id === r.id && (
                           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", marginTop: 10, background: "#fef2f2", borderRadius: 10, padding: 10 }}>
-                            <textarea autoFocus value={decideText} onChange={(e) => setDecideText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (decideText.trim()) decide(r.id, "REJECT", decideText); } }} placeholder="Remarks — why is the appeal rejected? (required)" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 44, fontSize: 16.5, borderColor: "#fecaca", background: "#fff" }} />
+                            <textarea autoFocus value={decideText} onChange={(e) => setDecideText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (decideText.trim()) decide(r.id, "REJECT", decideText); } }} placeholder="Remarks — why is the appeal rejected? (required)" style={{ ...inputS, flex: 1, minWidth: 220, minHeight: 44, fontSize: "var(--hz-text-lg)", borderColor: "#fecaca", background: "#fff" }} />
                             <RejectBtn onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide" || !decideText.trim()} title="Reject appeal" />
                             <button onClick={() => setDecideFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
                           </div>
@@ -632,7 +632,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
         })()}
 
         {canSeeRemarks && settled.length > 0 && (
-          <div style={{ marginTop: 20, fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: -10 }}>Settled comments</div>
+          <div style={{ marginTop: 20, fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: -10 }}>Settled comments</div>
         )}
         {canSeeRemarks && settled.length > 0 && (
           <div style={{ marginTop: 20, border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
@@ -658,19 +658,19 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                     return (
                       <Fragment key={r.id}>
                         <tr style={{ background: i % 2 ? "#fcfdff" : "#fff", boxShadow: `inset 3px 0 0 ${status.accent}` }}>
-                          <td className="ep-m-hide" style={{ ...ptd, color: "#64748b", fontWeight: 700 }}>{i + 1}</td>
+                          <td className="ep-m-hide" style={{ ...ptd, color: "var(--hz-muted)", fontWeight: 700 }}>{i + 1}</td>
                           <td data-label="Date" style={{ ...ptd, whiteSpace: "nowrap" }}>
                             <div style={{ fontWeight: 600 }}>{fmtDate(r.remarkDate)}</div>
-                            <div style={{ fontSize: 14, color: "#94a3b8", marginTop: 2 }}>{roleLabel(r.createdByRole) || r.createdBy}</div>
+                            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", marginTop: 2 }}>{roleLabel(r.createdByRole) || r.createdBy}</div>
                           </td>
                           <td data-label="Parameter" style={ptd}>
-                            <div style={{ fontWeight: 600, color: withdrawn ? "#94a3b8" : "#0f172a", textDecoration: withdrawn ? "line-through" : "none" }}>{r.parameter || r.notes || <span style={{ color: "#cbd5e1" }}>—</span>}</div>
+                            <div style={{ fontWeight: 600, color: withdrawn ? "var(--hz-faint)" : "var(--hz-ink)", textDecoration: withdrawn ? "line-through" : "none" }}>{r.parameter || r.notes || <span style={{ color: "#cbd5e1" }}>—</span>}</div>
                           </td>
                           {withdrawn ? (
                             <td data-label="Score" colSpan={3} style={ptd}><span style={pill("#ecfdf5", "#047857")}>Withdrawn — not scored</span></td>
                           ) : (canManage && needsFinal(r)) || editRatingId === r.id ? (<>
                             <td data-label="Category" style={ptd}>
-                              <select value={draftOf(r.id).category} onChange={(e) => pickDraft(r.id, { category: e.target.value })} style={{ ...inputS, fontSize: 15, background: "#fff", width: "100%", minWidth: 130 }}>
+                              <select value={draftOf(r.id).category} onChange={(e) => pickDraft(r.id, { category: e.target.value })} style={{ ...inputS, fontSize: "var(--hz-text-md)", background: "#fff", width: "100%", minWidth: 130 }}>
                                 <option value="">Select…</option>
                                 {PERF_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label} ({c.weight}%)</option>)}
                               </select>
@@ -680,7 +680,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             </td>
                             <td data-label="Score" style={{ ...ptd, whiteSpace: "nowrap" }}>
                               {scoreOf(draftOf(r.id).rating, draftOf(r.id).category) != null
-                                ? <span style={{ fontWeight: 800 }}>{scoreOf(draftOf(r.id).rating, draftOf(r.id).category)}<span style={{ color: "#94a3b8", fontWeight: 600 }}> / {CATEGORY_BY_KEY[draftOf(r.id).category].weight}</span></span>
+                                ? <span style={{ fontWeight: 800 }}>{scoreOf(draftOf(r.id).rating, draftOf(r.id).category)}<span style={{ color: "var(--hz-faint)", fontWeight: 600 }}> / {CATEGORY_BY_KEY[draftOf(r.id).category].weight}</span></span>
                                 : <span style={{ color: "#cbd5e1" }}>—</span>}
                             </td>
                           </>) : !r.category || !r.rating ? (
@@ -689,32 +689,32 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             <td data-label="Category" style={ptd}><CategoryChip category={r.category} /></td>
                             <td data-label="Rating" style={ptd}><Stars value={r.rating} size={15} /></td>
                             <td data-label="Score" style={{ ...ptd, whiteSpace: "nowrap" }}>
-                              <span style={{ fontWeight: 800 }}>{r.score ?? scoreOf(r.rating, r.category)}<span style={{ color: "#94a3b8", fontWeight: 600 }}> / {CATEGORY_BY_KEY[r.category]?.weight}</span></span>
+                              <span style={{ fontWeight: 800 }}>{r.score ?? scoreOf(r.rating, r.category)}<span style={{ color: "var(--hz-faint)", fontWeight: 600 }}> / {CATEGORY_BY_KEY[r.category]?.weight}</span></span>
                             </td>
                           </>)}
                           <td data-label="Appeal" style={ptd}>
                             <span style={pill(status.bg, status.color)}>{status.label}</span>
-                            <div style={{ fontSize: 13, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
+                            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 6, lineHeight: 1.5 }}>
                               {historyOf(r).map((h, i) => (
-                                <div key={i}><span style={{ color: "#94a3b8" }}>{fmtDateTime(h.at)}</span> · {h.text}</div>
+                                <div key={i}><span style={{ color: "var(--hz-faint)" }}>{fmtDateTime(h.at)}</span> · {h.text}</div>
                               ))}
                             </div>
                             {r.appealedAt && (
-                              <div style={{ fontSize: 15.5, color: "#78350f", marginTop: 6 }}>
+                              <div style={{ fontSize: "var(--hz-text-md)", color: "#78350f", marginTop: 6 }}>
                                 <b>Appeal by {emp.fullName}:</b> {r.appealText}
-                                <span style={{ color: "#a8a29e", fontSize: 14 }}> · {fmtDateTime(r.appealedAt)}</span>
+                                <span style={{ color: "#a8a29e", fontSize: "var(--hz-text-md)" }}> · {fmtDateTime(r.appealedAt)}</span>
                               </div>
                             )}
                             {(r.appealStatus === "ACCEPTED" || r.appealStatus === "REJECTED") && (
-                              <div style={{ fontSize: 15.5, color: r.appealStatus === "ACCEPTED" ? "#047857" : "#b91c1c", marginTop: 4 }}>
-                                <b>{r.appealStatus === "ACCEPTED" ? "✓" : "✕"} {roleLabel(r.decisionRole) || r.decisionBy}:</b> {r.decisionComment || (r.appealStatus === "ACCEPTED" ? "Agreed" : "")}{r.decisionAt && <span style={{ color: "#a8a29e", fontSize: 14 }}> · {fmtDateTime(r.decisionAt)}</span>}
+                              <div style={{ fontSize: "var(--hz-text-md)", color: r.appealStatus === "ACCEPTED" ? "#047857" : "#b91c1c", marginTop: 4 }}>
+                                <b>{r.appealStatus === "ACCEPTED" ? "✓" : "✕"} {roleLabel(r.decisionRole) || r.decisionBy}:</b> {r.decisionComment || (r.appealStatus === "ACCEPTED" ? "Agreed" : "")}{r.decisionAt && <span style={{ color: "#a8a29e", fontSize: "var(--hz-text-md)" }}> · {fmtDateTime(r.decisionAt)}</span>}
                               </div>
                             )}
                           </td>
                           <td className="ep-m-action" style={{ ...ptd, textAlign: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "nowrap" }}>
                             {canAppeal(r) && appealFor !== r.id && (
-                              <button onClick={() => { setAppealFor(r.id); setAppealText(""); setDecideFor(null); }} style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "6px 12px", fontSize: 14.5 }}>Appeal</button>
+                              <button onClick={() => { setAppealFor(r.id); setAppealText(""); setDecideFor(null); }} style={{ ...btn("#fff", "#b45309"), border: "1px solid #fcd34d", padding: "6px 12px", fontSize: "var(--hz-text-md)" }}>Appeal</button>
                             )}
                             {canManage && isPendingAppeal(r) && decideFor?.id !== r.id && (
                               <span style={{ display: "inline-flex", gap: 8 }}>
@@ -725,16 +725,16 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             {canEditRating(r) && editRatingId !== r.id && (
                               <button title="Edit rating" aria-label="Edit rating"
                                 onClick={() => { setDraft(r.id, { rating: r.rating, category: r.category }); setEditRatingId(r.id); }}
-                                style={{ ...iconBtn("#f5f3ff", "#6d28d9", "#ddd6fe"), fontSize: 16 }}>✏️</button>
+                                style={{ ...iconBtn("#f5f3ff", "#6d28d9", "#ddd6fe"), fontSize: "var(--hz-text-lg)" }}>✏️</button>
                             )}
                             {user?.role === "VP" && canManage && r.rating && r.category && !withdrawn && editRatingId !== r.id && (
                               <button disabled={busy === "access"} onClick={() => toggleEditAccess(r)}
                                 title={r.editGranted ? "Unlocked — VP / Admin / OH / CEO can edit once. Click to lock again" : "Locked — nobody can edit. Click to unlock this entry"}
                                 aria-label="Edit access"
-                                style={{ ...iconBtn(r.editGranted ? "#fffbeb" : "#f8fafc", r.editGranted ? "#b45309" : "#64748b", r.editGranted ? "#fcd34d" : "#e2e8f0"), fontSize: 15 }}>{r.editGranted ? "🔓" : "🔒"}</button>
+                                style={{ ...iconBtn(r.editGranted ? "#fffbeb" : "#f8fafc", r.editGranted ? "#b45309" : "#64748b", r.editGranted ? "#fcd34d" : "#e2e8f0"), fontSize: "var(--hz-text-md)" }}>{r.editGranted ? "🔓" : "🔒"}</button>
                             )}
                             {canManage && needsFinal(r) && editRatingId !== r.id && (
-                              <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>{busy === "decide" ? "Saving…" : "Auto-saves"}</span>
+                              <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-faint)", fontStyle: "italic" }}>{busy === "decide" ? "Saving…" : "Auto-saves"}</span>
                             )}
                             {editRatingId === r.id && (
                               <button title="Cancel" aria-label="Cancel" onClick={() => setEditRatingId(null)} style={{ ...iconBtn("#fef2f2", "#dc2626", "#fecaca") }}>✕</button>
@@ -754,7 +754,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                             <td colSpan={7} style={ptd}>
                               {appealFor === r.id ? (
                                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
-                                  <textarea autoFocus value={appealText} onChange={(e) => setAppealText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAppeal(r.id); } }} placeholder="Explain why you disagree with this comment" style={{ ...inputS, flex: 1, minWidth: 240, minHeight: 44, fontSize: 16.5 }} />
+                                  <textarea autoFocus value={appealText} onChange={(e) => setAppealText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAppeal(r.id); } }} placeholder="Explain why you disagree with this comment" style={{ ...inputS, flex: 1, minWidth: 240, minHeight: 44, fontSize: "var(--hz-text-lg)" }} />
                                   <button onClick={() => submitAppeal(r.id)} disabled={busy === "appeal"} style={btn("#b45309")}>{busy === "appeal" ? "Submitting…" : "Submit appeal"}</button>
                                   <button onClick={() => setAppealFor(null)} style={btn("#f1f5f9", "#374151")}>Cancel</button>
                                 </div>
@@ -763,7 +763,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                                   {decideFor?.mode === "reject" && (
                                     <div style={{ flex: 1, minWidth: 240 }}>
                                       <label style={lbl}>Reply to the appeal</label>
-                                      <textarea autoFocus value={decideText} onChange={(e) => setDecideText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (decideText.trim()) decide(r.id, "REJECT", decideText); } }} placeholder="Why is the appeal not accepted? (required)" style={{ ...inputS, width: "100%", minHeight: 44, fontSize: 16.5, borderColor: "#fecaca" }} />
+                                      <textarea autoFocus value={decideText} onChange={(e) => setDecideText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (decideText.trim()) decide(r.id, "REJECT", decideText); } }} placeholder="Why is the appeal not accepted? (required)" style={{ ...inputS, width: "100%", minHeight: 44, fontSize: "var(--hz-text-lg)", borderColor: "#fecaca" }} />
                                     </div>
                                   )}
                                   <div>
@@ -772,13 +772,13 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                                   </div>
                                   <div>
                                     <label style={lbl}>Category</label>
-                                    <select value={finalCategory} onChange={(e) => setFinalCategory(e.target.value)} style={{ ...inputS, fontSize: 16.5, background: "#fff", minWidth: 190 }}>
+                                    <select value={finalCategory} onChange={(e) => setFinalCategory(e.target.value)} style={{ ...inputS, fontSize: "var(--hz-text-lg)", background: "#fff", minWidth: 190 }}>
                                       <option value="">Select category…</option>
                                       {PERF_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label} ({c.weight}%)</option>)}
                                     </select>
                                   </div>
-                                  <div style={{ fontSize: 15.5, color: "#64748b", paddingBottom: 9 }}>
-                                    Score: <b style={{ color: "#0f172a", fontSize: 17 }}>{scoreOf(finalRating, finalCategory) != null ? `${scoreOf(finalRating, finalCategory)} / ${CATEGORY_BY_KEY[finalCategory].weight}` : "—"}</b>
+                                  <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", paddingBottom: 9 }}>
+                                    Score: <b style={{ color: "var(--hz-ink)", fontSize: "var(--hz-text-lg)" }}>{scoreOf(finalRating, finalCategory) != null ? `${scoreOf(finalRating, finalCategory)} / ${CATEGORY_BY_KEY[finalCategory].weight}` : "—"}</b>
                                   </div>
                                   {decideFor?.mode === "reject"
                                     ? <RejectBtn onClick={() => decide(r.id, "REJECT", decideText)} disabled={busy === "decide"} title="Reject appeal" />
@@ -796,9 +796,9 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
                 {totals.max > 0 && (
                   <tfoot>
                     <tr style={{ background: "#f8fafc" }}>
-                      <td colSpan={5} style={{ ...ptd, textAlign: "right", fontWeight: 700, color: "#475569", borderTop: "2px solid #e2e8f0" }}>Overall score</td>
-                      <td colSpan={3} style={{ ...ptd, fontWeight: 800, color: "#0f172a", borderTop: "2px solid #e2e8f0" }}>
-                        {totals.total} <span style={{ color: "#94a3b8", fontWeight: 600 }}>/ {totals.max}</span>
+                      <td colSpan={5} style={{ ...ptd, textAlign: "right", fontWeight: 700, color: "var(--hz-ink-2)", borderTop: "2px solid #e2e8f0" }}>Overall score</td>
+                      <td colSpan={3} style={{ ...ptd, fontWeight: 800, color: "var(--hz-ink)", borderTop: "2px solid #e2e8f0" }}>
+                        {totals.total} <span style={{ color: "var(--hz-faint)", fontWeight: 600 }}>/ {totals.max}</span>
                         <span style={{ ...pill("#eff6ff", "#1d4ed8"), marginLeft: 10 }}>{totals.pct}%</span>
                       </td>
                     </tr>
@@ -815,12 +815,12 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
       {linkModal && (
         <div onClick={() => setLinkModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: 400, maxWidth: "92vw", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Link to app account</div>
+            <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, marginBottom: 12 }}>Link to app account</div>
             <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
               <button onClick={() => submitLink(null)} style={{ ...btn("#f1f5f9", "#374151"), textAlign: "left" }}>— None (unlink) —</button>
               {appUsers.map(u => (
                 <button key={u.id} onClick={() => submitLink(u.username)} style={{ ...btn("#fff", "#0f172a"), border: "1px solid #e2e8f0", textAlign: "left" }}>
-                  {u.fullName} <span style={{ color: "#94a3b8" }}>@{u.username}</span>
+                  {u.fullName} <span style={{ color: "var(--hz-faint)" }}>@{u.username}</span>
                 </button>
               ))}
             </div>
@@ -835,7 +835,7 @@ export default function EmployeeProfilePage({ id, user, onBack }) {
           <img src={attachmentFullUrl(emp.photoUrl)} alt={emp.fullName}
             style={{ maxWidth: "min(90vw, 480px)", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 24px 64px rgba(0,0,0,.5)", objectFit: "contain" }} />
           <button onClick={() => setPhotoZoom(false)}
-            style={{ position: "absolute", top: 20, right: 24, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: 36, height: 36, fontSize: 20, cursor: "pointer" }}>✕</button>
+            style={{ position: "absolute", top: 20, right: 24, background: "rgba(255,255,255,0.15)", border: "none", color: "var(--hz-on-dark)", borderRadius: "50%", width: 36, height: 36, fontSize: "var(--hz-text-xl)", cursor: "pointer" }}>✕</button>
         </div>
       )}
     </div>

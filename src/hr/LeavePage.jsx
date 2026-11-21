@@ -12,8 +12,8 @@ const LEAVE_TYPES = [
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
   APPROVED:  { bg: "#ecfdf5", color: "#059669", label: "Approved" },
-  REJECTED:  { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
-  CANCELLED: { bg: "#f8fafc", color: "#374151", label: "Cancelled" },
+  REJECTED:  { bg: "#fef2f2", color: "var(--hz-danger)", label: "Rejected" },
+  CANCELLED: { bg: "#f8fafc", color: "var(--hz-ink-2)", label: "Cancelled" },
 };
 
 const EMPTY = { leaveType: "CASUAL", fromDate: "", toDate: "", reason: "", permissionHours: "", fromTime: "", toTime: "" };
@@ -133,26 +133,26 @@ export default function LeavePage({ user }) {
   // PWJ design tokens
   const INP = (err) => ({
     border: `1.5px solid ${err ? "#ef4444" : "#e2e8f0"}`, borderRadius: 8,
-    padding: "10px 13px", fontSize: 14, fontFamily: "inherit",
-    outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a",
+    padding: "10px 13px", fontSize: "var(--hz-text-md)", fontFamily: "inherit",
+    outline: "none", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)",
   });
-  const LBL = { fontSize: 14, fontWeight: 500, color: "#374151", marginBottom: 5, display: "block" };
+  const LBL = { fontSize: "var(--hz-text-md)", fontWeight: 500, color: "var(--hz-ink-2)", marginBottom: 5, display: "block" };
   const TH  = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontWeight: 600, fontSize: 13, color: "#374151",
+    fontWeight: 600, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
   };
   const TD = (extra = {}) => ({
-    padding: "12px 14px", color: "#374151",
-    borderBottom: "1px solid #f1f5f9", fontSize: 14,
+    padding: "12px 14px", color: "var(--hz-ink-2)",
+    borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-md)",
     verticalAlign: "middle", ...extra,
   });
   const statCard = (accent) => ({
     background: "#fff", borderRadius: 12, padding: "18px 22px",
     flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}`,
   });
-  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600 });
+  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600 });
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -166,8 +166,8 @@ export default function LeavePage({ user }) {
             { label: "Rejected", value: summary.rejected, accent: "#dc2626" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{k.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)" }}>{k.label}</div>
+              <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -175,14 +175,14 @@ export default function LeavePage({ user }) {
 
       {/* Header row */}
       <div className="hr-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>My Leaves &amp; Permissions</div>
+        <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)" }}>My Leaves &amp; Permissions</div>
         <button
           disabled={!canApplyLeave}
           onClick={() => { if (canApplyLeave) { setShowForm(true); setForm(emptyForm); setErrors({}); } }}
           title={!canApplyLeave ? "Leave applications are not applicable for VP, CEO and OH roles" : ""}
-          style={{ border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
+          style={{ border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 600, fontSize: "var(--hz-text-md)", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
             background: canApplyLeave ? "#1e3a5f" : "#e2e8f0",
-            color: canApplyLeave ? "#fff" : "#94a3b8",
+            color: canApplyLeave ? "var(--hz-on-dark)" : "var(--hz-faint)",
             cursor: canApplyLeave ? "pointer" : "not-allowed",
             opacity: canApplyLeave ? 1 : 0.7,
           }}>
@@ -201,8 +201,8 @@ export default function LeavePage({ user }) {
           return (
             <button key={t.key} onClick={() => setFilterView(t.key)}
               style={{ border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px",
-                background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#000",
-                fontWeight: active ? 600 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                background: active ? "#1e3a5f" : "#fff", color: active ? "var(--hz-on-dark)" : "var(--hz-ink)",
+                fontWeight: active ? 600 : 500, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
               {t.label}
             </button>
           );
@@ -212,7 +212,7 @@ export default function LeavePage({ user }) {
       {/* Apply leave / permission form */}
       {showForm && canApplyLeave && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "22px 26px", marginBottom: 24, maxWidth: 560 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 18 }}>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 18 }}>
             {isPermission ? "New Permission Request" : isHalfDay ? "New Half Day Leave" : "New Leave Application"}
           </div>
           <form onSubmit={handleSubmit} className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
@@ -231,13 +231,13 @@ export default function LeavePage({ user }) {
               <div style={{ background: "#f1f5f9", borderRadius: 10, padding: "10px 16px", width: "100%", textAlign: "center", border: "1px solid #e2e8f0" }}>
                 {isPermission ? (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>Hours</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{timeRangeHours() ?? "—"}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)" }}>Hours</div>
+                    <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>{timeRangeHours() ?? "—"}</div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>Total Days</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{totalDays()}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)" }}>Total Days</div>
+                    <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>{totalDays()}</div>
                   </>
                 )}
               </div>
@@ -249,7 +249,7 @@ export default function LeavePage({ user }) {
                 <label style={LBL}>Date *</label>
                 <input style={INP(errors.fromDate)} type="date" value={form.fromDate}
                   onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))} />
-                {errors.fromDate && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.fromDate}</div>}
+                {errors.fromDate && <div style={{ fontSize: "var(--hz-text-sm)", color: "#ef4444", marginTop: 3 }}>{errors.fromDate}</div>}
               </div>
             ) : (
               <>
@@ -257,13 +257,13 @@ export default function LeavePage({ user }) {
                   <label style={LBL}>From Date *</label>
                   <input style={INP(errors.fromDate)} type="date" value={form.fromDate}
                     onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))} />
-                  {errors.fromDate && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.fromDate}</div>}
+                  {errors.fromDate && <div style={{ fontSize: "var(--hz-text-sm)", color: "#ef4444", marginTop: 3 }}>{errors.fromDate}</div>}
                 </div>
                 <div>
                   <label style={LBL}>To Date *</label>
                   <input style={INP(errors.toDate)} type="date" value={form.toDate}
                     onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))} />
-                  {errors.toDate && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.toDate}</div>}
+                  {errors.toDate && <div style={{ fontSize: "var(--hz-text-sm)", color: "#ef4444", marginTop: 3 }}>{errors.toDate}</div>}
                 </div>
               </>
             )}
@@ -282,7 +282,7 @@ export default function LeavePage({ user }) {
                     onChange={e => setForm(f => ({ ...f, toTime: e.target.value }))} />
                 </div>
                 {errors.permissionHours && (
-                  <div style={{ gridColumn: "1/-1", fontSize: 13, color: "#ef4444", marginTop: -8 }}>{errors.permissionHours}</div>
+                  <div style={{ gridColumn: "1/-1", fontSize: "var(--hz-text-sm)", color: "#ef4444", marginTop: -8 }}>{errors.permissionHours}</div>
                 )}
               </>
             )}
@@ -295,26 +295,26 @@ export default function LeavePage({ user }) {
                 onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
                 placeholder={isPermission ? "Please describe why you need permission…" : "Please describe the reason for your leave…"}
               />
-              {errors.reason && <div style={{ fontSize: 13, color: "#ef4444", marginTop: 3 }}>{errors.reason}</div>}
+              {errors.reason && <div style={{ fontSize: "var(--hz-text-sm)", color: "#ef4444", marginTop: 3 }}>{errors.reason}</div>}
             </div>
 
             {!isPermission && (
               <div style={{ gridColumn: "1/-1" }}>
-                <label style={LBL}>Attachment <span style={{ color: "#374151", fontWeight: 400 }}>(optional — image or PDF, max 20MB)</span></label>
+                <label style={LBL}>Attachment <span style={{ color: "var(--hz-ink-2)", fontWeight: 400 }}>(optional — image or PDF, max 20MB)</span></label>
                 <label style={{
                   display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
                   border: "1.5px dashed #cbd5e1", borderRadius: 8, padding: "10px 14px",
-                  background: file ? "#f0fdf4" : "#f8fafc", color: file ? "#059669" : "#94a3b8",
-                  fontSize: 14, fontWeight: 500,
+                  background: file ? "#f0fdf4" : "#f8fafc", color: file ? "#059669" : "var(--hz-faint)",
+                  fontSize: "var(--hz-text-md)", fontWeight: 500,
                 }}>
-                  <span style={{ fontSize: 18 }}>📎</span>
+                  <span style={{ fontSize: "var(--hz-text-xl)" }}>📎</span>
                   <span>{file ? file.name : "Click to attach a file"}</span>
                   <input type="file" accept="image/*,application/pdf,.doc,.docx"
                     style={{ display: "none" }}
                     onChange={e => setFile(e.target.files[0] || null)} />
                   {file && (
                     <button type="button" onClick={e => { e.preventDefault(); setFile(null); }}
-                      style={{ marginLeft: "auto", background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
+                      style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-lg)", lineHeight: 1 }}>✕</button>
                   )}
                 </label>
               </div>
@@ -322,11 +322,11 @@ export default function LeavePage({ user }) {
 
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 10 }}>
               <button type="submit" disabled={saving}
-                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+                style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Submitting…" : isPermission ? "Submit Permission" : "Submit Application"}
               </button>
               <button type="button" onClick={handleFormClose}
-                style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
             </div>
@@ -344,12 +344,12 @@ export default function LeavePage({ user }) {
         return (
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
             {filtered.length === 0 ? (
-              <div style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+              <div style={{ padding: 52, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
                 {leaves.length === 0 ? 'No requests yet. Click "+ Apply" to get started.' : "No records in this category."}
               </div>
             ) : (
               <div className="table-scroll-wrap">
-                <table className="leave-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                <table className="leave-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-md)" }}>
                   <thead>
                     <tr>
                       {["Type","Date","Duration","Reason","Status","Approved By","Attachment","Action"].map(h => (
@@ -363,13 +363,13 @@ export default function LeavePage({ user }) {
                       const isPerm = l.leaveType === "PERMISSION";
                       return (
                         <tr key={l.id}>
-                          <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{leaveTypeLabel(l.leaveType)}</td>
+                          <td style={TD({ fontWeight: 600, color: "var(--hz-ink)" })}>{leaveTypeLabel(l.leaveType)}</td>
                           <td style={TD()}>
                             {isPerm
                               ? <>
                                   {fmtDate(l.fromDate)}
                                   {l.fromTime && l.toTime && (
-                                    <div style={{ fontSize: 13, color: "#374151" }}>{l.fromTime} → {l.toTime}</div>
+                                    <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{l.fromTime} → {l.toTime}</div>
                                   )}
                                 </>
                               : l.fromDate === l.toDate
@@ -381,12 +381,12 @@ export default function LeavePage({ user }) {
                               ? <span style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</span>
                               : `${l.totalDays}d`}
                           </td>
-                          <td style={TD({ color: "#1e293b", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={l.reason}>{l.reason}</td>
+                          <td style={TD({ color: "var(--hz-ink-2)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })} title={l.reason}>{l.reason}</td>
                           <td style={TD()}>
                             <span style={badge(s)}>{s.label}</span>
-                            {l.approvalComment && <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>{l.approvalComment}</div>}
+                            {l.approvalComment && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2 }}>{l.approvalComment}</div>}
                           </td>
-                          <td style={TD({ color: "#374151" })}>{l.approvedBy || "—"}</td>
+                          <td style={TD({ color: "var(--hz-ink-2)" })}>{l.approvedBy || "—"}</td>
                           <td style={TD()}>
                             {l.attachmentUrl
                               ? /\.(jpe?g|png|gif|webp|bmp|heic)$/i.test(l.attachmentUrl)
@@ -395,15 +395,15 @@ export default function LeavePage({ user }) {
                                       style={{ width: 56, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0", display: "block" }} />
                                   </a>
                                 : <a href={attachmentFullUrl(l.attachmentUrl)} target="_blank" rel="noreferrer"
-                                    style={{ color: "#1e3a5f", fontWeight: 600, fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                                    style={{ color: "var(--hz-primary)", fontWeight: 600, fontSize: "var(--hz-text-sm)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
                                     📄 View
                                   </a>
-                              : <span style={{ color: "#374151" }}>—</span>}
+                              : <span style={{ color: "var(--hz-ink-2)" }}>—</span>}
                           </td>
                           <td style={TD()}>
                             {l.status === "PENDING" && (
                               <button onClick={() => handleCancel(l.id)}
-                                style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#dc2626", fontFamily: "inherit" }}>
+                                style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-danger)", fontFamily: "inherit" }}>
                                 Cancel
                               </button>
                             )}

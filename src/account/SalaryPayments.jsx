@@ -135,17 +135,17 @@ export default function SalaryPayments({ username = '', isVP = false }) {
       <div style={{ background: 'linear-gradient(135deg,#0f766e,#115e59)', borderRadius: 12, padding: '18px 22px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Landmark size={24} color="white" />
         <div>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: 17 }}>Salary Payment</div>
-          <div style={{ color: '#ccfbf1', fontSize: 13.5, marginTop: 2 }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Salary Payment</div>
+          <div style={{ color: '#ccfbf1', fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
             A month's net pay lands here when the CEO releases it. Once the VP approves, generate the Bank Payment file or download the Excel — beneficiary details come from the Employee Master.
           </div>
         </div>
       </div>
 
-      {error && <div className="card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', fontSize: 14 }}>{error}</div>}
+      {error && <div className="card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', fontSize: "var(--hz-text-md)" }}>{error}</div>}
 
       {batches.length === 0 && !error && (
-        <div className="card" style={{ padding: 28, textAlign: 'center', color: '#0f172a', fontSize: 14 }}>
+        <div className="card" style={{ padding: 28, textAlign: 'center', color: "var(--hz-ink)", fontSize: "var(--hz-text-md)" }}>
           No salary has been released for payment yet. Once the CEO releases a month's salary, it appears here for VP approval.
         </div>
       )}
@@ -160,11 +160,11 @@ export default function SalaryPayments({ username = '', isVP = false }) {
           <div key={key} className="card" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <div className="pay-section-title" style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+                <div className="pay-section-title" style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>
                   Salary — {MONTHS[b.month - 1]} {b.year}
-                  <span style={{ marginLeft: 10, padding: '3px 10px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, background: st.bg, color: st.color, verticalAlign: 'middle' }}>{st.label}</span>
+                  <span style={{ marginLeft: 10, padding: '3px 10px', borderRadius: 999, fontSize: "var(--hz-text-xs)", fontWeight: 700, background: st.bg, color: st.color, verticalAlign: 'middle' }}>{st.label}</span>
                 </div>
-                <div style={{ fontSize: 13.5, color: '#0f172a', marginTop: 4 }}>
+                <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", marginTop: 4 }}>
                   {b.count} employee{b.count === 1 ? '' : 's'} · Net pay <b>{inr(b.total)}</b>
                   {b.releasedAt && <> · Released {fmtWhen(b.releasedAt)}</>}
                   {b.status === 'APPROVED' && b.decidedAt && <> · Approved {fmtWhen(b.decidedAt)}</>}
@@ -187,8 +187,8 @@ export default function SalaryPayments({ username = '', isVP = false }) {
                   title={b.status !== 'APPROVED' ? 'Available once the VP approves' : `Generate the bank payment file (${b.count - b.missingCount} transfers)`}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 8,
-                    padding: '8px 14px', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', border: '1px solid',
-                    background: b.status === 'APPROVED' ? '#2563eb' : '#f1f5f9', color: b.status === 'APPROVED' ? '#fff' : '#94a3b8',
+                    padding: '8px 14px', fontSize: "var(--hz-text-md)", fontWeight: 600, fontFamily: 'inherit', border: '1px solid',
+                    background: b.status === 'APPROVED' ? '#2563eb' : '#f1f5f9', color: b.status === 'APPROVED' ? "var(--hz-on-dark)" : "var(--hz-faint)",
                     borderColor: b.status === 'APPROVED' ? '#1d4ed8' : '#cbd5e1', cursor: b.status === 'APPROVED' ? 'pointer' : 'not-allowed',
                   }}>
                   <Send size={15} /> Bank Payment{b.status === 'APPROVED' && b.count - b.missingCount > 0 ? ` (${b.count - b.missingCount})` : ''}
@@ -197,8 +197,8 @@ export default function SalaryPayments({ username = '', isVP = false }) {
                   title={b.status !== 'APPROVED' ? 'Available once the VP approves' : `Download the bank Excel (${b.count - b.missingCount} transfers)`}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #cbd5e1', borderRadius: 8,
-                    padding: '8px 14px', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
-                    background: b.status === 'APPROVED' ? '#0f766e' : '#f1f5f9', color: b.status === 'APPROVED' ? '#fff' : '#94a3b8',
+                    padding: '8px 14px', fontSize: "var(--hz-text-md)", fontWeight: 600, fontFamily: 'inherit',
+                    background: b.status === 'APPROVED' ? '#0f766e' : '#f1f5f9', color: b.status === 'APPROVED' ? "var(--hz-on-dark)" : "var(--hz-faint)",
                     borderColor: b.status === 'APPROVED' ? '#0f766e' : '#cbd5e1', cursor: b.status === 'APPROVED' ? 'pointer' : 'not-allowed',
                   }}>
                   <Download size={15} /> Download Excel
@@ -207,13 +207,13 @@ export default function SalaryPayments({ username = '', isVP = false }) {
             </div>
 
             {b.status === 'REJECTED' && b.remark && (
-              <div style={{ marginTop: 12, fontSize: 14, color: '#7f1d1d', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ marginTop: 12, fontSize: "var(--hz-text-md)", color: '#7f1d1d', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
                 Rejected{b.decidedBy ? ` by ${b.decidedBy}` : ''}: {b.remark}
               </div>
             )}
 
             {missing.length > 0 && (
-              <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 14, color: '#7c2d12', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: "var(--hz-text-md)", color: '#7c2d12', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 12px' }}>
                 <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <b>{missing.length} employee{missing.length === 1 ? ' has' : 's have'} no account number / IFSC in the Employee Master</b> — left out of the bank file and the Excel (the Excel lists them on its second sheet) until HR adds them:{' '}
@@ -223,7 +223,7 @@ export default function SalaryPayments({ username = '', isVP = false }) {
             )}
 
             <button onClick={() => setOpen((o) => ({ ...o, [key]: !expanded }))}
-              style={{ border: 'none', background: 'none', color: '#0f766e', fontWeight: 700, fontSize: 14, cursor: 'pointer', padding: '12px 0 0', fontFamily: 'inherit' }}>
+              style={{ border: 'none', background: 'none', color: '#0f766e', fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: 'pointer', padding: '12px 0 0', fontFamily: 'inherit' }}>
               {expanded ? 'Hide employees' : `Show employees (${b.count})`}
             </button>
 

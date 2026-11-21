@@ -5,5 +5,25 @@
    - Cell text only; table headers keep their own size. Text inside a cell that sets its own size (small badges,
      secondary lines) keeps it. */
 @media (min-width: 769px) {
-  table:not([style*="table-layout: fixed"]):not([style*="table-layout:fixed"]) td { font-size: 17px !important; }
+  table:not([style*="table-layout: fixed"]):not([style*="table-layout:fixed"]) td { font-size: var(--hz-text-lg) !important; }
+}
+
+/* BOQ tables (Operations → BOQ): vertical lines between columns so the grid reads like the BOQ sheet. */
+.ops-boq-table th,
+.ops-boq-table td { border-right: 1px solid var(--hz-border-strong); }
+.ops-boq-table th:last-child,
+.ops-boq-table td:last-child { border-right: none; }
+
+/* BOQ tables on desktop: roomier cells and a wider description column so the table reads at a comfortable size. */
+@media (min-width: 769px) {
+  .ops-boq-table th { padding: 13px 16px !important; }
+  .ops-boq-table td { padding: 11px 16px !important; line-height: 1.45; }
+  .ops-boq-table th:nth-child(3) { width: 38% !important; }
+}
+
+/* Additional Items table has no description column — its 3rd column is just the BOQ item number */
+@media (min-width: 769px) {
+  .ops-boq-table--linked th:nth-child(3) { width: 110px !important; }
+  .ops-boq-table--linked th:nth-child(6), .ops-boq-table--linked th:nth-child(8) { width: 26% !important; }
+  .ops-boq-table--linked th:nth-child(7) { width: 150px !important; }
 }

@@ -27,16 +27,16 @@ const CONFIG = {
 
 const EMPTY = { tag: "", name: "", company: "", contactName: "", source: "", title: "", contactType: "", workPhone: "", connectBy: "", followedBy: "", status: "Pending", description: "" };
 
-const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 16, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
-const lbl = { fontSize: 15, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
-const th  = { padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#475569", fontSize: 14, textTransform: "uppercase", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
-const td  = { padding: "10px 14px", color: "#0f172a", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
+const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)", background: "#fff" };
+const lbl = { fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 5, display: "block" };
+const th  = { padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)", textTransform: "uppercase", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
+const td  = { padding: "10px 14px", color: "var(--hz-ink)", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
 
 const STATUS_STYLE = {
   pending:   { bg: "#fffbeb", color: "#b45309" },
   connected: { bg: "#ecfdf5", color: "#047857" },
 };
-const statusStyle = (s) => STATUS_STYLE[(s || "").toLowerCase()] || { bg: "#f1f5f9", color: "#475569" };
+const statusStyle = (s) => STATUS_STYLE[(s || "").toLowerCase()] || { bg: "#f1f5f9", color: "var(--hz-ink-2)" };
 
 export default function CrmContactsPage({ list }) {
   const cfg = CONFIG[list];
@@ -131,13 +131,13 @@ export default function CrmContactsPage({ list }) {
 
       <div className="crm-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <div>
-          <div style={{ fontSize: 22.5, fontWeight: 800, color: "#0f172a" }}>{cfg.title}</div>
-          <div style={{ fontSize: 16, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>{cfg.title}</div>
+          <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-muted)", marginTop: 2 }}>
             {rows.length} {rows.length === 1 ? "record" : "records"} · {statusCount("Connected")} connected · {statusCount("Pending")} pending
           </div>
         </div>
         <button onClick={openAdd}
-          style={{ border: "none", borderRadius: 8, padding: "8px 18px", background: "linear-gradient(135deg,#10b981,#059669)", cursor: "pointer", fontSize: 16, fontFamily: "inherit", fontWeight: 700, color: "#fff" }}>
+          style={{ border: "none", borderRadius: 8, padding: "8px 18px", background: "linear-gradient(135deg,#10b981,#059669)", cursor: "pointer", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", fontWeight: 700, color: "var(--hz-on-dark)" }}>
           {cfg.add}
         </button>
       </div>
@@ -157,23 +157,23 @@ export default function CrmContactsPage({ list }) {
 
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table className="crm-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
+          <table className="crm-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" }}>
             <thead><tr>{cfg.cols.map(([h]) => <th key={h} style={th}>{h}</th>)}<th style={th}></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={cfg.cols.length + 1} className="crm-empty" style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 40 }}>Loading…</td></tr>
-                : shown.length === 0 ? <tr><td colSpan={cfg.cols.length + 1} className="crm-empty" style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 40 }}>{rows.length ? "Nothing matches the filters" : cfg.empty}</td></tr>
+              {loading ? <tr><td colSpan={cfg.cols.length + 1} className="crm-empty" style={{ ...td, textAlign: "center", color: "var(--hz-faint)", padding: 40 }}>Loading…</td></tr>
+                : shown.length === 0 ? <tr><td colSpan={cfg.cols.length + 1} className="crm-empty" style={{ ...td, textAlign: "center", color: "var(--hz-faint)", padding: 40 }}>{rows.length ? "Nothing matches the filters" : cfg.empty}</td></tr>
                 : shown.map(r => (
                   <tr key={r.id}>
                     {cfg.cols.map(([h, k]) => (
                       <td key={k} data-label={h} style={{ ...td, fontWeight: k === "name" ? 600 : 400, minWidth: k === "description" ? 200 : undefined }}>
                         {k === "status" && r.status
-                          ? <span style={{ ...statusStyle(r.status), background: statusStyle(r.status).bg, borderRadius: 8, padding: "3px 10px", fontSize: 14, fontWeight: 700 }}>{r.status}</span>
+                          ? <span style={{ ...statusStyle(r.status), background: statusStyle(r.status).bg, borderRadius: 8, padding: "3px 10px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>{r.status}</span>
                           : (r[k] || "—")}
                       </td>
                     ))}
                     <td style={{ ...td, whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button onClick={() => openEdit(r)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
+                        <button onClick={() => openEdit(r)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
                         <DeleteBtn onClick={() => remove(r)} title="Delete" />
                       </div>
                     </td>
@@ -188,8 +188,8 @@ export default function CrmContactsPage({ list }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setModal(false)}>
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>{editing ? `Edit ${isPeople ? "Person" : "Company"}` : isPeople ? "New Person" : "New Company"}</div>
-              <button onClick={() => setModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 22.5, color: "#64748b" }}>×</button>
+              <div style={{ fontWeight: 700, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>{editing ? `Edit ${isPeople ? "Person" : "Company"}` : isPeople ? "New Person" : "New Company"}</div>
+              <button onClick={() => setModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "var(--hz-text-2xl)", color: "var(--hz-muted)" }}>×</button>
             </div>
             <form onSubmit={save} className="crm-form" style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1/-1" }}>{textField("name", `${cfg.nameLabel} *`, { autoFocus: true })}</div>
@@ -206,14 +206,14 @@ export default function CrmContactsPage({ list }) {
                 <label style={lbl}>Description</label>
                 <textarea style={{ ...inp, resize: "vertical" }} rows={2} value={form.description} onChange={e => f({ description: e.target.value })} />
               </div>
-              {error && <div style={{ gridColumn: "1/-1", color: "#b91c1c", fontSize: 15 }}>{error}</div>}
+              {error && <div style={{ gridColumn: "1/-1", color: "#b91c1c", fontSize: "var(--hz-text-md)" }}>{error}</div>}
               <div style={{ gridColumn: "1/-1", display: "flex", gap: 10, marginTop: 4 }}>
                 <button type="submit" disabled={saving}
-                  style={{ flex: 1, border: "none", borderRadius: 8, padding: 11, background: "linear-gradient(135deg,#10b981,#059669)", color: "#fff", fontWeight: 700, fontSize: 17.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ flex: 1, border: "none", borderRadius: 8, padding: 11, background: "linear-gradient(135deg,#10b981,#059669)", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-lg)", cursor: "pointer", fontFamily: "inherit" }}>
                   {saving ? "Saving…" : editing ? "💾 Update" : cfg.add}
                 </button>
                 <button type="button" onClick={() => setModal(false)}
-                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "11px 20px", background: "#fff", color: "#475569", fontWeight: 600, fontSize: 17.5, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "11px 20px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-lg)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               </div>
             </form>
           </div>

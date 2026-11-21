@@ -11,17 +11,17 @@ const STATUS = {
   PAID:      { bg: "#ecfdf5", color: "#047857", label: "Paid — repaying" },
   REPAID:    { bg: "#f0fdf4", color: "#166534", label: "Fully repaid" },
   REJECTED:  { bg: "#fef2f2", color: "#b91c1c", label: "Rejected" },
-  CANCELLED: { bg: "#f1f5f9", color: "#000", label: "Cancelled" },
+  CANCELLED: { bg: "#f1f5f9", color: "var(--hz-ink)", label: "Cancelled" },
 };
 const statusOf = (a) => (a.status === "PAID" && Number(a.balance) <= 0 ? "REPAID" : a.status);
 
-const th = { padding: "10px 12px", textAlign: "left", fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
-const td = { padding: "10px 12px", fontSize: 15.5, borderBottom: "1px solid #eef2f7", color: "#0f172a", verticalAlign: "top" };
+const th = { padding: "10px 12px", textAlign: "left", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
+const td = { padding: "10px 12px", fontSize: "var(--hz-text-md)", borderBottom: "1px solid #eef2f7", color: "var(--hz-ink)", verticalAlign: "top" };
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
-const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 15.5, fontFamily: "inherit", boxSizing: "border-box", background: "#fff" };
-const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 15, fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
-const iconBtn = (bg, color, border) => ({ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${border}`, background: bg, color, fontSize: 17, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit" });
-const pill = (s) => ({ display: "inline-block", padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 700, background: s.bg, color: s.color, whiteSpace: "nowrap" });
+const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", boxSizing: "border-box", background: "#fff" };
+const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
+const iconBtn = (bg, color, border) => ({ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${border}`, background: bg, color, fontSize: "var(--hz-text-lg)", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit" });
+const pill = (s) => ({ display: "inline-block", padding: "4px 10px", borderRadius: 999, fontSize: "var(--hz-text-md)", fontWeight: 700, background: s.bg, color: s.color, whiteSpace: "nowrap" });
 
 export default function AdvancePage({ user }) {
   const role = user?.role;
@@ -154,8 +154,8 @@ export default function AdvancePage({ user }) {
           .adv-table td.adv-action { text-align: left !important; }
         }
       `}</style>
-      <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>Advance</div>
-      <div style={{ fontSize: 15.5, color: "#000", margin: "2px 0 16px" }}>
+      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Advance</div>
+      <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", margin: "2px 0 16px" }}>
         Request a salary advance and choose how many monthly instalments to repay it in. Once it is paid, the instalment is deducted from your salary every month until it's cleared.
       </div>
 
@@ -163,30 +163,30 @@ export default function AdvancePage({ user }) {
         <div style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 8, padding: 3, width: "fit-content", marginBottom: 16 }}>
           {tabs.map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)}
-              style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: tab === k ? 700 : 500, padding: "7px 14px", borderRadius: 6, background: tab === k ? "#0f766e" : "transparent", color: tab === k ? "#fff" : "#000" }}>{l}</button>
+              style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", fontWeight: tab === k ? 700 : 500, padding: "7px 14px", borderRadius: 6, background: tab === k ? "#0f766e" : "transparent", color: tab === k ? "var(--hz-on-dark)" : "var(--hz-ink)" }}>{l}</button>
           ))}
         </div>
       )}
 
       {tab === "mine" && canRaise && enabled === false && (
-        <div style={{ ...card, padding: 16, marginBottom: 16, background: "#fffbeb", borderColor: "#fde68a", color: "#92400e", fontSize: 15.5 }}>
+        <div style={{ ...card, padding: 16, marginBottom: 16, background: "#fffbeb", borderColor: "#fde68a", color: "#92400e", fontSize: "var(--hz-text-md)" }}>
           Salary advance isn't enabled for you. Ask Admin or VP to enable it before you can request one.
         </div>
       )}
 
       {tab === "mine" && canRaise && enabled && (
         <div style={{ ...card, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 12 }}>Request an advance</div>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, marginBottom: 12 }}>Request an advance</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)" }}>
               Purpose of Advance
               <input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} style={{ ...inputS, width: 300, maxWidth: "100%" }} placeholder="What is the advance for?" />
             </label>
-            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)" }}>
               Amount (₹)
               <input type="number" min="0" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...inputS, width: 150 }} placeholder="e.g. 10000" />
             </label>
-            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)" }}>
               Repay over
               <select value={form.termMonths} onChange={(e) => setForm((f) => ({ ...f, termMonths: Number(e.target.value) }))} style={{ ...inputS, width: 150 }}>
                 {TERMS.map((t) => <option key={t} value={t}>{t} month{t > 1 ? "s" : ""}</option>)}
@@ -195,7 +195,7 @@ export default function AdvancePage({ user }) {
             <button onClick={raise} disabled={busy === "raise"} style={{ ...btn("#0f766e"), opacity: busy === "raise" ? 0.6 : 1 }}>{busy === "raise" ? "Sending…" : "Request advance"}</button>
           </div>
           {amount > 0 && (
-            <div style={{ fontSize: 15, color: "#000", marginTop: 10, background: "#f8fafc", borderRadius: 8, padding: "8px 10px", width: "fit-content" }}>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginTop: 10, background: "#f8fafc", borderRadius: 8, padding: "8px 10px", width: "fit-content" }}>
               About <b>{inr(Math.round(instalment * 100) / 100)}</b> a month for <b>{form.termMonths}</b> month{form.termMonths > 1 ? "s" : ""}, deducted from your salary.
             </div>
           )}
@@ -204,9 +204,9 @@ export default function AdvancePage({ user }) {
 
       {tab === "eligibility" && (
         <div style={{ ...card, padding: 16 }}>
-          <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 4 }}>Enable salary advance for an employee</div>
-          <div style={{ fontSize: 14.5, color: "#000", marginBottom: 12 }}>Employees can request a salary advance only while it is switched on for them.</div>
-          {peopleErr && <div style={{ color: "#b91c1c", fontSize: 14.5, marginBottom: 10 }}>{peopleErr}</div>}
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, marginBottom: 4 }}>Enable salary advance for an employee</div>
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginBottom: 12 }}>Employees can request a salary advance only while it is switched on for them.</div>
+          {peopleErr && <div style={{ color: "#b91c1c", fontSize: "var(--hz-text-md)", marginBottom: 10 }}>{peopleErr}</div>}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <select value={pick} onChange={(e) => setPick(e.target.value)} style={{ ...inputS, width: 340, maxWidth: "100%" }}>
               <option value="">Select employee…</option>
@@ -221,16 +221,16 @@ export default function AdvancePage({ user }) {
               </button>
             )}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#000", margin: "18px 0 8px" }}>Currently enabled ({people.filter((p) => p.enabled).length})</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", margin: "18px 0 8px" }}>Currently enabled ({people.filter((p) => p.enabled).length})</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {people.filter((p) => p.enabled).map((p) => (
               <span key={p.username} style={{ ...pill(STATUS.PAID), display: "inline-flex", alignItems: "center", gap: 8 }}>
                 {p.fullName}
                 <button onClick={() => toggle(p)} title="Disable" aria-label={`Disable ${p.fullName}`} disabled={busy === "toggle-" + p.username}
-                  style={{ border: "none", background: "transparent", color: "#047857", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0, lineHeight: 1 }}>✕</button>
+                  style={{ border: "none", background: "transparent", color: "#047857", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 800, padding: 0, lineHeight: 1 }}>✕</button>
               </span>
             ))}
-            {!people.some((p) => p.enabled) && <span style={{ fontSize: 14.5, color: "#475569" }}>No one yet.</span>}
+            {!people.some((p) => p.enabled) && <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>No one yet.</span>}
           </div>
         </div>
       )}
@@ -254,7 +254,7 @@ export default function AdvancePage({ user }) {
               {loading ? (
                 <tr><td style={td} colSpan={colCount}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td style={{ ...td, color: "#000" }} colSpan={colCount}>{tab === "approvals" ? "No advance requests waiting for approval." : "No advance requests yet."}</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-ink)" }} colSpan={colCount}>{tab === "approvals" ? "No advance requests waiting for approval." : "No advance requests yet."}</td></tr>
               ) : rows.map((a) => {
                 const st = STATUS[statusOf(a)] || STATUS.PENDING;
                 const mine = a.username === user?.username;
@@ -270,27 +270,27 @@ export default function AdvancePage({ user }) {
                             {TERMS.map((t) => <option key={t} value={t}>{t} month{t > 1 ? "s" : ""}</option>)}
                           </select>
                         ) : (
-                          <>{a.termMonths} month{a.termMonths > 1 ? "s" : ""}{a.termMonths !== a.requestedTermMonths && <span style={{ color: "#b45309", fontSize: 14 }}> (asked {a.requestedTermMonths})</span>}</>
+                          <>{a.termMonths} month{a.termMonths > 1 ? "s" : ""}{a.termMonths !== a.requestedTermMonths && <span style={{ color: "#b45309", fontSize: "var(--hz-text-md)" }}> (asked {a.requestedTermMonths})</span>}</>
                         )}
-                        <div style={{ fontSize: 14, color: "#000" }}>{inr(a.monthlyInstalment)} / month</div>
+                        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{inr(a.monthlyInstalment)} / month</div>
                       </td>
-                      <td data-label="Purpose" style={{ ...td, maxWidth: 240, whiteSpace: "normal", fontSize: 15 }}>{a.reason || "—"}</td>
+                      <td data-label="Purpose" style={{ ...td, maxWidth: 240, whiteSpace: "normal", fontSize: "var(--hz-text-md)" }}>{a.reason || "—"}</td>
                       <td data-label="Status" style={td}>
                         <span style={pill(st)}>{st.label}</span>
-                        {a.approvedBy && <div style={{ fontSize: 14, color: "#000", marginTop: 4 }}>{a.status === "REJECTED" ? "Rejected" : "Approved"} by {a.approvedByRole || a.approvedBy}{a.approvalComment ? ` — ${a.approvalComment}` : ""}</div>}
-                        {a.paidBy && <div style={{ fontSize: 14, color: "#000" }}>Paid by {a.paidBy} · {fmtServerDate(a.paidAt)}</div>}
+                        {a.approvedBy && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginTop: 4 }}>{a.status === "REJECTED" ? "Rejected" : "Approved"} by {a.approvedByRole || a.approvedBy}{a.approvalComment ? ` — ${a.approvalComment}` : ""}</div>}
+                        {a.paidBy && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>Paid by {a.paidBy} · {fmtServerDate(a.paidAt)}</div>}
                       </td>
                       <td data-label="Repayment status" style={td}>
                         {a.status === "PAID" ? (
                           <>
-                            <div style={{ fontSize: 14 }}>Starts <b>{MONTHS[a.startMonth - 1]} {a.startYear}</b> salary</div>
-                            <div style={{ fontSize: 15 }}>Recovered <b>{inr(a.recovered)}</b></div>
-                            <div style={{ fontSize: 15 }}>Balance <b>{inr(a.balance)}</b></div>
-                            <button onClick={() => setOpen(open === a.id ? null : a.id)} style={{ border: "none", background: "none", color: "#0f766e", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                            <div style={{ fontSize: "var(--hz-text-md)" }}>Starts <b>{MONTHS[a.startMonth - 1]} {a.startYear}</b> salary</div>
+                            <div style={{ fontSize: "var(--hz-text-md)" }}>Recovered <b>{inr(a.recovered)}</b></div>
+                            <div style={{ fontSize: "var(--hz-text-md)" }}>Balance <b>{inr(a.balance)}</b></div>
+                            <button onClick={() => setOpen(open === a.id ? null : a.id)} style={{ border: "none", background: "none", color: "#0f766e", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                               {open === a.id ? "Hide schedule" : "View schedule"}
                             </button>
                             {isAdmin && Number(a.recovered) === 0 && (
-                              <div><button onClick={() => openStart(a, "change")} style={{ border: "none", background: "none", color: "#1d4ed8", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Change start month</button></div>
+                              <div><button onClick={() => openStart(a, "change")} style={{ border: "none", background: "none", color: "#1d4ed8", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Change start month</button></div>
                             )}
                           </>
                         ) : <span style={{ color: "#cbd5e1" }}>—</span>}
@@ -315,7 +315,7 @@ export default function AdvancePage({ user }) {
                         <td style={td} colSpan={colCount}>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {a.schedule.map((s, i) => (
-                              <span key={i} style={{ fontSize: 14, padding: "5px 10px", borderRadius: 8, border: "1px solid " + (s.recovered ? "#bbf7d0" : "#e2e8f0"), background: s.recovered ? "#f0fdf4" : "#fff", color: s.recovered ? "#166534" : "#000" }}>
+                              <span key={i} style={{ fontSize: "var(--hz-text-md)", padding: "5px 10px", borderRadius: 8, border: "1px solid " + (s.recovered ? "#bbf7d0" : "#e2e8f0"), background: s.recovered ? "#f0fdf4" : "#fff", color: s.recovered ? "#166534" : "var(--hz-ink)" }}>
                                 {MONTHS[s.month - 1]} {s.year} · <b>{inr(s.amount)}</b>{s.recovered ? " ✓" : ""}
                               </span>
                             ))}
@@ -333,13 +333,13 @@ export default function AdvancePage({ user }) {
       {startDlg && (
         <div onClick={() => setStartDlg(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} role="dialog" style={{ background: "#fff", borderRadius: 16, width: 440, maxWidth: "100%", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
+            <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>
               {startDlg.mode === "pay" ? "Mark as paid" : "Change start month"} — {startDlg.a.fullName}
             </div>
-            <div style={{ fontSize: 14.5, color: "#000", marginBottom: 14 }}>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginBottom: 14 }}>
               {inr(startDlg.a.amount)} over {startDlg.a.termMonths} month{startDlg.a.termMonths > 1 ? "s" : ""} ({inr(startDlg.a.monthlyInstalment)} a month). Choose the payroll the first instalment comes off. A released month can't take it.
             </div>
-            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, fontWeight: 600, color: "#000" }}>
+            <label className="adv-field" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)" }}>
               First deduction from
               <select value={startDlg.choice} onChange={(e) => setStartDlg((d) => ({ ...d, choice: e.target.value }))} style={inputS}>
                 {startDlg.options.map((o) => (

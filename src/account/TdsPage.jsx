@@ -107,7 +107,7 @@ export default function TdsPage({ isAdmin = false }) {
     }
   }
 
-  const inputStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', background: '#fff' };
+  const inputStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: "var(--hz-text-2xs)", fontFamily: 'inherit', background: '#fff' };
 
   return (
     <div className="pay-dash">
@@ -115,8 +115,8 @@ export default function TdsPage({ isAdmin = false }) {
       <div style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)', borderRadius: 12, padding: '18px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Percent size={24} color="white" />
         <div>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: 17 }}>TDS</div>
-          <div style={{ color: '#e9d5ff', fontSize: 13.5, marginTop: 2 }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>TDS</div>
+          <div style={{ color: '#e9d5ff', fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
             TDS % and filing status on OH-approved payments
           </div>
         </div>
@@ -143,13 +143,13 @@ export default function TdsPage({ isAdmin = false }) {
           <option value="all">TDS %: All</option>
           {TDS_OPTIONS.map(p => <option key={p} value={String(p)}>{p}%</option>)}
         </select>
-        <div style={{ marginLeft: 'auto', fontSize: 12.5, color: '#64748b' }}>{filtered.length} of {ohApproved.length}</div>
+        <div style={{ marginLeft: 'auto', fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{filtered.length} of {ohApproved.length}</div>
       </div>
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: "var(--hz-faint)" }}>Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: "var(--hz-faint)" }}>
           No OH-approved entries match the current filters.
         </div>
       ) : (
@@ -177,11 +177,11 @@ export default function TdsPage({ isAdmin = false }) {
                   const tdsAmt = tdsAmtOf(it);
                   return (
                     <tr key={it.id}>
-                      <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(it.sentAt)}</td>
-                      <td style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
-                      <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
-                      <td style={{ fontSize: 12, color: '#64748b' }}>{it.refNo || '—'}</td>
+                      <td style={{ color: "var(--hz-faint)", fontSize: "var(--hz-text-xs)" }}>{i + 1}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", whiteSpace: 'nowrap' }}>{fmtDate(it.sentAt)}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600 }}>{it.projectName}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)" }}>{it.partyName || '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{it.refNo || '—'}</td>
 
                       {/* Invoice No. */}
                       <td>
@@ -194,7 +194,7 @@ export default function TdsPage({ isAdmin = false }) {
                             }}
                             style={{ ...inputStyle, width: 100 }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.invoiceNo || '—'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.invoiceNo || '—'}</span>
                         )}
                       </td>
 
@@ -208,11 +208,11 @@ export default function TdsPage({ isAdmin = false }) {
                             {TDS_OPTIONS.map(p => <option key={p} value={p}>{p}%</option>)}
                           </select>
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
                         )}
                       </td>
                       {/* TDS Amt */}
-                      <td style={{ textAlign: 'right', fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
+                      <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)", color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
 
                       {/* TDS Paid Date */}
                       <td>
@@ -221,7 +221,7 @@ export default function TdsPage({ isAdmin = false }) {
                             onChange={e => handleFilingChange(it, { tdsPaidDate: e.target.value || null })}
                             style={{ ...inputStyle, width: 130 }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{fmtDate(it.tdsPaidDate)}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{fmtDate(it.tdsPaidDate)}</span>
                         )}
                       </td>
 
@@ -235,7 +235,7 @@ export default function TdsPage({ isAdmin = false }) {
                             <option value="yes">Yes</option>
                           </select>
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.tdsFiled ? 'Yes' : 'No'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.tdsFiled ? 'Yes' : 'No'}</span>
                         )}
                       </td>
 
@@ -250,7 +250,7 @@ export default function TdsPage({ isAdmin = false }) {
                             }}
                             style={{ ...inputStyle, width: 160 }} />
                         ) : (
-                          <span style={{ fontSize: 12, color: '#475569' }}>{it.remarks || '—'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)" }}>{it.remarks || '—'}</span>
                         )}
                       </td>
                     </tr>
@@ -262,8 +262,8 @@ export default function TdsPage({ isAdmin = false }) {
 
           {/* Total */}
           <div className="card" style={{ padding: '12px 16px', marginTop: 12, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Total TDS Amt</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: '#b45309' }}>{fmt(totalTdsAmt)}</span>
+            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)" }}>Total TDS Amt</span>
+            <span style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: '#b45309' }}>{fmt(totalTdsAmt)}</span>
           </div>
         </>
       )}

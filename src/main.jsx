@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './happizo-theme.css'
 import './mobile.css'
 import './navbar.css'
 import './tables.css'

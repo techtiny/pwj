@@ -3,7 +3,7 @@ import { Search, Plus, ChevronRight, Cake, CalendarDays, Hourglass, Hash, Buildi
 import { employeeApi, advanceApi, advanceSummary, usersApi, attachmentFullUrl, isExitedEmp, tenureMonths } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
-const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
+const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", boxSizing: "border-box" };
 
 function fmtDate(d) {
   if (!d) return "—";
@@ -337,7 +337,7 @@ export default function EmployeesPage({ user }) {
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 22 }}>
                   <button className="em-open" style={{ marginTop: 0 }} onClick={() => setSelectedId(preview.id)}>Open full profile <ChevronRight size={16} /></button>
                   {canManage && (
-                    <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#1e3a5f", border: "1px solid #cbd5e1" }} onClick={openEdit}>Edit details</button>
+                    <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "var(--hz-primary)", border: "1px solid #cbd5e1" }} onClick={openEdit}>Edit details</button>
                   )}
                   {canExit && !exitedPreview && (
                     <button className="em-open" style={{ marginTop: 0, background: "#fff", color: "#b91c1c", border: "1px solid #fecaca" }} onClick={openExit}>Move to Exited</button>
@@ -356,35 +356,35 @@ export default function EmployeesPage({ user }) {
         <div onClick={() => setExitOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Move to exited"
             style={{ background: "#fff", borderRadius: 16, width: 460, maxWidth: "100%", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Move to Exited — {preview.fullName}</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+            <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>Move to Exited — {preview.fullName}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 16 }}>
               {preview.personCode || "No person code"}{preview.linkedUsername ? " · their app login will be blocked and any live session ended. Records they created stay." : " · no app login is linked."}
             </div>
             {advPending > 0 && (
-              <div style={{ color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>
+              <div style={{ color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", marginBottom: 12 }}>
                 💰 {preview.fullName} still owes <b>₹{advPending.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</b> of salary advance. Once they leave it can't be recovered from salary — it stays on their profile as pending.
               </div>
             )}
             <div style={{ display: "grid", gap: 12 }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>
                 Last working day *
                 <input type="date" value={exitForm.exitDate} onChange={e => setExitForm(f => ({ ...f, exitDate: e.target.value }))} style={inputS} />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>
                 Exit type
                 <select value={exitForm.exitType} onChange={e => setExitForm(f => ({ ...f, exitType: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
                   {["RESIGNED", "TERMINATED", "ABSCONDED", "RETIRED", "OTHER"].map(t => <option key={t} value={t}>{t[0] + t.slice(1).toLowerCase()}</option>)}
                 </select>
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>
                 Reason (optional)
                 <input value={exitForm.exitReason} onChange={e => setExitForm(f => ({ ...f, exitReason: e.target.value }))} style={inputS} />
               </label>
             </div>
-            {exitErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{exitErr}</div>}
+            {exitErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", marginTop: 12 }}>{exitErr}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-              <button onClick={() => setExitOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-              <button onClick={submitExit} disabled={exitBusy} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#b91c1c", cursor: "pointer", fontFamily: "inherit", opacity: exitBusy ? 0.7 : 1 }}>
+              <button onClick={() => setExitOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={submitExit} disabled={exitBusy} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-on-dark)", background: "#b91c1c", cursor: "pointer", fontFamily: "inherit", opacity: exitBusy ? 0.7 : 1 }}>
                 {exitBusy ? "Moving…" : "Move to Exited"}
               </button>
             </div>
@@ -396,8 +396,8 @@ export default function EmployeesPage({ user }) {
         <div onClick={() => setAddOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add employee"
             style={{ background: "#fff", borderRadius: 16, width: 560, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto", padding: 22, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>{editId ? "Edit Employee" : "Add Employee"}</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>{editId ? "Update this employee's details. Changing the person code also updates their employee number everywhere." : "Onboard a new employee into the Employee Master. The person code is generated automatically."}</div>
+            <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>{editId ? "Edit Employee" : "Add Employee"}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 16 }}>{editId ? "Update this employee's details. Changing the person code also updates their employee number everywhere." : "Onboard a new employee into the Employee Master. The person code is generated automatically."}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
                 ["fullName", "Full name *", "text", { full: true }],
@@ -411,7 +411,7 @@ export default function EmployeesPage({ user }) {
                 ["bankAccountNumber", "Account number", "text", { placeholder: "9–18 digits" }],
                 ["ifscCode", "IFSC code", "text", { placeholder: "e.g. HDFC0001234" }],
               ].map(([k, label, type, o = {}]) => (
-                <label key={k} style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: o.full ? "1 / -1" : undefined, fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+                <label key={k} style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: o.full ? "1 / -1" : undefined, fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>
                   {label}
                   {type === "select" ? (
                     <select value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
@@ -422,7 +422,7 @@ export default function EmployeesPage({ user }) {
                   )}
                 </label>
               ))}
-              {!editId && <label style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1", fontSize: 12.5, fontWeight: 600, color: "#475569" }}>
+              {!editId && <label style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: "1 / -1", fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>
                 Link to app login (optional)
                 <select value={form.linkedUsername} onChange={e => setForm(f => ({ ...f, linkedUsername: e.target.value }))} style={{ ...inputS, background: "#fff" }}>
                   <option value="">— None —</option>
@@ -431,10 +431,10 @@ export default function EmployeesPage({ user }) {
               </label>}
             </div>
             <datalist id="dept-list">{departments.map(d => <option key={d} value={d} />)}</datalist>
-            {formErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 12 }}>{formErr}</div>}
+            {formErr && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", marginTop: 12 }}>{formErr}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-              <button onClick={() => setAddOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#374151", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-              <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#fff", background: "#1e3a5f", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+              <button onClick={() => setAddOpen(false)} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", background: "#f1f5f9", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={saveEmployee} disabled={saving} style={{ border: "none", borderRadius: 9, padding: "9px 18px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-on-dark)", background: "#1e3a5f", cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving…" : editId ? "Save Changes" : "Add Employee"}
               </button>
             </div>

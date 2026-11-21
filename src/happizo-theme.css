@@ -1,0 +1,79 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Happizo design tokens — the single source for colours, fonts and text sizes.
+   Imported first in main.jsx. Shared stylesheets (navbar, tables, account, mobile)
+   read these variables, so changing a value here changes it everywhere those apply.
+   Brand blues are taken from the Happizo logo (#01b9f1 / #73d0f0).
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --hz-brand:        #01b9f1;   /* logo blue — accents, focus, active underline */
+  --hz-brand-light:  #73d0f0;   /* logo light blue — tints, highlights */
+  --hz-brand-tint:   #e6f7fd;   /* very light brand wash for hover/active backgrounds */
+  --hz-primary:      #1e3a5f;   /* deep navy — primary actions, headings on light, active text */
+  --hz-primary-tint: #eef3fa;
+  --hz-link:         #2563eb;
+
+  /* Text */
+  --hz-ink:          #0f172a;   /* primary text */
+  --hz-ink-2:        #334155;   /* secondary text, table headers */
+  --hz-muted:        #64748b;   /* captions, helper text, icons */
+  --hz-faint:        #94a3b8;   /* placeholders, disabled */
+  --hz-on-dark:      #ffffff;
+
+  /* Surfaces & lines */
+  --hz-bg:           #f8fafc;
+  --hz-surface:      #ffffff;
+  --hz-surface-2:    #f1f5f9;
+  --hz-border:       #e2e8f0;
+  --hz-border-strong:#cbd5e1;
+
+  /* Status */
+  --hz-success:      #15803d;  --hz-success-bg: #dcfce7;
+  --hz-warning:      #b45309;  --hz-warning-bg: #fef3c7;
+  --hz-danger:       #dc2626;  --hz-danger-bg:  #fee2e2;
+  --hz-info:         #0369a1;  --hz-info-bg:    #e0f2fe;
+
+  /* Typography */
+  --hz-font:         'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --hz-font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Type scale — deliberately larger than the old UI for easy reading. Inline styles map the old
+     sizes onto these: ≤11.5→2xs, 12–12.5→xs, 13–13.5→sm, 14–15.5→md, 16–17.5→lg, 18–21→xl, 22–27→2xl, 28–33→3xl. */
+  --hz-text-2xs:  12.5px;
+  --hz-text-xs:   14px;
+  --hz-text-sm:   15px;
+  --hz-text-md:   16.5px;
+  --hz-text-lg:   18px;
+  --hz-text-xl:   21px;
+  --hz-text-2xl:  26px;
+  --hz-text-3xl:  32px;
+  --hz-weight-regular: 400;
+  --hz-weight-medium:  500;
+  --hz-weight-semibold:600;
+  --hz-weight-bold:    700;
+  --hz-leading:   1.5;
+
+  /* Shape & depth */
+  --hz-radius-sm: 8px;
+  --hz-radius:    12px;
+  --hz-radius-lg: 16px;
+  --hz-shadow-sm: 0 1px 3px rgba(15, 23, 42, .06);
+  --hz-shadow-md: 0 8px 24px rgba(15, 23, 42, .12);
+  --hz-focus:     0 0 0 3px rgba(1, 185, 241, .35);
+}
+
+/* Base — every screen starts from the same font, text colour and background. */
+html, body {
+  font-family: var(--hz-font);
+  font-size: var(--hz-text-md);
+  color: var(--hz-ink);
+  line-height: var(--hz-leading);
+  -webkit-font-smoothing: antialiased;
+}
+body { background: var(--hz-bg); }
+h1, h2, h3, h4 { font-family: var(--hz-font-display); color: var(--hz-ink); }
+button, input, select, textarea { font-family: inherit; }
+a { color: var(--hz-link); }
+::placeholder { color: var(--hz-faint); }
+
+/* One focus ring everywhere (keyboard users). */
+:focus-visible { outline: 2px solid var(--hz-brand); outline-offset: 2px; }

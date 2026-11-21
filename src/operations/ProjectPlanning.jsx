@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import * as XLSX from "xlsx";
 import { Plus, Save, Download, X, Search, ClipboardList, ChevronDown, ListPlus, Printer, AlertTriangle, History } from "lucide-react";
 import { getProjectSchedule, saveProjectSchedule, getScheduleRevisions, getScheduleRevision, issueScheduleRevision, restoreScheduleRevision } from "./operationsApi";
@@ -15,6 +15,9 @@ const todayStr = () => {
 // Inclusive day count: a task planned 5th → 8th takes 4 days.
 const inclusiveDays = (start, finish) => Math.round((toUtc(finish) - toUtc(start)) / DAY_MS) + 1;
 const addDays = (start, n) => fromUtc(toUtc(start) + n * DAY_MS);
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Column heading for chart day i (0-based): the calendar date, e.g. ["12", "Oct"].
+const chartDate = (base, i) => { if (!base) return [String(i + 1), ""]; const [, m, d] = addDays(base, i).split("-"); return [String(Number(d)), MONTHS[Number(m) - 1]]; };
 const fmtDate = (d) => { if (!d) return ""; const [y, m, dd] = String(d).slice(0, 10).split("-"); return y && m && dd ? `${dd}/${m}/${y}` : String(d); }; // DD/MM/YYYY
 
 const EMPTY_HEADER = { woNumber: "", startDate: "", completionDate: "", spocClient: "", spocContact: "", happizoRepresentative: "", floorName: "", roomCount: "", revision: "" };
@@ -49,8 +52,8 @@ function blankRow(boqItem) {
 
 const menuItem = (disabled) => ({
   display: "flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "none", textAlign: "left",
-  padding: "9px 12px", borderRadius: 7, fontSize: 13.5, fontFamily: "inherit", fontWeight: 600,
-  color: disabled ? "#cbd5e1" : "#0f172a", cursor: disabled ? "not-allowed" : "pointer",
+  padding: "9px 12px", borderRadius: 7, fontSize: "var(--hz-text-sm)", fontFamily: "inherit", fontWeight: 600,
+  color: disabled ? "#cbd5e1" : "var(--hz-ink)", cursor: disabled ? "not-allowed" : "pointer",
 });
 
 // Status is derived from the dates, never ticked by hand:
@@ -88,23 +91,29 @@ const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 // columns with the planned period shaded. Days are counted from the project start date.
 function buildChart(header, activities) {
   const list = (activities || []).filter(a => (a.description || "").trim() || a.plannedStart);
-  const starts = list.map(a => a.plannedStart).filter(Boolean).sort();
+  const starts = list.flatMap(a => [a.plannedStart, a.actualStart]).filter(Boolean).sort();
   // Day 1 is the project start date — or the earliest planned start if some activity begins before it.
   const base = [header?.startDate, starts[0]].filter(Boolean).sort()[0] || null;
   const dayOf = (d) => (base && d ? Math.round((toUtc(d) - toUtc(base)) / DAY_MS) + 1 : null);
   const rows = list.map((a, i) => {
     const sd = dayOf(a.plannedStart), fd = dayOf(a.plannedFinish);
     const md = dayOf(a.materialDeliveryDate);
+    // Actual bar: from the actual start to the actual finish — or to today while the activity is still running.
+    const asd = dayOf(a.actualStart);
+    const afd = a.actualFinish ? dayOf(a.actualFinish) : (a.actualStart && a.actualStart <= todayStr() ? dayOf(todayStr()) : null);
     return {
+      aStart: a.actualStart ? fmtDate(a.actualStart) : "NA", aFinish: a.actualFinish ? fmtDate(a.actualFinish) : (a.actualStart ? "In progress" : "NA"),
+      aStartDay: asd, aFinishDay: afd,
       no: i + 1, description: a.description || "", remarks: a.remarks || "",
-      material: md != null ? `Day ${md}` : "NA",
+      material: a.materialDeliveryDate ? fmtDate(a.materialDeliveryDate) : "NA",
       duration: a.durationDays != null && a.durationDays !== "" ? a.durationDays : (sd != null && fd != null ? fd - sd + 1 : "NA"),
       startDay: sd, finishDay: fd,
-      start: sd != null ? `Day ${sd}` : "NA", finish: fd != null ? `Day ${fd}` : "NA",
+      // Start / Finish show the real Planned date from Project Planning (the Day N columns on the right still use the day numbers).
+      start: a.plannedStart ? fmtDate(a.plannedStart) : "NA", finish: a.plannedFinish ? fmtDate(a.plannedFinish) : "NA",
       state: rowState(a, todayStr()),
     };
   });
-  const maxFinish = Math.max(0, ...rows.map(r => r.finishDay || 0));
+  const maxFinish = Math.max(0, ...rows.map(r => Math.max(r.finishDay || 0, r.aFinishDay || 0)));
   const endDay = header?.completionDate ? dayOf(header.completionDate) : null;
   const days = Math.min(180, Math.max(14, maxFinish, endDay || 0));
   const todayDay = dayOf(todayStr());
@@ -139,21 +148,21 @@ async function goBackToRevision(projectId, no, who) {
 
 function RevisionStrip({ revisions, viewRev, setViewRev, currentSub }) {
   const btn = (on, color) => ({ flex: "none", textAlign: "left", cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "8px 14px", minWidth: 120,
-    border: `1.5px solid ${on ? color : "#e2e8f0"}`, background: on ? color : "#fff", color: on ? "#fff" : "#0f172a" });
+    border: `1.5px solid ${on ? color : "#e2e8f0"}`, background: on ? color : "#fff", color: on ? "var(--hz-on-dark)" : "var(--hz-ink)" });
   return (
     <div role="tablist" aria-label="Schedule revisions" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
       {[...revisions].sort((a, b) => a.revisionNo - b.revisionNo).map(r => {
         const on = String(viewRev) === String(r.revisionNo);
         return (
           <button key={r.revisionNo} role="tab" aria-selected={on} onClick={() => setViewRev(String(r.revisionNo))} title={r.note || "Issued revision"} style={btn(on, "#1e3a5f")}>
-            <div style={{ fontSize: 14, fontWeight: 800 }}>Rev {r.revisionNo}</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>{r.createdAt ? fmtDate(String(r.createdAt).slice(0, 10)) : ""}{r.createdBy ? ` · ${r.createdBy}` : ""}</div>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800 }}>Rev {r.revisionNo}</div>
+            <div style={{ fontSize: "var(--hz-text-xs)", opacity: 0.8 }}>{r.createdAt ? fmtDate(String(r.createdAt).slice(0, 10)) : ""}{r.createdBy ? ` · ${r.createdBy}` : ""}</div>
           </button>
         );
       })}
       <button role="tab" aria-selected={viewRev === ""} onClick={() => setViewRev("")} style={{ ...btn(viewRev === "", "#0d9488"), minWidth: 140 }}>
-        <div style={{ fontSize: 14, fontWeight: 800 }}>Current</div>
-        <div style={{ fontSize: 12, opacity: 0.85 }}>{currentSub}</div>
+        <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800 }}>Current</div>
+        <div style={{ fontSize: "var(--hz-text-xs)", opacity: 0.85 }}>{currentSub}</div>
       </button>
     </div>
   );
@@ -161,10 +170,10 @@ function RevisionStrip({ revisions, viewRev, setViewRev, currentSub }) {
 
 function RevisionBanner({ rev, onGoBack, busy }) {
   return (
-    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 14px", fontSize: 13.5, color: "#92400e", marginBottom: 10 }}>
+    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 14px", fontSize: "var(--hz-text-sm)", color: "#92400e", marginBottom: 10 }}>
       Viewing <b>Rev {rev.revisionNo}</b> — issued {rev.createdAt ? fmtDate(String(rev.createdAt).slice(0, 10)) : ""}{rev.createdBy ? ` by ${rev.createdBy}` : ""}{rev.note ? ` · “${rev.note}”` : ""}. This is a frozen copy; it doesn't change when the schedule is edited.
       <button onClick={onGoBack} disabled={busy}
-        style={{ marginLeft: 12, border: "1.5px solid #b45309", background: "#fff", color: "#b45309", borderRadius: 8, padding: "4px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        style={{ marginLeft: 12, border: "1.5px solid #b45309", background: "#fff", color: "#b45309", borderRadius: 8, padding: "4px 12px", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
         {busy ? "Restoring…" : `↩ Go back to Rev ${rev.revisionNo}`}
       </button>
     </div>
@@ -175,15 +184,15 @@ function RevisionBanner({ rev, onGoBack, busy }) {
 function RevisionPlanTable({ snap }) {
   const today = todayStr();
   const rows = (snap?.activities || []).map(fromServerRow);
-  const th = { padding: "9px 6px", fontSize: 13, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
-  const td = { padding: "7px 6px", fontSize: 13.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9", verticalAlign: "top", overflowWrap: "anywhere" };
+  const th = { padding: "9px 6px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
+  const td = { padding: "7px 6px", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", borderBottom: "1px solid #f1f5f9", verticalAlign: "top", overflowWrap: "anywhere" };
   const c = { ...td, textAlign: "center" };
   const status = (r) => { const st = rowState(r, today); return st === "DONE" || st === "LATE" ? ["Completed", STATE_COLORS[st]] : st === "OVERDUE" ? ["Not Completed", STATE_COLORS.OVERDUE] : ["", ""]; };
   const info = [["WO number", snap?.woNumber], ["Start", fmtDate(snap?.startDate)], ["Completion", fmtDate(snap?.completionDate)], ["Representative", snap?.happizoRepresentative]];
   return (
     <div>
-      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: 13.5 }}>
-        {info.map(([k, v]) => <div key={k}><span style={{ color: "#64748b" }}>{k}: </span><b style={{ color: "#0f172a" }}>{v || "—"}</b></div>)}
+      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: "var(--hz-text-sm)" }}>
+        {info.map(([k, v]) => <div key={k}><span style={{ color: "var(--hz-muted)" }}>{k}: </span><b style={{ color: "var(--hz-ink)" }}>{v || "—"}</b></div>)}
       </div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1520, tableLayout: "fixed" }}>
@@ -194,7 +203,7 @@ function RevisionPlanTable({ snap }) {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? <tr><td colSpan={16} style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 24 }}>No activities in this revision.</td></tr> : rows.map((r, i) => {
+            {rows.length === 0 ? <tr><td colSpan={16} style={{ ...td, textAlign: "center", color: "var(--hz-faint)", padding: 24 }}>No activities in this revision.</td></tr> : rows.map((r, i) => {
               const [label, color] = status(r);
               return (
                 <tr key={r.key}>
@@ -246,13 +255,17 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
     const dw = Math.max(10, Math.min(18, Math.floor(900 / days)));
     const c = "border:1px solid #bbb;padding:2px 4px;font-size:8.5px;vertical-align:middle;";
     const h = "border:1px solid #888;padding:3px 4px;font-size:8.5px;font-weight:700;background:#f2f2f2;text-align:center;";
-    const dayHead = Array.from({ length: days }, (_, i) => `<th style="${h}width:${dw}px;padding:2px 0;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);margin:auto;font-size:7.5px;">Day ${i + 1}</div></th>`).join("");
+    const dayHead = Array.from({ length: days }, (_, i) => `<th style="${h}width:${dw}px;padding:2px 0;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);margin:auto;font-size:7.5px;">${chartDate(base, i).join(" ").trim()}</div></th>`).join("");
     const bodyRows = rows.map(r => {
       const cells = Array.from({ length: days }, (_, i) => {
         const d = i + 1, on = r.startDay != null && r.finishDay != null && d >= r.startDay && d <= r.finishDay;
         return `<td style="border:1px solid #ddd;${on ? "background:#c9ccd1;" : ""}"></td>`;
       }).join("");
-      return `<tr style="height:20px"><td style="${c}text-align:center;">${r.no}</td><td style="${c}">${esc(r.description)}</td><td style="${c}text-align:center;">${esc(r.material)}</td><td style="${c}text-align:center;">${esc(r.duration)}</td><td style="${c}text-align:center;">${esc(r.start)}</td><td style="${c}text-align:center;">${esc(r.finish)}</td><td style="${c}">${esc(r.remarks)}</td>${cells}</tr>`;
+      const aCells = Array.from({ length: days }, (_, i) => {
+        const d = i + 1, on = r.aStartDay != null && r.aFinishDay != null && d >= r.aStartDay && d <= r.aFinishDay;
+        return `<td style="border:1px solid #ddd;${on ? "background:#4ade80;" : ""}"></td>`;
+      }).join("");
+      return `<tr style="height:18px"><td rowspan="2" style="${c}text-align:center;">${r.no}</td><td rowspan="2" style="${c}">${esc(r.description)}</td><td rowspan="2" style="${c}text-align:center;">${esc(r.material)}</td><td rowspan="2" style="${c}text-align:center;">${esc(r.duration)}</td><td style="${c}text-align:center;font-weight:700;">Planned</td><td style="${c}text-align:center;">${esc(r.start)}</td><td style="${c}text-align:center;">${esc(r.finish)}</td><td rowspan="2" style="${c}">${esc(r.remarks)}</td>${cells}</tr><tr style="height:18px"><td style="${c}text-align:center;font-weight:700;">Actual</td><td style="${c}text-align:center;">${esc(r.aStart)}</td><td style="${c}text-align:center;">${esc(r.aFinish)}</td>${aCells}</tr>`;
     }).join("");
     // Print only what has a value — no "Revision: —" for an unrevised schedule.
     const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : ""]]
@@ -265,11 +278,11 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
         <td style="width:25%;text-align:right;font-size:9px;line-height:1.4"><b>${esc(COMPANY.name)}</b><br/>${esc(COMPANY.addr1)}<br/>${esc(COMPANY.addr2)}</td></tr></table>
       <table style="margin-bottom:6px">${info.map(([k, v]) => `<tr><td style="font-size:9px;font-weight:700;padding:1px 14px 1px 0">${esc(k)}</td><td style="font-size:9px;padding:1px 0">${esc(v || "")}</td></tr>`).join("")}</table>
       <table style="width:100%;table-layout:fixed">
-        <colgroup><col style="width:28px"><col style="width:210px"><col style="width:62px"><col style="width:46px"><col style="width:46px"><col style="width:46px"><col style="width:150px">${Array.from({ length: days }, () => `<col style="width:${dw}px">`).join("")}</colgroup>
+        <colgroup><col style="width:28px"><col style="width:210px"><col style="width:62px"><col style="width:46px"><col style="width:44px"><col style="width:56px"><col style="width:56px"><col style="width:150px">${Array.from({ length: days }, () => `<col style="width:${dw}px">`).join("")}</colgroup>
         <thead><tr>
-          <th style="${h}">Sl.No</th><th style="${h}">Description of works</th><th style="${h}">Materials Delivery Date</th><th style="${h}">Duration</th><th style="${h}">Start date</th><th style="${h}">Finish date</th><th style="${h}">Remarks</th>${dayHead}
+          <th style="${h}">Sl.No</th><th style="${h}">Description of works</th><th style="${h}">Materials Delivery Date</th><th style="${h}">Duration</th><th style="${h}"></th><th style="${h}">Start date</th><th style="${h}">Finish date</th><th style="${h}">Remarks</th>${dayHead}
         </tr></thead>
-        <tbody><tr><td colspan="${7 + days}" style="${c}font-weight:700;background:#fafafa">Execution Phase</td></tr>${bodyRows}</tbody></table>
+        <tbody><tr><td colspan="${8 + days}" style="${c}font-weight:700;background:#fafafa">Execution Phase</td></tr>${bodyRows}</tbody></table>
       <script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`;
     const win = window.open("about:blank", "_blank", "width=1400,height=900");
     if (!win) { alert("Allow pop-ups to print the schedule."); return; }
@@ -277,21 +290,21 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
     win.document.close();
   };
 
-  if (state.loading) return <div style={{ padding: 20, color: "#64748b" }}>Loading schedule chart…</div>;
+  if (state.loading) return <div style={{ padding: 20, color: "var(--hz-muted)" }}>Loading schedule chart…</div>;
   if (state.error) return <div style={{ padding: 20, color: "#b91c1c" }}>{state.error}</div>;
 
   const colW = 30;
-  const th = { border: "1px solid #cbd5e1", background: "#f1f5f9", padding: "6px 6px", fontSize: 12.5, fontWeight: 700, color: "#334155", textAlign: "center" };
-  const td = { border: "1px solid #e2e8f0", padding: "5px 6px", fontSize: 13.5, color: "#0f172a" };
+  const th = { border: "1px solid #cbd5e1", background: "#f1f5f9", padding: "6px 6px", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", textAlign: "center" };
+  const td = { border: "1px solid #e2e8f0", padding: "5px 6px", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)" };
   const info = [["Project Name", project.name], ["Date", fmtDate(todayStr())], ["Revision", header?.revision != null && header.revision !== "" ? `Rev ${header.revision}` : "—"]];
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Schedule chart</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
-            Day-by-day view of the saved Project Planning schedule{base ? ` — Day 1 = ${fmtDate(base)}` : " — set the project start date in Project Planning"}.
+          <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Schedule chart</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>
+            Day-by-day view of the saved Project Planning schedule{base ? ` — the first date column is ${fmtDate(base)}` : " — set the project start date in Project Planning"}.
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -301,46 +314,59 @@ export function ScheduleChart({ project, user, viewRev, setViewRev }) {
       <RevisionStrip revisions={revisions} viewRev={viewRev} setViewRev={setViewRev}
         currentSub={state.header?.revision != null && state.header.revision !== "" ? `working copy · based on Rev ${state.header.revision}` : "working copy · not issued"} />
       {viewingRev && <RevisionBanner rev={viewingRev} onGoBack={() => restoreRev(viewingRev.revisionNo)} busy={restoring} />}
-      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: 13.5 }}>
-        {info.map(([k, v]) => <div key={k}><span style={{ color: "#64748b" }}>{k}: </span><b style={{ color: "#0f172a" }}>{v}</b></div>)}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 14, alignItems: "center", fontSize: 12.5, color: "#64748b" }}>
+      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 16px", marginBottom: 12, fontSize: "var(--hz-text-sm)" }}>
+        {info.map(([k, v]) => <div key={k}><span style={{ color: "var(--hz-muted)" }}>{k}: </span><b style={{ color: "var(--hz-ink)" }}>{v}</b></div>)}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 14, alignItems: "center", fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>
           <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#c9ccd1", border: "1px solid #aaa", verticalAlign: "-2px" }} /> Planned</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#4ade80", border: "1px solid #22c55e", verticalAlign: "-2px" }} /> Actual</span>
           <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#fecaca", border: "1px solid #f87171", verticalAlign: "-2px" }} /> Today</span>
         </div>
       </div>
       {!rows.length ? (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 28, textAlign: "center", color: "#64748b" }}>No activities scheduled yet — add them in the <b>Project Planning</b> tab.</div>
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 28, textAlign: "center", color: "var(--hz-muted)" }}>No activities scheduled yet — add them in the <b>Project Planning</b> tab.</div>
       ) : (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", tableLayout: "fixed", minWidth: 720 + days * colW }}>
+          <table style={{ borderCollapse: "collapse", tableLayout: "fixed", minWidth: 824 + days * colW }}>
             <colgroup>
-              <col style={{ width: 44 }} /><col style={{ width: 250 }} /><col style={{ width: 96 }} /><col style={{ width: 70 }} /><col style={{ width: 76 }} /><col style={{ width: 76 }} /><col style={{ width: 180 }} />
+              <col style={{ width: 44 }} /><col style={{ width: 250 }} /><col style={{ width: 96 }} /><col style={{ width: 70 }} /><col style={{ width: 64 }} /><col style={{ width: 96 }} /><col style={{ width: 96 }} /><col style={{ width: 180 }} />
               {Array.from({ length: days }, (_, i) => <col key={i} style={{ width: colW }} />)}
             </colgroup>
             <thead>
               <tr>
-                <th style={th}>Sl.No</th><th style={th}>Description of works</th><th style={th}>Materials Delivery Date</th><th style={th}>Duration</th><th style={th}>Start date</th><th style={th}>Finish date</th><th style={th}>Remarks</th>
+                <th style={th}>Sl.No</th><th style={th}>Description of works</th><th style={th}>Materials Delivery Date</th><th style={th}>Duration</th><th style={th}> </th><th style={th}>Start date</th><th style={th}>Finish date</th><th style={th}>Remarks</th>
                 {Array.from({ length: days }, (_, i) => (
-                  <th key={i} style={{ ...th, padding: "4px 0", fontSize: 11, background: todayDay === i + 1 ? "#fecaca" : th.background }}>Day<br />{i + 1}</th>
+                  <th key={i} style={{ ...th, padding: "4px 0", fontSize: "var(--hz-text-2xs)", background: todayDay === i + 1 ? "#fecaca" : th.background }}>{chartDate(base, i)[0]}<br />{chartDate(base, i)[1]}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={7 + days} style={{ ...td, fontWeight: 700, background: "#fafafa" }}>Execution Phase</td></tr>
+              <tr><td colSpan={8 + days} style={{ ...td, fontWeight: 700, background: "#fafafa" }}>Execution Phase</td></tr>
               {rows.map(r => (
-                <tr key={r.no}>
-                  <td style={{ ...td, textAlign: "center" }}>{r.no}</td>
-                  <td style={{ ...td, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.description}</td>
-                  <td style={{ ...td, textAlign: "center" }}>{r.material}</td>
-                  <td style={{ ...td, textAlign: "center" }}>{r.duration}</td>
-                  <td style={{ ...td, textAlign: "center" }}>{r.start}</td>
-                  <td style={{ ...td, textAlign: "center" }}>{r.finish}</td>
-                  <td style={{ ...td, fontSize: 12.5, color: "#475569", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.remarks}</td>
-                  {Array.from({ length: days }, (_, i) => {
-                    const d = i + 1, on = r.startDay != null && r.finishDay != null && d >= r.startDay && d <= r.finishDay;
-                    return <td key={i} style={{ border: "1px solid #eef2f6", background: on ? "#c9ccd1" : todayDay === d ? "#fff1f2" : undefined, padding: 0 }} />;
-                  })}
-                </tr>
+                <Fragment key={r.no}>
+                  <tr>
+                    <td rowSpan={2} style={{ ...td, textAlign: "center" }}>{r.no}</td>
+                    <td rowSpan={2} style={{ ...td, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.description}</td>
+                    <td rowSpan={2} style={{ ...td, textAlign: "center" }}>{r.material}</td>
+                    <td rowSpan={2} style={{ ...td, textAlign: "center" }}>{r.duration}</td>
+                    <td style={{ ...td, textAlign: "center", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-muted)" }}>Planned</td>
+                    <td style={{ ...td, textAlign: "center" }}>{r.start}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{r.finish}</td>
+                    <td rowSpan={2} style={{ ...td, fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.remarks}</td>
+                    {Array.from({ length: days }, (_, i) => {
+                      const d = i + 1, on = r.startDay != null && r.finishDay != null && d >= r.startDay && d <= r.finishDay;
+                      return <td key={i} style={{ border: "1px solid #eef2f6", background: on ? "#c9ccd1" : todayDay === d ? "#fff1f2" : undefined, padding: 0 }} />;
+                    })}
+                  </tr>
+                  <tr>
+                    <td style={{ ...td, textAlign: "center", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#15803d" }}>Actual</td>
+                    <td style={{ ...td, textAlign: "center" }}>{r.aStart}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{r.aFinish}</td>
+                    {Array.from({ length: days }, (_, i) => {
+                      const d = i + 1, on = r.aStartDay != null && r.aFinishDay != null && d >= r.aStartDay && d <= r.aFinishDay;
+                      return <td key={i} style={{ border: "1px solid #eef2f6", borderBottom: "1px solid #cbd5e1", background: on ? "#4ade80" : todayDay === d ? "#fff1f2" : undefined, padding: 0 }} />;
+                    })}
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -386,30 +412,30 @@ export function PlanningDashboard({ project, from, to }) {
   // Finished activities (even late ones) are done — the table lists only what is still open past its planned finish.
   const openDelayed = delayed.filter(x => rowState(x.r, today) === "OVERDUE");
 
-  if (loading) return <div style={{ padding: 20, color: "#64748b" }}>Loading project planning…</div>;
+  if (loading) return <div style={{ padding: 20, color: "var(--hz-muted)" }}>Loading project planning…</div>;
   if (error) return <div style={{ padding: 20, color: "#b91c1c" }}>{error}</div>;
 
   const card = { background: "#fff", border: "1px solid #e8edf3", borderRadius: 14, boxShadow: "0 1px 2px rgba(15,23,42,.04)" };
   const stat = (label, value, color, sub) => (
     <div style={{ ...card, padding: "16px 18px" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color, marginTop: 6, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>{sub}</div>}
+      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-muted)" }}>{label}</div>
+      <div style={{ fontSize: "var(--hz-text-3xl)", fontWeight: 800, color, marginTop: 6, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", marginTop: 6 }}>{sub}</div>}
     </div>
   );
   const legend = (label, n, color) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flex: "none" }} />
-      <span style={{ fontSize: 13, color: "#475569" }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginLeft: "auto" }}>{n}</span>
+      <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{label}</span>
+      <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", marginLeft: "auto" }}>{n}</span>
     </div>
   );
 
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Project planning</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Schedule progress and delays, from the saved project schedule</div>
+        <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Project planning</div>
+        <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>Schedule progress and delays, from the saved project schedule</div>
       </div>
       {allRows.length > 0 && (
         <div className="pp-chips" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -418,34 +444,34 @@ export function PlanningDashboard({ project, from, to }) {
             const on = statusF === k;
             return (
               <button key={k} onClick={() => setStatusF(k)}
-                style={{ border: `1.5px solid ${on ? c : "#e2e8f0"}`, background: on ? c : "#fff", color: on ? "#fff" : "#334155", borderRadius: 99, padding: "5px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ border: `1.5px solid ${on ? c : "#e2e8f0"}`, background: on ? c : "#fff", color: on ? "var(--hz-on-dark)" : "var(--hz-ink-2)", borderRadius: 99, padding: "5px 13px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                 {label} <span style={{ opacity: on ? 0.9 : 0.6, fontWeight: 700 }}>{n}</span>
               </button>
             );
           })}
           <select value={boqF} onChange={e => setBoqF(e.target.value)} aria-label="Filter by BOQ"
-            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: boqF ? "#0f172a" : "#64748b", marginLeft: 4 }}>
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff", color: boqF ? "var(--hz-ink)" : "var(--hz-muted)", marginLeft: 4 }}>
             <option value="">All BOQ items</option>
             {boqOptions.map(b => <option key={b} value={b}>BOQ {b}</option>)}
           </select>
           {(statusF !== "ALL" || boqF) && (
-            <button onClick={() => { setStatusF("ALL"); setBoqF(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Reset</button>
+            <button onClick={() => { setStatusF("ALL"); setBoqF(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>Reset</button>
           )}
         </div>
       )}
       {allRows.length === 0 ? (
-        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "#64748b" }}>
+        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "var(--hz-muted)" }}>
           No activities scheduled yet — add them in the <b>Project Planning</b> tab.
         </div>
       ) : total === 0 ? (
-        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "#64748b" }}>No activities match these filters.</div>
+        <div style={{ ...card, padding: "32px 24px", textAlign: "center", color: "var(--hz-muted)" }}>No activities match these filters.</div>
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
           <div className="pp-hero" style={{ ...card, padding: 22, display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(260px, 1.4fr)", gap: 28, alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>Overall completion</div>
-              <div className="pp-hero-num" style={{ fontSize: 52, fontWeight: 800, color: "#0f172a", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: 26, color: "#94a3b8" }}>%</span></div>
-              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{completed} of {total} activities completed</div>
+              <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-muted)" }}>Overall completion</div>
+              <div className="pp-hero-num" style={{ fontSize: 52, fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.05, marginTop: 4 }}>{pct}<span style={{ fontSize: "var(--hz-text-2xl)", color: "var(--hz-faint)" }}>%</span></div>
+              <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 4 }}>{completed} of {total} activities completed</div>
               <div style={{ height: 10, background: "#eef2f6", borderRadius: 99, overflow: "hidden", display: "flex", marginTop: 14 }}>
                 <div style={{ width: `${(completed / total) * 100}%`, background: STATE_COLORS.DONE }} />
                 <div style={{ width: `${(notCompleted / total) * 100}%`, background: STATE_COLORS.OVERDUE }} />
@@ -466,10 +492,10 @@ export function PlanningDashboard({ project, from, to }) {
 
           {openDelayed.length > 0 && (
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Not Completed activities <span style={{ fontWeight: 500, color: "#94a3b8" }}>· past planned finish</span></div>
+              <div style={{ padding: "14px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Not Completed activities <span style={{ fontWeight: 500, color: "var(--hz-faint)" }}>· past planned finish</span></div>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
+                  <thead><tr style={{ background: "#f8fafc", color: "var(--hz-muted)", textAlign: "left", fontSize: "var(--hz-text-xs)" }}>
                     <th style={{ padding: "8px 18px", fontWeight: 600 }}>BOQ</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Activity</th>
                     <th style={{ padding: "8px 10px", fontWeight: 600 }}>Planned finish</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Actual finish</th>
                     <th style={{ padding: "8px 18px", fontWeight: 600, textAlign: "right" }}>Delay</th>
@@ -479,12 +505,12 @@ export function PlanningDashboard({ project, from, to }) {
                       const st = rowState(r, today);
                       return (
                         <tr key={r.key} style={{ borderTop: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "10px 18px", fontWeight: 700, color: "#0f172a" }}>{r.boqNo || "—"}</td>
-                          <td style={{ padding: "10px", color: "#334155" }}>{r.description || "—"}</td>
-                          <td style={{ padding: "10px", color: "#475569" }}>{fmtDate(r.plannedFinish) || "—"}</td>
-                          <td style={{ padding: "10px", color: "#475569" }}>{r.actualFinish ? fmtDate(r.actualFinish) : <span style={{ color: STATE_COLORS.OVERDUE }}>Not finished</span>}</td>
+                          <td style={{ padding: "10px 18px", fontWeight: 700, color: "var(--hz-ink)" }}>{r.boqNo || "—"}</td>
+                          <td style={{ padding: "10px", color: "var(--hz-ink-2)" }}>{r.description || "—"}</td>
+                          <td style={{ padding: "10px", color: "var(--hz-ink-2)" }}>{fmtDate(r.plannedFinish) || "—"}</td>
+                          <td style={{ padding: "10px", color: "var(--hz-ink-2)" }}>{r.actualFinish ? fmtDate(r.actualFinish) : <span style={{ color: STATE_COLORS.OVERDUE }}>Not finished</span>}</td>
                           <td style={{ padding: "10px 18px", textAlign: "right" }}>
-                            <span style={{ fontWeight: 700, fontSize: 12, color: STATE_COLORS[st], background: st === "OVERDUE" ? "#fef2f2" : "#fff7ed", padding: "3px 9px", borderRadius: 99 }}>
+                            <span style={{ fontWeight: 700, fontSize: "var(--hz-text-xs)", color: STATE_COLORS[st], background: st === "OVERDUE" ? "#fef2f2" : "#fff7ed", padding: "3px 9px", borderRadius: 99 }}>
                               {dayLabel(d)} {st === "OVERDUE" ? "overdue" : "late"}
                             </span>
                           </td>
@@ -862,8 +888,8 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
     XLSX.writeFile(wb, `${project.name.replace(/[^\w\- ]+/g, "")} - Schedule.xlsx`);
   };
 
-  if (loading) return <div style={{ color: "#374151", fontSize: 14 }}>Loading schedule…</div>;
-  if (loadError) return <div style={{ color: "#b91c1c", fontSize: 14 }}>{loadError}</div>;
+  if (loading) return <div style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>Loading schedule…</div>;
+  if (loadError) return <div style={{ color: "#b91c1c", fontSize: "var(--hz-text-md)" }}>{loadError}</div>;
 
   const revStrip = (
     <RevisionStrip revisions={revisions} viewRev={viewRev} setViewRev={setViewRev}
@@ -880,7 +906,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             <RevisionBanner rev={viewingRev} onGoBack={() => restoreRev(viewingRev.revisionNo)} busy={restoringRev} />
             <RevisionPlanTable snap={revSnap} />
           </>
-        ) : <div style={{ padding: 20, color: "#64748b" }}>Loading revision…</div>}
+        ) : <div style={{ padding: 20, color: "var(--hz-muted)" }}>Loading revision…</div>}
       </div>
     );
   }
@@ -896,7 +922,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <Field label="Happizo representative"><input style={inpSt} value={header.happizoRepresentative} onChange={e => setH("happizoRepresentative", e.target.value)} /></Field>
 
           <Field label="Revision">
-            <div style={{ ...roSt, fontWeight: 700, color: header.revision === "" ? "#94a3b8" : "#0f172a" }}>
+            <div style={{ ...roSt, fontWeight: 700, color: header.revision === "" ? "var(--hz-faint)" : "var(--hz-ink)" }}>
               {header.revision === "" ? "Not issued yet" : `Rev ${header.revision}`}
             </div>
           </Field>
@@ -904,7 +930,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <Field label="Project start date"><input type="date" style={inpSt} value={header.startDate} onChange={e => setH("startDate", e.target.value)} /></Field>
           <Field label="Project completion date"><input type="date" style={inpSt} value={header.completionDate} min={header.startDate || undefined} onChange={e => setH("completionDate", e.target.value)} /></Field>
           <Field label="No of days remaining">
-            <div style={{ ...roSt, fontWeight: 700, color: daysRemaining == null ? "#94a3b8" : daysRemaining < 0 ? "#b91c1c" : daysRemaining <= 7 ? "#b45309" : "#0f172a" }}>
+            <div style={{ ...roSt, fontWeight: 700, color: daysRemaining == null ? "var(--hz-faint)" : daysRemaining < 0 ? "#b91c1c" : daysRemaining <= 7 ? "#b45309" : "var(--hz-ink)" }}>
               {daysRemaining == null ? "Set a completion date"
                 : daysRemaining < 0 ? `Overdue by ${-daysRemaining} day${daysRemaining === -1 ? "" : "s"}`
                 : `${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`}
@@ -940,7 +966,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
               border: `1.5px solid ${missingBoq.length ? "#fcd34d" : "#bbf7d0"}`, background: missingBoq.length ? "#fffbeb" : "#f0fdf4", color: missingBoq.length ? "#d97706" : "#15803d" }}>
             <AlertTriangle size={18} />
             {missingBoq.length > 0 && (
-              <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{missingBoq.length}</span>
+              <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 99, background: "#dc2626", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-2xs)", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{missingBoq.length}</span>
             )}
           </button>
         )}
@@ -956,19 +982,19 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <Download size={15} /> Export Excel
         </button>
         <div title="Sum of days late on finished activities plus days overdue on open ones"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap",
-            background: totalDelay > 0 ? "#fef2f2" : "#f0fdf4", border: `1.5px solid ${totalDelay > 0 ? "#fecaca" : "#bbf7d0"}`, color: totalDelay > 0 ? "#dc2626" : "#15803d" }}>
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, fontSize: "var(--hz-text-sm)", fontWeight: 700, whiteSpace: "nowrap",
+            background: totalDelay > 0 ? "#fef2f2" : "#f0fdf4", border: `1.5px solid ${totalDelay > 0 ? "#fecaca" : "#bbf7d0"}`, color: totalDelay > 0 ? "var(--hz-danger)" : "#15803d" }}>
           Overall delayed days: {totalDelay > 0 ? dayLabel(totalDelay) : "No delay"}
-          {delayedCount > 0 && <span style={{ fontWeight: 500, fontSize: 12, color: "#64748b" }}>· {delayedCount} activit{delayedCount === 1 ? "y" : "ies"}</span>}
+          {delayedCount > 0 && <span style={{ fontWeight: 500, fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>· {delayedCount} activit{delayedCount === 1 ? "y" : "ies"}</span>}
         </div>
         {rows.length > 0 && (<>
         <div style={{ position: "relative" }}>
-          <Search size={14} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+          <Search size={14} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--hz-faint)" }} />
           <input value={fText} onChange={e => setFText(e.target.value)} placeholder="Search activity or remarks"
-            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px 7px 29px", fontSize: 13, fontFamily: "inherit", width: 230 }} />
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px 7px 29px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", width: 230 }} />
         </div>
         <select value={fStatus} onChange={e => setFStatus(e.target.value)} aria-label="Filter by status"
-          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
           <option value="ALL">All statuses</option>
           <option value="DONE">Completed on time</option>
           <option value="LATE">Completed late</option>
@@ -976,19 +1002,19 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
           <option value="PENDING">Pending</option>
         </select>
         <select value={fBoq} onChange={e => setFBoq(e.target.value)} aria-label="Filter by BOQ"
-          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+          style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
           <option value="">All BOQ items</option>
           {[...new Set(rows.map(r => r.boqNo).filter(Boolean))].map(b => <option key={b} value={b}>BOQ {b}</option>)}
         </select>
         {filtering && (
           <>
-            <span style={{ fontSize: 12.5, color: "#64748b" }}>Showing {visibleCount} of {rows.length}</span>
-            <button onClick={() => { setFStatus("ALL"); setFBoq(""); setFText(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear filters</button>
+            <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>Showing {visibleCount} of {rows.length}</span>
+            <button onClick={() => { setFStatus("ALL"); setFBoq(""); setFText(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>Clear filters</button>
           </>
         )}
         </>)}
         <div className="pp-spacer" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12.5, color: saveState === "error" ? "#b91c1c" : dirty ? "#b45309" : "#64748b" }}>
+          <span style={{ fontSize: "var(--hz-text-xs)", color: saveState === "error" ? "#b91c1c" : dirty ? "#b45309" : "var(--hz-muted)" }}>
             {saveState === "saving" ? "Saving…"
               : saveState === "error" ? saveError
               : dirty ? "Unsaved changes"
@@ -1003,17 +1029,17 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
       </div>
 
       {!hasBoq && !boqLoading && (
-        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#92400e", marginBottom: 12 }}>
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 14px", fontSize: "var(--hz-text-sm)", color: "#92400e", marginBottom: 12 }}>
           This project has no BOQ yet, so activities can't be linked to BOQ items.{" "}
-          <button onClick={onGoToBoq} style={{ border: "none", background: "none", padding: 0, color: "#0d9488", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5 }}>Upload it in BOQ</button>
+          <button onClick={onGoToBoq} style={{ border: "none", background: "none", padding: 0, color: "#0d9488", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-sm)" }}>Upload it in BOQ</button>
         </div>
       )}
 
       {/* ── Schedule table ── */}
       {rows.length === 0 ? (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "40px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>No activities scheduled yet</div>
-          <div style={{ fontSize: 13.5, color: "#64748b", marginTop: 4 }}>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)" }}>No activities scheduled yet</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 4 }}>
             Use <b>Add Activities → Add from BOQ</b> to pick BOQ items, then add as many activities under each item as you need.
           </div>
         </div>
@@ -1057,18 +1083,18 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                     const datesBad = r.plannedStart && r.plannedFinish && r.plannedFinish < r.plannedStart;
                     return (
                       <tr key={r.key} style={{ background: "#fff" }}>
-                        <td style={{ ...td, color: "#475569", fontWeight: 600 }}>
+                        <td style={{ ...td, color: "var(--hz-ink-2)", fontWeight: 600 }}>
                           {boqLabelsOf(r.boqNo).length > 1 && (
-                            <div title={`Clubbed BOQ items: ${r.boqNo}`} style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.25, marginBottom: 3, overflowWrap: "anywhere", color: "#0f766e" }}>{r.boqNo}</div>
+                            <div title={`Clubbed BOQ items: ${r.boqNo}`} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, lineHeight: 1.25, marginBottom: 3, overflowWrap: "anywhere", color: "#0f766e" }}>{r.boqNo}</div>
                           )}
                           {hasBoq ? (
-                            <select style={{ ...cellInp, padding: "5px 0", color: r.boqNo ? "#0f172a" : "#94a3b8" }} value={r.boqNo || ""}
+                            <select style={{ ...cellInp, padding: "5px 0", color: r.boqNo ? "var(--hz-ink)" : "var(--hz-faint)" }} value={r.boqNo || ""}
                               title="Link this activity to a BOQ item"
                               onChange={e => linkRowToBoq(r.key, e.target.value)}>
                               <option value="">—</option>
                               {r.boqNo && !boqByLabel.has(r.boqNo) && <option value={r.boqNo}>{boqLabelsOf(r.boqNo).length > 1 ? `Clubbed (${boqLabelsOf(r.boqNo).length})` : r.boqNo}</option>}
                               {(boqItems || []).filter(b => b.label).map(b => (
-                                <option key={b.label} value={b.label} style={{ color: "#0f172a" }}>{b.label}</option>
+                                <option key={b.label} value={b.label} style={{ color: "var(--hz-ink)" }}>{b.label}</option>
                               ))}
                             </select>
                           ) : (r.boqNo || "—")}
@@ -1076,7 +1102,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={{ ...td, textAlign: "center" }}>{serialByKey[r.key]}</td>
                         <td style={td}><AutoText value={r.description} placeholder="e.g. Gypsum framework" onChange={v => updateRow(r.key, "description", v)} /></td>
                         <td style={td}>
-                          <select style={{ ...cellInp, color: r.dependency || isOtherDep(r) ? "#0f172a" : "#94a3b8" }} value={isOtherDep(r) ? OTHERS : (r.dependency || "")}
+                          <select style={{ ...cellInp, color: r.dependency || isOtherDep(r) ? "var(--hz-ink)" : "var(--hz-faint)" }} value={isOtherDep(r) ? OTHERS : (r.dependency || "")}
                             onChange={e => {
                               const v = e.target.value;
                               setRows(rs => rs.map(x => x.key !== r.key ? x : v === OTHERS
@@ -1085,10 +1111,10 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                               touch();
                             }}>
                             <option value="">None</option>
-                            {DEPENDENCIES.map(d => <option key={d} value={d} style={{ color: "#0f172a" }}>{d}</option>)}
+                            {DEPENDENCIES.map(d => <option key={d} value={d} style={{ color: "var(--hz-ink)" }}>{d}</option>)}
                             {/* A custom "Others" value belongs to THIS row only — it is never added to the shared list. */}
-                            {r.dependency && !DEPENDENCIES.includes(r.dependency) && !r.depOtherMode && <option value={r.dependency} style={{ color: "#0f172a" }}>{r.dependency}</option>}
-                            <option value={OTHERS} style={{ color: "#0f172a" }}>Others…</option>
+                            {r.dependency && !DEPENDENCIES.includes(r.dependency) && !r.depOtherMode && <option value={r.dependency} style={{ color: "var(--hz-ink)" }}>{r.dependency}</option>}
+                            <option value={OTHERS} style={{ color: "var(--hz-ink)" }}>Others…</option>
                           </select>
                           {isOtherDep(r) && (
                             <AutoText style={{ marginTop: 4 }} value={r.dependency} placeholder="Enter dependency" maxLength={100} onChange={v => updateRow(r.key, "dependency", v)}
@@ -1110,14 +1136,14 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
                         <td style={td}><DateCell value={r.actualFinish} min={r.actualStart} onChange={v => updateRow(r.key, "actualFinish", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
                           {state === "DONE" || state === "LATE" ? (
-                            <span style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25, display: "inline-block", color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
+                            <span style={{ fontWeight: 700, fontSize: "var(--hz-text-sm)", lineHeight: 1.25, display: "inline-block", color: STATE_COLORS[state] }} title={state === "LATE" ? "Finished after the planned finish date" : "Finished on or before the planned finish date"}>Completed</span>
                           ) : (
                             <button onClick={() => updateRow(r.key, "actualFinish", todayStr())} title="Set actual finish to today"
-                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: 12.5, padding: "3px 6px", cursor: "pointer", color: "#475569", fontFamily: "inherit" }}>Mark done</button>
+                              style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, fontSize: "var(--hz-text-xs)", padding: "3px 6px", cursor: "pointer", color: "var(--hz-ink-2)", fontFamily: "inherit" }}>Mark done</button>
                           )}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>
-                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25, display: "inline-block", color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
+                          {state === "OVERDUE" && <span style={{ fontWeight: 700, fontSize: "var(--hz-text-sm)", lineHeight: 1.25, display: "inline-block", color: STATE_COLORS.OVERDUE }} title="Planned finish date has passed without an actual finish">Not Completed</span>}
                         </td>
                         <td style={td}><AutoText value={r.remarks} placeholder="Remarks" onChange={v => updateRow(r.key, "remarks", v)} /></td>
                         <td style={{ ...td, textAlign: "center" }}>
@@ -1148,7 +1174,7 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         return (
           <div role="menu" onMouseDown={e => e.stopPropagation()}
             style={{ position: "fixed", left: insertMenu.x, top: insertMenu.y, zIndex: 60, width: 250, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 8px 24px rgba(15,23,42,.14)", padding: 4 }}>
-            <div style={{ padding: "6px 12px 4px", fontSize: 11.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Insert before Activity No {serialByKey[insertMenu.key]}</div>
+            <div style={{ padding: "6px 12px 4px", fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "var(--hz-muted)", textTransform: "uppercase" }}>Insert before Activity No {serialByKey[insertMenu.key]}</div>
             <button role="menuitem" onClick={() => pick(() => insertBefore(insertMenu.key, [null]))} style={menuItem(false)}>
               <Plus size={15} /> Activity without BOQ item
             </button>
@@ -1168,15 +1194,15 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
         <div onClick={() => !revBusy && setRevModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Issue schedule revision" className="pp-modal"
             style={{ background: "#fff", borderRadius: 14, width: 480, maxWidth: "100%", padding: 22, boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Issue {nextRevLabel}</div>
-            <div style={{ fontSize: 13.5, color: "#64748b", margin: "4px 0 14px" }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Issue {nextRevLabel}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", margin: "4px 0 14px" }}>
               Freezes the schedule as currently saved. You can open any issued revision later from the Schedule Chart tab, exactly as it was.
             </div>
-            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{latestRev == null ? "Note (optional)" : "Reason for the revision *"}</label>
+            <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)" }}>{latestRev == null ? "Note (optional)" : "Reason for the revision *"}</label>
             <textarea value={revNote} onChange={e => setRevNote(e.target.value)} rows={3} maxLength={500} autoFocus
               placeholder={latestRev == null ? "e.g. Baseline schedule issued to client" : "e.g. Tile delivery delayed — toilet works moved by 5 days"}
-              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 14.5, fontFamily: "inherit", resize: "vertical" }} />
-            {revError && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginTop: 10 }}>{revError}</div>}
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical" }} />
+            {revError && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", marginTop: 10 }}>{revError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
               <button onClick={() => setRevModal(false)} disabled={revBusy} style={btn("secondary")}>Cancel</button>
               <button onClick={issueRevision} disabled={revBusy || (latestRev != null && !revNote.trim())} style={btn(revBusy || (latestRev != null && !revNote.trim()) ? "disabled" : "primary")}>
@@ -1193,24 +1219,24 @@ export default function ProjectPlanning({ project, user, boqItems, boqLoading, h
             style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
             <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
               <AlertTriangle size={18} color={missingBoq.length ? "#d97706" : "#15803d"} />
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>BOQ items not planned <span style={{ color: "#94a3b8", fontWeight: 500 }}>· {missingBoq.length} of {boqLabels.length}</span></div>
-              <button onClick={() => setMissingOpen(false)} aria-label="Close" style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: "#64748b" }}><X size={18} /></button>
+              <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)" }}>BOQ items not planned <span style={{ color: "var(--hz-faint)", fontWeight: 500 }}>· {missingBoq.length} of {boqLabels.length}</span></div>
+              <button onClick={() => setMissingOpen(false)} aria-label="Close" style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: "var(--hz-muted)" }}><X size={18} /></button>
             </div>
             <div style={{ overflowY: "auto", flex: 1 }}>
               {missingBoq.length === 0 ? (
                 <div style={{ padding: 28, textAlign: "center", color: "#15803d", fontWeight: 600 }}>Every BOQ item has at least one scheduled activity.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                  <thead><tr style={{ background: "#f8fafc", color: "#64748b", textAlign: "left", fontSize: 12.5 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-md)" }}>
+                  <thead><tr style={{ background: "#f8fafc", color: "var(--hz-muted)", textAlign: "left", fontSize: "var(--hz-text-xs)" }}>
                     <th style={{ padding: "8px 18px", fontWeight: 600, width: 90 }}>BOQ No</th><th style={{ padding: "8px 10px", fontWeight: 600 }}>Description</th>
                     <th style={{ padding: "8px 18px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>Qty</th>
                   </tr></thead>
                   <tbody>
                     {missingBoq.map(b => (
                       <tr key={b.label} style={{ borderTop: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "9px 18px", fontWeight: 700, color: "#0f172a" }}>{b.label}</td>
-                        <td style={{ padding: "9px 10px", color: "#334155", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{firstLine(b.description) || "—"}</td>
-                        <td style={{ padding: "9px 18px", textAlign: "right", color: "#475569", whiteSpace: "nowrap" }}>{b.qty != null ? `${b.qty} ${b.unit || ""}` : (b.unit || "—")}</td>
+                        <td style={{ padding: "9px 18px", fontWeight: 700, color: "var(--hz-ink)" }}>{b.label}</td>
+                        <td style={{ padding: "9px 10px", color: "var(--hz-ink-2)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{firstLine(b.description) || "—"}</td>
+                        <td style={{ padding: "9px 18px", textAlign: "right", color: "var(--hz-ink-2)", whiteSpace: "nowrap" }}>{b.qty != null ? `${b.qty} ${b.unit || ""}` : (b.unit || "—")}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1264,27 +1290,27 @@ function BoqPicker({ items, countByLabel, onClose, onAdd }) {
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Add activities from BOQ" className="pp-modal"
         style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
         <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Add activities from BOQ</div>
-          <button onClick={onClose} aria-label="Close" style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: "#64748b" }}><X size={18} /></button>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)" }}>Add activities from BOQ</div>
+          <button onClick={onClose} aria-label="Close" style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: "var(--hz-muted)" }}><X size={18} /></button>
         </div>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid #f1f5f9" }}>
           <div style={{ position: "relative" }}>
-            <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "#94a3b8" }} />
+            <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--hz-faint)" }} />
             <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by BOQ No or description…"
               style={{ ...inpSt, paddingLeft: 32 }} />
           </div>
-          <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 6 }}>Pick one item for its own activity row, or several to club them into a single schedule entry (e.g. “2, 2a, 2b”). You can add more rows afterwards.</div>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 6 }}>Pick one item for its own activity row, or several to club them into a single schedule entry (e.g. “2, 2a, 2b”). You can add more rows afterwards.</div>
         </div>
         <div style={{ overflowY: "auto", flex: 1 }}>
           {shown.length === 0 ? (
-            <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 13.5 }}>No BOQ items match.</div>
+            <div style={{ padding: 24, textAlign: "center", color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)" }}>No BOQ items match.</div>
           ) : shown.map(i => (
             <label key={i.label} style={{ display: "flex", gap: 10, padding: "10px 18px", borderBottom: "1px solid #f1f5f9", cursor: "pointer", background: picked[i.label] ? "#f0fdfa" : undefined }}>
               <input type="checkbox" checked={!!picked[i.label]} onChange={e => setPicked(p => ({ ...p, [i.label]: e.target.checked }))} style={{ marginTop: 3, ...chk }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f766e", minWidth: 44 }}>{i.label}</span>
-              <span style={{ fontSize: 13, color: "#0f172a", flex: 1, whiteSpace: "pre-line", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{i.description || "—"}</span>
+              <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#0f766e", minWidth: 44 }}>{i.label}</span>
+              <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", flex: 1, whiteSpace: "pre-line", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{i.description || "—"}</span>
               {countByLabel[i.label] > 0 && (
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: "#0f766e", background: "#ccfbf1", borderRadius: 99, padding: "2px 8px", height: "fit-content", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "#0f766e", background: "#ccfbf1", borderRadius: 99, padding: "2px 8px", height: "fit-content", whiteSpace: "nowrap" }}>
                   {countByLabel[i.label]} scheduled
                 </span>
               )}
@@ -1305,7 +1331,7 @@ function BoqPicker({ items, countByLabel, onClose, onAdd }) {
 function Field({ label, children }) {
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 5 }}>{label}</div>
+      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 5 }}>{label}</div>
       {children}
     </div>
   );
@@ -1317,8 +1343,8 @@ function DateCell({ value, onChange, min, warn, title }) {
   const ref = useRef(null);
   return (
     <div title={title} style={{ position: "relative", minHeight: 36, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 2px", boxSizing: "border-box", borderRadius: 6, whiteSpace: "nowrap",
-      border: `1px solid ${warn ? "#fca5a5" : "#e2e8f0"}`, background: warn ? "#fef2f2" : "#fff", color: warn ? "#b91c1c" : value ? "#0f172a" : "#94a3b8",
-      fontSize: 12.5, lineHeight: 1.3 }}>
+      border: `1px solid ${warn ? "#fca5a5" : "#e2e8f0"}`, background: warn ? "#fef2f2" : "#fff", color: warn ? "#b91c1c" : value ? "var(--hz-ink)" : "var(--hz-faint)",
+      fontSize: "var(--hz-text-xs)", lineHeight: 1.3 }}>
       {value ? fmtDate(value) : "—"}
       <input ref={ref} type="date" value={value || ""} min={min || undefined} aria-label="Date" onChange={e => onChange(e.target.value)}
         onClick={() => { try { ref.current?.showPicker?.(); } catch {} }}
@@ -1331,7 +1357,7 @@ function DateCell({ value, onChange, min, warn, title }) {
 // Pure CSS: a hidden mirror of the text sizes the grid cell and the textarea fills it, so there is
 // no height to measure in JS.
 function AutoText({ value, onChange, onBlur, placeholder, maxLength, style }) {
-  const box = { ...cellInp, gridArea: "1 / 1", lineHeight: 1.35, fontSize: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere", minHeight: 38 };
+  const box = { ...cellInp, gridArea: "1 / 1", lineHeight: 1.35, fontSize: "var(--hz-text-lg)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", minHeight: 38 };
   return (
     <div style={{ display: "grid", ...style }}>
       <div aria-hidden style={{ ...box, visibility: "hidden", border: "1px solid transparent" }}>{(value || placeholder || "") + " "}</div>
@@ -1342,18 +1368,18 @@ function AutoText({ value, onChange, onBlur, placeholder, maxLength, style }) {
 }
 
 // ── Styles ──
-const inpSt = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
-const roSt = { padding: "8px 0", fontSize: 14, color: "#0f172a" };
-const th = { padding: "10px 4px", fontSize: 15.5, fontWeight: 700, color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
+const inpSt = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#fff", color: "var(--hz-ink)" };
+const roSt = { padding: "8px 0", fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" };
+const th = { padding: "10px 4px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink-2)", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center", whiteSpace: "normal" };
 const th2 = { ...th, fontWeight: 600, background: "#f1f5f9" };
-const td = { padding: "6px 4px", borderBottom: "1px solid #f1f5f9", fontSize: 16, color: "#0f172a", verticalAlign: "middle" };
-const cellInp = { width: "100%", minWidth: 0, boxSizing: "border-box", padding: "5px 7px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 16, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
+const td = { padding: "6px 4px", borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", verticalAlign: "middle" };
+const cellInp = { width: "100%", minWidth: 0, boxSizing: "border-box", padding: "5px 7px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", background: "#fff", color: "var(--hz-ink)" };
 const chk = { width: 16, height: 16, accentColor: "#0d9488", cursor: "pointer" };
 
 function btn(kind) {
-  const base = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "8px 14px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", border: "1.5px solid transparent", whiteSpace: "nowrap" };
-  if (kind === "primary") return { ...base, background: "#0d9488", color: "#fff" };
-  if (kind === "secondary") return { ...base, background: "#fff", color: "#0f172a", borderColor: "#e2e8f0" };
-  if (kind === "link") return { ...base, padding: 0, border: "none", background: "none", color: "#0d9488", fontSize: 13 };
-  return { ...base, background: "#f1f5f9", color: "#94a3b8", borderColor: "#e2e8f0", cursor: "not-allowed" };
+  const base = { display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "8px 14px", fontSize: "var(--hz-text-sm)", fontWeight: 600, fontFamily: "inherit", cursor: "pointer", border: "1.5px solid transparent", whiteSpace: "nowrap" };
+  if (kind === "primary") return { ...base, background: "#0d9488", color: "var(--hz-on-dark)" };
+  if (kind === "secondary") return { ...base, background: "#fff", color: "var(--hz-ink)", borderColor: "#e2e8f0" };
+  if (kind === "link") return { ...base, padding: 0, border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-sm)" };
+  return { ...base, background: "#f1f5f9", color: "var(--hz-faint)", borderColor: "#e2e8f0", cursor: "not-allowed" };
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban, GanttChartSquare } from "lucide-react";
+import { Check, Upload, FileSpreadsheet, TrendingUp, ClipboardList, ChevronLeft, Search, CalendarClock, FolderKanban, GanttChartSquare } from "lucide-react";
 import {
   getEligibleForAccountsProjects,
   uploadDocument, saveProjectBoq, saveAdditionalItems, fetchStoredFile,
@@ -9,7 +9,7 @@ import {
 import ProjectPlanning, { PlanningDashboard, ScheduleChart } from "./ProjectPlanning";
 import NavBar from "../NavBar";
 import { getRecentEntries } from "./operationsApi";
-import { DeleteBtn } from "../ActionButtons";
+import { DeleteBtn, ApproveBtn, RejectBtn } from "../ActionButtons";
 
 
 // Mobile layout for the whole Operations module (landing, project tabs, BOQ, planning, dashboard).
@@ -243,14 +243,20 @@ export async function loadBoqRequested(projectName) {
   return computeBoqRequested(d.content || []);
 }
 
+// "Additional Items" raised by an Engineer / Costing-Planning / Billing engineer need Operations Head approval before they
+// add to a BOQ item's quantity or can go into a PR. Items from anyone else, and older items with no status, count as approved.
+const AI_RAISER_ROLES = ["ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"];
+const aiStatus = (it) => it.approvalStatus || "APPROVED";
+
 export default function OperationsSection({ user, onCreateFromBOQ }) {
   const [dashFrom, setDashFrom] = useState("");
   const [dashTo, setDashTo] = useState("");
-  const dashInp = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: 13, fontFamily: "inherit", background: "#fff" };
+  const dashInp = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 9px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" };
   const [requested, setRequested] = useState({});   // BOQ label -> qty already requested in PRs
   const [reqQty, setReqQty] = useState({});            // BOQ row index -> qty typed for the PR being built
   const [scheduleRev, setScheduleRev] = useState(""); // revision being viewed in Project Planning / Schedule Chart ("" = current)
   const [tab, setTab] = useState("dashboard"); // "dashboard" | "boq" | "planning"
+  const [planView, setPlanView] = useState("table"); // inside Project Planning: "table" | "chart" (Schedule Chart)
 
   // ── Project picker ──
   const [projects, setProjects] = useState([]);
@@ -412,7 +418,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // Quantity available for a BOQ item before the PR being built: its BOQ quantity PLUS any "Additional Items" linked to it
   // (same unit), minus everything already requested in earlier PRs. null = no numeric BOQ quantity, so nothing to cap.
   const extraFor = (g) => additionalItems
-    .filter(it => it.category === "AdditionalItems" && it.linkedBoqLabel === g.label && Number.isFinite(Number(it.qty)) && Number(it.qty) > 0
+    .filter(it => it.category === "AdditionalItems" && aiStatus(it) === "APPROVED" && it.linkedBoqLabel === g.label && Number.isFinite(Number(it.qty)) && Number(it.qty) > 0
       && (!it.unit || !g.unit || String(it.unit).trim().toLowerCase() === String(g.unit).trim().toLowerCase()))
     .reduce((t, it) => roundQty(t + Number(it.qty)), 0);
   const balanceOf = (g) => (g?.qty == null || !Number.isFinite(Number(g.qty)) ? null : Math.max(0, roundQty(Number(g.qty) + extraFor(g) - (requested[g.label] || 0))));
@@ -500,7 +506,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   }, [groups, additionalItems]);
 
   const selectedAdditional = useMemo(
-    () => additionalItems.filter(it => additionalChecked[it.id]),
+    () => additionalItems.filter(it => additionalChecked[it.id] && (it.category !== "AdditionalItems" || aiStatus(it) === "APPROVED")),
     [additionalItems, additionalChecked]
   );
 
@@ -596,9 +602,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // "Additional Items" — each row must reference an existing BOQ line item
   // (by its qualified label, e.g. "8c"); the row is refused without one.
   const addLinkedAdditionalItem = () => {
-    const description = newAdditionalItem.description.trim();
     const linkedBoqLabel = newAdditionalItem.linkedBoqLabel;
-    if (!description || !linkedBoqLabel) return;
+    if (!linkedBoqLabel) return;
+    // No description is typed for an Additional Item — it carries the linked BOQ item's own first line, so PR text still reads sensibly.
+    const description = String((groups.find(g => g.label === linkedBoqLabel)?.description) || "").split("\n").map(x => x.trim()).find(Boolean) || "";
     const item = {
       id: `AdditionalItems-${Date.now()}-${additionalIdCounter.current++}`,
       category: "AdditionalItems",
@@ -607,9 +614,22 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       qty: newAdditionalItem.qty.trim(),
       unit: newAdditionalItem.unit.trim(),
       remarks: (newAdditionalItem.remarks || "").trim(),
+      approvalStatus: AI_RAISER_ROLES.includes(user?.role) ? "PENDING" : "APPROVED",
+      raisedBy: user?.fullName || user?.username || user?.role || "",
     };
     persistAdditionalItems([...additionalItems, item]);
     setNewAdditionalItem({ linkedBoqLabel: "", description: "", qty: "", unit: "", remarks: "" });
+  };
+
+  // Operations Head decision on an Additional Item. Revoking needs a remark; approving clears it.
+  const decideAdditionalItem = (id, status, remark = "") => {
+    updateAdditionalItem(id, {
+      approvalStatus: status,
+      approvalRemark: status === "REVOKED" ? remark.trim() : "",
+      decidedBy: user?.fullName || user?.username || "OH",
+      decidedAt: new Date().toISOString(),
+    });
+    if (status !== "APPROVED") setAdditionalChecked(c => ({ ...c, [id]: false }));
   };
 
   const toggleAdditionalChecked = (id) => {
@@ -619,7 +639,7 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   const toggleAllAdditional = (category, checkAll) => {
     setAdditionalChecked(c => {
       const next = { ...c };
-      (additionalItemsByCategory[category] || []).forEach(it => { next[it.id] = checkAll; });
+      (additionalItemsByCategory[category] || []).forEach(it => { next[it.id] = checkAll && (category !== "AdditionalItems" || aiStatus(it) === "APPROVED"); });
       return next;
     });
   };
@@ -750,14 +770,14 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // ── Project view: BOQ / Project Planning / Dashboard ──
   return (
     <div className="ops-shell" style={shellStyle}><style>{OPS_MOBILE_CSS}</style>
-      <button onClick={closeProject} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
+      <button onClick={closeProject} style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "#0d9488", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit", marginBottom: 10, padding: 0 }}>
         <ChevronLeft size={15} /> All projects
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <span className="ops-title" style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{selectedProject.name}</span>
+        <span className="ops-title" style={{ fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)" }}>{selectedProject.name}</span>
         <TypeBadge type={selectedProject.projectType} />
-        <span style={{ fontSize: 13.5, color: "#374151" }}>
+        <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
           {[selectedProject.location, selectedProject.clientName].filter(Boolean).join(" · ") || "—"}
         </span>
       </div>
@@ -767,11 +787,12 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
         { key: "dashboard", label: "Dashboard", icon: TrendingUp },
         { key: "boq", label: "BOQ", icon: ClipboardList },
         { key: "planning", label: "Project Planning", icon: CalendarClock },
-        { key: "chart", label: "Schedule Chart", icon: GanttChartSquare },
       ]} />
 
       {tab === "boq" && (
         <BOQWorkspace
+          user={user}
+          onDecideAdditional={decideAdditionalItem}
           fileName={fileName}
           parseError={parseError}
           onFile={handleFile}
@@ -819,7 +840,20 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
       )}
 
       {/* Kept mounted while other tabs are open so unsaved schedule edits survive a tab switch. */}
-      <div style={{ display: tab === "planning" ? "block" : "none" }}>
+      {tab === "planning" && (
+        <div role="tablist" aria-label="Project planning view" style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, marginBottom: 14 }}>
+          {[["table", "Schedule", CalendarClock], ["chart", "Schedule Chart", GanttChartSquare]].map(([k, l, Icon]) => (
+            <button key={k} role="tab" aria-selected={planView === k} onClick={() => setPlanView(k)}
+              style={{ border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", display: "inline-flex", alignItems: "center", gap: 7,
+                background: planView === k ? "#fff" : "transparent", color: planView === k ? "var(--hz-primary)" : "var(--hz-ink-2)",
+                fontWeight: planView === k ? 700 : 500, boxShadow: planView === k ? "0 1px 3px rgba(15,23,42,.18)" : "none" }}>
+              <Icon size={16} /> {l}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: tab === "planning" && planView === "table" ? "block" : "none" }}>
         <ProjectPlanning
           key={selectedProject.id}
           project={selectedProject}
@@ -834,19 +868,19 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
         />
       </div>
 
-      {tab === "chart" && <ScheduleChart key={`chart-${selectedProject.id}`} project={selectedProject} user={user} viewRev={scheduleRev} setViewRev={setScheduleRev} />}
+      {tab === "planning" && planView === "chart" && <ScheduleChart key={`chart-${selectedProject.id}`} project={selectedProject} user={user} viewRev={scheduleRev} setViewRev={setScheduleRev} />}
 
       {tab === "dashboard" && (
         <>
           <div className="ops-bar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #e8edf3", borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Date range</span>
+            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)" }}>Date range</span>
             <input type="date" value={dashFrom} max={dashTo || undefined} onChange={e => setDashFrom(e.target.value)} style={dashInp} aria-label="From date" />
-            <span style={{ color: "#94a3b8", fontSize: 13 }}>to</span>
+            <span style={{ color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>to</span>
             <input type="date" value={dashTo} min={dashFrom || undefined} onChange={e => setDashTo(e.target.value)} style={dashInp} aria-label="To date" />
             {(dashFrom || dashTo) && (
-              <button onClick={() => { setDashFrom(""); setDashTo(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+              <button onClick={() => { setDashFrom(""); setDashTo(""); }} style={{ border: "none", background: "none", color: "#0d9488", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
             )}
-            <span className="ops-hide-sm" style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>Filters by planned finish</span>
+            <span className="ops-hide-sm" style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", marginLeft: "auto" }}>Filters by planned finish</span>
           </div>
           <PlanningDashboard key={`pd-${selectedProject.id}`} project={selectedProject} from={dashFrom} to={dashTo} />
         </>
@@ -865,14 +899,14 @@ const TYPE_COLORS = {
 function TypeBadge({ type }) {
   const c = TYPE_COLORS[type] || { bg: "#f1f5f9", fg: "#475569" };
   return (
-    <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: c.bg, color: c.fg }}>
+    <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: c.bg, color: c.fg }}>
       {type || "Type not set"}
     </span>
   );
 }
 
-const cellSt = { padding: "9px 12px", borderBottom: "1px solid #f1f5f9", fontSize: 13.5, color: "#0f172a", textAlign: "left" };
-const headSt = { ...cellSt, fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.3, background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
+const cellSt = { padding: "9px 12px", borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", textAlign: "left" };
+const headSt = { ...cellSt, fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.3, background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
 
 // One card per project type, laid out like the "Projects - Operations" sheet:
 // Sl No / Project Name / Project Location. Projects with no (or an unknown)
@@ -889,26 +923,26 @@ function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOp
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)", display: "flex", alignItems: "center", gap: 8 }}>
             <FolderKanban size={20} color="#0d9488" /> Projects — Operations
           </div>
-          <div style={{ fontSize: 13.5, color: "#374151", marginTop: 4 }}>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 4 }}>
             Running projects with Accounts active, grouped by type. Open a project for its BOQ, planning and dashboard.
           </div>
         </div>
         <div style={{ position: "relative", width: 300, maxWidth: "100%" }}>
-          <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "#94a3b8" }} />
+          <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--hz-faint)" }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects…"
-            style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px 8px 32px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff" }} />
+            style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px 8px 32px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#fff" }} />
         </div>
       </div>
 
-      {error && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13.5, marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", marginBottom: 14 }}>{error}</div>}
 
       {loading ? (
-        <div style={{ color: "#374151", fontSize: 14 }}>Loading projects…</div>
+        <div style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>Loading projects…</div>
       ) : totalCount === 0 ? (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 32, textAlign: "center", color: "#374151", fontSize: 14 }}>
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 32, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
           No running projects with Accounts active were found.
         </div>
       ) : (
@@ -922,8 +956,8 @@ function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOp
           {grouped.unassigned.length > 0 && (
             <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, marginTop: 20, overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Type not set</span>
-                <span style={{ fontSize: 12.5, color: "#64748b" }}>{grouped.unassigned.length} project{grouped.unassigned.length === 1 ? "" : "s"} · choose a type to move it into its column</span>
+                <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Type not set</span>
+                <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{grouped.unassigned.length} project{grouped.unassigned.length === 1 ? "" : "s"} · choose a type to move it into its column</span>
               </div>
               <div style={{ overflowX: "auto" }}>
                 <table className="ops-card-table" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -940,14 +974,14 @@ function ProjectsByType({ projects, totalCount, loading, search, setSearch, onOp
                       <tr key={p.id}>
                         <td style={cellSt}>{i + 1}</td>
                         <td style={cellSt}>
-                          <button onClick={() => onOpen(p)} style={{ border: "none", background: "none", padding: 0, fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, color: "#0d9488", cursor: "pointer", textAlign: "left" }}>
+                          <button onClick={() => onOpen(p)} style={{ border: "none", background: "none", padding: 0, fontFamily: "inherit", fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "#0d9488", cursor: "pointer", textAlign: "left" }}>
                             {p.name}
                           </button>
                         </td>
                         <td style={cellSt}>{p.location || "—"}</td>
                         <td style={cellSt}>
                           <select value="" onChange={e => e.target.value && onAssignType(p, e.target.value)}
-                            style={{ width: "100%", padding: "6px 8px", border: "1.5px solid #e2e8f0", borderRadius: 6, fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+                            style={{ width: "100%", padding: "6px 8px", border: "1.5px solid #e2e8f0", borderRadius: 6, fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
                             <option value="">Select type…</option>
                             {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
@@ -970,8 +1004,8 @@ function TypeCard({ type, projects, onOpen }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "12px 16px", background: c.bg, borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: c.fg }}>{type}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: c.fg }}>{projects.length}</span>
+        <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: c.fg }}>{type}</span>
+        <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: c.fg }}>{projects.length}</span>
       </div>
       <div className="ops-scroll" style={{ overflowX: "auto" }}>
       <table className="ops-card-table" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -984,7 +1018,7 @@ function TypeCard({ type, projects, onOpen }) {
         </thead>
         <tbody>
           {projects.length === 0 ? (
-            <tr><td colSpan={3} style={{ ...cellSt, color: "#94a3b8", textAlign: "center", padding: "18px 12px" }}>No projects</td></tr>
+            <tr><td colSpan={3} style={{ ...cellSt, color: "var(--hz-faint)", textAlign: "center", padding: "18px 12px" }}>No projects</td></tr>
           ) : projects.map((p, i) => (
             <tr key={p.id} onClick={() => onOpen(p)} style={{ cursor: "pointer" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
@@ -1002,6 +1036,7 @@ function TypeCard({ type, projects, onOpen }) {
 }
 
 function BOQWorkspace({
+  user, onDecideAdditional,
   fileName, parseError, onFile, loadingStoredBoq, saveStatus, showUploadOverride, onReplace,
   activeSheet,
   groups, checked, toggleRow, toggleAll, setRowsChecked, requested, balanceOf, extraFor, effQty, reqQty, setReqQty, qtyError, createBlocked, createBlockedMsg, selectedCount, onCreatePR,
@@ -1026,21 +1061,21 @@ function BOQWorkspace({
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         {!loadingStoredBoq && !showUpload && (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: "var(--hz-text-sm)" }}>
               <FileSpreadsheet size={15} color="#0d9488" /> {fileName}
             </div>
             {groups.length > 0 && (
               <div style={{ position: "relative", flex: "1 1 280px", maxWidth: 440 }}>
-                <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "#94a3b8" }} />
+                <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "var(--hz-faint)" }} />
                 <input value={boqSearch} onChange={e => setBoqSearch(e.target.value)} placeholder="Search BOQ by number, description or unit…" aria-label="Search BOQ"
-                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 32px 9px 34px", border: "1.5px solid #e2e8f0", borderRadius: 9, fontSize: 14, fontFamily: "inherit", background: "#fff" }} />
-                {boqSearch && <button onClick={() => setBoqSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 8, top: 7, border: "none", background: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, lineHeight: 1 }}>×</button>}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 32px 9px 34px", border: "1.5px solid #e2e8f0", borderRadius: 9, fontSize: "var(--hz-text-md)", fontFamily: "inherit", background: "#fff" }} />
+                {boqSearch && <button onClick={() => setBoqSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 8, top: 7, border: "none", background: "none", cursor: "pointer", color: "var(--hz-faint)", fontSize: "var(--hz-text-xl)", lineHeight: 1 }}>×</button>}
               </div>
             )}
-            {saveStatus === "saving" && <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Saving to project…</span>}
-            {saveStatus === "saved" && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
-            {saveStatus === "error" && <span style={{ fontSize: 12.5, color: "#ef4444" }}>Couldn't save — you'll need to re-upload next visit</span>}
-            <button onClick={onReplace} style={{ fontSize: 13, color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0, marginLeft: "auto" }}>
+            {saveStatus === "saving" && <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)" }}>Saving to project…</span>}
+            {saveStatus === "saved" && <span style={{ fontSize: "var(--hz-text-xs)", color: "#15803d", fontWeight: 600 }}>✓ Saved — won't need re-uploading next time</span>}
+            {saveStatus === "error" && <span style={{ fontSize: "var(--hz-text-xs)", color: "#ef4444" }}>Couldn't save — you'll need to re-upload next visit</span>}
+            <button onClick={onReplace} style={{ fontSize: "var(--hz-text-sm)", color: "#0d9488", fontWeight: 600, cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", padding: 0, marginLeft: "auto" }}>
               Replace BOQ
             </button>
           </>
@@ -1048,87 +1083,91 @@ function BOQWorkspace({
       </div>
 
       {loadingStoredBoq ? (
-        <div style={{ color: "#374151", fontSize: 14 }}>Loading this project's saved BOQ…</div>
+        <div style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>Loading this project's saved BOQ…</div>
       ) : showUpload ? (
         <>
-        {parseError && <div style={{ color: "#ef4444", fontSize: 13.5, marginBottom: 10 }}>{parseError}</div>}
+        {parseError && <div style={{ color: "#ef4444", fontSize: "var(--hz-text-sm)", marginBottom: 10 }}>{parseError}</div>}
         <label style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
           border: "2px dashed #cbd5e1", borderRadius: 12, padding: "40px 20px", background: "#fff", cursor: "pointer", maxWidth: 480,
         }}>
           <Upload size={28} color="#0d9488" />
-          <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 14.5 }}>Upload BOQ (.xlsx / .xls)</div>
-          <div style={{ fontSize: 12.5, color: "#374151" }}>Saved to this project once uploaded — you won't need to upload it again next time.</div>
+          <div style={{ fontWeight: 700, color: "var(--hz-ink)", fontSize: "var(--hz-text-md)" }}>Upload BOQ (.xlsx / .xls)</div>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)" }}>Saved to this project once uploaded — you won't need to upload it again next time.</div>
           <input type="file" accept=".xlsx,.xls" style={{ display: "none" }}
             onChange={e => onFile(e.target.files?.[0])} />
         </label>
         </>
       ) : (
         <>
-          {parseError && <div style={{ color: "#ef4444", fontSize: 13.5, marginBottom: 10 }}>{parseError}</div>}
+          {parseError && <div style={{ color: "#ef4444", fontSize: "var(--hz-text-sm)", marginBottom: 10 }}>{parseError}</div>}
 
           {groups.length === 0 ? (
-            <div style={{ color: "#374151", fontSize: 14, marginBottom: 20 }}>This sheet has no line items.</div>
+            <div style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)", marginBottom: 20 }}>This sheet has no line items.</div>
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 17, color: "#374151" }}>
+                <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>
                   {boqSearch.trim() ? `${shownRows.length} of ${groups.length} items match` : `${groups.length} item${groups.length !== 1 ? "s" : ""}`} · select the line items you want in this PR
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), true) : toggleAll(true))} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{boqSearch.trim() ? "Select shown" : "Select all"}</button>
-                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), false) : toggleAll(false))} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), true) : toggleAll(true))} style={{ border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{boqSearch.trim() ? "Select shown" : "Select all"}</button>
+                  <button onClick={() => (boqSearch.trim() ? setRowsChecked(shownRows.map(r => r.i), false) : toggleAll(false))} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 460, marginBottom: 24 }}>
-                <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(460px, calc(100vh - 300px))", marginBottom: 24 }}>
+                <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>No.</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Requested</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Balance</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: 17 }}>This PR</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 150, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 70, fontSize: "var(--hz-text-lg)" }}>BOQ NO</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: "var(--hz-text-lg)" }}>Specification of work</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: "var(--hz-text-lg)" }}>Unit</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>WO/PO Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: "var(--hz-text-lg)" }}>Approved Additional Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: "var(--hz-text-lg)" }}>Total revised Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Raised Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Balance Qty</th>
                     </tr>
                   </thead>
                   <tbody>
                     {shownRows.length === 0 && (
-                      <tr><td colSpan={8} style={{ padding: "18px 10px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>No BOQ items match “{boqSearch}”.</td></tr>
+                      <tr><td colSpan={9} style={{ padding: "18px 10px", textAlign: "center", color: "var(--hz-faint)", fontSize: "var(--hz-text-md)" }}>No BOQ items match “{boqSearch}”.</td></tr>
                     )}
                     {shownRows.map(({ g, i }) => (
                       <tr key={i}>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                           <input type="checkbox" checked={!!checked[i]} disabled={!checked[i] && balanceOf(g) === 0} title={balanceOf(g) === 0 ? "Fully requested in earlier PRs" : undefined} onChange={() => toggleRow(i)} />
+                          {checked[i] && balanceOf(g) != null && (() => {
+                            const err = qtyError(i);
+                            return (
+                              <div style={{ marginTop: 4 }}>
+                                <input type="number" min={0} step="any" value={reqQty[i] ?? effQty(i)} aria-label={`PR quantity for BOQ ${g.label}`}
+                                  onChange={e => setReqQty(m => ({ ...m, [i]: e.target.value }))}
+                                  title={err || `Up to ${balanceOf(g)}`}
+                                  style={{ width: 90, textAlign: "right", padding: "4px 6px", fontSize: "var(--hz-text-md)", borderRadius: 6, fontFamily: "inherit",
+                                    border: `1.5px solid ${err ? "#ef4444" : "#cbd5e1"}`, background: err ? "#fef2f2" : "#fff" }} />
+                                {err && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-danger)", marginTop: 2 }}>{err}</div>}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{g.label}</td>
-                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{g.description}</td>
+                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 440, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{g.description}</td>
                         <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{g.unit || "—"}</td>
-                        <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{g.qty != null ? roundQty(g.qty) : "—"}
-                          {g.qty != null && extraFor(g) > 0 && <div style={{ fontSize: 11.5, color: "#0d9488", fontWeight: 700 }} title="Additional Items linked to this BOQ item add to its quantity">+{extraFor(g)} additional</div>}
-                        </td>
                         {(() => {
                           const bal = balanceOf(g);
                           const cell = { padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" };
-                          if (bal == null) return <><td style={cell}>—</td><td style={cell}>—</td><td style={cell}></td></>;
-                          const err = checked[i] ? qtyError(i) : "";
+                          if (bal == null) return <><td style={cell}>{g.qty != null ? roundQty(g.qty) : "—"}</td><td style={cell}>—</td><td style={cell}>—</td><td style={cell}>—</td><td style={cell}>—</td></>;
+                          const extra = extraFor(g);
                           return (
                             <>
+                              <td style={cell}>{roundQty(g.qty)}</td>
+                              <td style={cell} title="Additional Items linked to this BOQ item add to its quantity">{extra}</td>
+                              <td style={cell}>{roundQty(Number(g.qty) + extra)}</td>
                               <td style={cell}>{requested[g.label] ? roundQty(requested[g.label]) : 0}</td>
-                              <td style={{ ...cell, fontWeight: 700, color: bal === 0 ? "#dc2626" : "#15803d" }} title={bal === 0 ? "Fully requested — nothing left to raise a PR for" : ""}>
+                              <td style={{ ...cell, fontWeight: 700, color: bal === 0 ? "var(--hz-danger)" : "#15803d" }} title={bal === 0 ? "Fully requested — nothing left to raise a PR for" : ""}>
                                 {bal === 0 ? "0 · done" : bal}
-                              </td>
-                              <td style={cell}>
-                                {checked[i] ? (
-                                  <input type="number" min={0} step="any" value={reqQty[i] ?? effQty(i)} aria-label={`Quantity for BOQ ${g.label}`}
-                                    onChange={e => setReqQty(m => ({ ...m, [i]: e.target.value }))}
-                                    title={err || `Up to ${bal}`}
-                                    style={{ width: 100, textAlign: "right", padding: "4px 6px", fontSize: 14, borderRadius: 6, fontFamily: "inherit",
-                                      border: `1.5px solid ${err ? "#ef4444" : "#cbd5e1"}`, background: err ? "#fef2f2" : "#fff" }} />
-                                ) : null}
-                                {err && <div style={{ fontSize: 11.5, color: "#dc2626", marginTop: 2 }}>{err}</div>}
                               </td>
                             </>
                           );
@@ -1161,12 +1200,12 @@ function BOQWorkspace({
                     <button key={t.key} onClick={() => setActiveAdditionalTab(t.key)}
                       style={{
                         border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                        padding: "10px 16px", fontSize: 14, fontWeight: 700,
-                        color: activeAdditionalTab === t.key ? "#0d9488" : "#64748b",
+                        padding: "10px 16px", fontSize: "var(--hz-text-md)", fontWeight: 700,
+                        color: activeAdditionalTab === t.key ? "#0d9488" : "var(--hz-muted)",
                         borderBottom: activeAdditionalTab === t.key ? "2.5px solid #0d9488" : "2.5px solid transparent",
                         marginBottom: -1.5,
                       }}>
-                      {t.label} <span style={{ color: "#94a3b8", fontWeight: 600 }}>· {t.count}</span>
+                      {t.label} <span style={{ color: "var(--hz-faint)", fontWeight: 600 }}>· {t.count}</span>
                     </button>
                   ))}
                 </div>
@@ -1184,6 +1223,8 @@ function BOQWorkspace({
                     addItem={addLinkedAdditionalItem}
                     removeItem={removeAdditionalItem}
                     updateItem={updateAdditionalItem}
+                    isOH={user?.role === "OH"}
+                    onDecide={onDecideAdditional}
                   />
                 )}
 
@@ -1253,11 +1294,11 @@ function BOQWorkspace({
           })()}
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            {createBlocked && <span style={{ alignSelf: "center", marginRight: 12, fontSize: 13.5, color: "#dc2626", fontWeight: 600 }}>{createBlockedMsg || "Fix the quantities marked in red — a PR can't request more than the BOQ balance."}</span>}
+            {createBlocked && <span style={{ alignSelf: "center", marginRight: 12, fontSize: "var(--hz-text-sm)", color: "var(--hz-danger)", fontWeight: 600 }}>{createBlockedMsg || "Fix the quantities marked in red — a PR can't request more than the BOQ balance."}</span>}
             <button onClick={onCreatePR} disabled={selectedCount === 0 || createBlocked}
               style={{
-                border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-                color: "#fff", background: selectedCount === 0 || createBlocked ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
+                border: "none", borderRadius: 8, padding: "10px 22px", fontSize: "var(--hz-text-md)", fontWeight: 700, fontFamily: "inherit",
+                color: "var(--hz-on-dark)", background: selectedCount === 0 || createBlocked ? "#cbd5e1" : "linear-gradient(135deg,#0d9488,#14b8a6)",
                 cursor: selectedCount === 0 || createBlocked ? "not-allowed" : "pointer",
               }}>
               Create PR from {selectedCount} Selected Item{selectedCount !== 1 ? "s" : ""}
@@ -1277,7 +1318,34 @@ function RemarksCell({ value, onSave }) {
     <input value={v} onChange={e => setV(e.target.value)} placeholder="Add remarks"
       onBlur={() => { if (v !== (value || "")) onSave(v); }}
       onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-      style={{ width: "100%", boxSizing: "border-box", border: "1px solid transparent", borderBottom: "1px dashed #cbd5e1", borderRadius: 6, padding: "5px 6px", fontSize: 13, fontFamily: "inherit", background: "transparent" }} />
+      style={{ width: "100%", boxSizing: "border-box", border: "1px solid transparent", borderBottom: "1px dashed #cbd5e1", borderRadius: 6, padding: "5px 6px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "transparent" }} />
+  );
+}
+
+// Shared "Add …" card for the Additional categories: labelled fields on one aligned grid row, button as the last cell.
+const ADD_INPUT = { width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" };
+function AddPanel({ title, fields, onAdd, canAdd }) {
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ fontWeight: 800, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginBottom: 10 }}>{title}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
+        {fields.map(f => (
+          <div key={f.label} style={{ minWidth: 0 }}>
+            <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>
+              {f.label}{f.required && <span style={{ color: "var(--hz-danger)" }}> *</span>}
+            </label>
+            {f.node}
+          </div>
+        ))}
+        <div style={{ minWidth: 0 }}>
+          <button onClick={onAdd} disabled={!canAdd}
+            style={{ width: "100%", height: 40, border: "none", borderRadius: 8, fontSize: "var(--hz-text-sm)", fontWeight: 700, fontFamily: "inherit",
+              color: "var(--hz-on-dark)", background: canAdd ? "#0d9488" : "#cbd5e1", cursor: canAdd ? "pointer" : "not-allowed" }}>
+            + Add Item
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1290,39 +1358,39 @@ function AdditionalCategoryTable({
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 17, color: "#374151" }}>
-          {label} <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>
+          {label} <span style={{ color: "var(--hz-faint)" }}>· {items.length}</span>
         </div>
         {items.length > 0 && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => toggleAll(category, true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-            <button onClick={() => toggleAll(category, false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+            <button onClick={() => toggleAll(category, true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll(category, false)} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
           </div>
         )}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(440px, calc(100vh - 320px))", marginBottom: 12 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: 17 }}>Description</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: "var(--hz-text-lg)" }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: "var(--hz-text-lg)" }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Qty</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Unit</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: "var(--hz-text-lg)" }}>Remarks</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
                   <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 260, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 440, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
@@ -1336,34 +1404,12 @@ function AdditionalCategoryTable({
       </div>
 
       {/* Add a new item to this category */}
-      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input value={newItem.description}
-          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
-          placeholder="Description"
-          style={{ flex: 2, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.qty}
-          onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
-          placeholder="Qty" type="number"
-          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <select value={newItem.unit}
-          onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
-          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
-          <option value="">Unit</option>
-          {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-        <input value={newItem.remarks || ""}
-          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
-          placeholder="Remarks"
-          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <button onClick={() => addItem(category)} disabled={!newItem.description.trim()}
-          style={{
-            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-            color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
-            cursor: newItem.description.trim() ? "pointer" : "not-allowed",
-          }}>
-          + Add Item
-        </button>
-      </div>
+      <AddPanel title={`Add to ${label}`} onAdd={() => addItem(category)} canAdd={!!newItem.description.trim()} fields={[
+        { label: "Description", required: true, node: <input value={newItem.description} type="text" placeholder="Description" onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Qty", node: <input value={newItem.qty} type="number" placeholder="0" onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Unit", node: <select value={newItem.unit} onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))} style={ADD_INPUT}><option value="">Select unit</option>{(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}</select> },
+        { label: "Remarks", node: <input value={newItem.remarks || ""} type="text" placeholder="Notes (optional)" onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))} style={ADD_INPUT} /> },
+      ]} />
     </div>
   );
 }
@@ -1371,51 +1417,63 @@ function AdditionalCategoryTable({
 // "Additional Items" — unlike every other category above/below, each row
 // here must reference an existing BOQ line item (picked from `groups`), so
 // "+ Add Item" stays disabled until both a BOQ item and description are set.
-function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem, updateItem }) {
-  const canAdd = !!newItem.linkedBoqLabel && !!newItem.description.trim();
+function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecked, toggleAll, newItem, setNewItem, addItem, removeItem, updateItem, isOH, onDecide }) {
+  const canAdd = !!newItem.linkedBoqLabel;
+  const [revoking, setRevoking] = useState(null); // item being revoked
+  const [revokeRemark, setRevokeRemark] = useState("");
+  const STATUS = { PENDING: ["Pending OH", "#b45309", "#fef3c7"], APPROVED: ["Approved", "#15803d", "#dcfce7"], REVOKED: ["Revoked", "#b91c1c", "#fee2e2"] };
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 17, color: "#374151" }}>
-          Additional Items <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>
+          Additional Items <span style={{ color: "var(--hz-faint)" }}>· {items.length}</span>
         </div>
         {items.length > 0 && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => toggleAll("AdditionalItems", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-            <button onClick={() => toggleAll("AdditionalItems", false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+            <button onClick={() => toggleAll("AdditionalItems", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll("AdditionalItems", false)} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
           </div>
         )}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(440px, calc(100vh - 320px))", marginBottom: 12 }}>
+        <table className="ops-boq-table ops-boq-table--linked" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: 17 }}>BOQ Item</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Qty</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: "var(--hz-text-lg)" }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: "var(--hz-text-lg)" }}>BOQ Item</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Qty</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Unit</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: "var(--hz-text-lg)" }}>Remarks</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 130, fontSize: "var(--hz-text-lg)" }}>Status</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: "var(--hz-text-lg)" }}>OH Remarks</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 110 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={9} style={{ padding: "12px 10px", color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <input type="checkbox" checked={!!checked[it.id]} onChange={() => toggleChecked(it.id)} />
+                  <input type="checkbox" checked={!!checked[it.id]} disabled={aiStatus(it) !== "APPROVED"} title={aiStatus(it) !== "APPROVED" ? "Needs Operations Head approval" : undefined} onChange={() => toggleChecked(it.id)} />
                 </td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{i + 1}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#0d9488" }}>{it.linkedBoqLabel}</td>
-                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", maxWidth: 220, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.description}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{it.qty || "—"}</td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>{it.unit || "—"}</td>
                 <td style={{ padding: "4px 10px", borderBottom: "1px solid #f1f5f9" }}><RemarksCell value={it.remarks} onSave={v => updateItem(it.id, { remarks: v })} /></td>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                  <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
+                  {aiStatus(it) === "APPROVED" ? <span className="appr-btn appr-btn--ok act-btn act-btn--sm" title="Approved" aria-label="Approved" style={{ pointerEvents: "none" }}><Check size={15} strokeWidth={2.75} /></span> : (() => { const [lbl, fg, bg] = STATUS[aiStatus(it)] || STATUS.APPROVED; return <span style={{ display: "inline-block", padding: "2px 9px", borderRadius: 999, fontWeight: 700, fontSize: "var(--hz-text-xs)", color: fg, background: bg }}>{lbl}</span>; })()}
+                  {it.raisedBy && aiStatus(it) !== "APPROVED" && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", marginTop: 2 }}>by {it.raisedBy}</div>}
+                </td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9", whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--hz-ink-2)" }}>{aiStatus(it) === "REVOKED" ? (it.approvalRemark || "—") : ""}</td>
+                <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {isOH && aiStatus(it) !== "APPROVED" && <ApproveBtn size="sm" title="Approve" onClick={() => onDecide(it.id, "APPROVED")} />}
+                    {isOH && aiStatus(it) !== "REVOKED" && <RejectBtn size="sm" title="Revoke" onClick={() => { setRevoking(it); setRevokeRemark(""); }} />}
+                    <DeleteBtn onClick={() => removeItem(it.id)} title="Remove" />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1423,42 +1481,69 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
         </table>
       </div>
 
+      {revoking && (
+        <div onClick={() => setRevoking(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 20, width: "min(440px, 100%)" }}>
+            <div style={{ fontWeight: 800, fontSize: "var(--hz-text-lg)", marginBottom: 4 }}>Revoke Additional Item</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 10 }}>BOQ {revoking.linkedBoqLabel} — {revoking.description}</div>
+            <textarea autoFocus value={revokeRemark} onChange={e => setRevokeRemark(e.target.value)} rows={3} placeholder="Remarks (required)"
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", resize: "vertical" }} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+              <button onClick={() => setRevoking(null)} style={{ border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 16px", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <button disabled={!revokeRemark.trim()} onClick={() => { onDecide(revoking.id, "REVOKED", revokeRemark); setRevoking(null); }}
+                style={{ border: "none", borderRadius: 8, padding: "8px 16px", fontFamily: "inherit", fontWeight: 700, color: "var(--hz-on-dark)", background: revokeRemark.trim() ? "#b91c1c" : "#cbd5e1", cursor: revokeRemark.trim() ? "pointer" : "not-allowed" }}>Revoke</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add a new item — a BOQ item link is required */}
-      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <select value={newItem.linkedBoqLabel}
-          onChange={e => setNewItem(f => ({ ...f, linkedBoqLabel: e.target.value }))}
-          style={{ width: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
-          <option value="">Link to BOQ item…</option>
-          {(groups || []).map((g, i) => (
-            <option key={i} value={g.label}>{g.label} — {(g.description || "").slice(0, 40)}</option>
-          ))}
-        </select>
-        <input value={newItem.description}
-          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
-          placeholder="Description"
-          style={{ flex: 2, minWidth: 200, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.qty}
-          onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
-          placeholder="Qty" type="number"
-          style={{ width: 90, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <select value={newItem.unit}
-          onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
-          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
-          <option value="">Unit</option>
-          {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-        <input value={newItem.remarks || ""}
-          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
-          placeholder="Remarks"
-          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <button onClick={addItem} disabled={!canAdd}
-          style={{
-            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-            color: "#fff", background: canAdd ? "#0d9488" : "#cbd5e1",
-            cursor: canAdd ? "pointer" : "not-allowed",
-          }}>
-          + Add Item
-        </button>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 16px" }}>
+        <div style={{ fontWeight: 800, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginBottom: 10 }}>Add Additional Item</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
+          <div style={{ minWidth: 0 }}>
+            <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>BOQ item <span style={{ color: "var(--hz-danger)" }}>*</span></label>
+            <select value={newItem.linkedBoqLabel}
+              onChange={e => setNewItem(f => ({ ...f, linkedBoqLabel: e.target.value }))}
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
+              <option value="">Select BOQ item…</option>
+              {(groups || []).map((g, i) => (
+                <option key={i} value={g.label}>{g.label} — {(g.description || "").slice(0, 60)}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>Qty</label>
+            <input value={newItem.qty} type="number" placeholder="0"
+              onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))}
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>Unit</label>
+            <select value={newItem.unit}
+              onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))}
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
+              <option value="">Select unit</option>
+              {(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>Remarks</label>
+            <input value={newItem.remarks || ""} placeholder="Notes for OH (optional)"
+              onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <button onClick={addItem} disabled={!canAdd}
+              style={{
+                width: "100%", height: 40, border: "none", borderRadius: 8, fontSize: "var(--hz-text-sm)", fontWeight: 700, fontFamily: "inherit",
+                color: "var(--hz-on-dark)", background: canAdd ? "#0d9488" : "#cbd5e1",
+                cursor: canAdd ? "pointer" : "not-allowed",
+              }}>
+              + Add Item
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1472,34 +1557,34 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 17, color: "#374151" }}>
-          NMR Category <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>
+          NMR Category <span style={{ color: "var(--hz-faint)" }}>· {items.length}</span>
         </div>
         {items.length > 0 && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => toggleAll("NMR", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-            <button onClick={() => toggleAll("NMR", false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+            <button onClick={() => toggleAll("NMR", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll("NMR", false)} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
           </div>
         )}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(440px, calc(100vh - 320px))", marginBottom: 12 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 180, fontSize: 17 }}>Description</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: 17 }}>No of Labours</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: 17 }}>Type of Labours</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: 17 }}>Date</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>Unit Rate</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: 17 }}>Amount</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: "var(--hz-text-lg)" }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 180, fontSize: "var(--hz-text-lg)" }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: "var(--hz-text-lg)" }}>No of Labours</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 120, fontSize: "var(--hz-text-lg)" }}>Type of Labours</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: "var(--hz-text-lg)" }}>Date</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Unit Rate</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: "var(--hz-text-lg)" }}>Amount</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={9} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No NMR entries added yet.</td></tr>
+              <tr><td colSpan={9} style={{ padding: "12px 10px", color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>No NMR entries added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1522,40 +1607,14 @@ function NMRCategoryTable({ items, checked, toggleChecked, toggleAll, newItem, s
       </div>
 
       {/* Add a new NMR entry */}
-      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input value={newItem.description}
-          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
-          placeholder="Description"
-          style={{ flex: 2, minWidth: 180, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.noOfLabours}
-          onChange={e => setNewItem(f => ({ ...f, noOfLabours: e.target.value }))}
-          placeholder="No of Labours" type="number"
-          style={{ width: 110, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <select value={newItem.typeOfLabours}
-          onChange={e => setNewItem(f => ({ ...f, typeOfLabours: e.target.value }))}
-          style={{ width: 140, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
-          <option value="">Type of Labours</option>
-          {NMR_LABOUR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <input value={newItem.date} type="date"
-          onChange={e => setNewItem(f => ({ ...f, date: e.target.value }))}
-          style={{ width: 140, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.unitRate}
-          onChange={e => setNewItem(f => ({ ...f, unitRate: e.target.value }))}
-          placeholder="Unit Rate" type="number"
-          style={{ width: 100, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <div title="Amount = No of Labours × Unit Rate" style={{ width: 100, fontSize: 13, color: "#374151", fontWeight: 600 }}>
-          ₹{previewAmount.toLocaleString("en-IN")}
-        </div>
-        <button onClick={addItem} disabled={!newItem.description.trim()}
-          style={{
-            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-            color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
-            cursor: newItem.description.trim() ? "pointer" : "not-allowed",
-          }}>
-          + Add Item
-        </button>
-      </div>
+      <AddPanel title="Add NMR Entry" onAdd={addItem} canAdd={!!newItem.description.trim()} fields={[
+        { label: "Description", required: true, node: <input value={newItem.description} type="text" placeholder="Description" onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "No of Labours", node: <input value={newItem.noOfLabours} type="number" placeholder="0" onChange={e => setNewItem(f => ({ ...f, noOfLabours: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Type of Labours", node: <select value={newItem.typeOfLabours} onChange={e => setNewItem(f => ({ ...f, typeOfLabours: e.target.value }))} style={ADD_INPUT}><option value="">Select type</option>{NMR_LABOUR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select> },
+        { label: "Date", node: <input value={newItem.date} type="date" placeholder="" onChange={e => setNewItem(f => ({ ...f, date: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Unit Rate", node: <input value={newItem.unitRate} type="number" placeholder="0" onChange={e => setNewItem(f => ({ ...f, unitRate: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Amount", node: <div title="Amount = No of Labours × Unit Rate" style={{ ...ADD_INPUT, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 700 }}>₹{previewAmount.toLocaleString("en-IN")}</div> },
+      ]} />
     </div>
   );
 }
@@ -1566,32 +1625,32 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 17, color: "#374151" }}>
-          Transport Category <span style={{ color: "#94a3b8" }}>· {items.length}</span>
+        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>
+          Transport Category <span style={{ color: "var(--hz-faint)" }}>· {items.length}</span>
         </div>
         {items.length > 0 && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => toggleAll("Transport", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
-            <button onClick={() => toggleAll("Transport", false)} style={{ border: "none", background: "none", color: "#64748b", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
+            <button onClick={() => toggleAll("Transport", true)} style={{ border: "none", background: "none", color: "#0d9488", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Select all</button>
+            <button onClick={() => toggleAll("Transport", false)} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Clear</button>
           </div>
         )}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: 400, marginBottom: 12 }}>
-        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(440px, calc(100vh - 320px))", marginBottom: 12 }}>
+        <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: 17 }}>PR Selection</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: 17 }}>S.No</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: 17 }}>Description</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 140, fontSize: 17 }}>Transport</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: 17 }}>Amount</th>
-              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: 17 }}>Remarks</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 60, fontSize: "var(--hz-text-lg)" }}>S.No</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 220, fontSize: "var(--hz-text-lg)" }}>Description</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 140, fontSize: "var(--hz-text-lg)" }}>Transport</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: "var(--hz-text-lg)" }}>Amount</th>
+              <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 200, fontSize: "var(--hz-text-lg)" }}>Remarks</th>
               <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", width: 70 }}></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 13 }}>No items added yet.</td></tr>
+              <tr><td colSpan={7} style={{ padding: "12px 10px", color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>No items added yet.</td></tr>
             ) : items.map((it, i) => (
               <tr key={it.id}>
                 <td style={{ padding: "6px 10px", borderBottom: "1px solid #f1f5f9" }}>
@@ -1612,32 +1671,12 @@ function TransportCategoryTable({ items, checked, toggleChecked, toggleAll, newI
       </div>
 
       {/* Add a new Transport entry */}
-      <div className="ops-add-row" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input value={newItem.description}
-          onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
-          placeholder="Description"
-          style={{ flex: 2, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.transport}
-          onChange={e => setNewItem(f => ({ ...f, transport: e.target.value }))}
-          placeholder="Transport"
-          style={{ width: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.amount}
-          onChange={e => setNewItem(f => ({ ...f, amount: e.target.value }))}
-          placeholder="Amount" type="number"
-          style={{ width: 110, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <input value={newItem.remarks || ""}
-          onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))}
-          placeholder="Remarks"
-          style={{ flex: 1, minWidth: 160, border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit" }} />
-        <button onClick={addItem} disabled={!newItem.description.trim()}
-          style={{
-            border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-            color: "#fff", background: newItem.description.trim() ? "#0d9488" : "#cbd5e1",
-            cursor: newItem.description.trim() ? "pointer" : "not-allowed",
-          }}>
-          + Add Item
-        </button>
-      </div>
+      <AddPanel title="Add Transport Entry" onAdd={addItem} canAdd={!!newItem.description.trim()} fields={[
+        { label: "Description", required: true, node: <input value={newItem.description} type="text" placeholder="Description" onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Transport", node: <input value={newItem.transport} type="text" placeholder="Transport" onChange={e => setNewItem(f => ({ ...f, transport: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Amount", node: <input value={newItem.amount} type="number" placeholder="0" onChange={e => setNewItem(f => ({ ...f, amount: e.target.value }))} style={ADD_INPUT} /> },
+        { label: "Remarks", node: <input value={newItem.remarks || ""} type="text" placeholder="Notes (optional)" onChange={e => setNewItem(f => ({ ...f, remarks: e.target.value }))} style={ADD_INPUT} /> },
+      ]} />
     </div>
   );
 }

@@ -55,7 +55,7 @@ function getBudgetStatus(spent, budget) {
 
 const STATUS_COLORS = {
   active: { bg: '#d1fae5', color: '#065f46', label: 'Active' },
-  pending: { bg: '#f1f5f9', color: '#475569', label: 'Pending' },
+  pending: { bg: '#f1f5f9', color: "var(--hz-ink-2)", label: 'Pending' },
   completed: { bg: '#dbeafe', color: '#1e40af', label: 'Completed' },
   onhold: { bg: '#fef3c7', color: '#92400e', label: 'On Hold' },
 };
@@ -300,32 +300,32 @@ export default function ProjectsPage({ isCeo = false }) {
               {/* Header row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {project.name}
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                  <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>
                     {project.client || <span style={{ fontStyle: 'italic' }}>No client</span>} · FY {project.fy}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 12 }}>
-                  <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>
+                  <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: "var(--hz-text-2xs)", fontWeight: 600, background: sc.bg, color: sc.color }}>
                     {sc.label}
                   </span>
                   {project.businessType && (
-                    <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: project.businessType === 'B2B' ? '#ede9fe' : '#dbeafe', color: project.businessType === 'B2B' ? '#7c3aed' : '#1d4ed8' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: "var(--hz-text-2xs)", fontWeight: 700, background: project.businessType === 'B2B' ? '#ede9fe' : '#dbeafe', color: project.businessType === 'B2B' ? '#7c3aed' : '#1d4ed8' }}>
                       {project.businessType}
                     </span>
                   )}
                   <button
                     onClick={() => openSummary(project)}
-                    style={{ background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#10b981' }}
+                    style={{ background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: "var(--hz-text-xs)", color: '#10b981' }}
                   >
                     <FileText size={13} /> Summary
                   </button>
                   {!isCeo && (
                     <button
                       onClick={() => openEdit(project)}
-                      style={{ background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#6366f1' }}
+                      style={{ background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: "var(--hz-text-xs)", color: '#6366f1' }}
                     >
                       <Edit2 size={13} /> Edit
                     </button>
@@ -343,14 +343,14 @@ export default function ProjectsPage({ isCeo = false }) {
               {/* Budget utilisation bar */}
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>Budget Utilisation</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: barColor }}>{pct.toFixed(1)}%</span>
+                  <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>Budget Utilisation</span>
+                  <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: barColor }}>{pct.toFixed(1)}%</span>
                 </div>
                 <div style={{ background: '#f1f5f9', borderRadius: 100, height: 8 }}>
                   <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: '100%', transition: 'width 0.4s ease' }} />
                 </div>
                 {status === 'exceeded' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 11, color: '#ef4444' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: "var(--hz-text-2xs)", color: '#ef4444' }}>
                     <AlertTriangle size={12} /> Over budget by {fmt(spent - budget)}
                   </div>
                 )}
@@ -363,11 +363,11 @@ export default function ProjectsPage({ isCeo = false }) {
                   const expPct = budget > 0 ? Math.min((val / budget) * 100, 100) : 0;
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                      <span style={{ fontSize: 11, color: '#64748b', width: 80, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", width: 80, flexShrink: 0 }}>{label}</span>
                       <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 100, height: 5 }}>
                         <div style={{ width: `${expPct}%`, background: EXPENSE_COLORS[key], borderRadius: 100, height: '100%' }} />
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a', width: 80, textAlign: 'right', flexShrink: 0 }}>{fmt(val)}</span>
+                      <span style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink)", width: 80, textAlign: 'right', flexShrink: 0 }}>{fmt(val)}</span>
                     </div>
                   );
                 })}
@@ -376,22 +376,22 @@ export default function ProjectsPage({ isCeo = false }) {
               {/* Footer row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid #f1f5f9', paddingTop: 12, gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Total Expenses</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>{fmt(spent)}</div>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Total Expenses</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: '#ef4444' }}>{fmt(spent)}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Total GST</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{fmt(project.totalGst || 0)}</div>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Total GST</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: '#f59e0b' }}>{fmt(project.totalGst || 0)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Est. Profit</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: currentProfit >= profitTarget ? '#10b981' : '#f59e0b' }}>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Est. Profit</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: currentProfit >= profitTarget ? '#10b981' : '#f59e0b' }}>
                     {fmt(currentProfit)} {project.quoteGross > 0 && `(${((currentProfit / project.quoteGross) * 100).toFixed(1)}%)`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Profit Target (20%)</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6366f1' }}>{fmt(profitTarget)}</div>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Profit Target (20%)</div>
+                  <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: '#6366f1' }}>{fmt(profitTarget)}</div>
                 </div>
               </div>
             </div>
@@ -401,7 +401,7 @@ export default function ProjectsPage({ isCeo = false }) {
 
       {/* ── Overall Summary Table ── */}
       <div className="card" style={{ padding: 20, marginTop: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Project Summary — All Categories</div>
+        <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 16 }}>Project Summary — All Categories</div>
         <div className="table-container">
           <table>
             <thead>
@@ -430,14 +430,14 @@ export default function ProjectsPage({ isCeo = false }) {
                 const sc = STATUS_COLORS[p.status] || STATUS_COLORS.pending;
                 return (
                   <tr key={p.id}>
-                    <td style={{ color: '#64748b', fontSize: 12 }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600, fontSize: 13, maxWidth: 180 }}>
+                    <td style={{ color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)" }}>{i + 1}</td>
+                    <td style={{ fontWeight: 600, fontSize: "var(--hz-text-sm)", maxWidth: 180 }}>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                      {p.client && <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.client}</div>}
+                      {p.client && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)" }}>{p.client}</div>}
                     </td>
                     <td>
                       {p.businessType && (
-                        <span style={{ padding: '2px 8px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: p.businessType === 'B2B' ? '#ede9fe' : '#dbeafe', color: p.businessType === 'B2B' ? '#7c3aed' : '#1d4ed8' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 100, fontSize: "var(--hz-text-2xs)", fontWeight: 700, background: p.businessType === 'B2B' ? '#ede9fe' : '#dbeafe', color: p.businessType === 'B2B' ? '#7c3aed' : '#1d4ed8' }}>
                           {p.businessType}
                         </span>
                       )}
@@ -449,7 +449,7 @@ export default function ProjectsPage({ isCeo = false }) {
                     <td>{fmt(p.expenses.subcontract)}</td>
                     <td>{fmt(p.expenses.consultants)}</td>
                     <td>{fmt(p.expenses.miscellaneous)}</td>
-                    <td style={{ fontWeight: 700, color: overBudget ? '#ef4444' : '#0f172a' }}>
+                    <td style={{ fontWeight: 700, color: overBudget ? '#ef4444' : "var(--hz-ink)" }}>
                       {fmt(spent)}
                       {overBudget && <span title="Over budget" style={{ marginLeft: 4 }}><AlertTriangle size={12} color="#ef4444" style={{ verticalAlign: 'middle' }} /></span>}
                     </td>
@@ -457,15 +457,15 @@ export default function ProjectsPage({ isCeo = false }) {
                       {p.quoteGross > 0 ? `${fmt(profit)} (${((profit / p.quoteGross) * 100).toFixed(1)}%)` : '—'}
                     </td>
                     <td>
-                      <span style={{ padding: '3px 8px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{sc.label}</span>
+                      <span style={{ padding: '3px 8px', borderRadius: 100, fontSize: "var(--hz-text-2xs)", fontWeight: 600, background: sc.bg, color: sc.color }}>{sc.label}</span>
                     </td>
                   </tr>
                 );
               })}
               {/* Totals row */}
               <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                <td colSpan={2} style={{ fontWeight: 700, color: '#0f172a' }}>TOTAL</td>
-                <td style={{ color: '#0f172a' }}>{fmt(totalQuote)}</td>
+                <td colSpan={2} style={{ fontWeight: 700, color: "var(--hz-ink)" }}>TOTAL</td>
+                <td style={{ color: "var(--hz-ink)" }}>{fmt(totalQuote)}</td>
                 <td style={{ color: '#6366f1' }}>{fmt(totalBudget)}</td>
                 <td>{fmt(projects.reduce((s, p) => s + p.expenses.material, 0))}</td>
                 <td>{fmt(projects.reduce((s, p) => s + p.expenses.labour, 0))}</td>
@@ -489,16 +489,16 @@ export default function ProjectsPage({ isCeo = false }) {
             {/* Header */}
             <div style={{ padding: '18px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{summaryProject.name}</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                <div style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{summaryProject.name}</div>
+                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>
                   {summaryProject.client} · FY {summaryProject.fy}
                 </div>
               </div>
-              <button onClick={() => setSummaryProject(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={18} /></button>
+              <button onClick={() => setSummaryProject(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: "var(--hz-muted)" }}><X size={18} /></button>
             </div>
 
             <div style={{ padding: 24 }}>
-              {summaryLoading && <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading summary…</div>}
+              {summaryLoading && <div style={{ textAlign: 'center', padding: 40, color: "var(--hz-muted)" }}>Loading summary…</div>}
 
               {!summaryLoading && summaryData && (() => {
                 const d = summaryData;
@@ -515,23 +515,23 @@ export default function ProjectsPage({ isCeo = false }) {
                         { label: 'Balance Due', val: fmtR(d.balanceDue), color: balColor },
                       ].map(({ label, val, color }) => (
                         <div key={label} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', border: '1px solid #e2e8f0' }}>
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color }}>{val}</div>
+                          <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color }}>{val}</div>
                         </div>
                       ))}
                     </div>
 
                     {/* Paid Expenses as of Today */}
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                         Paid Expenses as of Today
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: "var(--hz-text-sm)" }}>
                         <thead>
                           <tr style={{ background: '#f8fafc' }}>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>Category</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>As per PO</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>Actual</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>As per PO</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>Actual</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -543,9 +543,9 @@ export default function ProjectsPage({ isCeo = false }) {
                             </tr>
                           ))}
                           <tr style={{ background: '#f8fafc', fontWeight: 800, borderTop: '2px solid #e2e8f0' }}>
-                            <td style={{ padding: '10px 12px', color: '#0f172a' }}>Total Paid Expenses</td>
+                            <td style={{ padding: '10px 12px', color: "var(--hz-ink)" }}>Total Paid Expenses</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', color: '#6366f1' }}>{fmtR(d.totals.pwjTotal)}</td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', color: '#0f172a' }}>{fmtR(d.totals.actualPaid)}</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', color: "var(--hz-ink)" }}>{fmtR(d.totals.actualPaid)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -553,15 +553,15 @@ export default function ProjectsPage({ isCeo = false }) {
 
                     {/* Credit & Balance Due Payments */}
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                         Credit & Balance Due Payments
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: "var(--hz-text-sm)" }}>
                         <thead>
                           <tr style={{ background: '#f8fafc' }}>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>Category</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>As per PO</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 12, borderBottom: '1px solid #e2e8f0' }}>Actual</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>As per PO</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: "var(--hz-muted)", fontSize: "var(--hz-text-xs)", borderBottom: '1px solid #e2e8f0' }}>Actual</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -573,12 +573,12 @@ export default function ProjectsPage({ isCeo = false }) {
                             </tr>
                           ))}
                           <tr style={{ background: '#fee2e2', fontWeight: 800, borderTop: '2px solid #fca5a5' }}>
-                            <td style={{ padding: '10px 12px', color: '#dc2626' }}>Total Balance to be Paid</td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', color: '#dc2626' }}>{fmtR(d.totals.balancePwj)}</td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', color: '#dc2626' }}>{fmtR(d.totals.balanceActual)}</td>
+                            <td style={{ padding: '10px 12px', color: "var(--hz-danger)" }}>Total Balance to be Paid</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', color: "var(--hz-danger)" }}>{fmtR(d.totals.balancePwj)}</td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', color: "var(--hz-danger)" }}>{fmtR(d.totals.balanceActual)}</td>
                           </tr>
                           <tr style={{ borderTop: '2px solid #e2e8f0' }}>
-                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>Total Expenses for the Project</td>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: "var(--hz-ink)" }}>Total Expenses for the Project</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.totalExpensesPwj)}</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.totalExpensesActual)}</td>
                           </tr>
@@ -588,7 +588,7 @@ export default function ProjectsPage({ isCeo = false }) {
                             <td style={{ padding: '9px 12px', textAlign: 'right' }}>{fmtR(d.gstActual)}</td>
                           </tr>
                           <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>Gross Expenses (for P&amp;L)</td>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: "var(--hz-ink)" }}>Gross Expenses (for P&amp;L)</td>
                             <td style={{ padding: '10px 12px', textAlign: 'right' }}></td>
                             <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{fmtR(d.grossExpensesActual)}</td>
                           </tr>
@@ -597,8 +597,8 @@ export default function ProjectsPage({ isCeo = false }) {
 
                       {/* Balance as on date */}
                       <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: Number(d.balanceAsOnDate) >= 0 ? '#d1fae5' : '#fee2e2', border: `1px solid ${Number(d.balanceAsOnDate) >= 0 ? '#6ee7b7' : '#fca5a5'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: Number(d.balanceAsOnDate) >= 0 ? '#065f46' : '#dc2626' }}>Balance as on Date</span>
-                        <span style={{ fontWeight: 800, fontSize: 18, color: Number(d.balanceAsOnDate) >= 0 ? '#065f46' : '#dc2626' }}>{fmtR(d.balanceAsOnDate)}</span>
+                        <span style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: Number(d.balanceAsOnDate) >= 0 ? '#065f46' : "var(--hz-danger)" }}>Balance as on Date</span>
+                        <span style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: Number(d.balanceAsOnDate) >= 0 ? '#065f46' : "var(--hz-danger)" }}>{fmtR(d.balanceAsOnDate)}</span>
                       </div>
                     </div>
                   </>
@@ -606,7 +606,7 @@ export default function ProjectsPage({ isCeo = false }) {
               })()}
 
               {!summaryLoading && !summaryData && (
-                <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: "var(--hz-faint)" }}>
                   No expense data found for this project yet.
                 </div>
               )}
@@ -629,10 +629,10 @@ export default function ProjectsPage({ isCeo = false }) {
             {/* Modal header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>{isNew ? 'Add New Project' : 'Project Info'}</div>
-                {!isNew && <div style={{ fontSize: 12, color: '#64748b' }}>{projects.find(p => p.id === editing)?.name}</div>}
+                <div style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{isNew ? 'Add New Project' : 'Project Info'}</div>
+                {!isNew && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{projects.find(p => p.id === editing)?.name}</div>}
               </div>
-              <button onClick={closeEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button onClick={closeEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: "var(--hz-muted)" }}>
                 <X size={20} />
               </button>
             </div>
@@ -642,7 +642,7 @@ export default function ProjectsPage({ isCeo = false }) {
               {blockMsg && (
                 <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <AlertTriangle size={16} color="#dc2626" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 13, color: '#dc2626' }}>{blockMsg}</span>
+                  <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-danger)" }}>{blockMsg}</span>
                 </div>
               )}
 
@@ -654,7 +654,7 @@ export default function ProjectsPage({ isCeo = false }) {
                   <label className="form-label">Project Name *</label>
                   <input className={`form-control${errors.name ? ' error' : ''}`} value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-                  {errors.name && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3 }}>{errors.name}</div>}
+                  {errors.name && <div style={{ fontSize: "var(--hz-text-2xs)", color: '#ef4444', marginTop: 3 }}>{errors.name}</div>}
                 </div>
                 <div>
                   <label className="form-label">Client Name</label>
@@ -764,7 +764,7 @@ export default function ProjectsPage({ isCeo = false }) {
                 <div style={{ gridColumn: 'span 2' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>Site Address</span>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, color: '#6366f1', cursor: 'pointer', fontSize: 11 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500, color: '#6366f1', cursor: 'pointer', fontSize: "var(--hz-text-2xs)" }}>
                       <input type="checkbox"
                         checked={form.billingAddress === form.clientAddress && !!form.clientAddress}
                         onChange={e => setForm(f => ({ ...f, billingAddress: e.target.checked ? f.clientAddress : '' }))}
@@ -789,27 +789,27 @@ export default function ProjectsPage({ isCeo = false }) {
                   <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, marginBottom: 20, border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Budget (80% of Quote)</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>{fmt(budget)}</div>
+                        <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Budget (80% of Quote)</div>
+                        <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: '#6366f1' }}>{fmt(budget)}</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Total Spent</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: '#ef4444' }}>{fmt(spent)}</div>
+                        <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Total Spent</div>
+                        <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: '#ef4444' }}>{fmt(spent)}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Remaining Budget</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: remaining >= 0 ? '#10b981' : '#ef4444' }}>{fmt(remaining)}</div>
+                        <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>Remaining Budget</div>
+                        <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: remaining >= 0 ? '#10b981' : '#ef4444' }}>{fmt(remaining)}</div>
                       </div>
                     </div>
                     <div style={{ background: '#e2e8f0', borderRadius: 100, height: 10 }}>
                       <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: '100%', transition: 'width 0.3s' }} />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>{pct.toFixed(1)}% utilised</span>
-                      <span style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>Profit Target: {fmt(form.quoteGross * 0.2)} (20%)</span>
+                      <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>{pct.toFixed(1)}% utilised</span>
+                      <span style={{ fontSize: "var(--hz-text-2xs)", color: '#6366f1', fontWeight: 600 }}>Profit Target: {fmt(form.quoteGross * 0.2)} (20%)</span>
                     </div>
                     {remaining <= 0 && (
-                      <div style={{ marginTop: 8, padding: '6px 10px', background: '#fee2e2', borderRadius: 6, fontSize: 12, color: '#dc2626', display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <div style={{ marginTop: 8, padding: '6px 10px', background: '#fee2e2', borderRadius: 6, fontSize: "var(--hz-text-xs)", color: "var(--hz-danger)", display: 'flex', gap: 6, alignItems: 'center' }}>
                         <AlertTriangle size={13} />
                         Budget limit reached. No further expenses can be added.
                       </div>
@@ -851,9 +851,9 @@ function SummaryCard({ icon, gradient, label, value, sub }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>{icon}</div>
       <div>
-        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
+        <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.2 }}>{value}</div>
+        {sub && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -862,15 +862,15 @@ function SummaryCard({ icon, gradient, label, value, sub }) {
 function MiniStat({ label, value, highlight }) {
   return (
     <div style={{ background: highlight ? '#eff6ff' : '#f8fafc', borderRadius: 8, padding: '8px 10px', border: `1px solid ${highlight ? '#bfdbfe' : '#f1f5f9'}` }}>
-      <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: highlight ? '#1d4ed8' : '#0f172a' }}>{value}</div>
+      <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", fontWeight: 500, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: highlight ? '#1d4ed8' : "var(--hz-ink)" }}>{value}</div>
     </div>
   );
 }
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+    <div style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
       {children}
     </div>
   );

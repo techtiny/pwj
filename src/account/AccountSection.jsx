@@ -17,19 +17,19 @@ const EXPENSE_CATS = [
   { key: "labour",        label: "Labour",        color: "#3b82f6" },
   { key: "subcontract",   label: "Sub-Contract",  color: "#8b5cf6" },
   { key: "consultants",   label: "Consultants",   color: "#f59e0b" },
-  { key: "miscellaneous", label: "Miscellaneous", color: "#64748b" },
+  { key: "miscellaneous", label: "Miscellaneous", color: "var(--hz-muted)" },
 ];
 
-export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, userName = "", username = "", notifs = [] }) {
+export default function AccountSection({ isCeo = false, isOH = false, isVP = false, isAdmin = false, procurementOnly = false, userName = "", username = "", notifs = [] }) {
   // Pending counts per tab (notification.tab) — the VP's salary payments sit under Send for Payment → Team Payments.
   const tabCount = {};
   notifs.filter(n => n.module === "account").forEach(n => { tabCount[n.tab || "payments"] = (tabCount[n.tab || "payments"] || 0) + Number(n.count || 0); });
   const teamPayCount = notifs.filter(n => n.key === "salary-pay").reduce((t, n) => t + Number(n.count || 0), 0);
-  const [tab, setTab]     = useState("dashboard");
+  const [tab, setTab]     = useState(procurementOnly ? "payments" : "dashboard");
   const [payKind, setPayKind] = useState("vendor"); // Send for Payment: vendor payments | salary
   const [expCat, setExpCat] = useState("material");
 
-  const tabs = [
+  const allTabs = [
     { key: "dashboard",   label: "Dashboard",        icon: LayoutDashboard },
     { key: "projects",    label: "Project-wise",     icon: FolderKanban },
     { key: "expenses",    label: "Expenses",         icon: Receipt },
@@ -38,6 +38,9 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "tds",         label: "TDS",              icon: Percent },
     { key: "gst",         label: "GST",              icon: FileText },
   ];
+
+  // Procurement roles see only Send for Payment → Vendor Payments (payment history), read-only.
+  const tabs = procurementOnly ? allTabs.filter(t => t.key === "payments") : allTabs;
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 108px)" }}>
@@ -53,9 +56,9 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
             return (
               <button key={c.key} onClick={() => setExpCat(c.key)}
                 style={{ border: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "5px 14px", fontSize: 12, fontWeight: active ? 700 : 500, borderRadius: 100,
+                  padding: "5px 14px", fontSize: "var(--hz-text-xs)", fontWeight: active ? 700 : 500, borderRadius: 100,
                   background: active ? c.color : "#f1f5f9",
-                  color: active ? "#fff" : "#64748b",
+                  color: active ? "var(--hz-on-dark)" : "var(--hz-muted)",
                   transition: "all .15s" }}>
                 {c.label}
               </button>
@@ -76,8 +79,8 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
               <div style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, marginBottom: 16 }}>
                 {[["vendor", "Vendor Payments"], ["salary", "Team Payments"]].map(([k, l]) => (
                   <button key={k} onClick={() => setPayKind(k)}
-                    style={{ border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: 15,
-                      background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "#1e3a5f" : "#334155",
+                    style={{ border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)",
+                      background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "var(--hz-primary)" : "var(--hz-ink-2)",
                       fontWeight: payKind === k ? 700 : 500, boxShadow: payKind === k ? "0 1px 3px rgba(15,23,42,.18)" : "none" }}>
                     {l}
                     {k === "salary" && teamPayCount > 0 && <span className="nav-badge" style={{ marginLeft: 8 }}>{teamPayCount}</span>}
@@ -87,7 +90,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
             )}
             {payKind === "salary" && (isAdmin || isVP || isOH || isCeo)
               ? <SalaryPayments username={username} isVP={isVP} />
-              : <PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} />}
+              : <PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} isCeo={isCeo} readOnly={procurementOnly && !(isAdmin || isVP || isOH || isCeo)} />}
           </div>
         )}
         {tab === "tds"         && <div className="page-content"><TdsPage isAdmin={isAdmin} /></div>}

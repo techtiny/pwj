@@ -128,8 +128,8 @@ export default function SalesPipeline() {
   const f = (v) => setForm(prev => ({ ...prev, ...v }));
   const filtered = filterStage === "ALL" ? leads : leads.filter(l => l.stage === filterStage);
 
-  const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 16, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a" };
-  const lbl = { fontSize: 15, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
+  const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)" };
+  const lbl = { fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 5, display: "block" };
 
   return (
     <div style={{ padding: "16px 16px", background: "#f8fafc", minHeight: "calc(100vh - 148px)" }}>
@@ -138,18 +138,18 @@ export default function SalesPipeline() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 22.5, fontWeight: 800, color: "#0f172a" }}>Pipeline</div>
-          <div style={{ fontSize: 16, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Pipeline</div>
+          <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-muted)", marginTop: 2 }}>
             {leads.length} leads · {summary ? formatLakh(summary.pipelineValue) : "…"} active pipeline
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setView(v => v === "board" ? "list" : "board")}
-            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", cursor: "pointer", fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#475569" }}>
+            style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", cursor: "pointer", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", fontWeight: 600, color: "var(--hz-ink-2)" }}>
             {view === "board" ? "☰ List" : "⊞ Board"}
           </button>
           <button onClick={openAdd}
-            style={{ border: "none", borderRadius: 8, padding: "8px 18px", background: "linear-gradient(135deg,#10b981,#059669)", cursor: "pointer", fontSize: 16, fontFamily: "inherit", fontWeight: 700, color: "#fff" }}>
+            style={{ border: "none", borderRadius: 8, padding: "8px 18px", background: "linear-gradient(135deg,#10b981,#059669)", cursor: "pointer", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", fontWeight: 700, color: "var(--hz-on-dark)" }}>
             + Add Lead
           </button>
         </div>
@@ -157,11 +157,11 @@ export default function SalesPipeline() {
 
       {/* Stage filter */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        {[{ key: "ALL", label: "All", color: "#64748b", bg: "#f1f5f9" }, ...STAGES].map(s => (
+        {[{ key: "ALL", label: "All", color: "var(--hz-muted)", bg: "#f1f5f9" }, ...STAGES].map(s => (
           <button key={s.key} onClick={() => setFilter(s.key)}
-            style={{ padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 600, fontFamily: "inherit",
+            style={{ padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, fontFamily: "inherit",
               background: filterStage === s.key ? s.color : (s.bg || "#f1f5f9"),
-              color:      filterStage === s.key ? "#fff"  : (s.color || "#64748b") }}>
+              color:      filterStage === s.key ? "var(--hz-on-dark)"  : (s.color || "var(--hz-muted)") }}>
             {s.label}
             {s.key !== "ALL" && summary?.stages?.[s.key] && (
               <span style={{ marginLeft: 5, opacity: 0.85 }}>({summary.stages[s.key].count})</span>
@@ -171,7 +171,7 @@ export default function SalesPipeline() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Loading…</div>
+        <div style={{ textAlign: "center", padding: 60, color: "var(--hz-faint)" }}>Loading…</div>
       ) : view === "board" ? (
         <div className="kanban-board" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
           {STAGES.map(stage => {
@@ -182,10 +182,10 @@ export default function SalesPipeline() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: stage.color, display: "inline-block" }} />
-                    <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{stage.label}</span>
-                    <span style={{ background: stage.bg, color: stage.color, borderRadius: 10, padding: "1px 8px", fontSize: 14, fontWeight: 700 }}>{stageLeads.length}</span>
+                    <span style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{stage.label}</span>
+                    <span style={{ background: stage.bg, color: stage.color, borderRadius: 10, padding: "1px 8px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>{stageLeads.length}</span>
                   </div>
-                  <span style={{ fontSize: 15, color: "#64748b", fontWeight: 600 }}>{formatLakh(stageVal)}</span>
+                  <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", fontWeight: 600 }}>{formatLakh(stageVal)}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {stageLeads.map(lead => (
@@ -198,11 +198,11 @@ export default function SalesPipeline() {
         </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
                 {["Title","Client","Stage","Deal Value","Probability","Expected Close","Assigned",""].map(h => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#475569", fontSize: 14, textTransform: "uppercase" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)", textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -211,18 +211,18 @@ export default function SalesPipeline() {
                 const st = stageOf(lead.stage);
                 return (
                   <tr key={lead.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0f172a" }}>{lead.title}</td>
-                    <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.client || "—"}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--hz-ink)" }}>{lead.title}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.client || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
-                      <span style={{ background: st.bg, color: st.color, borderRadius: 8, padding: "3px 10px", fontSize: 14, fontWeight: 700 }}>{st.label}</span>
+                      <span style={{ background: st.bg, color: st.color, borderRadius: 8, padding: "3px 10px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>{st.label}</span>
                     </td>
                     <td style={{ padding: "10px 14px", fontWeight: 600 }}>{formatLakh(lead.dealValue)}</td>
-                    <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.probabilityPct != null ? `${lead.probabilityPct}%` : "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.expectedCloseDate || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "#475569" }}>{lead.assignedTo || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.probabilityPct != null ? `${lead.probabilityPct}%` : "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.expectedCloseDate || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.assignedTo || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button onClick={() => openEdit(lead)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
+                        <button onClick={() => openEdit(lead)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
                         <DeleteBtn onClick={() => handleDelete(lead.id)} title="Delete" />
                       </div>
                     </td>
@@ -230,7 +230,7 @@ export default function SalesPipeline() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>No leads found</td></tr>
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "var(--hz-faint)" }}>No leads found</td></tr>
               )}
             </tbody>
           </table>
@@ -244,19 +244,19 @@ export default function SalesPipeline() {
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>{editing ? "Edit Lead" : "New Sales Lead"}</div>
-              <button onClick={() => setShowModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 22.5, color: "#64748b" }}>×</button>
+              <div style={{ fontWeight: 700, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>{editing ? "Edit Lead" : "New Sales Lead"}</div>
+              <button onClick={() => setShowModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "var(--hz-text-2xl)", color: "var(--hz-muted)" }}>×</button>
             </div>
             <form onSubmit={handleSubmit} className="sales-lead-form" style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Lead Title *</label>
                 <input style={{ ...inp, borderColor: errors.title ? "#ef4444" : "#e2e8f0" }} value={form.title} onChange={e => f({ title: e.target.value })} placeholder="e.g. Electrical work – XYZ Tower" />
-                {errors.title && <div style={{ fontSize: 14, color: "#ef4444", marginTop: 3 }}>{errors.title}</div>}
+                {errors.title && <div style={{ fontSize: "var(--hz-text-md)", color: "#ef4444", marginTop: 3 }}>{errors.title}</div>}
               </div>
               <div>
                 <label style={lbl}>Client *</label>
                 <input style={{ ...inp, borderColor: errors.client ? "#ef4444" : "#e2e8f0" }} value={form.client} onChange={e => f({ client: e.target.value })} placeholder="Client / Company" />
-                {errors.client && <div style={{ fontSize: 14, color: "#ef4444", marginTop: 3 }}>{errors.client}</div>}
+                {errors.client && <div style={{ fontSize: "var(--hz-text-md)", color: "#ef4444", marginTop: 3 }}>{errors.client}</div>}
               </div>
               <div>
                 <label style={lbl}>Stage</label>
@@ -279,7 +279,7 @@ export default function SalesPipeline() {
               <div>
                 <label style={lbl}>Deal Value (₹)</label>
                 <input style={{ ...inp, borderColor: errors.dealValue ? "#ef4444" : "#e2e8f0" }} type="number" value={form.dealValue} onChange={e => f({ dealValue: e.target.value })} placeholder="0" />
-                {errors.dealValue && <div style={{ fontSize: 14, color: "#ef4444", marginTop: 3 }}>{errors.dealValue}</div>}
+                {errors.dealValue && <div style={{ fontSize: "var(--hz-text-md)", color: "#ef4444", marginTop: 3 }}>{errors.dealValue}</div>}
               </div>
               <div>
                 <label style={lbl}>Quote Value (₹)</label>
@@ -288,7 +288,7 @@ export default function SalesPipeline() {
               <div>
                 <label style={lbl}>Win Probability (%)</label>
                 <input style={{ ...inp, borderColor: errors.probabilityPct ? "#ef4444" : "#e2e8f0" }} type="number" min="0" max="100" value={form.probabilityPct} onChange={e => f({ probabilityPct: e.target.value })} placeholder="50" />
-                {errors.probabilityPct && <div style={{ fontSize: 14, color: "#ef4444", marginTop: 3 }}>{errors.probabilityPct}</div>}
+                {errors.probabilityPct && <div style={{ fontSize: "var(--hz-text-md)", color: "#ef4444", marginTop: 3 }}>{errors.probabilityPct}</div>}
               </div>
               <div>
                 <label style={lbl}>Assigned To</label>
@@ -345,11 +345,11 @@ export default function SalesPipeline() {
               </div>
               <div style={{ gridColumn: "1/-1", display: "flex", gap: 10, marginTop: 4 }}>
                 <button type="submit" disabled={saving}
-                  style={{ flex: 1, border: "none", borderRadius: 8, padding: "11px", background: "linear-gradient(135deg,#10b981,#059669)", color: "#fff", fontWeight: 700, fontSize: 17.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ flex: 1, border: "none", borderRadius: 8, padding: "11px", background: "linear-gradient(135deg,#10b981,#059669)", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-lg)", cursor: "pointer", fontFamily: "inherit" }}>
                   {saving ? "Saving…" : editing ? "💾 Update Lead" : "+ Add Lead"}
                 </button>
                 <button type="button" onClick={() => setShowModal(false)}
-                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "11px 20px", background: "#fff", color: "#475569", fontWeight: 600, fontSize: 17.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "11px 20px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-lg)", cursor: "pointer", fontFamily: "inherit" }}>
                   Cancel
                 </button>
               </div>
@@ -369,23 +369,23 @@ function LeadCard({ lead, onEdit, onDelete, onMove }) {
   return (
     <div style={{ background: "#f8fafc", borderRadius: 10, padding: 12, border: "1px solid #e2e8f0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-        <div style={{ fontWeight: 600, fontSize: 16, color: "#0f172a", flex: 1, marginRight: 6 }}>{lead.title}</div>
+        <div style={{ fontWeight: 600, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", flex: 1, marginRight: 6 }}>{lead.title}</div>
         <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-          <button onClick={() => onEdit(lead)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2, fontSize: 16 }}>✏️</button>
+          <button onClick={() => onEdit(lead)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--hz-faint)", padding: 2, fontSize: "var(--hz-text-lg)" }}>✏️</button>
           <DeleteBtn onClick={() => onDelete(lead.id)} title="Delete" size="sm" />
         </div>
       </div>
-      {lead.client && <div style={{ fontSize: 14, color: "#64748b", marginBottom: 6 }}>{lead.client}</div>}
+      {lead.client && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", marginBottom: 6 }}>{lead.client}</div>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontWeight: 700, fontSize: 17.5, color: "#0f172a" }}>{formatLakh(lead.dealValue)}</div>
-        {lead.probabilityPct != null && <div style={{ fontSize: 14, color: st.color, fontWeight: 600 }}>{lead.probabilityPct}%</div>}
+        <div style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{formatLakh(lead.dealValue)}</div>
+        {lead.probabilityPct != null && <div style={{ fontSize: "var(--hz-text-md)", color: st.color, fontWeight: 600 }}>{lead.probabilityPct}%</div>}
       </div>
-      {lead.expectedCloseDate && <div style={{ fontSize: 14, color: "#94a3b8", marginTop: 4 }}>Close: {lead.expectedCloseDate}</div>}
+      {lead.expectedCloseDate && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", marginTop: 4 }}>Close: {lead.expectedCloseDate}</div>}
       {nextStages.length > 0 && (
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
           {nextStages.map(n => (
             <button key={n.key} onClick={() => onMove(lead, n.key)}
-              style={{ flex: 1, background: n.bg, color: n.color, border: `1px solid ${n.color}33`, borderRadius: 6, padding: "4px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ flex: 1, background: n.bg, color: n.color, border: `1px solid ${n.color}33`, borderRadius: 6, padding: "4px 8px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               → {n.label}
             </button>
           ))}

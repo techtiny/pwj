@@ -3,8 +3,8 @@ import { employeeApi, salaryApi, statementApi, downloadPayslip, currentPayrollMo
 import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
-const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
-const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
+const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", boxSizing: "border-box" };
+const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 const ST = {
@@ -51,8 +51,8 @@ function MyPayslip({ user }) {
 
   return (
     <div style={{ ...card, padding: "18px 20px", marginBottom: 20 }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>My Salary Statement</div>
-      <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 14 }}>
+      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>My Salary Statement</div>
+      <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginBottom: 14 }}>
         Request the month you need. Once Admin or VP approves it, you can download that month's statement.
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -66,16 +66,16 @@ function MyPayslip({ user }) {
           {busy === "req" ? "Sending…" : "Request Salary Statement"}
         </button>
       </div>
-      {error && <div style={{ fontSize: 12.5, color: "#b91c1c", marginTop: 10 }}>{error}</div>}
+      {error && <div style={{ fontSize: "var(--hz-text-xs)", color: "#b91c1c", marginTop: 10 }}>{error}</div>}
       {rows.length > 0 && (
         <div style={{ marginTop: 16, borderTop: "1px solid #eef2f7" }}>
           {rows.map((r) => {
             const st = ST[r.status] || ST.PENDING;
             return (
               <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 140, fontSize: 14, fontWeight: 600 }}>{MONTHS[r.month - 1]} {r.year}</div>
-                <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, background: st.bg, color: st.color }}>{st.label}</span>
-                {r.status === "REJECTED" && r.comment && <span style={{ fontSize: 12.5, color: "#b91c1c" }}>{r.comment}</span>}
+                <div style={{ flex: 1, minWidth: 140, fontSize: "var(--hz-text-md)", fontWeight: 600 }}>{MONTHS[r.month - 1]} {r.year}</div>
+                <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: "var(--hz-text-xs)", fontWeight: 700, background: st.bg, color: st.color }}>{st.label}</span>
+                {r.status === "REJECTED" && r.comment && <span style={{ fontSize: "var(--hz-text-xs)", color: "#b91c1c" }}>{r.comment}</span>}
                 {r.status === "APPROVED" && (
                   <button onClick={() => download(r)} disabled={busy === r.id} style={{ ...btn("#0f766e"), padding: "6px 12px", opacity: busy === r.id ? 0.6 : 1 }}>
                     {busy === r.id ? "Loading…" : "📄 Download"}
@@ -113,7 +113,7 @@ export default function MyProfilePage({ user }) {
         <div className="hr-page" style={{ padding: "0 32px 24px" }}>Loading profile…</div>
       ) : empId === null ? (
         <div className="hr-page" style={{ padding: "0 32px 24px" }}>
-          <div style={{ ...card, padding: "20px 24px", color: "#64748b", textAlign: "center" }}>
+          <div style={{ ...card, padding: "20px 24px", color: "var(--hz-muted)", textAlign: "center" }}>
             Your login isn't linked to an Employee Master record yet — ask Admin/HR to link it so your profile (photo, tenure, stats) shows up here.
           </div>
         </div>

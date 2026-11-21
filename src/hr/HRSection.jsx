@@ -91,7 +91,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
   }, [initialTab]);
 
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)", fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)", fontFamily: "var(--hz-font)" }}>
       <style>{`
         @media (max-width: 768px) {
           /* General page */
@@ -175,9 +175,9 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
                 <button key={t.key} onClick={() => setTab(t.key)}
                   style={{
                     border: "none", borderRadius: 8, padding: "8px 20px",
-                    background: active ? "#fff" : "transparent", color: active ? "#1e3a5f" : "#334155",
+                    background: active ? "#fff" : "transparent", color: active ? "var(--hz-primary)" : "var(--hz-ink-2)",
                     boxShadow: active ? "0 1px 3px rgba(15,23,42,.18)" : "none",
-                    fontWeight: active ? 700 : 500, fontSize: 15, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                    fontWeight: active ? 700 : 500, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                     transition: "background .15s, color .15s",
                   }}>
                   {t.label}

@@ -18,7 +18,7 @@ const STATUS_COLOR = {
   PRESENT:  { bg: "#ecfdf5", color: "#059669", label: "Present" },
   HALF_DAY: { bg: "#fffbeb", color: "#d97706", label: "Half Day" },
   ON_LEAVE: { bg: "#eff6ff", color: "#2563eb", label: "On Leave" },
-  ABSENT:   { bg: "#fef2f2", color: "#dc2626", label: "Absent" },
+  ABSENT:   { bg: "#fef2f2", color: "var(--hz-danger)", label: "Absent" },
   ADJUSTED: { bg: "#f5f3ff", color: "#7c3aed", label: "Adjusted" }, // HR recorded the day as leave the employee never applied for
 };
 
@@ -94,8 +94,8 @@ export function TodayAttendanceCard({ user, style }) {
 
   return (
     <div className="hr-check-card" style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: "18px 22px", maxWidth: 520, ...style }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Today's Attendance</div>
-      <div style={{ fontSize: 13, color: "#374151", marginBottom: 20 }}>
+      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Today's Attendance</div>
+      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginBottom: 20 }}>
         {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
       </div>
 
@@ -112,14 +112,14 @@ export function TodayAttendanceCard({ user, style }) {
               border: `2px solid ${step.done ? "#1e3a5f" : "#e2e8f0"}`,
               display: "flex", alignItems: "center", justifyContent: "center",
               margin: "0 auto 8px", position: "relative", zIndex: 1,
-              color: step.done ? "#fff" : "#94a3b8", fontSize: 15,
+              color: step.done ? "var(--hz-on-dark)" : "var(--hz-faint)", fontSize: "var(--hz-text-md)",
             }}>
               {step.done ? "✓" : (i === 0 ? "🏢" : "🏠")}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: step.done ? "#0f172a" : "#94a3b8" }}>{step.label}</div>
-            {step.time && <div style={{ fontSize: 13, color: "#1e3a5f", fontWeight: 600, marginTop: 2 }}>{fmtTime(step.time)}</div>}
+            <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: step.done ? "var(--hz-ink)" : "var(--hz-faint)" }}>{step.label}</div>
+            {step.time && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-primary)", fontWeight: 600, marginTop: 2 }}>{fmtTime(step.time)}</div>}
             {step.addr && (
-              <div style={{ fontSize: 13, color: "#374151", marginTop: 2, maxWidth: 140, margin: "2px auto 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={step.addr}>
+              <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2, maxWidth: 140, margin: "2px auto 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={step.addr}>
                 📍 {step.addr}
               </div>
             )}
@@ -129,12 +129,12 @@ export function TodayAttendanceCard({ user, style }) {
 
       {today?.totalMinutes && (
         <div style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", marginBottom: 16, textAlign: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#1e3a5f" }}>⏱ Total: {fmtHours(today.totalMinutes)}</span>
+          <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-primary)" }}>⏱ Total: {fmtHours(today.totalMinutes)}</span>
         </div>
       )}
 
       {locMsg && (
-        <div style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 13, color: "#1e293b" }}>
+        <div style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
           📍 {locMsg}
         </div>
       )}
@@ -142,18 +142,18 @@ export function TodayAttendanceCard({ user, style }) {
       <div style={{ display: "flex", gap: 10 }}>
         {!checkedIn && (
           <button onClick={handleCheckIn} disabled={loading}
-            style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>
+            style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "#1e3a5f", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>
             {loading ? "Getting location…" : "🏢 Check In"}
           </button>
         )}
         {checkedIn && !checkedOut && (
           <button onClick={handleCheckOut} disabled={loading}
-            style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "linear-gradient(135deg,#dc2626,#ef4444)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>
+            style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: "linear-gradient(135deg,#dc2626,#ef4444)", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>
             {loading ? "Getting location…" : "🏠 Check Out"}
           </button>
         )}
         {checkedOut && (
-          <div style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 9, padding: "12px", textAlign: "center", color: "#1e3a5f", fontWeight: 700, fontSize: 14 }}>
+          <div style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 9, padding: "12px", textAlign: "center", color: "var(--hz-primary)", fontWeight: 700, fontSize: "var(--hz-text-md)" }}>
             ✓ Day Complete
           </div>
         )}
@@ -204,14 +204,14 @@ export function AttendanceIconButton({ user, compact = false }) {
     <button onClick={onClick} disabled={disabled || loading} title={label}
       style={{
         border: "none", background: "none", cursor: (disabled || loading) ? "default" : "pointer", fontFamily: "inherit",
-        padding: "14px 14px", fontSize: 14.5, fontWeight: 700,
-        color: done ? "#166534" : active ? "#dc2626" : "#94a3b8",
+        padding: "14px 14px", fontSize: "var(--hz-text-md)", fontWeight: 700,
+        color: done ? "#166534" : active ? "var(--hz-danger)" : "var(--hz-faint)",
         display: "flex", alignItems: "center", gap: 7, opacity: (disabled && !done) ? 0.7 : 1,
       }}>
       <span style={{
         width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
         background: done ? "#dcfce7" : active ? "#fee2e2" : "#f1f5f9",
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-sm)",
       }}>
         {loading && active ? "…" : done ? "✓" : emoji}
       </span>
@@ -224,13 +224,13 @@ export function AttendanceIconButton({ user, compact = false }) {
           width: 48, height: 48, borderRadius: "50%", border: "none",
           cursor: (disabled || loading) ? "default" : "pointer",
           background: done ? "#1e3a5f" : active ? "linear-gradient(135deg,#dc2626,#ef4444)" : "#e2e8f0",
-          color: done || active ? "#fff" : "#64748b",
-          fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center",
+          color: done || active ? "var(--hz-on-dark)" : "var(--hz-muted)",
+          fontSize: "var(--hz-text-xl)", display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 12px rgba(15,23,42,.14)", opacity: (disabled && !done) ? 0.6 : 1, fontFamily: "inherit",
         }}>
         {loading && active ? "…" : done ? "✓" : emoji}
       </button>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#000" }}>{label}</span>
+      <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)" }}>{label}</span>
     </div>
   );
 
@@ -252,9 +252,9 @@ const Tooltip = ({ tooltip }) => {
     <div style={{
       position: "fixed", left: tooltip.x, top: tooltip.y,
       transform: "translateX(-50%)",
-      background: "#1e293b", color: "#fff",
+      background: "#1e293b", color: "var(--hz-on-dark)",
       padding: "8px 12px", borderRadius: 8,
-      fontSize: 13, lineHeight: 1.6,
+      fontSize: "var(--hz-text-sm)", lineHeight: 1.6,
       maxWidth: 320, zIndex: 9999,
       pointerEvents: "none",
       boxShadow: "0 6px 20px rgba(0,0,0,0.28)",
@@ -325,26 +325,26 @@ export default function AttendancePage({ user, adminView = false }) {
 
   const TH = {
     background: "#f8fafc", padding: "12px 14px", textAlign: "left",
-    fontWeight: 600, fontSize: 13, color: "#374151",
+    fontWeight: 600, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)",
     textTransform: "uppercase", letterSpacing: 0.5,
     borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap",
   };
   const TD = (extra = {}) => ({
-    padding: "12px 14px", color: "#374151",
-    borderBottom: "1px solid #f1f5f9", fontSize: 14,
+    padding: "12px 14px", color: "var(--hz-ink-2)",
+    borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-md)",
     verticalAlign: "middle", ...extra,
   });
   const statCard = (accent) => ({
     background: "#fff", borderRadius: 12, padding: "18px 22px",
     flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}`,
   });
-  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600 });
+  const badge = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600 });
 
   const LocCell = ({ text, maxWidth = 160 }) => (
     <div
       onMouseEnter={e => showTip(e, text)}
       onMouseLeave={hideTip}
-      style={{ fontSize: 13, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "default", maxWidth }}
+      style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "default", maxWidth }}
     >
       {text || "—"}
     </div>
@@ -399,13 +399,13 @@ export default function AttendancePage({ user, adminView = false }) {
     const isViewOnly = user?.role === "PROJECT_MANAGER";
     const FILTER_INP = {
       border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
-      fontSize: 14, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff",
+      fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)", background: "#fff",
     };
-    const FILTER_LBL = { fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" };
+    const FILTER_LBL = { fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)", marginBottom: 4, display: "block" };
     return (
       <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Team Attendance</div>
-        <div style={{ fontSize: 13, color: "#374151", marginBottom: 16 }}>All team members who check in (everyone except VP, OH and CEO) · {filteredRec.length} of {allRec.length} records</div>
+        <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Team Attendance</div>
+        <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginBottom: 16 }}>All team members who check in (everyone except VP, OH and CEO) · {filteredRec.length} of {allRec.length} records</div>
 
         {/* Sub-tabs */}
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 20 }}>
@@ -418,8 +418,8 @@ export default function AttendancePage({ user, adminView = false }) {
               <button key={t.key} onClick={() => setSubTab(t.key)}
                 style={{
                   border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                  padding: "10px 18px", fontSize: 14.5, fontWeight: active ? 700 : 600,
-                  color: t.key === "needs-review" && incomplete.length > 0 ? (active ? "#dc2626" : "#991b1b") : "#000",
+                  padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 600,
+                  color: t.key === "needs-review" && incomplete.length > 0 ? (active ? "var(--hz-danger)" : "#991b1b") : "var(--hz-ink)",
                   borderBottom: active ? "2.5px solid #1e3a5f" : "2.5px solid transparent",
                   marginBottom: -1, whiteSpace: "nowrap",
                 }}>
@@ -456,14 +456,14 @@ export default function AttendancePage({ user, adminView = false }) {
           </div>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
               Clear Filters
             </button>
           )}
         </div>
 
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }} className="table-scroll-wrap">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-md)" }}>
             <thead>
               <tr>{["Employee","Date","Check-In","Location In","Check-Out","Location Out","Duration","Status", ...(isViewOnly ? [] : ["Edit"])].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
@@ -472,7 +472,7 @@ export default function AttendancePage({ user, adminView = false }) {
                 const s = STATUS_COLOR[a.status] || STATUS_COLOR.ABSENT;
                 return (
                   <tr key={a.id}>
-                    <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{a.fullName}</td>
+                    <td style={TD({ fontWeight: 600, color: "var(--hz-ink)" })}>{a.fullName}</td>
                     <td style={TD()}>{fmtDate(a.workDate)}</td>
                     <td style={TD()}>{fmtTime(a.checkInTime)}</td>
                     <td style={TD({ maxWidth: 160 })}><LocCell text={a.checkInAddress} /></td>
@@ -483,10 +483,10 @@ export default function AttendancePage({ user, adminView = false }) {
                     {!isViewOnly && (
                       <td style={TD()}>
                         {a.id < 0 ? (
-                          <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>{a.notes}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", fontStyle: "italic" }}>{a.notes}</span>
                         ) : (
                           <button onClick={() => openEdit(a)}
-                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "var(--hz-primary)", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
                             ✏️ Edit
                           </button>
                         )}
@@ -496,7 +496,7 @@ export default function AttendancePage({ user, adminView = false }) {
                 );
               })}
               {filteredRec.length === 0 && (
-                <tr><td colSpan={isViewOnly ? 8 : 9} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+                <tr><td colSpan={isViewOnly ? 8 : 9} style={{ padding: 52, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
                   {hasFilters ? "No records match the selected filters." : "No records"}
                 </td></tr>
               )}
@@ -508,10 +508,10 @@ export default function AttendancePage({ user, adminView = false }) {
         {subTab === "needs-review" && (
           <div className="hr-needs-review" style={{ background: "#fff", borderRadius: 12, border: "1px solid #fca5a5", borderLeft: "4px solid #dc2626", padding: "18px 22px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
+              <span style={{ fontSize: "var(--hz-text-xl)" }}>⚠️</span>
               <div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: "#dc2626" }}>Needs Review — Missing Check-Out</div>
-                <div style={{ fontSize: 15, color: "#ef4444" }}>
+                <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-danger)" }}>Needs Review — Missing Check-Out</div>
+                <div style={{ fontSize: "var(--hz-text-md)", color: "#ef4444" }}>
                   {incomplete.length} record{incomplete.length !== 1 ? "s" : ""} auto-marked Absent — employee checked in but never checked out
                 </div>
               </div>
@@ -528,14 +528,14 @@ export default function AttendancePage({ user, adminView = false }) {
                 <tbody>
                   {incomplete.map(a => (
                     <tr key={a.id} style={{ borderBottom: "1px solid #fee2e2" }}>
-                      <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{a.fullName}</td>
+                      <td style={TD({ fontWeight: 600, color: "var(--hz-ink)" })}>{a.fullName}</td>
                       <td style={TD()}>{fmtDate(a.workDate)}</td>
                       <td style={TD()}>{fmtTime(a.checkInTime)}</td>
                       <td style={TD({ maxWidth: 220 })}><LocCell text={a.checkInAddress} maxWidth={220} /></td>
                       {!isViewOnly && (
                         <td style={TD()}>
                           <button onClick={() => openEdit(a)}
-                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "#1e3a5f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ border: "1.5px solid #e2e8f0", borderRadius: 7, padding: "4px 12px", background: "#fff", color: "var(--hz-primary)", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
                             ✏️ Edit
                           </button>
                         </td>
@@ -543,7 +543,7 @@ export default function AttendancePage({ user, adminView = false }) {
                     </tr>
                   ))}
                   {incomplete.length === 0 && (
-                    <tr><td colSpan={isViewOnly ? 4 : 5} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>
+                    <tr><td colSpan={isViewOnly ? 4 : 5} style={{ padding: 52, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
                       🎉 No missing check-outs to review
                     </td></tr>
                   )}
@@ -559,28 +559,28 @@ export default function AttendancePage({ user, adminView = false }) {
         {editRec && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
             <div className="hr-edit-modal" style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.22)", fontFamily: "inherit" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Edit Attendance</div>
-              <div style={{ fontSize: 14, color: "#374151", marginBottom: 20 }}>{editRec.fullName} · {fmtDate(editRec.workDate)}</div>
+              <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Edit Attendance</div>
+              <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: 20 }}>{editRec.fullName} · {fmtDate(editRec.workDate)}</div>
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-In Time</label>
+              <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-In Time</label>
               <input type="datetime-local" value={editIn} onChange={e => setEditIn(e.target.value)}
-                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 14.5, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-Out Time</label>
+              <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Check-Out Time</label>
               <input type="datetime-local" value={editOut} onChange={e => setEditOut(e.target.value)}
-                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 14.5, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Admin Notes</label>
+              <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>Admin Notes</label>
               <input type="text" value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Reason for correction…"
-                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 14.5, fontFamily: "inherit", marginBottom: 22, boxSizing: "border-box", outline: "none" }} />
+                style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", marginBottom: 22, boxSizing: "border-box", outline: "none" }} />
 
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setEditRec(null)}
-                  style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "10px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                   Cancel
                 </button>
                 <button onClick={saveEdit} disabled={editSaving}
-                  style={{ flex: 2, border: "none", borderRadius: 9, padding: "10px", background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: editSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: editSaving ? 0.7 : 1 }}>
+                  style={{ flex: 2, border: "none", borderRadius: 9, padding: "10px", background: "#1e3a5f", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: editSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: editSaving ? 0.7 : 1 }}>
                   {editSaving ? "Saving…" : "Save Correction"}
                 </button>
               </div>
@@ -604,8 +604,8 @@ export default function AttendancePage({ user, adminView = false }) {
             { label: "Absent",   value: summary.absentDays,  accent: "#dc2626" },
           ].map(k => (
             <div key={k.label} style={statCard(k.accent)}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{k.label} (Month)</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
+              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)" }}>{k.label} (Month)</div>
+              <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.2, marginTop: 6 }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -615,11 +615,11 @@ export default function AttendancePage({ user, adminView = false }) {
 
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Attendance History</div>
-          <div style={{ fontSize: 13, color: "#374151" }}>{history.length} records</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Attendance History</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{history.length} records</div>
         </div>
         <div className="table-scroll-wrap">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-md)" }}>
             <thead>
               <tr>{["Date","Check-In","Location","Check-Out","Duration","Status"].map(h => <th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
@@ -628,7 +628,7 @@ export default function AttendancePage({ user, adminView = false }) {
                 const s = STATUS_COLOR[a.status] || STATUS_COLOR.ABSENT;
                 return (
                   <tr key={a.id}>
-                    <td style={TD({ fontWeight: 600, color: "#0f172a" })}>{fmtDate(a.workDate)}</td>
+                    <td style={TD({ fontWeight: 600, color: "var(--hz-ink)" })}>{fmtDate(a.workDate)}</td>
                     <td style={TD()}>{fmtTime(a.checkInTime)}</td>
                     <td style={TD({ maxWidth: 180 })}><LocCell text={a.checkInAddress} maxWidth={180} /></td>
                     <td style={TD()}>{fmtTime(a.checkOutTime)}</td>
@@ -638,7 +638,7 @@ export default function AttendancePage({ user, adminView = false }) {
                 );
               })}
               {history.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 52, textAlign: "center", color: "#374151", fontSize: 15 }}>No records yet</td></tr>
+                <tr><td colSpan={6} style={{ padding: 52, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>No records yet</td></tr>
               )}
             </tbody>
           </table>

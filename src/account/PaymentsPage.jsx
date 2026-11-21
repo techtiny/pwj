@@ -5,7 +5,7 @@ import { expenseItemsApi, fundManagementApi } from './accountApi';
 
 // Read-only status — soft tint so a decision already made never looks like the solid, clickable Approve/Reject buttons
 const APPROVAL_CFG = {
-  PENDING:  { label: 'Pending',  color: '#94a3b8', bg: '#f1f5f9', Icon: Clock },
+  PENDING:  { label: 'Pending',  color: "var(--hz-faint)", bg: '#f1f5f9', Icon: Clock },
   APPROVED: { label: 'Approved', color: '#15803d', bg: '#dcfce7', Icon: Check },
   REJECTED: { label: 'Rejected', color: '#b91c1c', bg: '#fee2e2', Icon: X },
 };
@@ -65,9 +65,12 @@ const remarkText = it => {
   return parts.join(' / ');
 };
 
-export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = false }) {
+export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = false, isCeo = false, readOnly = false }) {
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rejectFor, setRejectFor] = useState(null); // { item, level } — rejection reason dialog
+  const [rejectText, setRejectText] = useState('');
+  const [detail, setDetail]   = useState(null); // entry whose detail window is open
   const [busy, setBusy]       = useState({});  // id -> true while an approval call is in flight
 
   const [filterProject, setFilterProject] = useState('');
@@ -91,10 +94,10 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
 
   const fundingBlocked = !!(funding && funding.fundingInUse && !funding.allFunded);
 
-  async function handleOhDecision(item, status) {
+  async function handleOhDecision(item, status, remark) {
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      await expenseItemsApi.setOhApproval(item.id, status);
+      await expenseItemsApi.setOhApproval(item.id, status, undefined, remark);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'OH approval failed');
@@ -103,10 +106,10 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
   }
 
-  async function handleAdminDecision(item, status) {
+  async function handleAdminDecision(item, status, remark) {
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      await expenseItemsApi.setAdminApproval(item.id, status);
+      await expenseItemsApi.setAdminApproval(item.id, status, remark);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'Admin approval failed');
@@ -115,13 +118,25 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     }
   }
 
-  async function handleVpDecision(item, status) {
+  async function handleVpDecision(item, status, remark) {
     setBusy(p => ({ ...p, [item.id]: true }));
     try {
-      await expenseItemsApi.setVpApproval(item.id, status);
+      await expenseItemsApi.setVpApproval(item.id, status, remark);
       load();
     } catch (e) {
       alert(e.response?.data?.error || 'VP approval failed');
+    } finally {
+      setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
+    }
+  }
+
+  async function handleCeoDecision(item, status, remark) {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    try {
+      await expenseItemsApi.setCeoApproval(item.id, status, remark);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.error || 'CEO approval failed');
     } finally {
       setBusy(p => { const c = { ...p }; delete c[item.id]; return c; });
     }
@@ -206,15 +221,18 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
   const partCount = filtered.filter(i => i.paymentStatus === 'PART_PAYMENT_SENT').length;
   const fullCount = filtered.filter(i => i.paymentStatus === 'FULL_PAYMENT_SENT').length;
 
-  const selectStyle = { padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', background: '#fff' };
+  const selectStyle = { padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: "var(--hz-text-xs)", fontFamily: 'inherit', background: '#fff' };
 
   const HEADERS   = ['Transaction Type', 'Beneficiary Account Number', 'Instrument Amount', 'Beneficiary Name',
     'Beneficiary Code', 'Remarks', 'IFSC Code', 'Ben Email ID', 'Ben Mobile No'];
   const MANDATORY = ['Mandatory', 'Mandatory', 'Mandatory', 'Mandatory', 'Optional', 'Optional', 'Mandatory', 'Optional', 'Optional'];
 
-  // Only VP-approved entries are eligible for the bank file.
+  // Only entries approved all the way through Level 4 (CEO) are eligible for the bank file.
   const approvedForExport = useMemo(
-    () => filtered.filter(it => (it.vpApprovalStatus || 'PENDING') === 'APPROVED'),
+    // A rejection at any level (OH / Admin / VP) keeps the entry out of the bank file and the Excel export.
+    () => filtered.filter(it => (it.vpApprovalStatus || 'PENDING') === 'APPROVED'
+      && it.ohApprovalStatus !== 'REJECTED' && it.adminApprovalStatus !== 'REJECTED'
+      && (it.ceoApprovalStatus || 'PENDING') === 'APPROVED'),
     [filtered],
   );
 
@@ -330,12 +348,66 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
 
   return (
     <div className="pay-dash">
+      {detail && (() => {
+        const d = detail;
+        const row = (label, val) => (
+          <div style={{ display: 'flex', gap: 12, padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: "var(--hz-text-sm)" }}>
+            <div style={{ width: 130, color: "var(--hz-muted)", flexShrink: 0 }}>{label}</div>
+            <div style={{ color: "var(--hz-ink)", fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{val}</div>
+          </div>
+        );
+        return (
+          <div onClick={() => setDetail(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', padding: '18px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Payment details</div>
+                <button onClick={() => setDetail(null)} aria-label="Close" style={{ border: 'none', background: '#f1f5f9', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: "var(--hz-text-md)" }}>✕</button>
+              </div>
+              {row('Project', d.projectName || '—')}
+              {row('Party', d.partyName || '—')}
+              {row('PWJ No', (
+                <>
+                  {d.refNo || '—'}
+                  {isAdditionalPoRef(d.refNo) && <div style={{ fontSize: "var(--hz-text-2xs)", color: '#b45309', fontWeight: 700 }}>↳ of {baseRefNo(d.refNo)}</div>}
+                  {d.clubbedPrs?.length > 0 && <div style={{ fontSize: "var(--hz-text-2xs)", color: '#7c3aed', fontWeight: 700 }}>📎 Clubs {d.clubbedPrs.map(p => `PR #${p.id}`).join(', ')}</div>}
+                </>
+              ))}
+              {row('Requested at', d.sentAt ? `${new Date(d.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${new Date(d.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : '—')}
+              {row('Required by', d.requiredByDate ? new Date(d.requiredByDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')}
+              {row('Item description', <span style={{ whiteSpace: 'pre-wrap' }}>{d.description || '—'}</span>)}
+              {row('Stage / Against', `${fmtStage(d.paymentStage)} · ${fmtPaymentAgainst(d.paymentMadeAgainst)}`)}
+              {row('Payment requested', fmt(d.sentAmount))}
+              {row('Paid amount', fmt(paidAmt(d)))}
+              {row('Remarks', remarkText(d) || '—')}
+              {d.rejectionRemark && row(`Rejected (${d.rejectedAtLevel === 'ADMIN' ? 'Admin' : d.rejectedAtLevel || ''})`, <span style={{ color: '#991b1b' }}>{d.rejectionRemark}</span>)}
+              {row('Approvals', `OH/VP: ${d.ohApprovalStatus || 'PENDING'} · Admin: ${d.adminApprovalStatus || 'PENDING'} · VP: ${d.vpApprovalStatus || 'PENDING'} · CEO: ${d.ceoApprovalStatus || 'PENDING'}`)}
+            </div>
+          </div>
+        );
+      })()}
+      {rejectFor && (
+        <div onClick={() => setRejectFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 420, padding: '18px 22px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 4 }}>Reject payment</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 10 }}>{rejectFor.item.partyName || ''} · {fmt(rejectFor.item.sentAmount)} — tell the requester why.</div>
+            <textarea autoFocus rows={4} value={rejectText} onChange={e => setRejectText(e.target.value)} placeholder="Reason for rejection (required)…"
+              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 10px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit', resize: 'vertical' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setRejectFor(null)} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Cancel</button>
+              <button disabled={!rejectText.trim()} onClick={() => {
+                const { item, level } = rejectFor; const remark = rejectText.trim(); setRejectFor(null);
+                (level === 'OH' ? handleOhDecision : level === 'ADMIN' ? handleAdminDecision : level === 'CEO' ? handleCeoDecision : handleVpDecision)(item, 'REJECTED', remark);
+              }} style={{ border: 'none', background: rejectText.trim() ? '#dc2626' : '#fca5a5', color: "var(--hz-on-dark)", borderRadius: 8, padding: '8px 14px', cursor: rejectText.trim() ? 'pointer' : 'not-allowed', fontWeight: 700, fontFamily: 'inherit' }}>Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Banner */}
       <div style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius: 12, padding: '18px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Send size={24} color="white" />
         <div>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: 17 }}>Send for Payment Tracker</div>
-          <div style={{ color: '#bfdbfe', fontSize: 13.5, marginTop: 2 }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Send for Payment Tracker</div>
+          <div style={{ color: '#bfdbfe', fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
             Every expense entry sent for payment, across all projects
           </div>
         </div>
@@ -357,10 +429,10 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
             return (
               <button key={t.key} onClick={() => setTimeline(t.key)}
                 style={{
-                  border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: active ? 700 : 500,
+                  border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: "var(--hz-text-xs)", fontWeight: active ? 700 : 500,
                   padding: '6px 12px', borderRadius: 6,
                   background: active ? '#2563eb' : 'transparent',
-                  color: active ? '#fff' : '#475569',
+                  color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)",
                 }}>
                 {t.label}
               </button>
@@ -371,14 +443,14 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
         {timeline === 'custom' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={selectStyle} />
-            <span style={{ color: '#94a3b8', fontSize: 12 }}>to</span>
+            <span style={{ color: "var(--hz-faint)", fontSize: "var(--hz-text-xs)" }}>to</span>
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={selectStyle} />
           </div>
         )}
 
         {(filterProject || filterParty || timeline !== 'all') && (
           <button onClick={() => { setFilterProject(''); setFilterParty(''); setTimeline('all'); }}
-            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto' }}>
+            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: 'pointer', marginLeft: 'auto' }}>
             Clear filters
           </button>
         )}
@@ -392,16 +464,16 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
           { label: 'Total Amount Sent',     value: fmt(totalSent) },
         ].map(({ label, value }) => (
           <div key={label} className="card" style={{ padding: 20 }}>
-            <div className="pay-kpi-label" style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</div>
-            <div className="pay-kpi-value" style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>{value}</div>
+            <div className="pay-kpi-label" style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>{label}</div>
+            <div className="pay-kpi-value" style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", marginTop: 4 }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {fundingBlocked && (
+      {fundingBlocked && !readOnly && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 18 }}>⚠️</span>
-          <div style={{ fontSize: 13, color: '#7f1d1d' }}>
+          <span style={{ fontSize: "var(--hz-text-xl)" }}>⚠️</span>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: '#7f1d1d' }}>
             <b>Bank transfer not eligible — shortfall {fmt(funding.totalShortfall)}.</b>{' '}
             {(funding.projects || []).filter(p => !p.funded).map(p => `${p.projectName} (short ${fmt(p.shortfall)})`).join(', ')}.
             {' '}Move fund in <b>Fund Management → Payment Funding</b>, then generate the bank file.
@@ -412,8 +484,8 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
       {/* Table */}
       <div className="card" style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-          <div className="pay-section-title" style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Payment History</div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="pay-section-title" style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Payment History</div>
+          {!readOnly && <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={exportBankPayment} disabled={approvedToday.length === 0 || fundingBlocked}
               title={approvedToday.length === 0
                 ? 'No VP-approved entries sent for payment today'
@@ -422,9 +494,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                 : `Generate today's bank payment file (${approvedToday.length} ${approvedToday.length === 1 ? 'transfer' : 'transfers'})`}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #1d4ed8', borderRadius: 8,
-                padding: '7px 12px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                padding: '7px 12px', fontSize: "var(--hz-text-xs)", fontWeight: 600, fontFamily: 'inherit',
                 background: (approvedToday.length === 0 || fundingBlocked) ? '#f1f5f9' : '#2563eb',
-                color: (approvedToday.length === 0 || fundingBlocked) ? '#94a3b8' : '#fff',
+                color: (approvedToday.length === 0 || fundingBlocked) ? "var(--hz-faint)" : "var(--hz-on-dark)",
                 borderColor: (approvedToday.length === 0 || fundingBlocked) ? '#cbd5e1' : '#1d4ed8',
                 cursor: (approvedToday.length === 0 || fundingBlocked) ? 'not-allowed' : 'pointer',
               }}>
@@ -436,19 +508,19 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                 : `Export ${approvedForExport.length} VP-approved ${approvedForExport.length === 1 ? 'entry' : 'entries'}, one tab per date`}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #cbd5e1', borderRadius: 8,
-                padding: '7px 12px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                padding: '7px 12px', fontSize: "var(--hz-text-xs)", fontWeight: 600, fontFamily: 'inherit',
                 background: approvedForExport.length === 0 ? '#f1f5f9' : '#fff',
-                color: approvedForExport.length === 0 ? '#94a3b8' : '#0f172a',
+                color: approvedForExport.length === 0 ? "var(--hz-faint)" : "var(--hz-ink)",
                 cursor: approvedForExport.length === 0 ? 'not-allowed' : 'pointer',
               }}>
               <Download size={14} /> Export Excel{approvedForExport.length > 0 ? ` (${approvedForExport.length})` : ''}
             </button>
-          </div>
+          </div>}
         </div>
         {loading ? (
           <div className="loading" style={{ height: 80 }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: '32px 0', color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>
             {items.length === 0
               ? 'Nothing sent for payment yet. Mark entries eligible in the Expenses tab, then use "Send for Payment".'
               : 'No entries match the current filters.'}
@@ -461,12 +533,9 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th>#</th>
                   <th>Project</th>
                   <th>Party</th>
-                  <th>PWJ No</th>
                   <th title="Total sent so far against this PWJ No (same as 'already sent' in the Send for Payment dialog)">Paid<br />Amt</th>
-                  <th>Requested<br />At</th>
-                  <th>Stage /<br />Against</th>
+                  <th title="Date the requesting engineer needs this payment made by">Required<br />By</th>
                   <th>Payment<br />Requested</th>
-                  <th className="col-remarks">Remarks</th>
                   <th>Level 1<br />OH/VP</th>
                   <th title="TDS rate applied on Payment Requested — set on the TDS tab">TDS %</th>
                   <th title="Payment Requested × TDS %">TDS Amt</th>
@@ -474,6 +543,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th title="Payment Requested − TDS Amt − GST Amt − Deduction">Approved<br />Value</th>
                   <th>Level 2<br />Admin</th>
                   <th>Level 3<br />VP</th>
+                  <th>Level 4<br />CEO</th>
                   {(isAdmin || isVP) && <th></th>}
                 </tr>
               </thead>
@@ -483,51 +553,29 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   const ohPending = (it.ohApprovalStatus || 'PENDING') === 'PENDING';
                   const adminEligible = it.ohApprovalStatus === 'APPROVED' && (it.adminApprovalStatus || 'PENDING') === 'PENDING';
                   const vpEligible = it.adminApprovalStatus === 'APPROVED' && (it.vpApprovalStatus || 'PENDING') === 'PENDING';
-                  const btn = (bg) => ({ border: 'none', borderRadius: 5, padding: '3px 8px', fontSize: 10.5, fontWeight: 700, color: '#fff', background: bg, cursor: isBusy ? 'default' : 'pointer', opacity: isBusy ? 0.6 : 1 });
+                  const btn = (bg) => ({ border: 'none', borderRadius: 5, padding: '3px 8px', fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "var(--hz-on-dark)", background: bg, cursor: isBusy ? 'default' : 'pointer', opacity: isBusy ? 0.6 : 1 });
                   const tdsAmt = it.tdsAmount != null ? Number(it.tdsAmount)
                     : (it.tdsPercent ? Number(it.sentAmount || 0) * Number(it.tdsPercent) / 100 : 0);
                   const deductionAmt = Number(it.deductionAmount || 0);
                   const apprVal = it.approvedValue != null ? Number(it.approvedValue)
                     : (Number(it.sentAmount || 0) - tdsAmt - deductionAmt);
                   return (
-                    <tr key={it.id}>
-                      <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
-                      <td className="col-wrap" style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
-                      <td className="col-wrap" style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
-                      <td style={{ fontSize: 12, color: '#64748b' }}>
-                        {it.refNo || '—'}
-                        {isAdditionalPoRef(it.refNo) && (
-                          <div style={{ fontSize: 9.5, color: '#b45309', fontWeight: 700 }}>↳ of {baseRefNo(it.refNo)}</div>
-                        )}
-                        {it.clubbedPrs?.length > 0 && (
-                          <div style={{ fontSize: 9.5, color: '#7c3aed', fontWeight: 700 }}>
-                            📎 Clubs {it.clubbedPrs.map(p => `PR #${p.id}`).join(', ')}
-                          </div>
-                        )}
+                    <tr key={it.id} style={{ cursor: 'pointer' }} title="Click for details" onClick={e => { if (e.target.closest('button,a,input,select')) return; setDetail(it); }}>
+                      <td style={{ color: "var(--hz-faint)", fontSize: "var(--hz-text-xs)" }}>{i + 1}</td>
+                      <td className="col-wrap" style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600 }}>{it.projectName}</td>
+                      <td className="col-wrap" style={{ fontSize: "var(--hz-text-sm)" }}>{it.partyName || '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: '#0f766e' }}>{fmt(paidAmt(it))}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: '#0f766e', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {it.requiredByDate ? new Date(it.requiredByDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                       </td>
-                      <td style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>{fmt(paidAmt(it))}</td>
-                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
-                        {it.sentAt ? (
-                          <>
-                            <div>{new Date(it.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                            <div style={{ fontSize: '0.85em', color: '#64748b' }}>{new Date(it.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </>
-                        ) : '—'}
-                      </td>
-                      {/* Stage / Against — both picked in the Send for Payment dialog */}
-                      <td style={{ fontSize: 12, color: '#334155', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 600 }}>{fmtStage(it.paymentStage)}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{fmtPaymentAgainst(it.paymentMadeAgainst)}</div>
-                      </td>
-                      <td style={{ fontWeight: 800, color: '#2563eb', fontSize: 14 }}>{fmt(it.sentAmount)}</td>
-                      <td className="col-wrap col-remarks" style={{ fontSize: 12, color: '#475569' }}>{remarkText(it) || '—'}</td>
+                      <td style={{ fontWeight: 800, color: '#2563eb', fontSize: "var(--hz-text-md)" }}>{fmt(it.sentAmount)}</td>
 
                       {/* OH Approval — OH and VP can both act here */}
                       <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
                         {(isOH || isVP) && ohPending ? (
                           <div className="appr-actions">
                             <button disabled={isBusy} onClick={() => handleOhDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => handleOhDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'OH' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                           </div>
                         ) : (
                           <ApprovalBadge status={it.ohApprovalStatus} />
@@ -537,28 +585,28 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
 
                       {/* TDS % — read-only; set from the TDS tab */}
                       <td>
-                        <span style={{ fontSize: 12 }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
+                        <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.tdsPercent != null ? `${Number(it.tdsPercent)}%` : '—'}</span>
                       </td>
                       {/* TDS Amt */}
-                      <td style={{ fontSize: 12, color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: '#b45309' }}>{tdsAmt ? fmt(tdsAmt) : '—'}</td>
                       {/* Deduction — read-only; set from the TDS tab */}
                       <td>
-                        <span style={{ fontSize: 12, color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
+                        <span style={{ fontSize: "var(--hz-text-xs)", color: '#b45309' }}>{deductionAmt ? fmt(deductionAmt) : '—'}</span>
                       </td>
                       {/* Approved Value */}
-                      <td style={{ fontSize: 13, fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: '#15803d' }}>{fmt(apprVal)}</td>
 
                       {/* Admin Approval */}
                       <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
                         {isAdmin && adminEligible ? (
                           <div className="appr-actions">
                             <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => handleAdminDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'ADMIN' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                           </div>
                         ) : it.ohApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.adminApprovalStatus} />
                         ) : (
-                          <span style={{ fontSize: 10.5, color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting OH</span>
+                          <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting OH</span>
                         )}
                       </td>
 
@@ -567,13 +615,27 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                         {isVP && vpEligible ? (
                           <div className="appr-actions">
                             <button disabled={isBusy} onClick={() => handleVpDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
-                            <button disabled={isBusy} onClick={() => handleVpDecision(it, 'REJECTED')} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'VP' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
                             <button disabled={isBusy} onClick={() => handleVpRevise(it)} className="appr-btn appr-btn--revise" title="Send back to Admin to adjust TDS/Deduction">Revise</button>
                           </div>
                         ) : it.adminApprovalStatus === 'APPROVED' ? (
                           <ApprovalBadge status={it.vpApprovalStatus} />
                         ) : (
-                          <span style={{ fontSize: 10.5, color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting Admin</span>
+                          <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting Admin</span>
+                        )}
+                      </td>
+
+                      {/* CEO Approval — Level 4, after VP */}
+                      <td style={{ width: '1%', whiteSpace: 'nowrap' }}>
+                        {isCeo && it.vpApprovalStatus === 'APPROVED' && (it.ceoApprovalStatus || 'PENDING') === 'PENDING' ? (
+                          <div className="appr-actions">
+                            <button disabled={isBusy} onClick={() => handleCeoDecision(it, 'APPROVED')} className="appr-btn appr-btn--ok" title="Approve" aria-label="Approve"><Check size={14} strokeWidth={2.5} /></button>
+                            <button disabled={isBusy} onClick={() => { setRejectText(''); setRejectFor({ item: it, level: 'CEO' }); }} className="appr-btn appr-btn--no" title="Reject" aria-label="Reject"><X size={14} strokeWidth={2.5} /></button>
+                          </div>
+                        ) : it.vpApprovalStatus === 'APPROVED' ? (
+                          <ApprovalBadge status={it.ceoApprovalStatus} />
+                        ) : (
+                          <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', fontStyle: 'italic' }}>Awaiting VP</span>
                         )}
                       </td>
 

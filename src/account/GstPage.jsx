@@ -120,7 +120,7 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
     }
   }
 
-  const inputStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 11, fontFamily: 'inherit', background: '#fff' };
+  const inputStyle = { padding: '3px 5px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: "var(--hz-text-2xs)", fontFamily: 'inherit', background: '#fff' };
 
   return (
     <div className="pay-dash">
@@ -128,20 +128,20 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
       <div style={{ background: 'linear-gradient(135deg,#0369a1,#0ea5e9)', borderRadius: 12, padding: '18px 22px', marginBottom: isAdmin ? 12 : 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Percent size={24} color="white" />
         <div style={{ flex: 1 }}>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: 17 }}>GST</div>
-          <div style={{ color: '#e0f2fe', fontSize: 13.5, marginTop: 2 }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>GST</div>
+          <div style={{ color: '#e0f2fe', fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
             GST % from the originating PO/WO/JO doc, GST Amt on the amount sent for payment, plus input &amp; payment filing status
           </div>
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: importBusy ? 'default' : 'pointer', opacity: importBusy ? 0.6 : 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '7px 12px', color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: importBusy ? 'default' : 'pointer', opacity: importBusy ? 0.6 : 1 }}>
               <Upload size={14} />
               {importBusy ? 'Importing…' : 'Import GSTR-2B'}
               <input type="file" accept=".xlsx" disabled={importBusy} onChange={handleImport} style={{ display: 'none' }} />
             </label>
             <button onClick={() => setShowHistory(s => !s)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '7px 12px', color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xs)", fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               <History size={14} /> History{importHistory.length > 0 ? ` (${importHistory.length})` : ''}
             </button>
           </div>
@@ -151,11 +151,11 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
       {/* Import history */}
       {isAdmin && showHistory && (
         <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 16px', fontWeight: 700, fontSize: 13.5, color: '#374151', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '10px 16px', fontWeight: 700, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
             GSTR-2B Import History
           </div>
           {importHistory.length === 0 ? (
-            <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No imports yet.</div>
+            <div style={{ padding: 20, textAlign: 'center', color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>No imports yet.</div>
           ) : (
             <div className="table-container">
               <table>
@@ -171,13 +171,13 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                 <tbody>
                   {importHistory.map(h => (
                     <tr key={h.id}>
-                      <td style={{ fontSize: 12.5 }}>
+                      <td style={{ fontSize: "var(--hz-text-xs)" }}>
                         <a href={`${BASE_URL}${h.downloadUrl}`} target="_blank" rel="noreferrer" style={{ color: '#0369a1' }}>{h.originalFilename}</a>
                       </td>
-                      <td style={{ fontSize: 12.5 }}>{h.uploadedBy || '—'}</td>
-                      <td style={{ fontSize: 12.5, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(h.uploadedAt)}</td>
-                      <td style={{ textAlign: 'right', fontSize: 12.5 }}>{h.rowsRead}</td>
-                      <td style={{ textAlign: 'right', fontSize: 12.5, color: '#15803d', fontWeight: 700 }}>{h.rowsMatched}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)" }}>{h.uploadedBy || '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", whiteSpace: 'nowrap' }}>{fmtDate(h.uploadedAt)}</td>
+                      <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)" }}>{h.rowsRead}</td>
+                      <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)", color: '#15803d', fontWeight: 700 }}>{h.rowsMatched}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -204,13 +204,13 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
           <option value="yes">GST Input Status: Yes</option>
           <option value="no">GST Input Status: No</option>
         </select>
-        <div style={{ marginLeft: 'auto', fontSize: 12.5, color: '#64748b' }}>{filtered.length} of {ohApproved.length}</div>
+        <div style={{ marginLeft: 'auto', fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{filtered.length} of {ohApproved.length}</div>
       </div>
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: "var(--hz-faint)" }}>Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: "var(--hz-faint)" }}>
           No OH-approved entries match the current filters.
         </div>
       ) : (
@@ -243,11 +243,11 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                   const isUnreconciled = !it.gstInputStatus && monthKeyOf(it.sentAt) !== currentMonthKey;
                   return (
                     <tr key={it.id}>
-                      <td style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(it.sentAt)}</td>
-                      <td style={{ fontSize: 13, fontWeight: 600 }}>{it.projectName}</td>
-                      <td style={{ fontSize: 13 }}>{it.partyName || '—'}</td>
-                      <td style={{ fontSize: 12, color: '#64748b' }}>{it.refNo || '—'}</td>
+                      <td style={{ color: "var(--hz-faint)", fontSize: "var(--hz-text-xs)" }}>{i + 1}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", whiteSpace: 'nowrap' }}>{fmtDate(it.sentAt)}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600 }}>{it.projectName}</td>
+                      <td style={{ fontSize: "var(--hz-text-sm)" }}>{it.partyName || '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{it.refNo || '—'}</td>
 
                       {/* Invoice No. — independent of the TDS tab's own Invoice No. */}
                       <td>
@@ -260,14 +260,14 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             }}
                             style={{ ...inputStyle, width: 100 }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.gstInvoiceNo || '—'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.gstInvoiceNo || '—'}</span>
                         )}
                       </td>
 
                       {/* GST % — read-only, fetched from PO/WO/JO */}
-                      <td style={{ fontSize: 12 }}>{it.gstPercent != null ? `${Number(it.gstPercent)}%` : '—'}</td>
+                      <td style={{ fontSize: "var(--hz-text-xs)" }}>{it.gstPercent != null ? `${Number(it.gstPercent)}%` : '—'}</td>
                       {/* GST Amt — read-only, fetched from PO/WO/JO */}
-                      <td style={{ textAlign: 'right', fontSize: 12, color: '#0369a1' }}>{gstAmt ? fmt(gstAmt) : '—'}</td>
+                      <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)", color: '#0369a1' }}>{gstAmt ? fmt(gstAmt) : '—'}</td>
 
                       {/* GST Input Status — red when still unfiled and the payment is from a past month */}
                       <td>
@@ -276,15 +276,15 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             value={it.gstInputStatus ? 'yes' : 'no'}
                             onChange={e => handleFilingChange(it, { gstInputStatus: e.target.value === 'yes' })}
                             style={isUnreconciled
-                              ? { ...inputStyle, background: '#fee2e2', borderColor: '#dc2626', color: '#dc2626', fontWeight: 700 }
+                              ? { ...inputStyle, background: '#fee2e2', borderColor: '#dc2626', color: "var(--hz-danger)", fontWeight: 700 }
                               : inputStyle}>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
                           </select>
                         ) : (
                           <span style={isUnreconciled
-                            ? { fontSize: 12, color: '#dc2626', fontWeight: 700 }
-                            : { fontSize: 12 }}>
+                            ? { fontSize: "var(--hz-text-xs)", color: "var(--hz-danger)", fontWeight: 700 }
+                            : { fontSize: "var(--hz-text-xs)" }}>
                             {it.gstInputStatus ? 'Yes' : 'No'}
                           </span>
                         )}
@@ -297,7 +297,7 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             onChange={e => handleFilingChange(it, { gstInputDate: e.target.value || null })}
                             style={{ ...inputStyle, width: 130 }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{fmtDate(it.gstInputDate)}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{fmtDate(it.gstInputDate)}</span>
                         )}
                       </td>
 
@@ -308,7 +308,7 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             onChange={e => handleFilingChange(it, { gstPaidToVendorDate: e.target.value || null })}
                             style={{ ...inputStyle, width: 130 }} />
                         ) : (
-                          <span style={{ fontSize: 12 }}>{fmtDate(it.gstPaidToVendorDate)}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{fmtDate(it.gstPaidToVendorDate)}</span>
                         )}
                       </td>
 
@@ -322,7 +322,7 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             <option value="yes">Yes</option>
                           </select>
                         ) : (
-                          <span style={{ fontSize: 12 }}>{it.gstPaidStatus ? 'Yes' : 'No'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)" }}>{it.gstPaidStatus ? 'Yes' : 'No'}</span>
                         )}
                       </td>
 
@@ -337,7 +337,7 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
                             }}
                             style={{ ...inputStyle, width: 160 }} />
                         ) : (
-                          <span style={{ fontSize: 12, color: '#475569' }}>{it.gstRemarks || '—'}</span>
+                          <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)" }}>{it.gstRemarks || '—'}</span>
                         )}
                       </td>
                     </tr>
@@ -349,8 +349,8 @@ export default function GstPage({ isAdmin = false, userName = '' }) {
 
           {/* Total */}
           <div className="card" style={{ padding: '12px 16px', marginTop: 12, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Total GST Amt</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: '#0369a1' }}>{fmt(totalGstAmt)}</span>
+            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)" }}>Total GST Amt</span>
+            <span style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: '#0369a1' }}>{fmt(totalGstAmt)}</span>
           </div>
         </>
       )}

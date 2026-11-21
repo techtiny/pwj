@@ -20,9 +20,9 @@ const sourceTypeLabel = v => SOURCE_TYPES.find(s => s.value === v)?.label || v |
 
 const ADD_CUSTOM = '__ADD_CUSTOM__';
 
-const inputS = { border: '1px solid #cbd5e1', borderRadius: 8, padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', background: '#fff' };
-const th = { padding: '11px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', whiteSpace: 'nowrap' };
-const td = { padding: '11px 14px', fontSize: 13.5, borderBottom: '1px solid #eef2f7', color: '#0f172a' };
+const inputS = { border: '1px solid #cbd5e1', borderRadius: 8, padding: '9px 11px', fontSize: "var(--hz-text-sm)", fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', background: '#fff' };
+const th = { padding: '11px 14px', textAlign: 'left', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-muted)", textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', whiteSpace: 'nowrap' };
+const td = { padding: '11px 14px', fontSize: "var(--hz-text-sm)", borderBottom: '1px solid #eef2f7', color: "var(--hz-ink)" };
 
 const EMPTY = { movementDate: today(), party: '', projectId: '', customParty: '', amount: '', mode: '', sourceType: '', referenceNo: '', remarks: '' };
 
@@ -183,10 +183,10 @@ export default function FundManagementPage() {
     <div>
       {/* Hero */}
       <div className="card" style={{ padding: '18px 22px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, borderLeft: '4px solid #0ea5e9' }}>
-        <div style={{ width: 46, height: 46, borderRadius: 12, background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🏦</div>
+        <div style={{ width: 46, height: 46, borderRadius: 12, background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: "var(--hz-text-2xl)" }}>🏦</div>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>Happizo Fund Management</div>
-          <div style={{ fontSize: 13.5, color: '#64748b', marginTop: 2 }}>Record every rupee that comes in (Inflow) and goes out (Outflow).</div>
+          <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Happizo Fund Management</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>Record every rupee that comes in (Inflow) and goes out (Outflow).</div>
         </div>
       </div>
 
@@ -194,10 +194,10 @@ export default function FundManagementPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 18 }}>
         {[
           { label: 'Bank Balance', value: totalBank, color: '#1e40af', bg: '#eff6ff', border: '#93c5fd' },
-          { label: 'Total Project Balance', value: totalProject, color: totalProject < 0 ? '#dc2626' : '#065f46', bg: '#f0fdf4', border: '#6ee7b7' },
+          { label: 'Total Project Balance', value: totalProject, color: totalProject < 0 ? "var(--hz-danger)" : '#065f46', bg: '#f0fdf4', border: '#6ee7b7' },
         ].map(t => (
           <div key={t.label} className="card" style={{ padding: '20px 24px', background: t.bg, borderLeft: `5px solid ${t.border}` }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.label}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-muted)", textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.label}</div>
             <div style={{ fontSize: 34, fontWeight: 800, color: t.color, marginTop: 6, lineHeight: 1.1 }}>{fmt(t.value)}</div>
           </div>
         ))}
@@ -214,23 +214,23 @@ export default function FundManagementPage() {
             ['FUNDING', 'Payment Funding', <Scale size={14} key="f" />, '#7c3aed'],
           ].map(([k, l, ic, accent]) => (
             <button key={k} onClick={() => { setView(k); setShowForm(false); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: view === k ? 700 : 500,
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: "var(--hz-text-sm)", fontWeight: view === k ? 700 : 500,
                 padding: '7px 16px', borderRadius: 6,
                 background: view === k ? accent : 'transparent',
-                color: view === k ? '#fff' : '#475569' }}>
+                color: view === k ? "var(--hz-on-dark)" : "var(--hz-ink-2)" }}>
               {ic}{l}
             </button>
           ))}
         </div>
         {!isFunding && (
           <button onClick={openForm}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: '#0369a1', cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-on-dark)", background: '#0369a1', cursor: 'pointer', fontFamily: 'inherit' }}>
             <Plus size={15} /> Add {viewLabel}
           </button>
         )}
         {!isFunding && (
-          <div style={{ marginLeft: 'auto', fontSize: 13, color: '#475569' }}>
-            {rows.length} entr{rows.length === 1 ? 'y' : 'ies'} · <b style={{ color: isInflow ? '#16a34a' : '#dc2626' }}>{fmt(totalShown)}</b> total
+          <div style={{ marginLeft: 'auto', fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
+            {rows.length} entr{rows.length === 1 ? 'y' : 'ies'} · <b style={{ color: isInflow ? '#16a34a' : "var(--hz-danger)" }}>{fmt(totalShown)}</b> total
           </div>
         )}
       </div>
@@ -243,17 +243,17 @@ export default function FundManagementPage() {
       {!isFunding && showForm && (
         <div className="card" style={{ padding: 18, marginBottom: 16, border: '1.5px solid #bae6fd' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>New {viewLabel} entry</div>
-            <button onClick={() => setShowForm(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={18} /></button>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>New {viewLabel} entry</div>
+            <button onClick={() => setShowForm(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: "var(--hz-muted)" }}><X size={18} /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Date</label>
+              <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Date</label>
               <input type="date" style={inputS} value={form.movementDate} onChange={e => setForm(f => ({ ...f, movementDate: e.target.value }))} />
             </div>
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>{partyLabel}</label>
+              <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>{partyLabel}</label>
               <select style={inputS} value={form.projectId} onChange={e => setForm(f => ({ ...f, projectId: e.target.value, customParty: '' }))}>
                 <option value="">— Select {isInflow ? 'source' : 'project'} —</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -265,9 +265,9 @@ export default function FundManagementPage() {
                   value={form.customParty} onChange={e => setForm(f => ({ ...f, customParty: e.target.value }))} autoFocus />
               )}
               {!isInflow && form.projectId && form.projectId !== ADD_CUSTOM && (
-                <div style={{ fontSize: 12, marginTop: 6, color: (balances[form.projectId]?.available ?? 0) >= 0 ? '#0f766e' : '#dc2626' }}>
+                <div style={{ fontSize: "var(--hz-text-xs)", marginTop: 6, color: (balances[form.projectId]?.available ?? 0) >= 0 ? '#0f766e' : "var(--hz-danger)" }}>
                   Available: <b>{fmt(balances[form.projectId]?.available ?? 0)}</b>
-                  <span style={{ color: '#94a3b8', fontWeight: 500 }}>
+                  <span style={{ color: "var(--hz-faint)", fontWeight: 500 }}>
                     {'  '}(in {fmt(balances[form.projectId]?.inflow ?? 0)} · out {fmt(balances[form.projectId]?.outflow ?? 0)})
                   </span>
                 </div>
@@ -275,13 +275,13 @@ export default function FundManagementPage() {
             </div>
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Amount</label>
+              <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Amount</label>
               <input type="number" min="0" step="0.01" style={inputS} placeholder="0.00"
                 value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>{modeLabel}</label>
+              <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>{modeLabel}</label>
               <input style={inputS} list="fund-mode-list" placeholder="Select or type"
                 value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))} />
               <datalist id="fund-mode-list">{modes.map(m => <option key={m} value={m} />)}</datalist>
@@ -289,7 +289,7 @@ export default function FundManagementPage() {
 
             {isPlanned && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Source Type</label>
+                <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Source Type</label>
                 <select style={inputS} value={form.sourceType} onChange={e => setForm(f => ({ ...f, sourceType: e.target.value }))}>
                   <option value="">— Select —</option>
                   {SOURCE_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -299,7 +299,7 @@ export default function FundManagementPage() {
 
             {isPlanned && !isInflow && (
               <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Reference No. (PWJ Doc Number)</label>
+                <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Reference No. (PWJ Doc Number)</label>
                 <input style={inputS} placeholder={form.projectId ? 'Search PO/WO/JO doc number…' : 'Select a project first'}
                   disabled={!form.projectId}
                   value={form.referenceNo}
@@ -313,10 +313,10 @@ export default function FundManagementPage() {
                     <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.1)', marginTop: 4, maxHeight: 200, overflowY: 'auto' }}>
                       {matches.map(d => (
                         <div key={d.docNumber} onClick={() => { setForm(f => ({ ...f, referenceNo: d.docNumber })); setDocSearchOpen(false); }}
-                          style={{ padding: '8px 12px', fontSize: 12.5, cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                          style={{ padding: '8px 12px', fontSize: "var(--hz-text-xs)", cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
                           onMouseDown={e => e.preventDefault()}>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{d.docNumber}</div>
-                          <div style={{ color: '#64748b' }}>{d.pwjType} · {d.vendor || '—'} · {d.materialRequired || ''}</div>
+                          <div style={{ fontWeight: 700, color: "var(--hz-ink)" }}>{d.docNumber}</div>
+                          <div style={{ color: "var(--hz-muted)" }}>{d.pwjType} · {d.vendor || '—'} · {d.materialRequired || ''}</div>
                         </div>
                       ))}
                     </div>
@@ -327,22 +327,22 @@ export default function FundManagementPage() {
 
             {isPlanned && isInflow && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Reference No. (Invoice No.)</label>
+                <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Reference No. (Invoice No.)</label>
                 <input style={inputS} placeholder="Enter the Invoice No."
                   value={form.referenceNo} onChange={e => setForm(f => ({ ...f, referenceNo: e.target.value }))} />
               </div>
             )}
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Remarks</label>
+              <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>Remarks</label>
               <input style={inputS} placeholder="Optional note"
                 value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} />
             </div>
           </div>
-          {error && <div style={{ color: '#dc2626', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
+          {error && <div style={{ color: "var(--hz-danger)", fontSize: "var(--hz-text-xs)", marginTop: 10 }}>{error}</div>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
-            <button onClick={() => setShowForm(false)} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: '#334155', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-            <button disabled={saving} onClick={submit} style={{ border: 'none', background: '#0369a1', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={() => setShowForm(false)} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+            <button disabled={saving} onClick={submit} style={{ border: 'none', background: '#0369a1', color: "var(--hz-on-dark)", borderRadius: 8, padding: '8px 16px', fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : 'Add entry'}
             </button>
           </div>
@@ -371,29 +371,29 @@ export default function FundManagementPage() {
               {loading ? (
                 <tr><td style={td} colSpan={colCount}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={colCount}>No {viewLabel.toLowerCase()} entries yet.</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={colCount}>No {viewLabel.toLowerCase()} entries yet.</td></tr>
               ) : rows.map(r => (
                 <tr key={r.id}>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.movementDate)}</td>
                   <td style={td}>
                     {r.party}
-                    {r.projectId && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
-                    {r.sourceRef?.startsWith('SALARY-') && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 100, padding: '1px 7px' }}>Salary</span>}
+                    {r.projectId && <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
+                    {r.sourceRef?.startsWith('SALARY-') && <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 100, padding: '1px 7px' }}>Salary</span>}
                   </td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: isInflow ? '#16a34a' : '#dc2626', whiteSpace: 'nowrap' }}>{fmt(r.amount)}</td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: isInflow ? '#16a34a' : "var(--hz-danger)", whiteSpace: 'nowrap' }}>{fmt(r.amount)}</td>
                   {!isInflow && (
                     <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700,
-                      color: r.projectId == null ? '#94a3b8' : (balances[r.projectId]?.available ?? 0) >= 0 ? '#0f766e' : '#dc2626' }}>
+                      color: r.projectId == null ? "var(--hz-faint)" : (balances[r.projectId]?.available ?? 0) >= 0 ? '#0f766e' : "var(--hz-danger)" }}>
                       {r.projectId == null ? '—' : fmt(balances[r.projectId]?.available ?? 0)}
                     </td>
                   )}
                   <td style={td}>{r.mode || '—'}</td>
                   {isPlanned && <td style={td}>{sourceTypeLabel(r.sourceType)}</td>}
                   {isPlanned && <td style={td}>{r.referenceNo || '—'}</td>}
-                  <td style={{ ...td, color: '#475569', maxWidth: 280, whiteSpace: 'pre-wrap' }}>{r.remarks || '—'}</td>
+                  <td style={{ ...td, color: "var(--hz-ink-2)", maxWidth: 280, whiteSpace: 'pre-wrap' }}>{r.remarks || '—'}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     {r.sourceRef?.startsWith('SALARY-') ? (
-                      <span title="Created automatically from the approved salary payment — can't be deleted here" style={{ fontSize: 12, color: '#0f172a' }}>Auto</span>
+                      <span title="Created automatically from the approved salary payment — can't be deleted here" style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink)" }}>Auto</span>
                     ) : (
                       <DeleteBtn onClick={() => del(r.id)} disabled={busyId === r.id} title="Delete" />
                     )}
@@ -405,7 +405,7 @@ export default function FundManagementPage() {
               <tfoot>
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                   <td style={td} colSpan={2}>Total</td>
-                  <td style={{ ...td, textAlign: 'right', color: isInflow ? '#16a34a' : '#dc2626' }}>{fmt(totalShown)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: isInflow ? '#16a34a' : "var(--hz-danger)" }}>{fmt(totalShown)}</td>
                   <td style={td} colSpan={colCount - 3}></td>
                 </tr>
               </tfoot>
@@ -429,7 +429,7 @@ export default function FundManagementPage() {
 
 // ─── Payment Funding panel ───
 function FundingPanel({ funding, onTransfer }) {
-  if (!funding) return <div className="card" style={{ padding: 24, color: '#64748b' }}>Loading…</div>;
+  if (!funding) return <div className="card" style={{ padding: 24, color: "var(--hz-muted)" }}>Loading…</div>;
   const { projects = [], surplus = [], allFunded, totalShortfall, fundingInUse, date } = funding;
 
   return (
@@ -437,21 +437,21 @@ function FundingPanel({ funding, onTransfer }) {
       <div className="card" style={{ padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12,
         background: !fundingInUse ? '#f8fafc' : allFunded ? '#f0fdf4' : '#fef2f2',
         border: `1px solid ${!fundingInUse ? '#e2e8f0' : allFunded ? '#86efac' : '#fecaca'}` }}>
-        <div style={{ fontSize: 22 }}>{!fundingInUse ? '💤' : allFunded ? '✅' : '⚠️'}</div>
+        <div style={{ fontSize: "var(--hz-text-2xl)" }}>{!fundingInUse ? '💤' : allFunded ? '✅' : '⚠️'}</div>
         <div>
-          <div style={{ fontWeight: 800, color: !fundingInUse ? '#475569' : allFunded ? '#15803d' : '#b91c1c' }}>
+          <div style={{ fontWeight: 800, color: !fundingInUse ? "var(--hz-ink-2)" : allFunded ? '#15803d' : '#b91c1c' }}>
             {!fundingInUse ? 'No fund movements recorded yet' :
               allFunded ? "Every project is funded — today's bank transfer file is eligible"
                 : `Shortfall of ${fmt(totalShortfall)} — settle the transfers below to make the bank file eligible`}
           </div>
-          <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>
             Today's bank transfer demand vs available fund · {fmtDate(date)}
           </div>
         </div>
       </div>
 
       <div className="card" style={{ overflow: 'hidden', marginBottom: 14 }}>
-        <div style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a', borderBottom: '1px solid #eef2f7' }}>Projects in today's bank transfer</div>
+        <div style={{ padding: '12px 16px', fontWeight: 700, color: "var(--hz-ink)", borderBottom: '1px solid #eef2f7' }}>Projects in today's bank transfer</div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -464,15 +464,15 @@ function FundingPanel({ funding, onTransfer }) {
             </tr></thead>
             <tbody>
               {projects.length === 0 ? (
-                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={6}>Nothing approved for bank transfer today.</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={6}>Nothing approved for bank transfer today.</td></tr>
               ) : projects.map(p => (
                 <tr key={p.projectId} style={{ background: p.funded ? '#fff' : '#fef2f2' }}>
                   <td style={{ ...td, fontWeight: 600 }}>{p.projectName}</td>
                   <td style={{ ...td, textAlign: 'right' }}>{fmt(p.available)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{fmt(p.demand)}</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: p.shortfall > 0 ? '#b91c1c' : '#94a3b8' }}>{p.shortfall > 0 ? fmt(p.shortfall) : '—'}</td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: p.shortfall > 0 ? '#b91c1c' : "var(--hz-faint)" }}>{p.shortfall > 0 ? fmt(p.shortfall) : '—'}</td>
                   <td style={td}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 100,
+                    <span style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 700, padding: '2px 9px', borderRadius: 100,
                       background: p.funded ? '#dcfce7' : '#fee2e2', color: p.funded ? '#15803d' : '#b91c1c' }}>
                       {p.funded ? 'Funded' : 'Underfunded'}
                     </span>
@@ -480,7 +480,7 @@ function FundingPanel({ funding, onTransfer }) {
                   <td style={{ ...td, textAlign: 'right' }}>
                     {!p.funded && (
                       <button onClick={() => onTransfer({ toProjectId: p.projectId, toName: p.projectName, shortfall: p.shortfall })}
-                        style={{ border: 'none', background: '#7c3aed', color: '#fff', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ border: 'none', background: '#7c3aed', color: "var(--hz-on-dark)", borderRadius: 7, padding: '5px 12px', fontSize: "var(--hz-text-xs)", fontWeight: 700, cursor: 'pointer' }}>
                         Transfer fund
                       </button>
                     )}
@@ -493,7 +493,7 @@ function FundingPanel({ funding, onTransfer }) {
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a', borderBottom: '1px solid #eef2f7' }}>Available fund in other projects</div>
+        <div style={{ padding: '12px 16px', fontWeight: 700, color: "var(--hz-ink)", borderBottom: '1px solid #eef2f7' }}>Available fund in other projects</div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -503,7 +503,7 @@ function FundingPanel({ funding, onTransfer }) {
             </tr></thead>
             <tbody>
               {surplus.length === 0 ? (
-                <tr><td style={{ ...td, color: '#94a3b8' }} colSpan={3}>No project currently has surplus fund.</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={3}>No project currently has surplus fund.</td></tr>
               ) : surplus.map(s => (
                 <tr key={s.projectId}>
                   <td style={{ ...td, fontWeight: 600 }}>{s.projectName}</td>
@@ -549,25 +549,25 @@ function TransferModal({ xfer, surplus, onClose, onDone }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: 440, maxWidth: '94vw', padding: 24, boxShadow: '0 24px 64px rgba(0,0,0,.28)' }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Transfer fund → {xfer.toName}</div>
-        <div style={{ fontSize: 13, color: '#64748b', margin: '3px 0 16px' }}>Shortfall {fmt(xfer.shortfall)}. Move fund from a surplus project.</div>
+        <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Transfer fund → {xfer.toName}</div>
+        <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", margin: '3px 0 16px' }}>Shortfall {fmt(xfer.shortfall)}. Move fund from a surplus project.</div>
 
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>From project</label>
+        <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', marginBottom: 5 }}>From project</label>
         <select style={inputS} value={fromProjectId} onChange={e => setFrom(e.target.value)}>
           <option value="">— Select surplus project —</option>
           {options.map(s => <option key={s.projectId} value={s.projectId}>{s.projectName} — {fmt(s.free)} free</option>)}
         </select>
 
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', margin: '14px 0 5px' }}>Amount</label>
+        <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', margin: '14px 0 5px' }}>Amount</label>
         <input type="number" min="0" step="0.01" style={inputS} value={amount} onChange={e => setAmount(e.target.value)} />
 
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', margin: '14px 0 5px' }}>Remarks</label>
+        <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: 'block', margin: '14px 0 5px' }}>Remarks</label>
         <input style={inputS} value={remarks} onChange={e => setRemarks(e.target.value)} />
 
-        {error && <div style={{ color: '#dc2626', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
+        {error && <div style={{ color: "var(--hz-danger)", fontSize: "var(--hz-text-xs)", marginTop: 10 }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-          <button onClick={onClose} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: '#334155', cursor: 'pointer' }}>Cancel</button>
-          <button disabled={saving} onClick={submit} style={{ border: 'none', background: '#7c3aed', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+          <button onClick={onClose} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", cursor: 'pointer' }}>Cancel</button>
+          <button disabled={saving} onClick={submit} style={{ border: 'none', background: '#7c3aed', color: "var(--hz-on-dark)", borderRadius: 8, padding: '8px 16px', fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Transferring…' : 'Transfer'}
           </button>
         </div>

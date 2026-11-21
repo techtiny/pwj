@@ -39,9 +39,9 @@ const stageBadge = stage => {
     FINAL:   { bg: '#fdf4ff', color: '#7e22ce' },
   };
   const s = STAGES.find(x => x.value === stage);
-  const c = colors[stage] || { bg: '#f1f5f9', color: '#475569' };
+  const c = colors[stage] || { bg: '#f1f5f9', color: "var(--hz-ink-2)" };
   return (
-    <span style={{ background: c.bg, color: c.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+    <span style={{ background: c.bg, color: c.color, borderRadius: 20, padding: '3px 12px', fontSize: "var(--hz-text-xs)", fontWeight: 700, whiteSpace: 'nowrap' }}>
       {s ? s.label : stage}
     </span>
   );
@@ -167,7 +167,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
 
   const inp = {
     border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '8px 10px',
-    fontSize: 13, outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#0f172a',
+    fontSize: "var(--hz-text-sm)", outline: 'none', fontFamily: 'inherit', background: '#fff', color: "var(--hz-ink)",
   };
 
   return (
@@ -175,13 +175,13 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Project Collections</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Track payment collections by stage</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Project Collections</div>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Track payment collections by stage</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={triggerAlerts} disabled={triggering}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: triggering ? '#e2e8f0' : '#fff', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: triggering ? 'not-allowed' : 'pointer', color: triggering ? '#94a3b8' : '#0f172a', fontFamily: 'inherit' }}>
-            <Send size={14} style={{ color: triggering ? '#94a3b8' : '#6366f1' }} />
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: triggering ? '#e2e8f0' : '#fff', border: '1.5px solid #e2e8f0', borderRadius: 9, padding: '8px 16px', fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: triggering ? 'not-allowed' : 'pointer', color: triggering ? "var(--hz-faint)" : "var(--hz-ink)", fontFamily: 'inherit' }}>
+            <Send size={14} style={{ color: triggering ? "var(--hz-faint)" : '#6366f1' }} />
             {triggering ? 'Sending…' : 'Trigger Alert Now'}
           </button>
           {!isCeo && availableStages.length > 0 && (
@@ -195,7 +195,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
 
       {/* ── Project selector ── */}
       {!hideProjectSelector && <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Select Project</div>
+        <div style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "var(--hz-muted)", textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Select Project</div>
         <select value={selectedProject} onChange={e => setSelected(e.target.value)}
           style={{ ...inp, width: '100%', maxWidth: 440 }}>
           <option value="">— Choose a project —</option>
@@ -214,8 +214,8 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
             { label: 'Stages',           value: collections.length,  color: '#f59e0b' },
           ].map(k => (
             <div key={k.label} className="card" style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', marginBottom: 6 }}>{k.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: k.color }}>{k.value}</div>
+              <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 500, color: "var(--hz-muted)", marginBottom: 6 }}>{k.label}</div>
+              <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: k.color }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -251,7 +251,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
               )},
             ].map(({ label, node }) => (
               <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', whiteSpace: 'nowrap' }}>{label}</div>
+                <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 500, color: "var(--hz-muted)", whiteSpace: 'nowrap' }}>{label}</div>
                 {node}
               </div>
             ))}
@@ -298,7 +298,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                     return (
                       <tr key={row.id}>
                         <td>{stageBadge(row.stage)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a', minWidth: 140 }}>{fmt(row.amount)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: "var(--hz-ink)", minWidth: 140 }}>{fmt(row.amount)}</td>
 
                         {/* Collected — editable */}
                         <td style={{ textAlign: 'right' }}>
@@ -309,11 +309,11 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                                 autoFocus
                                 style={{ ...inp, width: 110, textAlign: 'right', padding: '4px 8px' }} />
                               <button onClick={() => saveEdit(row)} disabled={saving}
-                                style={{ background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                                style={{ background: '#0f172a', color: "var(--hz-on-dark)", border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: "var(--hz-text-2xs)", fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
                                 {saving ? '…' : 'Save'}
                               </button>
                               <button onClick={() => setEditingId(null)}
-                                style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 7, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                style={{ background: '#f1f5f9', color: "var(--hz-muted)", border: 'none', borderRadius: 7, padding: '4px 8px', fontSize: "var(--hz-text-2xs)", cursor: 'pointer', fontFamily: 'inherit' }}>
                                 ✕
                               </button>
                             </div>
@@ -321,7 +321,7 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                             <span style={{ fontWeight: 600, color: '#10b981', cursor: isCeo ? 'default' : 'pointer' }}
                               onClick={() => !isCeo && openEdit(row)}>
                               {fmt(row.collectedAmt)}
-                              {!isCeo && <span style={{ fontSize: 10, color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
+                              {!isCeo && <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
                             </span>
                           )}
                         </td>
@@ -331,12 +331,12 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                           {isEditing ? (
                             <input type="date" value={editCollectedDate}
                               onChange={e => setEditCollectedDate(e.target.value)}
-                              style={{ ...inp, padding: '4px 8px', fontSize: 12 }} />
+                              style={{ ...inp, padding: '4px 8px', fontSize: "var(--hz-text-xs)" }} />
                           ) : (
-                            <span style={{ fontSize: 13, color: '#64748b', cursor: isCeo ? 'default' : 'pointer' }}
+                            <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", cursor: isCeo ? 'default' : 'pointer' }}
                               onClick={() => !isCeo && openEdit(row)}>
                               {row.collectedDate ? fmtDate(row.collectedDate) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                              {!isCeo && <span style={{ fontSize: 10, color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
+                              {!isCeo && <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
                             </span>
                           )}
                         </td>
@@ -353,12 +353,12 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                           {isEditing ? (
                             <input type="date" value={editPaymentDate}
                               onChange={e => setEditPaymentDate(e.target.value)}
-                              style={{ ...inp, padding: '4px 8px', fontSize: 12 }} />
+                              style={{ ...inp, padding: '4px 8px', fontSize: "var(--hz-text-xs)" }} />
                           ) : (
-                            <span style={{ fontSize: 13, color: '#64748b', cursor: isCeo ? 'default' : 'pointer' }}
+                            <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", cursor: isCeo ? 'default' : 'pointer' }}
                               onClick={() => !isCeo && openEdit(row)}>
                               {fmtDate(row.paymentDate)}
-                              {!isCeo && <span style={{ fontSize: 10, color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
+                              {!isCeo && <span style={{ fontSize: "var(--hz-text-2xs)", color: '#cbd5e1', marginLeft: 4 }}>✏</span>}
                             </span>
                           )}
                         </td>
@@ -367,17 +367,17 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {/* Status indicator */}
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600,
-                              color: row.alertActive ? '#16a34a' : '#94a3b8' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: "var(--hz-text-xs)", fontWeight: 600,
+                              color: row.alertActive ? '#16a34a' : "var(--hz-faint)" }}>
                               {row.alertActive ? <Bell size={13} /> : <BellOff size={13} />}
                               {row.alertActive ? 'Active' : 'Off'}
                             </span>
                             {/* Toggle button */}
                             {!isCeo && (
                               <button onClick={() => toggleAlert(row)}
-                                style={{ border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                                style={{ border: 'none', borderRadius: 7, padding: '4px 10px', fontSize: "var(--hz-text-2xs)", fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                                   background: row.alertActive ? '#fee2e2' : '#dcfce7',
-                                  color: row.alertActive ? '#dc2626' : '#16a34a' }}
+                                  color: row.alertActive ? "var(--hz-danger)" : '#16a34a' }}
                                 onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
                                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
                                 {row.alertActive ? 'Disable' : 'Enable'}
@@ -401,8 +401,8 @@ export default function CollectionPage({ isCeo = false, preselectedProjectId = n
                 {/* Totals row */}
                 <tfoot>
                   <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #e2e8f0' }}>
-                    <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 }}>TOTAL</td>
-                    <td style={{ textAlign: 'right', padding: '12px 16px', color: '#0f172a', minWidth: 140 }}>
+                    <td style={{ padding: '12px 16px', color: "var(--hz-muted)", fontSize: "var(--hz-text-2xs)", textTransform: 'uppercase', letterSpacing: 0.8 }}>TOTAL</td>
+                    <td style={{ textAlign: 'right', padding: '12px 16px', color: "var(--hz-ink)", minWidth: 140 }}>
                       {fmt(collections.reduce((s, c) => s + Number(c.amount || 0), 0))}
                     </td>
                     <td style={{ textAlign: 'right', padding: '12px 16px', color: '#10b981' }}>

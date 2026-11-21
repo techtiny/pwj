@@ -3,8 +3,8 @@ import { ApproveBtn, RejectBtn } from "../ActionButtons";
 import { statementApi, fmtServerDate } from "./hrApi";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const th = { padding: "10px 12px", textAlign: "left", fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
-const td = { padding: "10px 12px", fontSize: 15, borderBottom: "1px solid #eef2f7", color: "#0f172a" };
+const th = { padding: "10px 12px", textAlign: "left", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
+const td = { padding: "10px 12px", fontSize: "var(--hz-text-md)", borderBottom: "1px solid #eef2f7", color: "var(--hz-ink)" };
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" };
 const ST = {
   PENDING:  { bg: "#fffbeb", color: "#b45309", label: "Pending" },
@@ -13,7 +13,7 @@ const ST = {
 };
 export const StatementPill = ({ status }) => {
   const s = ST[status] || ST.PENDING;
-  return <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</span>;
+  return <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: "var(--hz-text-sm)", fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</span>;
 };
 
 // Admin / VP: approve or reject salary-statement requests. Employees download only after approval.
@@ -21,8 +21,8 @@ export default function SalaryStatementsPage({ user }) {
   const canApprove = user?.role === "ADMIN" || user?.role === "VP";
   return (
     <div className="hr-page" style={{ padding: "24px 32px" }}>
-      <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>Salary Statements</div>
-      <div style={{ fontSize: 15.5, color: "#000", margin: "2px 0 16px" }}>
+      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Salary Statements</div>
+      <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", margin: "2px 0 16px" }}>
         Salary statements are locked for everyone. An employee can download a month's statement only after Admin or VP approves their request.
       </div>
       {canApprove && <PendingStatements user={user} />}
@@ -61,7 +61,7 @@ function PendingStatements({ user }) {
 
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>Waiting for approval</div>
+      <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 8 }}>Waiting for approval</div>
       <div style={card}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -79,7 +79,7 @@ function PendingStatements({ user }) {
                       <td style={{ ...td, fontWeight: 600 }}>{r.fullName}</td>
                       <td style={{ ...td, whiteSpace: "nowrap" }}>{MONTHS[r.month - 1]} {r.year}</td>
                       <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
-                        {own ? <span style={{ fontSize: 13.5, color: "#475569" }}>Another Admin / VP must approve</span> : (
+                        {own ? <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>Another Admin / VP must approve</span> : (
                           <span style={{ display: "inline-flex", gap: 8 }}>
                             <ApproveBtn disabled={busy === r.id} onClick={() => approve(r)} />
                             <RejectBtn disabled={busy === r.id} onClick={() => reject(r)} />
@@ -113,14 +113,14 @@ export function SalaryStatementMonitor({ user }) {
     <div style={{ ...card, padding: 18, marginBottom: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Salary Statements Issued</div>
-          <div style={{ fontSize: 13.5, color: "#475569" }}>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Salary Statements Issued</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
             {rows.length} requested · {count("APPROVED")} approved · {count("PENDING")} pending · {count("REJECTED")} rejected · {rows.reduce((t, r) => t + (r.downloadCount || 0), 0)} downloads
           </div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search employee…" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: 14, fontFamily: "inherit" }} />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: 14, fontFamily: "inherit" }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search employee…" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: "var(--hz-text-md)", fontFamily: "inherit" }} />
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: "var(--hz-text-md)", fontFamily: "inherit" }}>
             <option value="ALL">All</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option>
           </select>
         </div>

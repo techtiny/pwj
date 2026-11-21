@@ -4,12 +4,12 @@ import { DeleteBtn } from "../ActionButtons";
 
 // Sales → Campaigns: WhatsApp festival messages. Link a number once by QR scan (like WhatsApp Web), keep a separate
 // campaign contact list (added by hand or moved over from People / Companies), then send a message to a chosen set.
-const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 16, fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
-const lbl = { fontSize: 15, fontWeight: 600, color: "#475569", marginBottom: 5, display: "block" };
-const th  = { padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#475569", fontSize: 14, textTransform: "uppercase", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
-const td  = { padding: "10px 14px", color: "#0f172a", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
+const inp = { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)", background: "#fff" };
+const lbl = { fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 5, display: "block" };
+const th  = { padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)", textTransform: "uppercase", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
+const td  = { padding: "10px 14px", color: "var(--hz-ink)", borderBottom: "1px solid #f1f5f9", verticalAlign: "top" };
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 };
-const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 16px", background: bg, color: fg, cursor: "pointer", fontSize: 15, fontFamily: "inherit", fontWeight: 700 });
+const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 16px", background: bg, color: fg, cursor: "pointer", fontSize: "var(--hz-text-md)", fontFamily: "inherit", fontWeight: 700 });
 const green = "linear-gradient(135deg,#10b981,#059669)";
 const errMsg = (e, d) => e.response?.data?.message || e.response?.data?.error || d;
 
@@ -23,15 +23,15 @@ const TEMPLATES = [
 ];
 
 const STATUS = {
-  DRAFT:   { bg: "#f1f5f9", color: "#475569", label: "Draft" },
+  DRAFT:   { bg: "#f1f5f9", color: "var(--hz-ink-2)", label: "Draft" },
   SENDING: { bg: "#eff6ff", color: "#1d4ed8", label: "Sending…" },
   DONE:    { bg: "#ecfdf5", color: "#047857", label: "Done" },
   STOPPED: { bg: "#fffbeb", color: "#b45309", label: "Stopped" },
-  PENDING: { bg: "#f1f5f9", color: "#475569", label: "Pending" },
+  PENDING: { bg: "#f1f5f9", color: "var(--hz-ink-2)", label: "Pending" },
   SENT:    { bg: "#ecfdf5", color: "#047857", label: "Sent" },
   FAILED:  { bg: "#fef2f2", color: "#b91c1c", label: "Failed" },
 };
-const Pill = ({ s }) => { const t = STATUS[s] || STATUS.DRAFT; return <span style={{ background: t.bg, color: t.color, borderRadius: 8, padding: "3px 10px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>{t.label}</span>; };
+const Pill = ({ s }) => { const t = STATUS[s] || STATUS.DRAFT; return <span style={{ background: t.bg, color: t.color, borderRadius: 8, padding: "3px 10px", fontSize: "var(--hz-text-md)", fontWeight: 700, whiteSpace: "nowrap" }}>{t.label}</span>; };
 const fmtTime = (v) => (v ? new Date(v.endsWith?.("Z") ? v : v + "Z").toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }) : "—");
 
 function Modal({ title, onClose, children, wide }) {
@@ -39,13 +39,32 @@ function Modal({ title, onClose, children, wide }) {
     <div className="cmp-modal-bg" style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
       <div className="cmp-modal" style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: wide ? 760 : 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>{title}</div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 22, color: "#64748b" }}>×</button>
+          <div style={{ fontWeight: 700, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>{title}</div>
+          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "var(--hz-text-2xl)", color: "var(--hz-muted)" }}>×</button>
         </div>
         <div className="cmp-modal-body" style={{ padding: 22 }}>{children}</div>
       </div>
     </div>
   );
+}
+
+// Phone photos are often 5–10 MB; WhatsApp recompresses them anyway, so shrink to ≤1600px JPEG before uploading.
+async function shrinkImage(file) {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return file;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+    if (scale === 1 && file.size <= 1.5 * 1024 * 1024) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);   // PNG transparency → white
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(ok => canvas.toBlob(ok, "image/jpeg", 0.88));
+    return blob ? new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file;
+  } catch { return file; }
+  finally { URL.revokeObjectURL(url); }
 }
 
 // ── WhatsApp connection (QR) ─────────────────────────────────────────────────────────────────────
@@ -63,10 +82,10 @@ function WhatsAppCard({ onStatus }) {
   return (
     <div className="cmp-wa" style={{ ...card, padding: 16, marginBottom: 16, display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 220 }}>
-        <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", marginBottom: 4 }}>WhatsApp</div>
+        <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)", marginBottom: 4 }}>WhatsApp</div>
         {s === "connected" && <div style={{ color: "#047857", fontWeight: 600 }}>● Connected{st.phone ? ` as +${st.phone}` : ""}</div>}
-        {s === "qr" && <div style={{ color: "#475569" }}>Open WhatsApp on the phone → <b>Linked devices</b> → <b>Link a device</b> → scan this code.</div>}
-        {(s === "starting" || !s) && <div style={{ color: "#64748b" }}>Starting WhatsApp…</div>}
+        {s === "qr" && <div style={{ color: "var(--hz-ink-2)" }}>Open WhatsApp on the phone → <b>Linked devices</b> → <b>Link a device</b> → scan this code.</div>}
+        {(s === "starting" || !s) && <div style={{ color: "var(--hz-muted)" }}>Starting WhatsApp…</div>}
         {s === "disconnected" && <div style={{ color: "#b45309" }}>Disconnected — a new QR code will appear in a moment.</div>}
         {s === "unreachable" && <div style={{ color: "#b91c1c" }}>The WhatsApp service isn't running, so messages can't be sent. Start the <b>wa-gateway</b> service.</div>}
         {s === "connected" && <button onClick={disconnect} style={{ ...btn("#fff", "#b91c1c"), border: "1.5px solid #fecaca", marginTop: 10 }}>Disconnect</button>}
@@ -170,10 +189,10 @@ function ContactsTab() {
       </div>
       <div style={{ ...card, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
+          <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" }}>
             <thead><tr>{["Name", "WhatsApp number", "Company", "Added from", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
-              {shown.length === 0 ? <tr><td colSpan={5} className="cmp-empty" style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 40 }}>{rows.length ? "Nothing matches" : "No contacts yet — add one, or move people over from the People / Companies lists."}</td></tr>
+              {shown.length === 0 ? <tr><td colSpan={5} className="cmp-empty" style={{ ...td, textAlign: "center", color: "var(--hz-faint)", padding: 40 }}>{rows.length ? "Nothing matches" : "No contacts yet — add one, or move people over from the People / Companies lists."}</td></tr>
                 : shown.map(r => (
                   <tr key={r.id}>
                     <td data-label="Name" style={{ ...td, fontWeight: 600 }}>{r.name}</td>
@@ -182,7 +201,7 @@ function ContactsTab() {
                     <td data-label="From" style={td}>{r.origin === "PERSON" ? "People" : r.origin === "COMPANY" ? "Companies" : "Manual"}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button onClick={() => { setErr(""); setModal({ ...r, company: r.company || "" }); }} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
+                        <button onClick={() => { setErr(""); setModal({ ...r, company: r.company || "" }); }} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
                         <DeleteBtn onClick={() => remove(r)} title="Remove" />
                       </div>
                     </td>
@@ -198,29 +217,29 @@ function ContactsTab() {
           <form onSubmit={save} style={{ display: "grid", gap: 14 }}>
             {!modal.id && (
               <div style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 10, padding: 12 }}>
-                <div style={{ fontSize: 14.5, color: "#166534", fontWeight: 600, marginBottom: 8 }}>Fetch from your phone contacts</div>
+                <div style={{ fontSize: "var(--hz-text-md)", color: "#166534", fontWeight: 600, marginBottom: 8 }}>Fetch from your phone contacts</div>
                 <div className="cmp-toolbar" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" onClick={pickFromPhone} style={btn("#fff", "#166534")}>📱 Pick from phone contacts</button>
                   <label style={{ ...btn("#fff", "#166534"), display: "inline-block", textAlign: "center" }}>
                     📇 Import .vcf file<input type="file" accept=".vcf,text/vcard,text/x-vcard" onChange={importVcf} style={{ display: "none" }} />
                   </label>
                 </div>
-                {note && <div style={{ fontSize: 14, color: "#b45309", marginTop: 8 }}>{note}</div>}
-                <div style={{ fontSize: 13.5, color: "#64748b", marginTop: 8 }}>Pick one to fill this form, or several to add them all at once.</div>
+                {note && <div style={{ fontSize: "var(--hz-text-md)", color: "#b45309", marginTop: 8 }}>{note}</div>}
+                <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 8 }}>Pick one to fill this form, or several to add them all at once.</div>
               </div>
             )}
             <div><label style={lbl}>Name *</label><input style={inp} autoFocus value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} /></div>
             <div><label style={lbl}>WhatsApp number *</label><input style={inp} value={modal.phone} onChange={e => setModal(m => ({ ...m, phone: e.target.value }))} placeholder="10-digit number, or with country code" /></div>
             <div><label style={lbl}>Company</label><input style={inp} value={modal.company} onChange={e => setModal(m => ({ ...m, company: e.target.value }))} /></div>
-            {err && <div style={{ color: "#b91c1c", fontSize: 15 }}>{err}</div>}
-            <button type="submit" style={{ ...btn("#10b981"), background: green, padding: 11, fontSize: 17 }}>{modal.id ? "💾 Update" : "+ Add Contact"}</button>
+            {err && <div style={{ color: "#b91c1c", fontSize: "var(--hz-text-md)" }}>{err}</div>}
+            <button type="submit" style={{ ...btn("#10b981"), background: green, padding: 11, fontSize: "var(--hz-text-lg)" }}>{modal.id ? "💾 Update" : "+ Add Contact"}</button>
           </form>
         </Modal>
       )}
 
       {pick && (
         <Modal title={`Add from ${pick.list === "people" ? "People" : "Companies"}`} onClose={() => setPick(null)} wide>
-          <div style={{ fontSize: 15, color: "#475569", marginBottom: 10 }}>Choose who to add to the campaign list. Rows without a phone number can't be added — fill the Work Phone first.</div>
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: 10 }}>Choose who to add to the campaign list. Rows without a phone number can't be added — fill the Work Phone first.</div>
           <div className="cmp-toolbar" style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <input style={{ ...inp, flex: 1, minWidth: 180 }} placeholder="Search…" value={pick.q} onChange={e => setPick(p => ({ ...p, q: e.target.value }))} />
             <button onClick={() => setPick(p => ({ ...p, sel: new Set(pickRows.filter(r => r.workPhone).map(r => r.id)) }))} style={btn("#f1f5f9", "#334155")}>Select all with phone</button>
@@ -230,15 +249,15 @@ function ContactsTab() {
             {pickRows.map(r => (
               <label key={r.id} className="cmp-pick" style={{ display: "flex", gap: 10, alignItems: "center", padding: "9px 12px", borderBottom: "1px solid #f1f5f9", opacity: r.workPhone ? 1 : 0.5, cursor: r.workPhone ? "pointer" : "not-allowed" }}>
                 <input type="checkbox" disabled={!r.workPhone} checked={pick.sel.has(r.id)} onChange={() => toggle(r.id)} />
-                <span style={{ flex: 1, fontWeight: 600 }}>{r.name}{pick.list === "people" && r.company ? <span style={{ fontWeight: 400, color: "#64748b" }}> · {r.company}</span> : null}{pick.list === "companies" && r.contactName ? <span style={{ fontWeight: 400, color: "#64748b" }}> · {r.contactName}</span> : null}</span>
-                <span style={{ color: r.workPhone ? "#0f172a" : "#b45309", fontSize: 14 }}>{r.workPhone || "no phone"}</span>
+                <span style={{ flex: 1, fontWeight: 600 }}>{r.name}{pick.list === "people" && r.company ? <span style={{ fontWeight: 400, color: "var(--hz-muted)" }}> · {r.company}</span> : null}{pick.list === "companies" && r.contactName ? <span style={{ fontWeight: 400, color: "var(--hz-muted)" }}> · {r.contactName}</span> : null}</span>
+                <span style={{ color: r.workPhone ? "var(--hz-ink)" : "#b45309", fontSize: "var(--hz-text-md)" }}>{r.workPhone || "no phone"}</span>
               </label>
             ))}
-            {pickRows.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Nothing to show</div>}
+            {pickRows.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "var(--hz-faint)" }}>Nothing to show</div>}
           </div>
-          {pick.result && <div style={{ marginTop: 12, background: "#ecfdf5", color: "#065f46", borderRadius: 8, padding: "9px 12px", fontSize: 15 }}>
+          {pick.result && <div style={{ marginTop: 12, background: "#ecfdf5", color: "#065f46", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)" }}>
             Added {pick.result.added}{pick.result.duplicate ? ` · ${pick.result.duplicate} already in the list` : ""}{pick.result.noPhone ? ` · ${pick.result.noPhone} skipped (no valid number)` : ""}</div>}
-          <button disabled={pick.sel.size === 0} onClick={doImport} style={{ ...btn("#10b981"), background: green, marginTop: 14, width: "100%", padding: 11, fontSize: 17, opacity: pick.sel.size ? 1 : 0.5 }}>
+          <button disabled={pick.sel.size === 0} onClick={doImport} style={{ ...btn("#10b981"), background: green, marginTop: 14, width: "100%", padding: 11, fontSize: "var(--hz-text-lg)", opacity: pick.sel.size ? 1 : 0.5 }}>
             Add {pick.sel.size || ""} to campaign list
           </button>
         </Modal>
@@ -248,12 +267,14 @@ function ContactsTab() {
 }
 
 // ── Campaigns ────────────────────────────────────────────────────────────────────────────────────
-function CampaignsTab({ userName, waStatus }) {
+function CampaignsTab({ userName, username, waStatus }) {
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(null);         // campaign id whose detail is shown
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState(null);         // new campaign dialog { name, message, sel:Set, contacts }
   const [err, setErr] = useState("");
+  const [imgVer, setImgVer] = useState(0);        // bumps after an image change so the <img> reloads
+  const imageUrl = (id) => `${BASE_URL}/api/campaign/${id}/image?username=${encodeURIComponent(username)}&v=${imgVer}`;
   const load = useCallback(() => campaignApi.list().then(r => setRows(r.data || [])).catch(() => setRows([])), []);
   useEffect(() => { load(); }, [load]);
   const loadDetail = useCallback((id) => campaignApi.detail(id).then(r => setDetail(r.data)).catch(() => setDetail(null)), []);
@@ -267,13 +288,19 @@ function CampaignsTab({ userName, waStatus }) {
 
   async function openNew() {
     const r = await campaignApi.contacts().catch(() => ({ data: [] }));
-    setErr(""); setForm({ name: "", message: "", card: "", sel: new Set((r.data || []).map(c => c.id)), contacts: r.data || [], q: "" });
+    setErr(""); setForm({ name: "", message: "", card: "", file: null, preview: "", sel: new Set((r.data || []).map(c => c.id)), contacts: r.data || [], q: "" });
   }
   async function create(e) {
     e.preventDefault(); setErr("");
     try {
-      const r = await campaignApi.create({ name: form.name, message: form.message, card: form.card, contactIds: [...form.sel], createdBy: userName });
-      setForm(null); await load(); setOpen(r.data.id);
+      if (form.card === "CUSTOM" && !form.file) { setErr("Choose the image to send, or pick another card option"); return; }
+      const r = await campaignApi.create({ name: form.name, message: form.message, card: form.card === "CUSTOM" ? "" : form.card, contactIds: [...form.sel], createdBy: userName });
+      if (form.card === "CUSTOM") {
+        try { await campaignApi.setImage(r.data.id, form.file); }
+        catch (x) { await campaignApi.remove(r.data.id).catch(() => {}); setErr(errMsg(x, "Could not upload the image")); return; }
+      }
+      if (form.preview) URL.revokeObjectURL(form.preview);
+      setForm(null); await load(); setImgVer(v => v + 1); setOpen(r.data.id);
     } catch (x) { setErr(errMsg(x, "Could not create the campaign")); }
   }
   const act = async (fn, id) => { try { await fn(id); await loadDetail(id); load(); } catch (x) { alert(errMsg(x, "Could not do that")); } };
@@ -288,26 +315,38 @@ function CampaignsTab({ userName, waStatus }) {
         <button onClick={() => setOpen(null)} style={{ ...btn("#f1f5f9", "#334155"), marginBottom: 12 }}>← All campaigns</button>
         <div style={{ ...card, padding: 16, marginBottom: 14 }}>
           <div className="cmp-detail-head" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{c.name}</div><Pill s={c.status} />
+            <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>{c.name}</div><Pill s={c.status} />
             <div style={{ flex: 1 }} />
             {c.status !== "SENDING" && detail.pending > 0 && <button onClick={() => act(campaignApi.start, c.id)} style={{ ...btn("#10b981"), background: green }}>{c.startedAt ? "▶ Resume" : "▶ Start sending"}</button>}
             {c.status === "SENDING" && <button onClick={() => act(campaignApi.stop, c.id)} style={btn("#b45309")}>■ Stop</button>}
+            {c.status !== "SENDING" && !c.card && (
+              <label style={{ ...btn("#eff6ff", "#1d4ed8"), display: "inline-block", textAlign: "center" }}>
+                🖼 {c.customImage ? "Change image" : "Add image"}
+                <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={async e => {
+                  const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+                  try { await campaignApi.setImage(c.id, await shrinkImage(f)); setImgVer(v => v + 1); await loadDetail(c.id); load(); }
+                  catch (x) { alert(errMsg(x, "Could not upload the image")); }
+                }} />
+              </label>
+            )}
+            {c.status !== "SENDING" && c.customImage && <button onClick={() => act(campaignApi.removeImage, c.id)} style={btn("#fff", "#b91c1c")}>Remove image</button>}
             {c.status !== "SENDING" && detail.failed > 0 && <button onClick={() => act(campaignApi.retryFailed, c.id)} style={btn("#eff6ff", "#1d4ed8")}>↻ Retry failed</button>}
             {c.status !== "SENDING" && <DeleteBtn onClick={() => remove(c)} title="Delete campaign" />}
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-            {c.card && <img src={cardUrl(c.card)} alt="Greeting card" style={{ width: 150, borderRadius: 10, border: "1px solid #e2e8f0" }} />}
-            <div style={{ flex: 1, minWidth: 200, whiteSpace: "pre-wrap", background: "#f8fafc", borderRadius: 8, padding: "10px 12px", color: "#334155", fontSize: 15 }}>{c.message}</div>
+            {c.customImage ? <img src={imageUrl(c.id)} alt="Campaign image" style={{ width: 150, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+              : c.card && <img src={cardUrl(c.card)} alt="Greeting card" style={{ width: 150, borderRadius: 10, border: "1px solid #e2e8f0" }} />}
+            <div style={{ flex: 1, minWidth: 200, whiteSpace: "pre-wrap", background: "#f8fafc", borderRadius: 8, padding: "10px 12px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>{c.message}</div>
           </div>
           <div style={{ marginTop: 12, height: 10, background: "#e2e8f0", borderRadius: 6, overflow: "hidden" }}>
             <div style={{ width: `${total ? (done / total) * 100 : 0}%`, height: "100%", background: detail.failed ? "#f59e0b" : "#10b981", transition: "width .4s" }} />
           </div>
-          <div style={{ fontSize: 15, color: "#475569", marginTop: 6 }}>{detail.sent} sent · {detail.failed} failed · {detail.pending} pending · {total} total{c.note ? ` — ${c.note}` : ""}</div>
-          {waStatus !== "connected" && c.status !== "DONE" && <div style={{ marginTop: 8, color: "#b45309", fontSize: 15 }}>WhatsApp isn't connected — scan the QR code above before sending.</div>}
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 6 }}>{detail.sent} sent · {detail.failed} failed · {detail.pending} pending · {total} total{c.note ? ` — ${c.note}` : ""}</div>
+          {waStatus !== "connected" && c.status !== "DONE" && <div style={{ marginTop: 8, color: "#b45309", fontSize: "var(--hz-text-md)" }}>WhatsApp isn't connected — scan the QR code above before sending.</div>}
         </div>
         <div style={{ ...card, overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
-            <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
+            <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" }}>
               <thead><tr>{["Name", "Number", "Status", "Sent at", "Note"].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>{detail.recipients.map(r => (
                 <tr key={r.id}>
@@ -329,15 +368,15 @@ function CampaignsTab({ userName, waStatus }) {
       </div>
       <div style={{ ...card, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
+          <table className="cmp-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" }}>
             <thead><tr>{["Campaign", "Status", "Created", "By", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
-              {rows.length === 0 ? <tr><td colSpan={5} className="cmp-empty" style={{ ...td, textAlign: "center", color: "#94a3b8", padding: 40 }}>No campaigns yet — create one for the next festival.</td></tr>
+              {rows.length === 0 ? <tr><td colSpan={5} className="cmp-empty" style={{ ...td, textAlign: "center", color: "var(--hz-faint)", padding: 40 }}>No campaigns yet — create one for the next festival.</td></tr>
                 : rows.map(c => (
                   <tr key={c.id}>
                     <td data-label="Campaign" style={{ ...td, fontWeight: 600 }}>{c.name}</td><td data-label="Status" style={td}><Pill s={c.status} /></td>
                     <td data-label="Created" style={td}>{fmtTime(c.createdAt)}</td><td data-label="By" style={td}>{c.createdBy || "—"}</td>
-                    <td style={td}><button onClick={() => setOpen(c.id)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Open</button></td>
+                    <td style={td}><button onClick={() => setOpen(c.id)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Open</button></td>
                   </tr>))}
             </tbody>
           </table>
@@ -349,19 +388,34 @@ function CampaignsTab({ userName, waStatus }) {
           <form onSubmit={create} style={{ display: "grid", gap: 14 }}>
             <div><label style={lbl}>Campaign name *</label><input style={inp} autoFocus placeholder="e.g. Diwali 2026" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div>
-              <label style={lbl}>Message * <span style={{ fontWeight: 400, color: "#64748b" }}>— <b>{"{name}"}</b> is replaced with each contact's first name</span></label>
+              <label style={lbl}>Message * <span style={{ fontWeight: 400, color: "var(--hz-muted)" }}>— <b>{"{name}"}</b> is replaced with each contact's first name</span></label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-                {TEMPLATES.map(([t, m, card]) => <button type="button" key={t} onClick={() => setForm(f => ({ ...f, message: m, name: f.name || t, card: card || "" }))} style={{ ...btn("#f1f5f9", "#334155"), padding: "4px 12px", fontSize: 14 }}>{t}</button>)}
+                {TEMPLATES.map(([t, m, card]) => <button type="button" key={t} onClick={() => setForm(f => ({ ...f, message: m, name: f.name || t, card: card || "" }))} style={{ ...btn("#f1f5f9", "#334155"), padding: "4px 12px", fontSize: "var(--hz-text-md)" }}>{t}</button>)}
               </div>
               <textarea style={{ ...inp, resize: "vertical" }} rows={5} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Greeting card <span style={{ fontWeight: 400, color: "#64748b" }}>— a colourful image with the Happizo logo; your message is sent as its caption</span></label>
+              <label style={lbl}>Greeting card <span style={{ fontWeight: 400, color: "var(--hz-muted)" }}>— a colourful image with the Happizo logo; your message is sent as its caption</span></label>
               <select style={{ ...inp, maxWidth: 360 }} value={form.card} onChange={e => setForm(f => ({ ...f, card: e.target.value }))}>
                 <option value="">None — text message only</option>
                 <option value="DIWALI">Diwali card</option>
+                <option value="CUSTOM">Upload my own image…</option>
               </select>
-              {form.card && <img src={cardUrl(form.card)} alt={`${form.card} greeting card`} style={{ display: "block", marginTop: 10, width: 240, maxWidth: "100%", borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,.12)" }} />}
+              {form.card === "CUSTOM" && (
+                <div style={{ marginTop: 10 }}>
+                  <label style={{ ...btn("#eff6ff", "#1d4ed8"), display: "inline-block" }}>
+                    🖼 {form.file ? "Change image" : "Choose image"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={async e => {
+                      const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+                      const small = await shrinkImage(f);
+                      setForm(p => { if (p.preview) URL.revokeObjectURL(p.preview); return { ...p, file: small, preview: URL.createObjectURL(small) }; });
+                    }} />
+                  </label>
+                  {form.file && <span style={{ marginLeft: 10, fontSize: "var(--hz-text-md)", color: "var(--hz-muted)" }}>{form.file.name} · {(form.file.size / 1024).toFixed(0)} KB</span>}
+                  {form.preview && <img src={form.preview} alt="Chosen image" style={{ display: "block", marginTop: 10, width: 240, maxWidth: "100%", borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,.12)" }} />}
+                </div>
+              )}
+              {form.card && form.card !== "CUSTOM" && <img src={cardUrl(form.card)} alt={`${form.card} greeting card`} style={{ display: "block", marginTop: 10, width: 240, maxWidth: "100%", borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,0,0,.12)" }} />}
             </div>
             <div>
               <label style={lbl}>Send to ({form.sel.size} of {form.contacts.length} selected)</label>
@@ -374,15 +428,15 @@ function CampaignsTab({ userName, waStatus }) {
                 {formContacts.map(c => (
                   <label key={c.id} className="cmp-pick" style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
                     <input type="checkbox" checked={form.sel.has(c.id)} onChange={() => setForm(f => { const s = new Set(f.sel); s.has(c.id) ? s.delete(c.id) : s.add(c.id); return { ...f, sel: s }; })} />
-                    <span style={{ flex: 1, fontWeight: 600 }}>{c.name}{c.company ? <span style={{ fontWeight: 400, color: "#64748b" }}> · {c.company}</span> : null}</span>
-                    <span style={{ color: "#475569", fontSize: 14 }}>+{c.phone}</span>
+                    <span style={{ flex: 1, fontWeight: 600 }}>{c.name}{c.company ? <span style={{ fontWeight: 400, color: "var(--hz-muted)" }}> · {c.company}</span> : null}</span>
+                    <span style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>+{c.phone}</span>
                   </label>))}
-                {form.contacts.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>The campaign list is empty — add contacts first.</div>}
+                {form.contacts.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--hz-faint)" }}>The campaign list is empty — add contacts first.</div>}
               </div>
             </div>
-            <div style={{ fontSize: 14, color: "#64748b" }}>Messages go out one by one with a short random pause between them, to keep the number safe from WhatsApp's spam limits. Only message people who expect to hear from you.</div>
-            {err && <div style={{ color: "#b91c1c", fontSize: 15 }}>{err}</div>}
-            <button type="submit" style={{ ...btn("#10b981"), background: green, padding: 11, fontSize: 17 }}>Create campaign</button>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)" }}>Messages go out one by one with a short random pause between them, to keep the number safe from WhatsApp's spam limits. Only message people who expect to hear from you.</div>
+            {err && <div style={{ color: "#b91c1c", fontSize: "var(--hz-text-md)" }}>{err}</div>}
+            <button type="submit" style={{ ...btn("#10b981"), background: green, padding: 11, fontSize: "var(--hz-text-lg)" }}>Create campaign</button>
           </form>
         </Modal>
       )}
@@ -429,15 +483,15 @@ export default function CampaignsPage({ userName = "", username = "", role = "" 
           .cmp-detail-head > div:first-child { flex: 1 1 100%; }
         }
       `}</style>
-      <div style={{ fontSize: 22.5, fontWeight: 800, color: "#0f172a", marginBottom: 2 }}>Campaigns</div>
-      <div style={{ fontSize: 16, color: "#64748b", marginBottom: 14 }}>Send festival greetings to your contacts on WhatsApp. This is the <b>{ROLE_LABEL[role] || role}</b> list — contacts and campaigns here are shared with other {ROLE_LABEL[role] || role} users only.</div>
+      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 2 }}>Campaigns</div>
+      <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-muted)", marginBottom: 14 }}>Send festival greetings to your contacts on WhatsApp. This is the <b>{ROLE_LABEL[role] || role}</b> list — contacts and campaigns here are shared with other {ROLE_LABEL[role] || role} users only.</div>
       <WhatsAppCard onStatus={onStatus} />
       <div style={{ display: "inline-flex", gap: 4, background: "#f1f5f9", borderRadius: 8, padding: 3, marginBottom: 14 }}>
         {[["campaigns", "Campaigns"], ["contacts", "Campaign List"]].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: tab === k ? 700 : 500, padding: "7px 16px", borderRadius: 6, background: tab === k ? "#0f766e" : "transparent", color: tab === k ? "#fff" : "#000" }}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", fontWeight: tab === k ? 700 : 500, padding: "7px 16px", borderRadius: 6, background: tab === k ? "#0f766e" : "transparent", color: tab === k ? "var(--hz-on-dark)" : "var(--hz-ink)" }}>{l}</button>
         ))}
       </div>
-      {tab === "campaigns" ? <CampaignsTab userName={userName} waStatus={wa} /> : <ContactsTab />}
+      {tab === "campaigns" ? <CampaignsTab userName={userName} username={username} waStatus={wa} /> : <ContactsTab />}
     </div>
   );
 }

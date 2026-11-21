@@ -24,21 +24,21 @@ const card = {
 const th = {
   padding: "12px 14px",
   textAlign: "left",
-  fontSize: 12,
+  fontSize: "var(--hz-text-xs)",
   fontWeight: 700,
-  color: "#64748b",
+  color: "var(--hz-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.05em",
   borderBottom: "1px solid #e2e8f0",
   background: "#f8fafc",
   whiteSpace: "nowrap",
 };
-const td = { padding: "12px 14px", fontSize: 14, borderBottom: "1px solid #eef2f7", color: "#0f172a", verticalAlign: "top" };
+const td = { padding: "12px 14px", fontSize: "var(--hz-text-md)", borderBottom: "1px solid #eef2f7", color: "var(--hz-ink)", verticalAlign: "top" };
 const btn = (bg, fg = "#fff") => ({
   border: "none",
   borderRadius: 8,
   padding: "7px 14px",
-  fontSize: 13,
+  fontSize: "var(--hz-text-sm)",
   fontWeight: 700,
   color: fg,
   background: bg,
@@ -118,10 +118,10 @@ export default function EmployeeExitPage({ user }) {
     <div className="hr-page" style={{ padding: "24px 32px" }}>
       {/* Hero */}
       <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 20, display: "flex", alignItems: "center", gap: 14, borderLeft: "4px solid #7c3aed" }}>
-        <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>🚪</div>
+        <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-2xl)" }}>🚪</div>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Employee Exit</div>
-          <div style={{ fontSize: 13.5, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Employee Exit</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>
             Mark an employee as exited from Happizo. Their login is disabled — every record they created (PWJ entries, leaves, petty cash) stays in the system.
           </div>
         </div>
@@ -131,11 +131,11 @@ export default function EmployeeExitPage({ user }) {
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         {[
           { label: "Active Employees", value: active.length, color: "#059669" },
-          { label: "Exited", value: exited.length, color: "#dc2626" },
+          { label: "Exited", value: exited.length, color: "var(--hz-danger)" },
         ].map((k) => (
           <div key={k.label} style={{ ...card, padding: "14px 20px", minWidth: 150 }}>
-            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{k.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: k.color, marginTop: 2 }}>{loading ? "—" : k.value}</div>
+            <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 600 }}>{k.label}</div>
+            <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: k.color, marginTop: 2 }}>{loading ? "—" : k.value}</div>
           </div>
         ))}
       </div>
@@ -143,9 +143,9 @@ export default function EmployeeExitPage({ user }) {
       {/* Active employees */}
       <div style={{ ...card, marginBottom: 24, overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #eef2f7" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Active Employees</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Active Employees</div>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, role, email…"
-            style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", minWidth: 220 }} />
+            style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", minWidth: 220 }} />
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -163,21 +163,21 @@ export default function EmployeeExitPage({ user }) {
               {loading ? (
                 <tr><td style={td} colSpan={canManage ? 6 : 5}>Loading…</td></tr>
               ) : activeFiltered.length === 0 ? (
-                <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 6 : 5}>No employees match.</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={canManage ? 6 : 5}>No employees match.</td></tr>
               ) : activeFiltered.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ ...td, color: "#475569", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
+                  <td style={{ ...td, color: "var(--hz-ink-2)", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
                   <td style={td}>
                     <div style={{ fontWeight: 700 }}>{u.fullName}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>@{u.username}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>@{u.username}</div>
                   </td>
                   <td style={td}>
                     <div>{ROLE_LABELS[u.role] || u.role}</div>
-                    {u.designation && <div style={{ fontSize: 12, color: "#64748b" }}>{u.designation}</div>}
+                    {u.designation && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{u.designation}</div>}
                   </td>
                   <td style={td}>
-                    <div style={{ fontSize: 13 }}>{u.email || "—"}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{u.phone || ""}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)" }}>{u.email || "—"}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{u.phone || ""}</div>
                   </td>
                   <td style={td}>{fmtDate(u.createdAt)}</td>
                   {canManage && (
@@ -199,8 +199,8 @@ export default function EmployeeExitPage({ user }) {
 
       {/* Exited employees */}
       <div style={{ ...card, overflow: "hidden" }}>
-        <div style={{ padding: "14px 16px", fontSize: 15, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
-          Exited Employees <span style={{ color: "#94a3b8", fontWeight: 500 }}>· {exited.length}</span>
+        <div style={{ padding: "14px 16px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", borderBottom: "1px solid #eef2f7" }}>
+          Exited Employees <span style={{ color: "var(--hz-faint)", fontWeight: 500 }}>· {exited.length}</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -220,25 +220,25 @@ export default function EmployeeExitPage({ user }) {
               {loading ? (
                 <tr><td style={td} colSpan={canManage ? 8 : 7}>Loading…</td></tr>
               ) : exited.length === 0 ? (
-                <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={canManage ? 8 : 7}>No exited employees.</td></tr>
+                <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={canManage ? 8 : 7}>No exited employees.</td></tr>
               ) : exited.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ ...td, color: "#475569", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
+                  <td style={{ ...td, color: "var(--hz-ink-2)", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
                   <td style={td}>
                     <div style={{ fontWeight: 700 }}>{u.fullName}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>@{u.username}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>@{u.username}</div>
                   </td>
                   <td style={td}>{ROLE_LABELS[u.role] || u.role}</td>
                   <td style={td}>{fmtDate(u.exitDate)}</td>
                   <td style={td}>
-                    <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#fef2f2", color: "#b91c1c" }}>
+                    <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "#fef2f2", color: "#b91c1c" }}>
                       {EXIT_TYPE_LABEL[u.exitType] || u.exitType || "—"}
                     </span>
                   </td>
                   <td style={{ ...td, maxWidth: 260, whiteSpace: "pre-wrap" }}>{u.exitReason || "—"}</td>
                   <td style={td}>
                     <div>{u.exitMarkedBy || "—"}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{fmtDateTime(u.exitMarkedAt) || ""}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{fmtDateTime(u.exitMarkedAt) || ""}</div>
                   </td>
                   {canManage && (
                     <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
@@ -260,25 +260,25 @@ export default function EmployeeExitPage({ user }) {
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }}>
           <div onClick={(e) => e.stopPropagation()} className="hr-edit-modal"
             style={{ background: "#fff", borderRadius: 16, width: 440, maxWidth: "94vw", padding: 24, boxShadow: "0 24px 64px rgba(0,0,0,.28)" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Mark Exit — {modal.emp.fullName}</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, marginBottom: 16 }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Mark Exit — {modal.emp.fullName}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 3, marginBottom: 16 }}>
               @{modal.emp.username} · {ROLE_LABELS[modal.emp.role] || modal.emp.role}. Login is disabled immediately; their data is kept.
             </div>
 
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#475569" }}>Last working day</label>
+            <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>Last working day</label>
             <input type="date" value={form.exitDate} onChange={(e) => setForm((f) => ({ ...f, exitDate: e.target.value }))}
-              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: 14, fontFamily: "inherit", margin: "5px 0 14px", boxSizing: "border-box" }} />
+              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", margin: "5px 0 14px", boxSizing: "border-box" }} />
 
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#475569" }}>Exit type</label>
+            <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>Exit type</label>
             <select value={form.exitType} onChange={(e) => setForm((f) => ({ ...f, exitType: e.target.value }))}
-              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: 14, fontFamily: "inherit", margin: "5px 0 14px", background: "#fff", boxSizing: "border-box" }}>
+              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", margin: "5px 0 14px", background: "#fff", boxSizing: "border-box" }}>
               {EXIT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
 
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: "#475569" }}>Reason / notes</label>
+            <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)" }}>Reason / notes</label>
             <textarea value={form.exitReason} onChange={(e) => setForm((f) => ({ ...f, exitReason: e.target.value }))}
               placeholder="Optional — context for the exit"
-              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: 14, fontFamily: "inherit", margin: "5px 0 18px", minHeight: 70, resize: "vertical", boxSizing: "border-box" }} />
+              style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 11px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", margin: "5px 0 18px", minHeight: 70, resize: "vertical", boxSizing: "border-box" }} />
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button onClick={() => setModal(null)} style={btn("#f1f5f9", "#334155")}>Cancel</button>

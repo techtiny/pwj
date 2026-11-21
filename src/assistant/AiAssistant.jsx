@@ -64,7 +64,7 @@ const SUGGESTION_GROUPS = [
 function StepFlow({ intro, steps, note }) {
   return (
     <div>
-      {intro && <div style={{ fontWeight: 700, color: "#000", marginBottom: 10 }}>{intro}</div>}
+      {intro && <div style={{ fontWeight: 700, color: "var(--hz-ink)", marginBottom: 10 }}>{intro}</div>}
       <div style={{ display: "flex", flexDirection: "column" }}>
         {(steps || []).map((step, i) => {
           const isLast = i === steps.length - 1;
@@ -73,21 +73,21 @@ function StepFlow({ intro, steps, note }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 24, flexShrink: 0 }}>
                 <div style={{
                   width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "#fff",
-                  fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "var(--hz-on-dark)",
+                  fontSize: "var(--hz-text-2xs)", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   {i + 1}
                 </div>
                 {!isLast && <div style={{ width: 2, flex: 1, minHeight: 14, background: "#ddd6fe" }} />}
               </div>
-              <div style={{ paddingBottom: isLast ? 0 : 12, color: "#000", fontSize: 20, lineHeight: 1.5 }}>
+              <div style={{ paddingBottom: isLast ? 0 : 12, color: "var(--hz-ink)", fontSize: "var(--hz-text-xl)", lineHeight: 1.5 }}>
                 {step}
               </div>
             </div>
           );
         })}
       </div>
-      {note && <div style={{ marginTop: 10, color: "#374151", fontSize: 18.5, fontStyle: "italic" }}>{note}</div>}
+      {note && <div style={{ marginTop: 10, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-xl)", fontStyle: "italic" }}>{note}</div>}
     </div>
   );
 }
@@ -95,17 +95,17 @@ function StepFlow({ intro, steps, note }) {
 function TopicsMenu({ onPick }) {
   return (
     <div>
-      <div style={{ fontWeight: 700, color: "#000", marginBottom: 12 }}>Here's what I can help with:</div>
+      <div style={{ fontWeight: 700, color: "var(--hz-ink)", marginBottom: 12 }}>Here's what I can help with:</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {SUGGESTION_GROUPS.map(group => (
           <div key={group.label}>
-            <div style={{ fontSize: 16.5, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
               {group.label}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {group.questions.map(q => (
                 <button key={q} onClick={() => onPick(q)}
-                  style={{ textAlign: "left", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "8px 13px", background: "#fff", color: "#000", fontSize: 18.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ textAlign: "left", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "8px 13px", background: "#fff", color: "var(--hz-ink)", fontSize: "var(--hz-text-xl)", cursor: "pointer", fontFamily: "inherit" }}>
                   {q}
                 </button>
               ))}
@@ -173,11 +173,11 @@ export default function AiAssistant({ user }) {
             <Bot size={20} color="#fff" strokeWidth={1.8} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#000" }}>Happizo Chat Bot</div>
-            <div style={{ fontSize: 18, color: "#000" }}>Ask how to use the PWJ Tracker — steps, statuses, workflows</div>
+            <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Happizo Chat Bot</div>
+            <div style={{ fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>Ask how to use the PWJ Tracker — steps, statuses, workflows</div>
           </div>
           <button onClick={sendTopics}
-            style={{ border: "1.5px solid #ddd6fe", borderRadius: 9, padding: "7px 14px", background: "#f5f3ff", color: "#4f46e5", fontWeight: 700, fontSize: 18, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            style={{ border: "1.5px solid #ddd6fe", borderRadius: 9, padding: "7px 14px", background: "#f5f3ff", color: "#4f46e5", fontWeight: 700, fontSize: "var(--hz-text-xl)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             📋 Topics
           </button>
         </div>
@@ -196,7 +196,7 @@ export default function AiAssistant({ user }) {
                   {isUser ? <User size={15} color="#fff" /> : <Bot size={15} color="#fff" />}
                 </div>
                 <div style={{
-                  maxWidth: m.topics ? "100%" : "78%", fontSize: 20, lineHeight: 1.6, color: "#000",
+                  maxWidth: m.topics ? "100%" : "78%", fontSize: "var(--hz-text-xl)", lineHeight: 1.6, color: "var(--hz-ink)",
                   background: isUser ? "#eff6ff" : "#f8fafc",
                   border: `1px solid ${isUser ? "#bfdbfe" : "#e2e8f0"}`,
                   borderRadius: 12, padding: "12px 16px", whiteSpace: "pre-wrap", wordBreak: "break-word",
@@ -214,13 +214,13 @@ export default function AiAssistant({ user }) {
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Bot size={15} color="#fff" />
               </div>
-              <div style={{ fontSize: 20, color: "#000", fontStyle: "italic" }}>Thinking…</div>
+              <div style={{ fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)", fontStyle: "italic" }}>Thinking…</div>
             </div>
           )}
         </div>
 
         {error && (
-          <div style={{ margin: "0 22px 12px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: 19 }}>
+          <div style={{ margin: "0 22px 12px", padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: "var(--hz-text-xl)" }}>
             {error}
           </div>
         )}
@@ -233,10 +233,10 @@ export default function AiAssistant({ user }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            style={{ flex: 1, resize: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 20, fontFamily: "inherit", outline: "none", color: "#000", maxHeight: 120 }}
+            style={{ flex: 1, resize: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: "var(--hz-text-xl)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)", maxHeight: 120 }}
           />
           <button onClick={() => send()} disabled={sending || !input.trim()}
-            style={{ border: "none", borderRadius: 10, padding: "0 18px", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "#fff", fontWeight: 700, cursor: sending || !input.trim() ? "default" : "pointer", fontFamily: "inherit", opacity: sending || !input.trim() ? 0.6 : 1, display: "flex", alignItems: "center", gap: 6 }}>
+            style={{ border: "none", borderRadius: 10, padding: "0 18px", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "var(--hz-on-dark)", fontWeight: 700, cursor: sending || !input.trim() ? "default" : "pointer", fontFamily: "inherit", opacity: sending || !input.trim() ? 0.6 : 1, display: "flex", alignItems: "center", gap: 6 }}>
             <Send size={16} /> Send
           </button>
         </div>

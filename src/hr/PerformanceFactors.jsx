@@ -27,10 +27,10 @@ export function scoreOf(rating, category) {
 
 export function CategoryChip({ category }) {
   const c = CATEGORY_BY_KEY[category];
-  if (!c) return <span style={{ color: "#94a3b8" }}>—</span>;
+  if (!c) return <span style={{ color: "var(--hz-faint)" }}>—</span>;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: c.bg, color: c.color, border: `1px solid ${c.color}33`,
-      borderRadius: 999, padding: "3px 11px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
+      borderRadius: 999, padding: "3px 11px", fontSize: "var(--hz-text-sm)", fontWeight: 700, whiteSpace: "nowrap" }}>
       {c.label} <span style={{ fontWeight: 600, opacity: .7 }}>· {c.weight}%</span>
     </span>
   );
@@ -48,7 +48,7 @@ const gradeOf = (pct) =>
   pct >= 85 ? { label: "Outstanding", color: "#059669" } :
   pct >= 70 ? { label: "Good", color: "#2563eb" } :
   pct >= 50 ? { label: "Needs improvement", color: "#d97706" } :
-              { label: "Below expectations", color: "#dc2626" };
+              { label: "Below expectations", color: "var(--hz-danger)" };
 
 /** Employee-facing performance table: S.No, Date, Parameters, Ratings, Score, Category.
  *  Only categorised (scored) comments count; appeals accepted by a reviewer are shown as withdrawn. */
@@ -61,31 +61,31 @@ export function PerformanceFactorsTable({ remarks, title = "Performance Factors"
   const pct = max ? Math.round((total / max) * 100) : null;
   const grade = pct != null ? gradeOf(pct) : null;
 
-  const th = { padding: "11px 14px", textAlign: "left", fontSize: 13, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: .5, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" };
-  const td = { padding: "12px 14px", fontSize: 15, color: "#1e293b", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" };
+  const th = { padding: "11px 14px", textAlign: "left", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: .5, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" };
+  const td = { padding: "12px 14px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" };
 
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, padding: compact ? "14px 18px" : "16px 20px", borderBottom: "1px solid #eef2f7", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>📊 {title}</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Score = Rating ÷ 5 × category weight · accepted appeals are withdrawn from the score</div>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>📊 {title}</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>Score = Rating ÷ 5 × category weight · accepted appeals are withdrawn from the score</div>
         </div>
         {pct != null && (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Overall</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{Math.round(total * 10) / 10}<span style={{ fontSize: 14, color: "#94a3b8", fontWeight: 600 }}> / {max}</span></div>
+              <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 600 }}>Overall</div>
+              <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.1 }}>{Math.round(total * 10) / 10}<span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", fontWeight: 600 }}> / {max}</span></div>
             </div>
             <div style={{ background: `${grade.color}14`, color: grade.color, border: `1px solid ${grade.color}40`, borderRadius: 12, padding: "6px 12px", textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1 }}>{pct}%</div>
-              <div style={{ fontSize: 11.5, fontWeight: 700 }}>{grade.label}</div>
+              <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, lineHeight: 1.1 }}>{pct}%</div>
+              <div style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 700 }}>{grade.label}</div>
             </div>
           </div>
         )}
       </div>
       {rows.length === 0 ? (
-        <div style={{ padding: "26px 20px", textAlign: "center", color: "#94a3b8", fontSize: 15 }}>No performance factors recorded yet.</div>
+        <div style={{ padding: "26px 20px", textAlign: "center", color: "var(--hz-faint)", fontSize: "var(--hz-text-md)" }}>No performance factors recorded yet.</div>
       ) : (
         <div style={{ overflowX: "auto", maxHeight: compact ? 360 : 460, overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
@@ -106,17 +106,17 @@ export function PerformanceFactorsTable({ remarks, title = "Performance Factors"
                 const sc = r.score ?? scoreOf(r.rating, r.category);
                 return (
                   <tr key={r.id} style={{ background: withdrawn ? "#f8fafc" : i % 2 ? "#fcfdff" : "#fff" }}>
-                    <td style={{ ...td, color: "#64748b", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ ...td, color: "var(--hz-muted)", fontWeight: 600 }}>{i + 1}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(r.remarkDate)}</td>
                     <td style={td}>
-                      <div style={{ fontWeight: 600, textDecoration: withdrawn ? "line-through" : "none", color: withdrawn ? "#94a3b8" : "#0f172a" }}>{r.parameter || r.notes}</div>
+                      <div style={{ fontWeight: 600, textDecoration: withdrawn ? "line-through" : "none", color: withdrawn ? "var(--hz-faint)" : "var(--hz-ink)" }}>{r.parameter || r.notes}</div>
                     </td>
-                    <td style={td}>{r.category && !withdrawn ? <CategoryChip category={r.category} /> : <span style={{ color: "#94a3b8" }}>—</span>}</td>
-                    <td style={td}>{r.rating && !withdrawn ? <Stars value={r.rating} /> : <span style={{ color: "#94a3b8" }}>—</span>}</td>
+                    <td style={td}>{r.category && !withdrawn ? <CategoryChip category={r.category} /> : <span style={{ color: "var(--hz-faint)" }}>—</span>}</td>
+                    <td style={td}>{r.rating && !withdrawn ? <Stars value={r.rating} /> : <span style={{ color: "var(--hz-faint)" }}>—</span>}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }}>
                       {withdrawn
-                        ? <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>✓ Withdrawn</span>
-                        : <span style={{ fontWeight: 800 }}>{sc}<span style={{ color: "#94a3b8", fontWeight: 600 }}> / {c?.weight}</span></span>}
+                        ? <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#059669", background: "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>✓ Withdrawn</span>
+                        : <span style={{ fontWeight: 800 }}>{sc}<span style={{ color: "var(--hz-faint)", fontWeight: 600 }}> / {c?.weight}</span></span>}
                     </td>
                   </tr>
                 );

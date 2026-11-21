@@ -23,7 +23,7 @@ const STATUS_CFG = {
   active:    { label: 'Active',    color: '#10b981', icon: Activity },
   completed: { label: 'Completed', color: '#6366f1', icon: CheckCircle2 },
   onhold:    { label: 'On Hold',   color: '#f59e0b', icon: PauseCircle },
-  pending:   { label: 'Pending',   color: '#94a3b8', icon: Clock },
+  pending:   { label: 'Pending',   color: "var(--hz-faint)", icon: Clock },
 };
 
 const BAR_CATS = [
@@ -37,16 +37,16 @@ const BarTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const total = payload.reduce((s, p) => s + (p.value || 0), 0);
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 12, minWidth: 190, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-      <div style={{ fontWeight: 700, marginBottom: 6, color: '#0f172a', fontSize: 13 }}>{label}</div>
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: "var(--hz-text-xs)", minWidth: 190, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+      <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--hz-ink)", fontSize: "var(--hz-text-sm)" }}>{label}</div>
       {payload.map((p, i) => p.value > 0 && (
         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.fill, marginBottom: 3 }}>
           <span>{p.name}</span><span style={{ fontWeight: 600 }}>{formatLakh(p.value)}</span>
         </div>
       ))}
       <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 6, paddingTop: 6, fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: '#64748b' }}>Total</span>
-        <span style={{ color: '#0f172a' }}>{formatLakh(total)}</span>
+        <span style={{ color: "var(--hz-muted)" }}>Total</span>
+        <span style={{ color: "var(--hz-ink)" }}>{formatLakh(total)}</span>
       </div>
     </div>
   );
@@ -56,9 +56,9 @@ const PieTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: "var(--hz-text-xs)", boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
       <span style={{ color: CAT_COLORS[name] || '#6366f1', fontWeight: 700 }}>{name}</span>
-      <span style={{ color: '#0f172a', fontWeight: 700, marginLeft: 8 }}>{formatLakh(value)}</span>
+      <span style={{ color: "var(--hz-ink)", fontWeight: 700, marginLeft: 8 }}>{formatLakh(value)}</span>
     </div>
   );
 };
@@ -74,9 +74,9 @@ function KpiCard({ icon: Icon, label, value, sub, subColor, valueColor }) {
         <Icon size={20} color="#6366f1" />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: valueColor || '#0f172a', lineHeight: 1.2 }}>{value}</div>
-        {sub && <div style={{ fontSize: 12, color: subColor || '#94a3b8', marginTop: 3 }}>{sub}</div>}
+        <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: valueColor || "var(--hz-ink)", lineHeight: 1.2 }}>{value}</div>
+        {sub && <div style={{ fontSize: "var(--hz-text-xs)", color: subColor || "var(--hz-faint)", marginTop: 3 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -101,16 +101,16 @@ export default function AccountDashboard() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12 }}>
       <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', animation: 'acct-spin 0.8s linear infinite' }} />
-      <span style={{ color: '#64748b', fontSize: 14 }}>Loading dashboard…</span>
+      <span style={{ color: "var(--hz-muted)", fontSize: "var(--hz-text-md)" }}>Loading dashboard…</span>
     </div>
   );
 
   if (error) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}>
-      <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '20px 28px', color: '#dc2626', maxWidth: 440, textAlign: 'center' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Dashboard unavailable</div>
-        <div style={{ fontSize: 13, marginBottom: 14 }}>{error}</div>
-        <button onClick={load} style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+      <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '20px 28px', color: "var(--hz-danger)", maxWidth: 440, textAlign: 'center' }}>
+        <div style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", marginBottom: 6 }}>Dashboard unavailable</div>
+        <div style={{ fontSize: "var(--hz-text-sm)", marginBottom: 14 }}>{error}</div>
+        <button onClick={load} style={{ background: '#dc2626', color: "var(--hz-on-dark)", border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
           ↺ Retry
         </button>
       </div>
@@ -145,14 +145,14 @@ export default function AccountDashboard() {
       <div className="card" style={{ padding: 20, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Portfolio Health</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Quote · Collection · Budget · Spent</div>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Portfolio Health</div>
+            <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Quote · Collection · Budget · Spent</div>
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
             {[{ label: 'Collected', pct: collectionPct, color: '#10b981' }, { label: 'Spent', pct: budgetUsedPct, color: '#6366f1' }].map(({ label, pct, color }) => (
               <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color }}>{pct}%</div>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>{label}</div>
+                <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color }}>{pct}%</div>
+                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)" }}>{label}</div>
               </div>
             ))}
           </div>
@@ -167,8 +167,8 @@ export default function AccountDashboard() {
           return (
             <div key={label} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{formatCurrency(value)}</span>
+                <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>{label}</span>
+                <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink)" }}>{formatCurrency(value)}</span>
               </div>
               <div style={{ background: '#f1f5f9', borderRadius: 100, height: 10, overflow: 'hidden' }}>
                 <div style={{ width: `${pct}%`, background: color, borderRadius: 100, height: '100%', transition: 'width 0.6s ease' }} />
@@ -183,12 +183,12 @@ export default function AccountDashboard() {
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Project Expense Breakdown</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Stacked by category</div>
+              <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Project Expense Breakdown</div>
+              <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Stacked by category</div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', maxWidth: 200, justifyContent: 'flex-end' }}>
               {BAR_CATS.map(({ key, color, label }) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748b' }}>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} /> {label}
                 </div>
               ))}
@@ -197,8 +197,8 @@ export default function AccountDashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={projectBars} margin={{ top: 4, right: 8, left: 0, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="shortName" tick={{ fontSize: 11, fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => formatLakh(v)} axisLine={false} tickLine={false} width={52} />
+              <XAxis dataKey="shortName" tick={{ fontSize: 12.5, fill: '#94a3b8' }} angle={-35} textAnchor="end" interval={0} tickLine={false} />
+              <YAxis tick={{ fontSize: 12.5, fill: '#94a3b8' }} tickFormatter={v => formatLakh(v)} axisLine={false} tickLine={false} width={52} />
               <Tooltip content={<BarTooltip />} />
               {BAR_CATS.map(({ key, color, label }, i) => (
                 <Bar key={key} dataKey={key} stackId="a" fill={color} name={label} radius={i === BAR_CATS.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
@@ -209,8 +209,8 @@ export default function AccountDashboard() {
 
         <div className="card" style={{ padding: 20 }}>
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Spend by Category</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Across all projects</div>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>Spend by Category</div>
+            <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Across all projects</div>
           </div>
           {pieData.length > 0 ? (
             <>
@@ -230,9 +230,9 @@ export default function AccountDashboard() {
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>{entry.name}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{formatLakh(entry.value)}</span>
-                      <span style={{ fontSize: 12, color: '#94a3b8', width: 38, textAlign: 'right' }}>{pct}%</span>
+                      <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", flex: 1 }}>{entry.name}</span>
+                      <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink)" }}>{formatLakh(entry.value)}</span>
+                      <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", width: 38, textAlign: 'right' }}>{pct}%</span>
                     </div>
                   );
                 })}
@@ -247,7 +247,7 @@ export default function AccountDashboard() {
       {/* Status + Top Spenders */}
       <div className="grid grid-2" style={{ marginBottom: 24 }}>
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Project Status Summary</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 16 }}>Project Status Summary</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
               { key: 'active',    count: activeProjects },
@@ -262,10 +262,10 @@ export default function AccountDashboard() {
                 <div key={key} style={{ background: `${cfg.color}10`, border: `1px solid ${cfg.color}30`, borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <Icon size={16} color={cfg.color} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
+                    <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{pct}% of portfolio</div>
+                  <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1 }}>{count}</div>
+                  <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", marginTop: 4 }}>{pct}% of portfolio</div>
                 </div>
               );
             })}
@@ -278,7 +278,7 @@ export default function AccountDashboard() {
         </div>
 
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Top Projects by Spend</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 16 }}>Top Projects by Spend</div>
           {projectExpenses.slice(0, 5).map((p, i) => {
             const max    = projectExpenses[0]?.total || 1;
             const pct    = ((p.total / max) * 100).toFixed(0);
@@ -286,8 +286,8 @@ export default function AccountDashboard() {
             return (
               <div key={i} style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: colors[i], fontWeight: 700 }}>{formatLakh(p.total)}</span>
+                  <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 500, color: "var(--hz-ink)", maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                  <span style={{ fontSize: "var(--hz-text-xs)", color: colors[i], fontWeight: 700 }}>{formatLakh(p.total)}</span>
                 </div>
                 <div style={{ background: '#f1f5f9', borderRadius: 100, height: 7 }}>
                   <div style={{ width: `${pct}%`, background: colors[i], borderRadius: 100, height: '100%', transition: 'width 0.5s ease' }} />
@@ -300,7 +300,7 @@ export default function AccountDashboard() {
 
       {/* Financial Table */}
       <div className="card" style={{ padding: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Project Financial Overview</div>
+        <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 16 }}>Project Financial Overview</div>
         <div className="table-container">
           <table>
             <thead>
@@ -319,7 +319,7 @@ export default function AccountDashboard() {
                 const bars = [{ key: 'MATERIAL', color: '#10b981' }, { key: 'LABOUR', color: '#3b82f6' }, { key: 'SUBCONTRACTOR', color: '#8b5cf6' }, { key: 'OVERHEAD', color: '#f59e0b' }];
                 return (
                   <tr key={i}>
-                    <td style={{ fontWeight: 600, fontSize: 13, maxWidth: 160 }}>
+                    <td style={{ fontWeight: 600, fontSize: "var(--hz-text-sm)", maxWidth: 160 }}>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                     </td>
                     <td style={{ width: 120 }}>
@@ -327,16 +327,16 @@ export default function AccountDashboard() {
                         {bars.map(({ key, color }) => <div key={key} style={{ flex: p[key] || 0, background: color }} />)}
                       </div>
                     </td>
-                    <td style={{ textAlign: 'right', fontSize: 12 }}>{formatLakh(p.MATERIAL)}</td>
-                    <td style={{ textAlign: 'right', fontSize: 12 }}>{formatLakh(p.LABOUR)}</td>
-                    <td style={{ textAlign: 'right', fontSize: 12 }}>{formatLakh(p.SUBCONTRACTOR)}</td>
-                    <td style={{ textAlign: 'right', fontSize: 12 }}>{formatLakh(p.OVERHEAD)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{formatLakh(p.total)}</td>
+                    <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)" }}>{formatLakh(p.MATERIAL)}</td>
+                    <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)" }}>{formatLakh(p.LABOUR)}</td>
+                    <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)" }}>{formatLakh(p.SUBCONTRACTOR)}</td>
+                    <td style={{ textAlign: 'right', fontSize: "var(--hz-text-xs)" }}>{formatLakh(p.OVERHEAD)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: "var(--hz-ink)" }}>{formatLakh(p.total)}</td>
                   </tr>
                 );
               })}
               <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                <td colSpan={2} style={{ color: '#0f172a' }}>TOTAL</td>
+                <td colSpan={2} style={{ color: "var(--hz-ink)" }}>TOTAL</td>
                 <td style={{ textAlign: 'right', color: '#10b981' }}>{formatLakh(categoryBreakdown.find(c => c.name === 'MATERIAL')?.value || 0)}</td>
                 <td style={{ textAlign: 'right', color: '#3b82f6' }}>{formatLakh(categoryBreakdown.find(c => c.name === 'LABOUR')?.value || 0)}</td>
                 <td style={{ textAlign: 'right', color: '#8b5cf6' }}>{formatLakh(categoryBreakdown.find(c => c.name === 'SUBCONTRACT')?.value || 0)}</td>

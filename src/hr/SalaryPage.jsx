@@ -46,7 +46,7 @@ const SHEET_COLS = [
   { k: "pt", l: "PT", money: true, total: true },
   { k: "advanceDeduction", l: "Advance", money: true, total: true },
   { k: "totalDed", l: "Total Ded", money: true, total: true },
-  { k: "takeHome", l: "Take Home", money: true, total: true, bold: true, color: "#0f172a" },
+  { k: "takeHome", l: "Take Home", money: true, total: true, bold: true, color: "var(--hz-ink)" },
   { k: "employer", l: "Employer", money: true, total: true },
   { k: "ctc", l: "CTC", money: true, total: true },
   { k: "remarks", l: "Remarks", left: true, remarks: true },
@@ -76,14 +76,14 @@ function useIsMobile(max = 700) {
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
-const th = { padding: "10px 12px", textAlign: "left", fontSize: 11.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
+const th = { padding: "10px 12px", textAlign: "left", fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
 const thR = { ...th, textAlign: "right" };
-const td = { padding: "9px 12px", fontSize: 13, borderBottom: "1px solid #eef2f7", color: "#0f172a", whiteSpace: "nowrap" };
+const td = { padding: "9px 12px", fontSize: "var(--hz-text-sm)", borderBottom: "1px solid #eef2f7", color: "var(--hz-ink)", whiteSpace: "nowrap" };
 const tdR = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 13, fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
+const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "7px 13px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit" });
 // Approve / reject are always round icon buttons: dark-green circle + white tick, dark-red circle + white cross.
-const apprBtn = (kind) => ({ width: 36, height: 36, borderRadius: "50%", border: "none", background: kind === "ok" ? "#166534" : "#b91c1c", color: "#fff", fontSize: 19, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit", boxShadow: "0 1px 2px rgba(0,0,0,.25)" });
-const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
+const apprBtn = (kind) => ({ width: 36, height: 36, borderRadius: "50%", border: "none", background: kind === "ok" ? "#166534" : "#b91c1c", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xl)", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1, fontFamily: "inherit", boxShadow: "0 1px 2px rgba(0,0,0,.25)" });
+const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", boxSizing: "border-box" };
 
 export default function SalaryPage({ user }) {
   const canManage = ["ADMIN", "VP"].includes(user?.role);
@@ -315,10 +315,10 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
     <div className="hr-page" style={{ padding: isMobile ? "14px 10px" : "24px 32px" }}>
       {/* Hero */}
       <div className="hr-hero" style={{ ...card, padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderLeft: "4px solid #0f766e" }}>
-        <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#ccfbf1", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>💰</div>
+        <div className="hr-hero-icon" style={{ width: 46, height: 46, borderRadius: 12, background: "#ccfbf1", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-2xl)" }}>💰</div>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Salary</div>
-          <div style={{ fontSize: 13.5, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Salary</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>
             Structure per employee, prorated by leaves from the HR module. One casual leave a month is free — extra leave days are loss of pay.
           </div>
         </div>
@@ -333,16 +333,16 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: isMobile ? 54 : 64 }}>
                       {mine ? (
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? 20 : 24, opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
-                          {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? 20 : 24, opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
+                          <button title={st.key === "CEO" ? "Approve & release" : "Approve"} aria-label="Approve" onClick={approveMonth} disabled={busy === "approval"} style={{ ...apprBtn("ok"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? "var(--hz-text-xl)" : "var(--hz-text-2xl)", opacity: busy === "approval" ? 0.6 : 1 }}>✓</button>
+                          {st.key !== "ADMIN" && <button title="Reject" aria-label="Reject" onClick={rejectMonth} disabled={busy === "approval"} style={{ ...apprBtn("no"), width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, fontSize: isMobile ? "var(--hz-text-xl)" : "var(--hz-text-2xl)", opacity: busy === "approval" ? 0.6 : 1 }}>✕</button>}
                         </div>
                       ) : (
-                        <span title={st.done ? `${st.title} approved` : `${st.title} — pending`} style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 20 : 24, fontWeight: 800,
-                          color: st.done ? "#fff" : "#94a3b8", background: st.done ? "#16a34a" : "#fff", border: st.done ? "none" : "2.5px solid #cbd5e1", boxShadow: st.done ? "0 1px 3px rgba(22,163,74,.45)" : "none" }}>{st.done ? "✓" : ""}</span>
+                        <span title={st.done ? `${st.title} approved` : `${st.title} — pending`} style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? "var(--hz-text-xl)" : "var(--hz-text-2xl)", fontWeight: 800,
+                          color: st.done ? "var(--hz-on-dark)" : "var(--hz-faint)", background: st.done ? "#16a34a" : "#fff", border: st.done ? "none" : "2.5px solid #cbd5e1", boxShadow: st.done ? "0 1px 3px rgba(22,163,74,.45)" : "none" }}>{st.done ? "✓" : ""}</span>
                       )}
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#000", letterSpacing: "0.04em" }}>{st.title}</span>
+                      <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: "var(--hz-ink)", letterSpacing: "0.04em" }}>{st.title}</span>
                       {st.done && st.at && (
-                        <span style={{ fontSize: 12, color: "#000", textAlign: "center", lineHeight: 1.25 }}>
+                        <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink)", textAlign: "center", lineHeight: 1.25 }}>
                           {serverDate(st.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}
                           <br />
                           {serverDate(st.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).toLowerCase()}
@@ -360,9 +360,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                 Revise
               </button>
             )}
-            {released && <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</div>}
+            {released && <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: "#166534" }}>RELEASED — payslips available</div>}
             {approval.rejectRemark && !released && (
-              <div style={{ fontSize: 12.5, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "5px 10px", maxWidth: 360 }}>
+              <div style={{ fontSize: "var(--hz-text-xs)", color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "5px 10px", maxWidth: 360 }}>
                 Sent back by {approval.rejectedRole || approval.rejectedBy}: {approval.rejectRemark}
               </div>
             )}
@@ -375,7 +375,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
         <div style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 8, padding: 3 }}>
           {[["sheet", "Monthly Sheet"], ["structures", "Structures & Appraisals"]].map(([k, l]) => (
             <button key={k} onClick={() => setView(k)}
-              style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: view === k ? 700 : 500, padding: "7px 14px", borderRadius: 6, background: view === k ? "#0f766e" : "transparent", color: view === k ? "#fff" : "#475569" }}>
+              style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-sm)", fontWeight: view === k ? 700 : 500, padding: "7px 14px", borderRadius: 6, background: view === k ? "#0f766e" : "transparent", color: view === k ? "var(--hz-on-dark)" : "var(--hz-ink-2)" }}>
               {l}
             </button>
           ))}
@@ -396,7 +396,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
           </>
         )}
         {view === "structures" && noStructure.length > 0 && (
-          <span style={{ fontSize: 12.5, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 10px" }}>
+          <span style={{ fontSize: "var(--hz-text-xs)", color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 10px" }}>
             {noStructure.length} employee{noStructure.length !== 1 ? "s" : ""} without a defined salary
           </span>
         )}
@@ -404,8 +404,8 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
 
       {view === "sheet" ? (
         <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
-            Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "#64748b", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
+          <div style={{ padding: "12px 16px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", borderBottom: "1px solid #eef2f7" }}>
+            Salary Sheet — {MONTHS[month - 1]} {year} <span style={{ color: "var(--hz-muted)", fontWeight: 500 }}>({cycleLabel(year, month)})</span>
           </div>
           {sheet.length > 0 && (
             <div style={{ padding: "10px 16px", borderBottom: "1px solid #eef2f7", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -423,11 +423,11 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
               </select>
               {filtered && (
                 <button onClick={() => { setQ(""); setDesig(""); setIssue(""); }}
-                  style={{ border: "none", background: "none", color: "#b91c1c", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ border: "none", background: "none", color: "#b91c1c", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   Clear filters
                 </button>
               )}
-              <span style={{ marginLeft: isMobile ? 0 : "auto", fontSize: 13.5, color: "#000" }}>
+              <span style={{ marginLeft: isMobile ? 0 : "auto", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)" }}>
                 Showing <b>{rows.length}</b> of {sheet.length}
               </span>
             </div>
@@ -436,7 +436,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {cols.map((c) => <th key={c.k} style={{ ...th, textAlign: "center", ...(c.lines ? { whiteSpace: "normal", lineHeight: 1.25 } : {}), ...(isMobile ? { padding: "8px 6px", fontSize: 10.5 } : { fontSize: 14.5 }), ...freezeStyle(c.k, "#f8fafc", 3, isMobile, hasCode) }} title={c.tip}>
+                  {cols.map((c) => <th key={c.k} style={{ ...th, textAlign: "center", ...(c.lines ? { whiteSpace: "normal", lineHeight: 1.25 } : {}), ...(isMobile ? { padding: "8px 6px", fontSize: "var(--hz-text-2xs)" } : { fontSize: "var(--hz-text-md)" }), ...freezeStyle(c.k, "#f8fafc", 3, isMobile, hasCode) }} title={c.tip}>
                     {c.lines ? c.lines.map((t, i) => <span key={i}>{i > 0 && <br />}{t}</span>) : c.l}
                   </th>)}
                   <th style={th}>Payslip</th>
@@ -447,11 +447,11 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                 {loading ? (
                   <tr><td style={td} colSpan={cols.length + (canAdjust ? 2 : 1)}>Loading…</td></tr>
                 ) : sheet.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#94a3b8" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>
+                  <tr><td style={{ ...td, color: "var(--hz-faint)" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>
                     No salary structures defined yet — use “Structures &amp; Appraisals” to define salaries.
                   </td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td style={{ ...td, color: "#000" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>No employees match the filters.</td></tr>
+                  <tr><td style={{ ...td, color: "var(--hz-ink)" }} colSpan={cols.length + (canAdjust ? 2 : 1)}>No employees match the filters.</td></tr>
                 ) : rows.map((r, ri) => (
                   <tr key={r.userId} style={{ background: r.finalized ? "#f0fdf4" : "#fff" }}>
                     {cols.map((c) => {
@@ -460,9 +460,9 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                       const style = c.wrap
                         ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 130, maxWidth: 170, lineHeight: 1.3 }
                         : c.remarks
-                        ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 380, maxWidth: 520, fontSize: 12, color: "#475569" }
-                        : { ...td, textAlign: "center", fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "#64748b" : "#0f172a") };
-                      return <td key={c.k} style={{ ...style, ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...(isMobile && c.remarks ? { minWidth: 220 } : {}), ...(isMobile && (c.k === "name" || c.k === "employeeNumber") ? { whiteSpace: "normal" } : {}), ...freezeStyle(c.k, r.finalized ? "#f0fdf4" : "#fff", 1, isMobile, hasCode) }}>{val}</td>;
+                        ? { ...td, textAlign: "center", whiteSpace: "normal", minWidth: 380, maxWidth: 520, fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)" }
+                        : { ...td, textAlign: "center", fontWeight: c.bold || (flag && c.k === "unauthorizedDays") ? (c.k === "takeHome" ? 800 : 700) : 400, color: flag ? "#b91c1c" : c.color || (c.x && !c.money ? "var(--hz-muted)" : "var(--hz-ink)") };
+                      return <td key={c.k} style={{ ...style, ...(isMobile ? { padding: "7px 6px", fontSize: "var(--hz-text-xs)" } : { fontSize: "var(--hz-text-lg)" }), ...(isMobile && c.remarks ? { minWidth: 220 } : {}), ...(isMobile && (c.k === "name" || c.k === "employeeNumber") ? { whiteSpace: "normal" } : {}), ...freezeStyle(c.k, r.finalized ? "#f0fdf4" : "#fff", 1, isMobile, hasCode) }}>{val}</td>;
                     })}
                     <td style={td}>
                       <button onClick={() => downloadPayslip(r, year, month)} disabled={!released} title={released ? "Download payslip" : "Available after the CEO releases this month"} aria-label="Download payslip" style={{ ...btn("#ecfdf5", "#047857"), padding: "6px 9px", opacity: released ? 1 : 0.4, cursor: released ? "pointer" : "not-allowed" }}>📎</button>
@@ -479,8 +479,8 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                 <tfoot>
                   <tr style={{ background: "#f8fafc", fontWeight: 800 }}>
                     {cols.map((c, i) => c.total
-                      ? <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? {} : { fontSize: 16 }) }}>{inr0(totals[c.k])}</td>
-                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: 12 } : { fontSize: 16 }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${filtered ? `${rows.length} of ${sheet.length}` : rows.length})` : ""}</td>)}
+                      ? <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? {} : { fontSize: "var(--hz-text-lg)" }) }}>{inr0(totals[c.k])}</td>
+                      : <td key={c.k} style={{ ...td, textAlign: "center", ...(isMobile ? { padding: "7px 6px", fontSize: "var(--hz-text-xs)" } : { fontSize: "var(--hz-text-lg)" }), ...freezeStyle(c.k, "#f8fafc", 1, isMobile, hasCode) }}>{c.k === "name" ? `Total (${filtered ? `${rows.length} of ${sheet.length}` : rows.length})` : ""}</td>)}
                     <td style={td} colSpan={canAdjust ? 2 : 1}></td>
                   </tr>
                 </tfoot>
@@ -490,7 +490,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
         </div>
       ) : (
         <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", fontSize: 14.5, fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #eef2f7" }}>
+          <div style={{ padding: "12px 16px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", borderBottom: "1px solid #eef2f7" }}>
             Salary Structures
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -517,7 +517,7 @@ tr.t td{background:#f1f5f9}p.ap{font-size:11px;margin:10px 0 0}</style></head><b
                     <td style={tdR}>{s.hasSalary ? (s.pfApplicable ? inr0(s.pfAmount) : "No") : "—"}</td>
                     <td style={tdR}>{s.hasSalary ? (s.ptApplicable ? inr0(s.ptAmount) : "No") : "—"}</td>
                     <td style={td}>{s.hasSalary ? fmtDate(s.effectiveFrom) : "—"}</td>
-                    <td style={{ ...td, whiteSpace: "normal", maxWidth: 200, fontSize: 12, color: "#64748b" }}>{s.note || "—"}</td>
+                    <td style={{ ...td, whiteSpace: "normal", maxWidth: 200, fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{s.note || "—"}</td>
                     {canManage && (
                       <td style={{ ...td, textAlign: "right" }}>
                         {s.hasSalary ? (
@@ -557,10 +557,10 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
   const g = Number(form.monthlyGross || 0);
   return (
     <Overlay onClose={onClose}>
-      <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>
+      <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>
         {isRevise ? "Revise Salary (Appraisal)" : "Define Salary"} — {emp.name}
       </div>
-      <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 16px" }}>
+      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", margin: "3px 0 16px" }}>
         {emp.designation}
         {isRevise && <> · current {inr0(emp.monthlyGross)}</>}
       </div>
@@ -569,13 +569,13 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
         <input type="number" value={form.monthlyGross} onChange={(e) => setForm((f) => ({ ...f, monthlyGross: e.target.value }))} style={{ ...inputS, width: "100%" }} autoFocus />
       </Field>
       {g > 0 && (
-        <div style={{ fontSize: 12, color: "#475569", background: "#f8fafc", borderRadius: 8, padding: "8px 10px", margin: "-4px 0 14px" }}>
+        <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", background: "#f8fafc", borderRadius: 8, padding: "8px 10px", margin: "-4px 0 14px" }}>
           Basic {inr0(g * 0.5)} · HRA {inr0(g * 0.125)} · Other {inr0(g * 0.375)}
         </div>
       )}
       <div style={{ display: "flex", gap: 14, marginBottom: 14 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+          <label style={{ fontSize: "var(--hz-text-sm)", display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
             <input type="checkbox" checked={form.pfApplicable} onChange={(e) => setForm((f) => ({ ...f, pfApplicable: e.target.checked }))} /> PF (₹)
           </label>
           <input type="number" min="0" value={form.pfApplicable ? form.pfAmount : ""} disabled={!form.pfApplicable}
@@ -583,7 +583,7 @@ function StructureModal({ modal, busy, onClose, onSubmit }) {
             placeholder={g > 0 ? `${Math.round(g * 0.06)} (12% of Basic)` : "12% of Basic"} style={{ ...inputS, width: "100%" }} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+          <label style={{ fontSize: "var(--hz-text-sm)", display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
             <input type="checkbox" checked={form.ptApplicable} onChange={(e) => setForm((f) => ({ ...f, ptApplicable: e.target.checked }))} /> PT (₹)
           </label>
           <input type="number" min="0" value={form.ptApplicable ? form.ptAmount : ""} disabled={!form.ptApplicable}
@@ -614,14 +614,14 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit, canRegularize, 
   });
   return (
     <Overlay onClose={onClose}>
-      <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Adjust — {row.name}</div>
-      <div style={{ fontSize: 13, color: "#64748b", margin: "3px 0 14px" }}>
+      <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Adjust — {row.name}</div>
+      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", margin: "3px 0 14px" }}>
         {monthLabel} · auto: {row.leaveDays} leave day(s){Number(row.unauthorizedDays) > 0 ? `, ${row.unauthorizedDays} unauthorized absence(s) × 1.5` : ""}, {row.lopDays} LOP, {row.extraWorkingDays} extra WD, {row.workingDays} working days
       </div>
       {row.unauthorizedDates?.length > 0 && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#991b1b", marginBottom: 4 }}>Unauthorized absences — no leave applied, no check-in</div>
-          <div style={{ fontSize: 12, color: "#7f1d1d", marginBottom: 8 }}>
+          <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#991b1b", marginBottom: 4 }}>Unauthorized absences — no leave applied, no check-in</div>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "#7f1d1d", marginBottom: 8 }}>
             If the employee actually took leave but never applied, record it here. It then counts as ordinary leave (free CL first) instead of an unauthorized absence at 1.5× with no free CL.
           </div>
           {canRegularize && (
@@ -631,17 +631,17 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit, canRegularize, 
           )}
           {row.unauthorizedDates.map((d) => (
             <div key={d} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "4px 0" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{fmtDate(d)}</span>
+              <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink)" }}>{fmtDate(d)}</span>
               {canRegularize && (
                 <button disabled={working === d}
                   onClick={async () => { setWorking(d); await onRegularize(row, d, leaveType); setWorking(null); }}
-                  style={{ ...btn("#fff", "#166534"), border: "1px solid #bbf7d0", padding: "5px 10px", fontSize: 12, opacity: working === d ? 0.6 : 1 }}>
+                  style={{ ...btn("#fff", "#166534"), border: "1px solid #bbf7d0", padding: "5px 10px", fontSize: "var(--hz-text-xs)", opacity: working === d ? 0.6 : 1 }}>
                   {working === d ? "Saving…" : "Mark as leave"}
                 </button>
               )}
             </div>
           ))}
-          {!canRegularize && <div style={{ fontSize: 12, color: "#7f1d1d", marginTop: 4 }}>Only Admin or VP can record leave for an employee.</div>}
+          {!canRegularize && <div style={{ fontSize: "var(--hz-text-xs)", color: "#7f1d1d", marginTop: 4 }}>Only Admin or VP can record leave for an employee.</div>}
         </div>
       )}
       <Field label="Extra working days (override — auto-detected from Sunday/holiday check-in+out)">
@@ -656,7 +656,7 @@ function AdjustModal({ row, monthLabel, busy, onClose, onSubmit, canRegularize, 
       <Field label="Remarks">
         <textarea value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} style={{ ...inputS, width: "100%", minHeight: 60, resize: "vertical" }} placeholder="e.g. 2 days leave - 1 CL, 1 Sunday working" />
       </Field>
-      <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
+      <label style={{ fontSize: "var(--hz-text-sm)", display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
         <input type="checkbox" checked={form.finalized} onChange={(e) => setForm((f) => ({ ...f, finalized: e.target.checked }))} /> Finalized for this month
       </label>
       <ModalActions busy={busy} onClose={onClose} onSubmit={() => onSubmit(form)} label="Save Adjustment" />
@@ -673,7 +673,7 @@ const Overlay = ({ children, onClose }) => (
 );
 const Field = ({ label, children }) => (
   <div style={{ marginBottom: 14 }}>
-    <label style={{ fontSize: 12.5, fontWeight: 600, color: "#475569", display: "block", marginBottom: 5 }}>{label}</label>
+    <label style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", display: "block", marginBottom: 5 }}>{label}</label>
     {children}
   </div>
 );

@@ -9,7 +9,7 @@ const CATEGORY_LABELS = {
   labour:       { label: 'Labour',        color: '#3b82f6', bg: '#dbeafe' },
   subcontract:  { label: 'Sub-Contract',  color: '#8b5cf6', bg: '#ede9fe' },
   consultants:  { label: 'Consultants',   color: '#f59e0b', bg: '#fef3c7' },
-  miscellaneous:{ label: 'Miscellaneous', color: '#64748b', bg: '#f1f5f9' },
+  miscellaneous:{ label: 'Miscellaneous', color: "var(--hz-muted)", bg: '#f1f5f9' },
 };
 
 // Which PWJ doc types are shown in each tab's doc-picker dropdown
@@ -74,9 +74,9 @@ const EMPTY_ROW = {
 
 function n(v) { return parseFloat(v) || 0; }
 
-const INP   = { border: 'none', outline: 'none', background: 'transparent', fontSize: 11, width: '100%', fontFamily: 'inherit', textAlign: 'right', padding: '1px 2px' };
+const INP   = { border: 'none', outline: 'none', background: 'transparent', fontSize: "var(--hz-text-2xs)", width: '100%', fontFamily: 'inherit', textAlign: 'right', padding: '1px 2px' };
 const INP_L = { ...INP, textAlign: 'left' };
-const SEL   = { border: 'none', outline: 'none', background: 'transparent', fontSize: 11, fontFamily: 'inherit', width: '100%', cursor: 'pointer', padding: '1px 0' };
+const SEL   = { border: 'none', outline: 'none', background: 'transparent', fontSize: "var(--hz-text-2xs)", fontFamily: 'inherit', width: '100%', cursor: 'pointer', padding: '1px 0' };
 
 function CI({ v, on, r, type = 'text', sx = {} }) {
   return <input type={type} value={v ?? ''} onChange={e => on(e.target.value)} style={{ ...(r ? INP : INP_L), ...sx }} />;
@@ -99,14 +99,14 @@ function computeGst(gross, pct) {
 }
 
 const PAYMENT_STATUS_CFG = {
-  NOT_SENT:          { label: 'Not Sent',  color: '#64748b', bg: '#f1f5f9' },
+  NOT_SENT:          { label: 'Not Sent',  color: "var(--hz-muted)", bg: '#f1f5f9' },
   PART_PAYMENT_SENT: { label: 'Part Sent', color: '#b45309', bg: '#fef3c7' },
   FULL_PAYMENT_SENT: { label: 'Full Sent', color: '#15803d', bg: '#dcfce7' },
 };
 function PaymentStatusBadge({ status }) {
   const cfg = PAYMENT_STATUS_CFG[status] || PAYMENT_STATUS_CFG.NOT_SENT;
   return (
-    <span style={{ padding: '2px 7px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: 9.5, whiteSpace: 'nowrap' }}>
+    <span style={{ padding: '2px 7px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: "var(--hz-text-2xs)", whiteSpace: 'nowrap' }}>
       {cfg.label}
     </span>
   );
@@ -484,12 +484,12 @@ export default function ExpensePage({ category }) {
     };
   })();
 
-  const TH_BASE = { padding: '5px 6px', fontWeight: 700, fontSize: 10, whiteSpace: 'nowrap', border: '1px solid #93c5fd', textAlign: 'center', verticalAlign: 'middle' };
-  const TH_GRP  = { ...TH_BASE, background: '#1e40af', color: '#fff', fontSize: 11 };
+  const TH_BASE = { padding: '5px 6px', fontWeight: 700, fontSize: "var(--hz-text-2xs)", whiteSpace: 'nowrap', border: '1px solid #93c5fd', textAlign: 'center', verticalAlign: 'middle' };
+  const TH_GRP  = { ...TH_BASE, background: '#1e40af', color: "var(--hz-on-dark)", fontSize: "var(--hz-text-2xs)" };
   const TH_SUB  = { ...TH_BASE, background: '#dbeafe', color: '#1e3a8a' };
-  const TD = { padding: '3px 4px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e8edf2', fontSize: 11, verticalAlign: 'middle' };
+  const TD = { padding: '3px 4px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e8edf2', fontSize: "var(--hz-text-2xs)", verticalAlign: 'middle' };
 
-  const MOVE_SEL_BASE = { border: '1px solid', borderRadius: 3, fontSize: 9, padding: '1px 2px', maxWidth: 78, cursor: 'pointer' };
+  const MOVE_SEL_BASE = { border: '1px solid', borderRadius: 3, fontSize: "var(--hz-text-2xs)", padding: '1px 2px', maxWidth: 78, cursor: 'pointer' };
 
   function renderRow(item, isNew = false, rowKey) {
     const ed       = isNew ? {} : (editData[item.id] || {});
@@ -550,7 +550,7 @@ export default function ExpensePage({ category }) {
 
     return (
       <tr key={isNew ? rowKey : item.id} style={{ background: rowBg }}>
-        <td style={{ ...TD, textAlign: 'center', color: '#64748b', fontWeight: 600, fontSize: 10 }}>
+        <td style={{ ...TD, textAlign: 'center', color: "var(--hz-muted)", fontWeight: 600, fontSize: "var(--hz-text-2xs)" }}>
           {isNew ? '*' : (item._sno || '')}
         </td>
         <td style={TD}><CI v={gv('description')} on={v => sv('description', v)} /></td>
@@ -565,7 +565,7 @@ export default function ExpensePage({ category }) {
             onFocus={() => setVendorOpen(p => ({ ...p, [pickerKey]: true }))}
             onBlur={() => setTimeout(() => setVendorOpen(p => ({ ...p, [pickerKey]: false })), 200)}
             placeholder="Party name…"
-            style={{ ...INP_L, fontSize: 10 }}
+            style={{ ...INP_L, fontSize: "var(--hz-text-2xs)" }}
           />
           {vendorOpen[pickerKey] && (() => {
             const q = (gv('partyName') || '').toLowerCase();
@@ -579,12 +579,12 @@ export default function ExpensePage({ category }) {
                 {filtered.map(v => (
                   <div key={v.id}
                     onMouseDown={() => { sv('partyName', v.name); setVendorOpen(p => ({ ...p, [pickerKey]: false })); }}
-                    style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 11, borderBottom: '1px solid #f1f5f9' }}
+                    style={{ padding: '6px 10px', cursor: 'pointer', fontSize: "var(--hz-text-2xs)", borderBottom: '1px solid #f1f5f9' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                   >
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{v.name}</div>
-                    {v.category && <div style={{ fontSize: 10, color: '#64748b' }}>{v.category}</div>}
+                    <div style={{ fontWeight: 600, color: "var(--hz-ink-2)" }}>{v.name}</div>
+                    {v.category && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)" }}>{v.category}</div>}
                   </div>
                 ))}
               </div>
@@ -595,12 +595,12 @@ export default function ExpensePage({ category }) {
         {/* Ref No — searchable PWJ doc picker */}
         <td style={{ ...TD, position: 'relative' }}>
           {isAdditionalPoRef(searchText) && (
-            <div style={{ fontSize: 8.5, color: '#b45309', fontWeight: 700, lineHeight: 1.3 }}>
+            <div style={{ fontSize: "var(--hz-text-2xs)", color: '#b45309', fontWeight: 700, lineHeight: 1.3 }}>
               ↳ Additional PO of {baseRefNo(searchText)}
             </div>
           )}
           {item._clubbedPrs?.length > 0 && (
-            <div style={{ fontSize: 8.5, color: '#7c3aed', fontWeight: 700, lineHeight: 1.3 }}>
+            <div style={{ fontSize: "var(--hz-text-2xs)", color: '#7c3aed', fontWeight: 700, lineHeight: 1.3 }}>
               📎 Clubs {fmtClubbedPrs(item._clubbedPrs)}
             </div>
           )}
@@ -614,7 +614,7 @@ export default function ExpensePage({ category }) {
             onFocus={() => setDocOpen(p => ({ ...p, [pickerKey]: true }))}
             onBlur={() => setTimeout(() => setDocOpen(p => ({ ...p, [pickerKey]: false })), 200)}
             placeholder="Search doc…"
-            style={{ ...INP_L, fontSize: 10 }}
+            style={{ ...INP_L, fontSize: "var(--hz-text-2xs)" }}
           />
           {isOpen && filteredDocs.length > 0 && (
             <div style={{
@@ -624,20 +624,20 @@ export default function ExpensePage({ category }) {
             }}>
               {filteredDocs.map(doc => (
                 <div key={doc.docNumber} onMouseDown={() => applyDoc(doc)}
-                  style={{ padding: '6px 10px', paddingLeft: doc.isAdditionalPo ? 20 : 10, cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}
+                  style={{ padding: '6px 10px', paddingLeft: doc.isAdditionalPo ? 20 : 10, cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: "var(--hz-text-2xs)" }}
                   onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
                   onMouseLeave={e => e.currentTarget.style.background='#fff'}>
                   <div style={{ fontWeight: 700, color: '#1e40af' }}>{doc.isAdditionalPo && '↳ '}{doc.docNumber}
-                    <span style={{ marginLeft: 6, fontWeight: 400, color: '#64748b', fontSize: 10 }}>{doc.pwjType}</span>
+                    <span style={{ marginLeft: 6, fontWeight: 400, color: "var(--hz-muted)", fontSize: "var(--hz-text-2xs)" }}>{doc.pwjType}</span>
                   </div>
                   {doc.isAdditionalPo && (
-                    <div style={{ color: '#b45309', fontSize: 9.5, fontWeight: 600 }}>Additional PO of {doc.baseDocNumber}</div>
+                    <div style={{ color: '#b45309', fontSize: "var(--hz-text-2xs)", fontWeight: 600 }}>Additional PO of {doc.baseDocNumber}</div>
                   )}
                   {doc.clubbedPrs?.length > 0 && (
-                    <div style={{ color: '#7c3aed', fontSize: 9.5, fontWeight: 600 }}>📎 Clubs {fmtClubbedPrs(doc.clubbedPrs)}</div>
+                    <div style={{ color: '#7c3aed', fontSize: "var(--hz-text-2xs)", fontWeight: 600 }}>📎 Clubs {fmtClubbedPrs(doc.clubbedPrs)}</div>
                   )}
-                  <div style={{ color: '#374151', fontSize: 10 }}>{doc.materialRequired} · {doc.vendor}</div>
-                  <div style={{ color: '#10b981', fontSize: 10, fontWeight: 600 }}>
+                  <div style={{ color: "var(--hz-ink-2)", fontSize: "var(--hz-text-2xs)" }}>{doc.materialRequired} · {doc.vendor}</div>
+                  <div style={{ color: '#10b981', fontSize: "var(--hz-text-2xs)", fontWeight: 600 }}>
                     Gross: ₹{Number(doc.gross).toLocaleString('en-IN')} · GST {doc.gstPct}% · Total: ₹{Number(doc.totalPayable).toLocaleString('en-IN')}
                   </div>
                 </div>
@@ -655,21 +655,21 @@ export default function ExpensePage({ category }) {
           <CS v={pwjGstPct + '%'} on={v => sv('gstPercent', v.replace('%', ''))} opts={GST_OPTIONS.map(o => o + '%')} />
         </td>
         {/* PWJ GST Amt */}
-        <td style={{ ...TD, textAlign: 'right', color: '#64748b' }}>{fmt(pwjGstAmt)}</td>
+        <td style={{ ...TD, textAlign: 'right', color: "var(--hz-muted)" }}>{fmt(pwjGstAmt)}</td>
         {/* PWJ Total Payable */}
         <td style={{ ...TD, textAlign: 'right', fontWeight: 700, background: '#eff6ff' }}>{fmt(pwjTotal)}</td>
         {/* Vendor Gross */}
         <td style={{ ...TD, textAlign: 'right' }}>
-          <CI r v={gv('vendorGross')} on={v => sv('vendorGross', v)} type="number" sx={{ color: '#dc2626' }} />
+          <CI r v={gv('vendorGross')} on={v => sv('vendorGross', v)} type="number" sx={{ color: "var(--hz-danger)" }} />
         </td>
         {/* Vendor GST% */}
         <td style={{ ...TD, textAlign: 'center', background: '#f0fdf4' }}>
           <CS v={vnGstPct + '%'} on={v => sv('vendorGstPercent', v.replace('%', ''))} opts={GST_OPTIONS.map(o => o + '%')} />
         </td>
         {/* Vendor GST Amt */}
-        <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(vnGstAmt)}</td>
+        <td style={{ ...TD, textAlign: 'right', color: "var(--hz-danger)" }}>{fmt(vnGstAmt)}</td>
         {/* Vendor Total Payable */}
-        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: '#dc2626', background: '#fef2f2' }}>{fmt(vnTotal)}</td>
+        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: "var(--hz-danger)", background: '#fef2f2' }}>{fmt(vnTotal)}</td>
         {/* Payment date */}
         <td style={TD}><CI v={gv('paymentDate')} on={v => sv('paymentDate', v)} type="date" /></td>
         {/* Payment Against */}
@@ -681,11 +681,11 @@ export default function ExpensePage({ category }) {
           <CI r v={gv('paidAmount')} on={v => sv('paidAmount', v)} type="number" sx={{ color: '#10b981', fontWeight: 600 }} />
         </td>
         {/* Balance as per PWJ */}
-        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, background: '#faf5ff', color: newBPwj > 0.01 ? '#dc2626' : '#10b981' }}>
+        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, background: '#faf5ff', color: newBPwj > 0.01 ? "var(--hz-danger)" : '#10b981' }}>
           {fmt(newBPwj)}
         </td>
         {/* Balance as per actual */}
-        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, background: '#faf5ff', color: newBActual > 0.01 ? '#dc2626' : '#10b981' }}>
+        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, background: '#faf5ff', color: newBActual > 0.01 ? "var(--hz-danger)" : '#10b981' }}>
           {fmt(newBActual)}
         </td>
         {/* Paid to */}
@@ -696,7 +696,7 @@ export default function ExpensePage({ category }) {
         {/* Eligible for Payment */}
         <td style={{ ...TD, textAlign: 'center' }}>
           {isNew ? (
-            <span style={{ fontSize: 9.5, color: '#94a3b8', fontStyle: 'italic' }} title="Save this row first">Save first</span>
+            <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", fontStyle: 'italic' }} title="Save this row first">Save first</span>
           ) : (
             <input type="checkbox" checked={!!item.eligibleForPayment}
               onChange={e => toggleEligibility(item.id, e.target.checked)}
@@ -752,7 +752,7 @@ export default function ExpensePage({ category }) {
             {/* Save button for dirty saved rows */}
             {isDirty && !isNew && (
               <button onClick={() => saveRow(item)} disabled={isSaving}
-                style={{ border: 'none', background: '#10b981', color: '#fff', borderRadius: 3, padding: '2px 5px', cursor: 'pointer', lineHeight: 1 }}>
+                style={{ border: 'none', background: '#10b981', color: "var(--hz-on-dark)", borderRadius: 3, padding: '2px 5px', cursor: 'pointer', lineHeight: 1 }}>
                 {isSaving ? '…' : <Save size={10} />}
               </button>
             )}
@@ -760,7 +760,7 @@ export default function ExpensePage({ category }) {
             {/* Save button for new rows */}
             {isNew && (
               <button onClick={() => saveNewRow(item)}
-                style={{ border: 'none', background: '#10b981', color: '#fff', borderRadius: 3, padding: '2px 5px', cursor: 'pointer', lineHeight: 1 }}>
+                style={{ border: 'none', background: '#10b981', color: "var(--hz-on-dark)", borderRadius: 3, padding: '2px 5px', cursor: 'pointer', lineHeight: 1 }}>
                 <Save size={10} />
               </button>
             )}
@@ -779,13 +779,13 @@ export default function ExpensePage({ category }) {
   const statusBadge = (() => {
     if (!AUTO_FILL_TYPES[category] || !selectedProject) return null;
     const types = AUTO_FILL_TYPES[category];
-    if (pwjStatus === 'error')   return <span style={{ fontSize: 11, color: '#dc2626', fontStyle: 'italic' }}>⚠ PWJ tracker unreachable</span>;
-    if (pwjStatus === 'loading') return <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>Loading PWJ docs…</span>;
+    if (pwjStatus === 'error')   return <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-danger)", fontStyle: 'italic' }}>⚠ PWJ tracker unreachable</span>;
+    if (pwjStatus === 'loading') return <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", fontStyle: 'italic' }}>Loading PWJ docs…</span>;
     const total     = pwjDocs.filter(d => types.includes(d.pwjType)).length;
     const untracked = pwjDocs.filter(d => types.includes(d.pwjType) && !trackedRefs.has(d.docNumber)).length;
-    if (total === 0) return <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>No docs in PWJ for this project</span>;
+    if (total === 0) return <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-faint)", fontStyle: 'italic' }}>No docs in PWJ for this project</span>;
     return (
-      <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+      <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", fontStyle: 'italic' }}>
         {untracked > 0
           ? `${untracked} untracked of ${total} doc${total !== 1 ? 's' : ''} from PWJ`
           : `All ${total} doc${total !== 1 ? 's' : ''} tracked ✓`}
@@ -798,7 +798,7 @@ export default function ExpensePage({ category }) {
       {/* Project selector + Add Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ padding: '3px 12px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: 12 }}>
+          <span style={{ padding: '3px 12px', borderRadius: 100, background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: "var(--hz-text-xs)" }}>
             {cfg.label}
           </span>
           <div style={{ position: 'relative' }}>
@@ -809,53 +809,53 @@ export default function ExpensePage({ category }) {
                 setNewRows([]);
               }}
               className="form-control"
-              style={{ paddingRight: 28, appearance: 'none', minWidth: 200, fontSize: 12, fontWeight: 600, height: 32, padding: '0 28px 0 10px' }}>
+              style={{ paddingRight: 28, appearance: 'none', minWidth: 200, fontSize: "var(--hz-text-xs)", fontWeight: 600, height: 32, padding: '0 28px 0 10px' }}>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <ChevronDown size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }} />
+            <ChevronDown size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: "var(--hz-muted)" }} />
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {statusBadge}
           <button className="btn btn-sm" onClick={openSendModal} disabled={selectedForPayment.size === 0}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: selectedForPayment.size === 0 ? 'default' : 'pointer', opacity: selectedForPayment.size === 0 ? 0.5 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)", background: '#2563eb', color: "var(--hz-on-dark)", border: 'none', borderRadius: 6, padding: '6px 12px', cursor: selectedForPayment.size === 0 ? 'default' : 'pointer', opacity: selectedForPayment.size === 0 ? 0.5 : 1 }}>
             <Send size={13} /> Send for Payment{selectedForPayment.size > 0 ? ` (${selectedForPayment.size})` : ''}
           </button>
-          <button className="btn btn-primary btn-sm" onClick={addNewRow} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+          <button className="btn btn-primary btn-sm" onClick={addNewRow} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)" }}>
             <Plus size={13} /> Add Row
           </button>
         </div>
       </div>
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-        <table style={{ minWidth: 2000, borderCollapse: 'collapse', fontSize: 11 }}>
+        <table style={{ minWidth: 2000, borderCollapse: 'collapse', fontSize: "var(--hz-text-2xs)" }}>
           <thead>
             {/* Row 1: Project name + summary labels */}
             <tr style={{ background: '#eff6ff' }}>
               <td colSpan={4} style={{ ...TD, padding: '5px 10px', borderRight: '1px solid #bfdbfe' }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Project Name:</span>
-                <span style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.name || '—'}</span>
+                <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", fontWeight: 600 }}>Project Name:</span>
+                <span style={{ fontSize: "var(--hz-text-xs)", color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.name || '—'}</span>
               </td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Gross PWJ</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total Gross PWJ</td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total PWJ GST</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total payable as per PWJ</td>
-              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Gross as per actuals</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Vendor GST</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total Payable as per invoice</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total PWJ GST</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total payable as per PWJ</td>
+              <td colSpan={2} style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total Gross as per actuals</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total Vendor GST</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total Payable as per invoice</td>
               <td colSpan={2} style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total paid</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total balance due as per PWJ</td>
-              <td style={{ ...TD, textAlign: 'center', fontSize: 9, fontWeight: 600, color: '#374151', borderRight: '1px solid #bfdbfe' }}>Total balance due as per actuals</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total paid</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total balance due as per PWJ</td>
+              <td style={{ ...TD, textAlign: 'center', fontSize: "var(--hz-text-2xs)", fontWeight: 600, color: "var(--hz-ink-2)", borderRight: '1px solid #bfdbfe' }}>Total balance due as per actuals</td>
               <td colSpan={6} style={TD} />
             </tr>
 
             {/* Row 2: Financial year + summary values */}
             <tr style={{ background: '#eff6ff' }}>
               <td colSpan={4} style={{ ...TD, padding: '4px 10px', borderRight: '1px solid #bfdbfe' }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Financial Year :</span>
-                <span style={{ fontSize: 11, color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.fy || ''}</span>
+                <span style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", fontWeight: 600 }}>Financial Year :</span>
+                <span style={{ fontSize: "var(--hz-text-2xs)", color: '#1e3a8a', fontWeight: 700, marginLeft: 6 }}>{selectedProject?.fy || ''}</span>
               </td>
               <td style={{ ...TD, borderRight: '1px solid #bfdbfe' }} />
               <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #bfdbfe' }}>{fmt(liveTotal.totalGrossAsPwj)}</td>
@@ -909,7 +909,7 @@ export default function ExpensePage({ category }) {
 
           <tbody>
             {loading ? (
-              <tr><td colSpan={NCOL} style={{ textAlign: 'center', padding: 28, color: '#94a3b8' }}>Loading…</td></tr>
+              <tr><td colSpan={NCOL} style={{ textAlign: 'center', padding: 28, color: "var(--hz-faint)" }}>Loading…</td></tr>
             ) : (
               <>
                 {itemsWithSno.map(item => renderRow(item, false, item.id))}
@@ -923,10 +923,10 @@ export default function ExpensePage({ category }) {
                     <td style={TD} />
                     <td style={{ ...TD, textAlign: 'right', color: '#1e3a8a' }}>{fmt(liveTotal.totalPwjGst)}</td>
                     <td style={{ ...TD, textAlign: 'right', color: '#6366f1' }}>{fmt(liveTotal.totalPayableAsPwj)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalGrossActual)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: "var(--hz-danger)" }}>{fmt(liveTotal.totalGrossActual)}</td>
                     <td style={TD} />
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalGst)}</td>
-                    <td style={{ ...TD, textAlign: 'right', color: '#dc2626' }}>{fmt(liveTotal.totalPayableActual)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: "var(--hz-danger)" }}>{fmt(liveTotal.totalGst)}</td>
+                    <td style={{ ...TD, textAlign: 'right', color: "var(--hz-danger)" }}>{fmt(liveTotal.totalPayableActual)}</td>
                     <td colSpan={2} style={TD} />
                     <td style={{ ...TD, textAlign: 'right', color: '#10b981' }}>{fmt(liveTotal.totalPaid)}</td>
                     <td style={{ ...TD, textAlign: 'right', color: '#ef4444' }}>{fmt(liveTotal.balanceAsPwj)}</td>
@@ -945,8 +945,8 @@ export default function ExpensePage({ category }) {
           onClick={() => !sendSubmitting && setSendModalOpen(false)}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 20, width: 560, maxHeight: '80vh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Send for Payment</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Send for Payment</div>
+            <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginBottom: 14 }}>
               Choose Full or Part payment for each entry. Part payments are capped at the remaining PO value.
             </div>
             {[...selectedForPayment].map(id => {
@@ -956,20 +956,20 @@ export default function ExpensePage({ category }) {
               const choice = sendChoices[id] || { paymentType: 'FULL', amount: '' };
               return (
                 <div key={id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-                  <div style={{ fontWeight: 700, fontSize: 12.5, color: '#0f172a' }}>{item.description || '(no description)'}</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: "var(--hz-text-xs)", color: "var(--hz-ink)" }}>{item.description || '(no description)'}</div>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", marginBottom: 8 }}>
                     {item.partyName} · Ref {item.refNo || '—'} · Not yet sent {fmt(remaining)}
                     {item.refNo && item.poBalanceRemaining != null && (
                       <> · PO balance {fmt(item.poBalanceRemaining)}</>
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)", cursor: 'pointer' }}>
                       <input type="radio" checked={choice.paymentType === 'FULL'}
                         onChange={() => setSendChoices(p => ({ ...p, [id]: { ...choice, paymentType: 'FULL' } }))} />
                       Full ({fmt(remaining)})
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)", cursor: 'pointer' }}>
                       <input type="radio" checked={choice.paymentType === 'PART'}
                         onChange={() => setSendChoices(p => ({ ...p, [id]: { ...choice, paymentType: 'PART' } }))} />
                       Part
@@ -977,7 +977,7 @@ export default function ExpensePage({ category }) {
                     {choice.paymentType === 'PART' && (
                       <input type="number" placeholder="Amount" value={choice.amount}
                         onChange={e => setSendChoices(p => ({ ...p, [id]: { ...choice, amount: e.target.value } }))}
-                        style={{ width: 110, padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+                        style={{ width: 110, padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: "var(--hz-text-xs)" }} />
                     )}
                   </div>
                 </div>
@@ -985,11 +985,11 @@ export default function ExpensePage({ category }) {
             })}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
               <button onClick={() => setSendModalOpen(false)} disabled={sendSubmitting}
-                style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: 12.5, cursor: 'pointer' }}>
+                style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: "var(--hz-text-xs)", cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={submitSendForPayment} disabled={sendSubmitting}
-                style={{ padding: '7px 14px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: sendSubmitting ? 'default' : 'pointer', opacity: sendSubmitting ? 0.6 : 1 }}>
+                style={{ padding: '7px 14px', borderRadius: 6, border: 'none', background: '#2563eb', color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-xs)", cursor: sendSubmitting ? 'default' : 'pointer', opacity: sendSubmitting ? 0.6 : 1 }}>
                 {sendSubmitting ? 'Sending…' : 'Confirm & Send'}
               </button>
             </div>

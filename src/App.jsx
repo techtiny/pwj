@@ -266,11 +266,11 @@ const api = {
   getHrNotifications: (username) =>
     fetch(`${BACKEND_BASE}/api/v1/hr/notifications?username=${encodeURIComponent(username)}`)
       .then(r => (r.ok ? r.json() : null)).then(d => d?.data || []).catch(() => []),
-  requestPwjPayment: (username, pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber) =>
+  requestPwjPayment: (username, pwjEntryId, amount, remarks, paymentMadeAgainst, paymentStage, docNumber, requiredByDate, itemDescription) =>
     fetch(PAYREQ_BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "", docNumber: docNumber || "" }),
+      body: JSON.stringify({ username, pwjEntryId, amount, remarks: remarks || "", paymentMadeAgainst: paymentMadeAgainst || "", paymentStage: paymentStage || "", docNumber: docNumber || "", requiredByDate: requiredByDate || "", itemDescription: itemDescription || "" }),
     }).then(async r => {
       const data = await r.json().catch(() => null);
       return r.ok ? { success: true, data } : { success: false, message: data?.error || data?.message || "Failed to request payment" };
@@ -403,9 +403,9 @@ function ImageOrLink({ src, label, thumbStyle = {} }) {
       <a href={src} target="_blank" rel="noreferrer"
         style={{ display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
           gap:4, padding:"12px 16px", background:"#fef2f2", borderRadius:8, color:"#ef4444",
-          fontSize:13, fontWeight:700, textDecoration:"none", border:"1.5px solid #fecaca",
+          fontSize:"var(--hz-text-sm)", fontWeight:700, textDecoration:"none", border:"1.5px solid #fecaca",
           minWidth:72, cursor:"pointer", ...thumbStyle }}>
-        <span style={{ fontSize:24 }}>📄</span>
+        <span style={{ fontSize:"var(--hz-text-2xl)" }}>📄</span>
         <span>PDF</span>
       </a>
     );
@@ -474,7 +474,7 @@ function CountBadge({ count }) {
   return (
     <span style={{
       minWidth: 17, height: 17,
-      background: "#ef4444", color: "#fff", borderRadius: 999, fontSize: 12.5, fontWeight: 800,
+      background: "#ef4444", color: "var(--hz-on-dark)", borderRadius: 999, fontSize: "var(--hz-text-xs)", fontWeight: 800,
       display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
       lineHeight: 1,
     }}>
@@ -489,9 +489,9 @@ function CountBadge({ count }) {
 const MODULE_ROLES = {
   vendors:    ["ADMIN", "PROCUREMENT", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER"],
   projects:   ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"],
-  account:    ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"],
+  account:    ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT", "PROCUREMENT_ENGINEER"], // Procurement roles only get Send for Payment → Vendor Payments (read-only)
   sales:      ["ADMIN", "OH", "VP", "CEO", "BILLING_ENGINEER", "COSTING_PLANNING_ENGINEER"],
-  operations: ["OH", "VP", "CEO"],
+  operations: ["OH", "VP", "CEO", "ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"], // engineers raise PRs + Additional Items (the latter need OH approval)
   bugs:       ["ADMIN", "VP", "OH", "CEO"],
 };
 const canOpenModule = (key, role) => !MODULE_ROLES[key] || MODULE_ROLES[key].includes(role);
@@ -522,7 +522,7 @@ function highlightText(text, query) {
     const j = lower.indexOf(ql, i);
     if (j === -1) { out.push(str.slice(i)); break; }
     if (j > i) out.push(str.slice(i, j));
-    out.push(<mark key={k++} style={{ background: "#fde047", color: "#0f172a", borderRadius: 3, padding: "0 1px" }}>{str.slice(j, j + q.length)}</mark>);
+    out.push(<mark key={k++} style={{ background: "#fde047", color: "var(--hz-ink)", borderRadius: 3, padding: "0 1px" }}>{str.slice(j, j + q.length)}</mark>);
     i = j + q.length;
   }
   return out;
@@ -647,7 +647,7 @@ const ROLE_META = {
   PROCUREMENT:               { label: "Procurement",                 color: "#065f46", bg: "#d1fae5" },
   VP:                        { label: "VP",                          color: "#b45309", bg: "#fef3c7" },
   OH:                        { label: "OH",                          color: "#be185d", bg: "#fce7f3" },
-  CEO:                       { label: "CEO",                         color: "#dc2626", bg: "#fee2e2" },
+  CEO:                       { label: "CEO",                         color: "var(--hz-danger)", bg: "#fee2e2" },
   PROJECT_MANAGER:           { label: "Project Manager",             color: "#0f766e", bg: "#ccfbf1" },
   PROCUREMENT_ENGINEER:      { label: "Procurement Engineer",        color: "#9333ea", bg: "#f3e8ff" },
   COSTING_PLANNING_ENGINEER: { label: "Costing & Planning Engineer", color: "#0d9488", bg: "#ccfbf1" },
@@ -658,32 +658,32 @@ const ROLE_META = {
 function EngUploadSection({ title, icon, type, files, setFiles, uploading, stored, onUpload, canUpload }) {
   return (
     <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+      <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
         {icon} {title}
       </div>
       {stored.length > 0 && (
         <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {stored.map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderRadius: 8, padding: "6px 12px" }}>
-              <span style={{ fontSize: 16 }}>📄</span>
+              <span style={{ fontSize: "var(--hz-text-lg)" }}>📄</span>
               <a href={`${BACKEND_BASE}${f.url}`} target="_blank" rel="noreferrer"
-                style={{ flex: 1, fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                style={{ flex: 1, fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {f.name || `File ${i + 1}`}
               </a>
-              <span style={{ fontSize: 13, color: "#374151", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
+              <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", whiteSpace: "nowrap" }}>{f.uploadedAt || ""}</span>
             </div>
           ))}
         </div>
       )}
       {canUpload && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: files.length ? "#0f172a" : "#94a3b8" }}>
+          <label style={{ flex: 1, minWidth: 200, border: "1.5px dashed #94a3b8", borderRadius: 10, padding: "9px 14px", cursor: "pointer", background: "#fff", display: "flex", alignItems: "center", gap: 8, fontSize: "var(--hz-text-md)", color: files.length ? "var(--hz-ink)" : "var(--hz-faint)" }}>
             <input type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
               onChange={ev => setFiles(Array.from(ev.target.files))} />
             {files.length ? `${files.length} file(s) selected` : "Choose files (image, PDF, Word)…"}
           </label>
           <button onClick={() => onUpload(type, files)} disabled={!files.length || uploading}
-            style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            style={{ background: files.length ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "#e2e8f0", border: "none", borderRadius: 10, padding: "9px 18px", color: files.length ? "var(--hz-on-dark)" : "var(--hz-faint)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: files.length ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             {uploading ? "Uploading…" : "📤 Upload"}
           </button>
         </div>
@@ -1070,17 +1070,17 @@ function LoginPage({ onLogin, logoutMessage }) {
             </div>
 
             <div className="lg-title">Welcome back</div>
-            <div style={{ fontSize:20, color:"#475569", marginTop:8, marginBottom:28 }}>Sign in to <span className="lg-brand">Happizo CloudDesk</span></div>
+            <div style={{ fontSize:"var(--hz-text-xl)", color:"var(--hz-ink-2)", marginTop:8, marginBottom:28 }}>Sign in to <span className="lg-brand">Happizo CloudDesk</span></div>
 
             {error && (
-              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#b91c1c", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#b91c1c", borderRadius:10, padding:"11px 14px", fontSize:"var(--hz-text-md)", marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ flexShrink:0 }}>⚠</span> {error}
               </div>
             )}
 
             {/* Signed out by session conflict — shown instead of alert() */}
             {logoutMessage && (
-              <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", color:"#1e40af", borderRadius:10, padding:"11px 14px", fontSize:14, marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", color:"#1e40af", borderRadius:10, padding:"11px 14px", fontSize:"var(--hz-text-md)", marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ flexShrink:0 }}>ℹ</span> {logoutMessage}
               </div>
             )}
@@ -1088,13 +1088,13 @@ function LoginPage({ onLogin, logoutMessage }) {
             {/* Different user already logged in this browser (same localStorage) */}
             {browserConflict && (
               <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"14px 16px", marginBottom:20 }}>
-                <div style={{ color:"#b91c1c", fontWeight:700, fontSize:14, marginBottom:6 }}>Another User is Active on this Browser</div>
-                <div style={{ color:"#475569", fontSize:13.5, marginBottom:12 }}>
+                <div style={{ color:"#b91c1c", fontWeight:700, fontSize:"var(--hz-text-md)", marginBottom:6 }}>Another User is Active on this Browser</div>
+                <div style={{ color:"var(--hz-ink-2)", fontSize:"var(--hz-text-sm)", marginBottom:12 }}>
                   <b>{browserConflict.fullName}</b> is currently logged in on this browser. Only one user can be active at a time. Sign in to take over and end their session.
                 </div>
                 <div style={{ display:"flex", gap:8 }}>
                   <button type="button" onClick={forceBrowserLogin} disabled={loading}
-                    style={{ flex:1, background:"#dc2626", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                    style={{ flex:1, background:"#dc2626", border:"none", borderRadius:8, padding:"9px", color:"var(--hz-on-dark)", fontWeight:700, fontSize:"var(--hz-text-sm)", cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
                     {loading ? "Signing in…" : "Sign In & End Their Session"}
                   </button>
                   <button type="button" className="lg-ghost" onClick={() => setBrowserConflict(null)} disabled={loading}>Cancel</button>
@@ -1105,13 +1105,13 @@ function LoginPage({ onLogin, logoutMessage }) {
             {/* Same user already logged in on another device (backend ALREADY_LOGGED_IN) */}
             {deviceConflict && (
               <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:10, padding:"14px 16px", marginBottom:20 }}>
-                <div style={{ color:"#92400e", fontWeight:700, fontSize:14, marginBottom:6 }}>Already Signed In on Another Device</div>
-                <div style={{ color:"#475569", fontSize:13.5, marginBottom:12 }}>
+                <div style={{ color:"#92400e", fontWeight:700, fontSize:"var(--hz-text-md)", marginBottom:6 }}>Already Signed In on Another Device</div>
+                <div style={{ color:"var(--hz-ink-2)", fontSize:"var(--hz-text-sm)", marginBottom:12 }}>
                   Your account is currently active on another device or browser tab. Signing in here will end that session immediately.
                 </div>
                 <div style={{ display:"flex", gap:8 }}>
                   <button type="button" onClick={forceDeviceLogin} disabled={loading}
-                    style={{ flex:1, background:"#d97706", border:"none", borderRadius:8, padding:"9px", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
+                    style={{ flex:1, background:"#d97706", border:"none", borderRadius:8, padding:"9px", color:"var(--hz-on-dark)", fontWeight:700, fontSize:"var(--hz-text-sm)", cursor:"pointer", fontFamily:"inherit", opacity: loading ? 0.6 : 1 }}>
                     {loading ? "Signing in…" : "Sign In & End Other Session"}
                   </button>
                   <button type="button" className="lg-ghost" onClick={() => setDeviceConflict(false)} disabled={loading}>Cancel</button>
@@ -1138,7 +1138,7 @@ function LoginPage({ onLogin, logoutMessage }) {
                     value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                     onFocus={() => setFocused("p")} onBlur={() => setFocused(null)}
                     autoComplete="current-password" style={{ paddingRight:48 }} />
-                  <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"#94a3b8", display:"flex", alignItems:"center", lineHeight:1 }}>
+                  <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:4, color:"var(--hz-faint)", display:"flex", alignItems:"center", lineHeight:1 }}>
                     {showPw
                       ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                       : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1161,7 +1161,7 @@ function LoginPage({ onLogin, logoutMessage }) {
               </button>
             </form>
 
-            <div style={{ marginTop:28, fontSize:13.5, color:"#94a3b8", textAlign:"center", whiteSpace:"nowrap" }}>
+            <div style={{ marginTop:28, fontSize:"var(--hz-text-sm)", color:"var(--hz-faint)", textAlign:"center", whiteSpace:"nowrap" }}>
               © {new Date().getFullYear()} Happizo Infrastructure & Solutions · Internal Tool
             </div>
           </div>
@@ -1175,7 +1175,7 @@ function LoginPage({ onLogin, logoutMessage }) {
 const APPROVAL_META = {
   PROCEED:      { label: "Proceed",      bg: "#dbeafe", color: "#1d4ed8", dot: "#3b82f6" },
   HOLD:         { label: "Hold",         bg: "#fef3c7", color: "#d97706", dot: "#f59e0b" },
-  NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
+  NOT_APPROVED: { label: "Not Approved", bg: "#fee2e2", color: "var(--hz-danger)", dot: "#ef4444" },
 };
 // OH Approval column: solid circle + white icon, matching the Send for Payment approve/reject buttons
 const APPROVAL_ICON = {
@@ -1188,7 +1188,7 @@ function ApprovalIcon({ status }) {
   const label = APPROVAL_META[status]?.label || "Pending";
   return (
     <span title={label} aria-label={label}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: cfg.bg, color: "#fff" }}>
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: cfg.bg, color: "var(--hz-on-dark)" }}>
       <cfg.Icon size={14} strokeWidth={2.5} />
     </span>
   );
@@ -1263,14 +1263,14 @@ function CountdownPage({ onLaunched }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 90 }}>
       <div style={{
         fontSize: 64, fontWeight: 800, lineHeight: 1,
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "var(--hz-font-display)",
         background: "linear-gradient(135deg, #fff 30%, #bae6fd)",
         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         textShadow: "none", letterSpacing: -2,
       }}>
         {pad(value)}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 3, color: "#374151", textTransform: "uppercase", marginTop: 6 }}>
+      <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, letterSpacing: 3, color: "var(--hz-ink-2)", textTransform: "uppercase", marginTop: 6 }}>
         {label}
       </div>
     </div>
@@ -1304,7 +1304,7 @@ function CountdownPage({ onLaunched }) {
       `}</style>
 
       {/* background */}
-      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020818 0%, #0a1628 50%, #050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020818 0%, #0a1628 50%, #050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "var(--hz-font)" }}>
 
         {/* animated orbs */}
         <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,165,233,0.18) 0%, transparent 70%)", top: "-10%", left: "-10%", animation: "floatOrb 8s ease-in-out infinite" }} />
@@ -1323,7 +1323,7 @@ function CountdownPage({ onLaunched }) {
                 <rect x="60" y="8" width="22" height="84" rx="4" fill="#29b6e8" opacity="0.55"/>
                 <polygon points="18,38 82,56 82,66 18,48" fill="#29b6e8"/>
               </svg>
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: 3, color: "#29b6e8", textTransform: "uppercase", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>HAPPIZO<sup style={{fontSize:8}}>®</sup></span>
+              <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, letterSpacing: 3, color: "#29b6e8", textTransform: "uppercase", fontFamily: "var(--hz-font-display)" }}>HAPPIZO<sup style={{fontSize:"var(--hz-text-2xs)"}}>®</sup></span>
             </div>
 
             <div style={{ width: 1, height: 40, background: "rgba(255,255,255,0.1)" }} />
@@ -1347,7 +1347,7 @@ function CountdownPage({ onLaunched }) {
                 </svg>
               </div>
               <div style={{ lineHeight: 1 }}>
-                <span style={{ fontSize: 20, fontWeight: 600, color: "#3ab4e8", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Tech</span><span style={{ fontSize: 20, fontWeight: 800, color: "#374151", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>tiny</span>
+                <span style={{ fontSize: "var(--hz-text-xl)", fontWeight: 600, color: "#3ab4e8", fontFamily: "var(--hz-font-display)" }}>Tech</span><span style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink-2)", fontFamily: "var(--hz-font-display)" }}>tiny</span>
               </div>
             </div>
           </div>
@@ -1355,14 +1355,14 @@ function CountdownPage({ onLaunched }) {
           {/* badge */}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 100, padding: "6px 18px", marginBottom: 28 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#38bdf8", animation: "pulseRing 2s ease-in-out infinite" }} />
-            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#7dd3fc", textTransform: "uppercase" }}>Launching Soon</span>
+            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, letterSpacing: 3, color: "#7dd3fc", textTransform: "uppercase" }}>Launching Soon</span>
           </div>
 
           {/* logo / title */}
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: 4, color: "#374151", textTransform: "uppercase", marginBottom: 10 }}>Happizo CloudDesk</div>
+          <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, letterSpacing: 4, color: "var(--hz-ink-2)", textTransform: "uppercase", marginBottom: 10 }}>Happizo CloudDesk</div>
           <h1 style={{
             fontSize: 38, fontWeight: 800, lineHeight: 1.15,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontFamily: "var(--hz-font-display)",
             background: "linear-gradient(135deg, #f8fafc 0%, #7dd3fc 50%, #818cf8 100%)",
             backgroundSize: "200% auto",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
@@ -1371,7 +1371,7 @@ function CountdownPage({ onLaunched }) {
           }}>
             Happizo CloudDesk
           </h1>
-          <p style={{ fontSize: 15, color: "#374151", marginBottom: 44, lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: 44, lineHeight: 1.6 }}>
             A smarter way to track, approve &amp; manage procurement workflows.
           </p>
 
@@ -1387,7 +1387,7 @@ function CountdownPage({ onLaunched }) {
           </div>
 
           {/* launch date line */}
-          <div style={{ fontSize: 14, color: "#1e293b", letterSpacing: 1 }}>
+          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", letterSpacing: 1 }}>
             🚀 &nbsp;Going live on&nbsp;
             <span style={{ color: "#7dd3fc", fontWeight: 600 }}>
               {LAUNCH_DATE.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" })}
@@ -1510,7 +1510,7 @@ function CelebrationPage({ onDone }) {
         .cel-title { animation: glow 2s ease-in-out infinite; }
       `}</style>
 
-      <div className="cel-wrap" style={{ minHeight: "100vh", background: "linear-gradient(135deg,#020818 0%,#0a1628 50%,#050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "'Inter',sans-serif" }}>
+      <div className="cel-wrap" style={{ minHeight: "100vh", background: "linear-gradient(135deg,#020818 0%,#0a1628 50%,#050d1a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", fontFamily: "var(--hz-font)" }}>
 
         {/* confetti */}
         {pieces.map(p => (
@@ -1528,16 +1528,16 @@ function CelebrationPage({ onDone }) {
 
           <div style={{ fontSize: 72, marginBottom: 16, lineHeight: 1 }}>🎉</div>
 
-          <div className="cel-title" style={{ fontSize: 42, fontWeight: 800, fontFamily: "'Plus Jakarta Sans',sans-serif", background: "linear-gradient(135deg,#f8fafc,#7dd3fc,#818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 12 }}>
+          <div className="cel-title" style={{ fontSize: 42, fontWeight: 800, fontFamily: "var(--hz-font-display)", background: "linear-gradient(135deg,#f8fafc,#7dd3fc,#818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 12 }}>
             We're Live!
           </div>
 
-          <div style={{ fontSize: 16, color: "#374151", marginBottom: 32, lineHeight: 1.7 }}>
+          <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)", marginBottom: 32, lineHeight: 1.7 }}>
             Happizo CloudDesk is officially launched.<br/>
             <span style={{ color: "#38bdf8", fontWeight: 600 }}>Happizo × Techtiny</span> — smarter workflows, every day.
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, color: "#1e293b" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 8px #34d399" }} />
             Taking you to the dashboard…
           </div>
@@ -1788,8 +1788,8 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
   return (
     <div style={{ minHeight: "calc(100vh - 108px)", background: "#f1f5f9", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 16px 40px" }}>
       <div style={{ marginBottom: 32, textAlign: "center", padding: "0 8px" }}>
-        <div className="home-welcome" style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
-        <div style={{ fontSize: 14, color: "#374151", marginTop: 8 }}>Select a module to get started</div>
+        <div className="home-welcome" style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)", letterSpacing: -0.5 }}>Welcome to Happizo CloudDesk</div>
+        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 8 }}>Select a module to get started</div>
       </div>
 
       <div className="home-module-grid" style={{
@@ -1824,16 +1824,16 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
               <div style={{ position: "relative", width: 72, height: 72, borderRadius: 20, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: tileCounts[key] ? `0 0 0 4px #fecaca, 0 8px 24px ${shadow}` : `0 8px 24px ${shadow}` }}>
                 <Icon size={32} color="#fff" strokeWidth={1.8} />
                 {tileCounts[key] > 0 && (
-                  <span title={`${tileCounts[key]} waiting on you`} style={{ position: "absolute", top: -10, right: -10, minWidth: 28, height: 28, padding: "0 7px", boxSizing: "border-box", borderRadius: 999, background: "#dc2626", color: "#fff", border: "2.5px solid #fff", fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, boxShadow: "0 2px 8px rgba(220,38,38,.5)" }}>
+                  <span title={`${tileCounts[key]} waiting on you`} style={{ position: "absolute", top: -10, right: -10, minWidth: 28, height: 28, padding: "0 7px", boxSizing: "border-box", borderRadius: 999, background: "#dc2626", color: "var(--hz-on-dark)", border: "2.5px solid #fff", fontSize: "var(--hz-text-md)", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, boxShadow: "0 2px 8px rgba(220,38,38,.5)" }}>
                     {tileCounts[key] > 99 ? "99+" : tileCounts[key]}
                   </span>
                 )}
               </div>
               <div>
-                <div className="mod-label" style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{label}</div>
-                <div className="mod-desc" style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{desc}</div>
+                <div className="mod-label" style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>{label}</div>
+                <div className="mod-desc" style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", lineHeight: 1.5 }}>{desc}</div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
+              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "#6366f1", marginTop: 2 }}>Open →</div>
             </>
           );
           // Route modules are real links to …/#<key> — Ctrl/⌘/middle/Shift-click opens a
@@ -1860,7 +1860,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // Procurement functions on a PR are limited to the person it is assigned to; everyone else (Admin, other
   // procurement users, VP…) gets view-only. Unassigned PRs are view-only until Admin/VP assigns them.
   const canProc = (r) => !!r?.allocatedTo && !!user?.username && r.allocatedTo.toLowerCase() === user.username.toLowerCase();
-  const isEngineer                 = user?.role === "ENGINEER";
+  // Costing & Planning and Billing engineers hold every access the (site) Engineer has: own PRs only, edit/delete own PR, uploads, etc.
+  const isEngineer                 = ["ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"].includes(user?.role);
   const isVP                       = user?.role === "VP";
   const isOH                       = user?.role === "OH";
   const isCeo                      = user?.role === "CEO";
@@ -2030,6 +2031,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const [sendPaymentDocNumber, setSendPaymentDocNumber] = useState(""); // selected sub-doc for a multi-vendor/multi-PO entry
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRemarks, setPaymentRemarks] = useState("");
+  const [paymentRequiredBy, setPaymentRequiredBy] = useState("");
+  const [paymentItemDesc, setPaymentItemDesc] = useState("");
+  // Item description for a payment request: the document's item lines (for the chosen vendor doc), else the PR's material text.
+  const payItemDescFor = (row, docNumber) => {
+    try {
+      const pd = JSON.parse(row.docData || "{}");
+      const d = pd.multiVendor && Array.isArray(pd.docs) ? (pd.docs.find(x => x.docNumber === docNumber) || pd.docs[0]) : pd;
+      const lines = (d?.items || []).filter(r => r.item?.trim()).map(r => r.item.trim() + (r.spec?.trim() ? ` (${r.spec.trim()})` : ""));
+      if (lines.length) return lines.join("\n");
+    } catch {}
+    return row.materialRequired || "";
+  };
   const [paymentAgainstSel, setPaymentAgainstSel] = useState(""); // one of PO/WO/JO/VENDOR_INVOICE
   const [paymentStage, setPaymentStage] = useState(""); // ADVANCE/STAGE_1/STAGE_2/STAGE_3/FINAL
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -4174,12 +4187,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // ── Styles ──
   const s = {
     // ── Layout ──
-    root: { fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif", background: "#f1f5f9", minHeight: "100vh" },
+    root: { fontFamily: "var(--hz-font)", background: "#f1f5f9", minHeight: "100vh" },
     // ── Header — flat white, sticky ──
     header: { background: "#ffffff", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", height: 80, position: "sticky", top: 0, zIndex: 100 },
     hLeft: { display: "flex", alignItems: "center", gap: 12 },
-    hTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px", lineHeight: 1.15 },
-    hSub: { fontSize: 13.5, color: "#374151", marginTop: 2, letterSpacing: 0.1 },
+    hTitle: { fontFamily: "var(--hz-font-display)", fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)", letterSpacing: "-0.3px", lineHeight: 1.15 },
+    hSub: { fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2, letterSpacing: 0.1 },
     hRight: { display: "flex", gap: 8, alignItems: "center" },
     hBtn: (variant) => ({
       background: variant === "primary"
@@ -4189,67 +4202,67 @@ function Dashboard({ user, onLogout: handleLogout }) {
         : variant === "danger" ? "1px solid #fecaca" : "1px solid #dbe3ee",
       borderRadius: 10, height: 42, boxSizing: "border-box",
       padding: variant === "primary" ? "0 20px" : "0 15px",
-      color: variant === "primary" ? "#fff" : variant === "danger" ? "#dc2626" : "#334155",
-      fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+      color: variant === "primary" ? "var(--hz-on-dark)" : variant === "danger" ? "var(--hz-danger)" : "var(--hz-ink-2)",
+      fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit",
       display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap",
       boxShadow: variant === "primary" ? "0 4px 12px rgba(37,99,235,.28)" : "0 1px 2px rgba(15,23,42,.05)",
       transition: "all .16s ease", letterSpacing: 0.1,
     }),
     hMenu: { position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50, minWidth: 280, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 6, boxShadow: "0 18px 40px rgba(15,23,42,.14), 0 2px 6px rgba(15,23,42,.06)" },
-    hMenuItem: { display: "flex", alignItems: "flex-start", gap: 10, width: "100%", border: "none", background: "none", borderRadius: 8, padding: "9px 10px", textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: "#0f172a" },
-    hMenuSub: { display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginTop: 1 },
+    hMenuItem: { display: "flex", alignItems: "flex-start", gap: 10, width: "100%", border: "none", background: "none", borderRadius: 8, padding: "9px 10px", textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" },
+    hMenuSub: { display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 500, color: "var(--hz-muted)", marginTop: 1 },
     hMenuSep: { height: 1, background: "#f1f5f9", margin: "4px 6px" },
     // ── Stats ──
     statsRow: { display: "flex", gap: 12, padding: "20px 32px 0", overflowX: "auto" },
     statCard: (accent) => ({ background: "#ffffff", borderRadius: 12, padding: "18px 22px", minWidth: 136, flex: 1, border: "1px solid #e2e8f0", borderTop: `3px solid ${accent}` }),
-    statLbl: { fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.6 },
-    statVal: { fontSize: 32, fontWeight: 700, color: "#0f172a", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", lineHeight: 1.2, marginTop: 6 },
+    statLbl: { fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.6 },
+    statVal: { fontSize: "var(--hz-text-3xl)", fontWeight: 700, color: "var(--hz-ink)", fontFamily: "var(--hz-font-display)", lineHeight: 1.2, marginTop: 6 },
     // ── Filter bar ──
     filterBar: { display: "flex", gap: 12, padding: "18px 32px", alignItems: "center", flexWrap: "wrap" },
     searchWrap: { position: "relative", flex: 1, minWidth: 260, maxWidth: 420 },
-    searchIcon: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#000" },
-    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 14px 12px 40px", fontSize: 15.5, outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: "#000" },
-    sel: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 34px 12px 14px", fontSize: 15.5, outline: "none", cursor: "pointer", fontFamily: "inherit", color: "#000", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23000' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" },
-    resultCount: { marginLeft: "auto", background: "#f8fafc", color: "#000", borderRadius: 20, padding: "8px 18px", fontSize: 14.5, fontWeight: 600, border: "1px solid #e2e8f0" },
+    searchIcon: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" },
+    searchInput: { width: "100%", background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 14px 12px 40px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: "var(--hz-ink)" },
+    sel: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "12px 34px 12px 14px", fontSize: "var(--hz-text-md)", outline: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--hz-ink)", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23000' d='M5 7L0 2h10z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" },
+    resultCount: { marginLeft: "auto", background: "#f8fafc", color: "var(--hz-ink)", borderRadius: 20, padding: "8px 18px", fontSize: "var(--hz-text-md)", fontWeight: 600, border: "1px solid #e2e8f0" },
     // ── Table ──
     tableWrap: { margin: "0 32px 24px", background: "#ffffff", borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" },
-    table: { width: "100%", borderCollapse: "collapse", fontSize: 16 },
-    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
-    td: { padding: "12px 14px", color: "#0f172a", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: 16, fontWeight: 500 },
-    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }),
+    table: { width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-lg)" },
+    th: { background: "#f8fafc", padding: "12px 14px", textAlign: "left", fontFamily: "var(--hz-font)", fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" },
+    td: { padding: "12px 14px", color: "var(--hz-ink)", verticalAlign: "middle", borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-lg)", fontWeight: 500 },
+    badge: (m) => ({ display: "inline-flex", alignItems: "center", gap: 5, background: m?.bg || "#f1f5f9", color: m?.color || "var(--hz-muted)", borderRadius: 5, padding: "3px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, whiteSpace: "nowrap" }),
     dot: (c) => ({ width: 6, height: 6, borderRadius: "50%", background: c, flexShrink: 0 }),
-    approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
+    approveBtn: { background: "#1e3a5f", border: "none", borderRadius: 6, padding: "6px 14px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" },
     // ── Pagination ──
     paginationRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 32px 24px" },
-    pageInfo: { fontSize: 14, color: "#000" },
+    pageInfo: { fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" },
     pageBtns: { display: "flex", gap: 4 },
-    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "1.5px solid #1e3a5f" : "1.5px solid #e2e8f0", background: active ? "#eff6ff" : "#fff", color: "#000", cursor: "pointer", fontSize: 14.5, fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
+    pageBtn: (active) => ({ width: 34, height: 34, borderRadius: 7, border: active ? "1.5px solid #1e3a5f" : "1.5px solid #e2e8f0", background: active ? "#eff6ff" : "#fff", color: "var(--hz-ink)", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
     // ── Modals ──
     overlay: { position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
     modalBox: (w) => ({ background: "#fff", borderRadius: 14, width: "95%", maxWidth: w || 580, maxHeight: "88vh", overflow: "auto", boxShadow: "0 20px 56px rgba(0,0,0,.16)", animation: "slideUp .22s ease" }),
     mHeader: { background: "#0f172a", padding: "20px 26px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-    mTitle: { fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.2px" },
-    mSub: { color: "rgba(255,255,255,.5)", fontSize: 14, marginTop: 4 },
-    closeBtn: { background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 16 },
+    mTitle: { fontFamily: "var(--hz-font-display)", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-lg)", letterSpacing: "-0.2px" },
+    mSub: { color: "rgba(255,255,255,.5)", fontSize: "var(--hz-text-md)", marginTop: 4 },
+    closeBtn: { background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "var(--hz-on-dark)", width: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: "var(--hz-text-lg)" },
     mBody: { padding: "24px 26px" },
     grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px" },
-    dLabel: { fontSize: 13.5, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 },
-    dVal: { fontSize: 14.5, color: "#0f172a", fontWeight: 500 },
-    divider: { gridColumn: "1/-1", borderTop: "1px solid #f1f5f9", paddingTop: 12, fontSize: 13.5, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 6 },
+    dLabel: { fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 },
+    dVal: { fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", fontWeight: 500 },
+    divider: { gridColumn: "1/-1", borderTop: "1px solid #f1f5f9", paddingTop: 12, fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 6 },
     formGroup: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 },
-    label: { fontSize: 14, fontWeight: 600, color: "#1e293b" },
-    input: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", color: "#0f172a" },
-    textarea: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", minHeight: 78, resize: "vertical", color: "#0f172a" },
-    select2: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", background: "#fff", color: "#0f172a" },
-    submitBtn: (col) => ({ background: col || "#1e3a5f", border: "none", borderRadius: 9, padding: "12px 28px", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", width: "100%" }),
-    toast: (type) => ({ position: "fixed", bottom: 28, right: 28, zIndex: 999, background: type === "error" ? "#dc2626" : "#0f172a", color: "#fff", borderRadius: 10, padding: "14px 22px", fontWeight: 600, fontSize: 14, boxShadow: "0 8px 32px rgba(0,0,0,.2)", animation: "slideUp .22s ease" }),
-    emptyRow: { textAlign: "center", padding: "52px 20px", color: "#374151", fontSize: 15 },
-    errorBanner: { margin: "16px 32px", padding: "13px 18px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", color: "#b91c1c", fontSize: 14 },
+    label: { fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink-2)" },
+    input: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)" },
+    textarea: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", minHeight: 78, resize: "vertical", color: "var(--hz-ink)" },
+    select2: { border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "10px 13px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box", background: "#fff", color: "var(--hz-ink)" },
+    submitBtn: (col) => ({ background: col || "#1e3a5f", border: "none", borderRadius: 9, padding: "12px 28px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", width: "100%" }),
+    toast: (type) => ({ position: "fixed", bottom: 28, right: 28, zIndex: 999, background: type === "error" ? "#dc2626" : "#0f172a", color: "var(--hz-on-dark)", borderRadius: 10, padding: "14px 22px", fontWeight: 600, fontSize: "var(--hz-text-md)", boxShadow: "0 8px 32px rgba(0,0,0,.2)", animation: "slideUp .22s ease" }),
+    emptyRow: { textAlign: "center", padding: "52px 20px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" },
+    errorBanner: { margin: "16px 32px", padding: "13px 18px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", color: "#b91c1c", fontSize: "var(--hz-text-md)" },
     pendingItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #f1f5f9" },
   };
 
   const SortArrow = ({ field }) => (
-    <span style={{ marginLeft: 3, opacity: sortBy === field ? 1 : 0.3, fontSize: 11 }}>
+    <span style={{ marginLeft: 3, opacity: sortBy === field ? 1 : 0.3, fontSize: "var(--hz-text-2xs)" }}>
       {sortBy === field ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}
     </span>
   );
@@ -4269,16 +4282,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(15,23,42,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🏠</div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Check out for the previous day</div>
-            <div style={{ fontSize: 14, color: "#64748b", marginBottom: 18 }}>
+            <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 6 }}>Check out for the previous day</div>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", marginBottom: 18 }}>
               You did not check out on {pendingPrev.map(p => p.workDate).join(", ")}. Please check out for {pendingPrev.length > 1 ? "those days" : "that day"} to continue.
             </div>
             <button onClick={checkOutPreviousDay} disabled={prevBusy}
-              style={{ border: "none", borderRadius: 10, padding: "11px 22px", background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: prevBusy ? "default" : "pointer", fontFamily: "inherit", opacity: prevBusy ? 0.7 : 1 }}>
+              style={{ border: "none", borderRadius: 10, padding: "11px 22px", background: "#dc2626", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: prevBusy ? "default" : "pointer", fontFamily: "inherit", opacity: prevBusy ? 0.7 : 1 }}>
               {prevBusy ? "Checking out…" : "Check out previous day"}
             </button>
             <div style={{ marginTop: 14 }}>
-              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#64748b", fontSize: 13, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
+              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
             </div>
           </div>
         </div>
@@ -4286,11 +4299,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {needsCheckIn && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, background: "rgba(15,23,42,0.78)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
           <div style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
-            <div style={{ color: "#fff", fontSize: 19, fontWeight: 800, marginBottom: 4 }}>Check in to start your day</div>
-            <div style={{ color: "#cbd5e1", fontSize: 14, marginBottom: 14 }}>You need to check in for today before you can use the dashboard.</div>
+            <div style={{ color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xl)", fontWeight: 800, marginBottom: 4 }}>Check in to start your day</div>
+            <div style={{ color: "#cbd5e1", fontSize: "var(--hz-text-md)", marginBottom: 14 }}>You need to check in for today before you can use the dashboard.</div>
             <TodayAttendanceCard user={user} style={{ margin: "0 auto", textAlign: "left" }} />
             <div style={{ marginTop: 14 }}>
-              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#cbd5e1", fontSize: 13, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
+              <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#cbd5e1", fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
             </div>
           </div>
         </div>
@@ -4425,7 +4438,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           </div>
           <div style={s.hRight} className="app-hright">
             {user?.isTestAccount && (
-              <div title="You are logged into a test account. All data you see/create is isolated from production." style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", border: "1px solid #fbbf24", borderRadius: 50, padding: "5px 14px", fontSize: 13, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase" }}>
+              <div title="You are logged into a test account. All data you see/create is isolated from production." style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", border: "1px solid #fbbf24", borderRadius: 50, padding: "5px 14px", fontSize: "var(--hz-text-sm)", fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase" }}>
                 🧪 Test Mode
               </div>
             )}
@@ -4440,18 +4453,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <div role="menu" style={s.hMenu}>
                     {(isAdmin || isProcurement) && (
                       <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); exportCSV(); }}>
-                        <FileText size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <FileText size={16} strokeWidth={2} style={{ color: "var(--hz-muted)" }} />
                         <span><b>Export to CSV</b><small style={s.hMenuSub}>Current list, with filters</small></span>
                       </button>
                     )}
                     {(isAdmin || isVP) && (<>
                       {(isAdmin || isProcurement) && <div style={s.hMenuSep} />}
                       <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); downloadBackup(); }}>
-                        <Download size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <Download size={16} strokeWidth={2} style={{ color: "var(--hz-muted)" }} />
                         <span><b>Download backup</b><small style={s.hMenuSub}>ZIP of database, uploads & Excel</small></span>
                       </button>
                       <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); emailBackup(); }}>
-                        <Mail size={16} strokeWidth={2} style={{ color: "#64748b" }} />
+                        <Mail size={16} strokeWidth={2} style={{ color: "var(--hz-muted)" }} />
                         <span><b>Email backup</b><small style={s.hMenuSub}>Send the backup to the admin</small></span>
                       </button>
                       <div style={s.hMenuSep} />
@@ -4481,29 +4494,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ position: "relative" }}>
               <button className="hbtn-hover app-umenu" onClick={() => setHeaderMenu(m => m === "user" ? null : "user")} aria-haspopup="menu" aria-expanded={headerMenu === "user"}
                 style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 10, height: 42, boxSizing: "border-box", padding: "0 10px 0 5px", border: "1px solid #dbe3ee", boxShadow: "0 1px 2px rgba(15,23,42,.05)", cursor: "pointer", fontFamily: "inherit" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "var(--hz-text-md)", flexShrink: 0 }}>
                   {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="app-hlabel" style={{ lineHeight: 1.2, textAlign: "left" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.fullName || user.username}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.designation || roleMeta.label}</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.fullName || user.username}</div>
+                  <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-muted)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.designation || roleMeta.label}</div>
                 </div>
-                <ChevronDown size={15} strokeWidth={2.2} style={{ color: "#94a3b8", transform: headerMenu === "user" ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+                <ChevronDown size={15} strokeWidth={2.2} style={{ color: "var(--hz-faint)", transform: headerMenu === "user" ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
               </button>
               {headerMenu === "user" && (
                 <div role="menu" style={{ ...s.hMenu, minWidth: 250 }}>
                   <div style={{ padding: "10px 12px 12px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #f1f5f9", marginBottom: 4 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: roleMeta.bg, color: roleMeta.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "var(--hz-text-lg)" }}>
                       {(user.fullName || user.username || "?").charAt(0).toUpperCase()}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0f172a" }}>{user.fullName || user.username}</div>
-                      <div style={{ fontSize: 12.5, color: "#64748b" }}>@{user.username}</div>
-                      <span style={{ display: "inline-block", marginTop: 4, fontSize: 11.5, fontWeight: 700, color: roleMeta.color, background: roleMeta.bg, borderRadius: 999, padding: "2px 8px", letterSpacing: .3 }}>{roleMeta.label}</span>
+                      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>{user.fullName || user.username}</div>
+                      <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>@{user.username}</div>
+                      <span style={{ display: "inline-block", marginTop: 4, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: roleMeta.color, background: roleMeta.bg, borderRadius: 999, padding: "2px 8px", letterSpacing: .3 }}>{roleMeta.label}</span>
                     </div>
                   </div>
                   <button role="menuitem" className="hmenu-item" style={s.hMenuItem} onClick={() => { setHeaderMenu(null); setMainTab("hr"); setHrInitialTab("my-profile"); }}>
-                    <UserCog size={16} strokeWidth={2} style={{ color: "#64748b" }} /> <span><b>My profile</b></span>
+                    <UserCog size={16} strokeWidth={2} style={{ color: "var(--hz-muted)" }} /> <span><b>My profile</b></span>
                   </button>
                   <div style={s.hMenuSep} />
                   <button role="menuitem" className="hmenu-item hmenu-danger" style={{ ...s.hMenuItem, color: "#b91c1c" }} onClick={() => { setHeaderMenu(null); handleLogout(); }}>
@@ -4524,14 +4537,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
             const tab = (active, tone) => ({
               border: "none", cursor: "pointer", fontFamily: "inherit", position: "relative",
               display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
-              padding: "0 20px", height: 56, fontSize: 16, fontWeight: active ? 700 : 600, letterSpacing: 0.1,
-              color: active ? "#1e3a5f" : (tone || "#1e293b"), background: active ? "#eef3fa" : "transparent",
+              padding: "0 20px", height: 56, fontSize: "var(--hz-text-lg)", fontWeight: active ? 700 : 600, letterSpacing: 0.1,
+              color: active ? "var(--hz-primary)" : (tone || "var(--hz-ink-2)"), background: active ? "#eef3fa" : "transparent",
               borderBottom: active ? "3px solid #1e3a5f" : "3px solid transparent", marginBottom: -1,
               transition: "color .15s, background .15s",
             });
             const hover = (e, on) => { if (!e.currentTarget.dataset.active) e.currentTarget.style.background = on ? "#f1f5f9" : "transparent"; };
             const pill = (n) => n ? (
-              <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 999, background: "#dc2626", color: "#fff", boxShadow: "0 2px 6px rgba(220,38,38,.45)", fontSize: 12.5, fontWeight: 800,
+              <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 999, background: "#dc2626", color: "var(--hz-on-dark)", boxShadow: "0 2px 6px rgba(220,38,38,.45)", fontSize: "var(--hz-text-xs)", fontWeight: 800,
                 display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{n > 99 ? "99+" : n}</span>
             ) : null;
             const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", bugs: "Bug Tracker" };
@@ -4618,8 +4631,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <button key={key} onClick={() => setHappizoInfoTab(key)}
                     style={{
                       border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 15px",
-                      background: active ? "#1e3a5f" : "#fff", color: active ? "#fff" : "#374151",
-                      fontWeight: active ? 700 : 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                      background: active ? "#1e3a5f" : "#fff", color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)",
+                      fontWeight: active ? 700 : 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                     }}>
                     {label}
                   </button>
@@ -4645,12 +4658,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
         {/* ─── PAYMENT REQUESTS waiting for this procurement person ─── */}
         {payReqsToDecide.length > 0 && (
           <div className="payreq-banner" style={{ margin: "20px 32px 0", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 14, padding: "12px 16px" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color: "#92400e", marginBottom: 8 }}>
               {payReqsToDecide.length} payment request{payReqsToDecide.length === 1 ? "" : "s"} waiting for your approval
             </div>
             {payReqsToDecide.map(p => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "6px 0", borderTop: "1px solid #fef3c7" }}>
-                <span style={{ fontSize: 15, color: "#000", flex: "1 1 320px" }}>
+                <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", flex: "1 1 320px" }}>
                   <b>{fmtRupee(p.amount)}</b> · PR #{p.pwjEntryId}{p.material ? ` · ${p.material}` : ""} · {p.projectName} · {p.docNumber || p.entryDocNumber || p.pwjType}
                   <span style={{ color: "#78350f" }}> — requested by {p.requestedByName}{p.paymentStage ? `, ${p.paymentStage.replace("_", " ").toLowerCase()}` : ""}{p.remarks ? ` (${p.remarks})` : ""}</span>
                 </span>
@@ -4675,7 +4688,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div key={gi} style={{ flex: 1, minWidth: 280, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
               <div style={{ padding: "8px 16px 6px", background: gi === 0 ? "linear-gradient(90deg,#eff6ff,#f8fafc)" : "linear-gradient(90deg,#fff7ed,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: gi === 0 ? "#3b82f6" : "#f97316", display: "inline-block" }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
+                <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: 1 }}>
                   {gi === 0 ? "PR Status" : "Approval Status"}
                 </span>
               </div>
@@ -4693,8 +4706,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         position: "relative",
                       }}>
                       {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, borderRadius: "0 0 3px 3px" }} />}
-                      <div style={{ fontSize: 14, fontWeight: 700, color: isActive ? c.accent : "#000", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
-                      <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? c.accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
+                      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: isActive ? c.accent : "var(--hz-ink)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, whiteSpace: "nowrap" }}>{c.label}</div>
+                      <div className="stat-val" style={{ fontSize: "var(--hz-text-3xl)", fontWeight: 800, color: isActive ? c.accent : "var(--hz-ink)", fontFamily: "var(--hz-font-display)", lineHeight: 1 }}>
                         {loading ? "—" : (c.value ?? "—")}
                       </div>
                     </div>
@@ -4708,7 +4721,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={{ flex: 1, minWidth: 480, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(15,23,42,.06)", overflow: "hidden" }}>
             <div style={{ padding: "8px 16px 6px", background: "linear-gradient(90deg,#eff6ff,#f8fafc)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>
+              <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: 1 }}>
                 Dependency
               </span>
             </div>
@@ -4727,8 +4740,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       position: "relative",
                     }}>
                     {isActive && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: "0 0 3px 3px" }} />}
-                    <div style={{ fontSize: 14, fontWeight: 700, color: isActive ? accent : "#000", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6, whiteSpace: "nowrap" }}>{name}</div>
-                    <div className="stat-val" style={{ fontSize: 28, fontWeight: 800, color: isActive ? accent : "#000", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1 }}>
+                    <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: isActive ? accent : "var(--hz-ink)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6, whiteSpace: "nowrap" }}>{name}</div>
+                    <div className="stat-val" style={{ fontSize: "var(--hz-text-3xl)", fontWeight: 800, color: isActive ? accent : "var(--hz-ink)", fontFamily: "var(--hz-font-display)", lineHeight: 1 }}>
                       {loading ? "—" : (stats.dependencyCounts?.[name] ?? 0)}
                     </div>
                   </div>
@@ -4771,8 +4784,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button key={p.key} onClick={() => applyPreset(datePreset === p.key ? "" : p.key)}
                   style={{ border: `1.5px solid ${datePreset === p.key ? "#1e3a5f" : "#e2e8f0"}`,
                     background: datePreset === p.key ? "#1e3a5f" : "#fff",
-                    color: datePreset === p.key ? "#fff" : "#000",
-                    borderRadius: 22, padding: "8px 18px", fontSize: 14.5, fontWeight: 600,
+                    color: datePreset === p.key ? "var(--hz-on-dark)" : "var(--hz-ink)",
+                    borderRadius: 22, padding: "8px 18px", fontSize: "var(--hz-text-md)", fontWeight: 600,
                     cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                   {p.label}
                 </button>
@@ -4781,16 +4794,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <>
                   <input type="date" value={dateFrom} max={dateTo || fmt(today)}
                     onChange={e => { setDateFrom(e.target.value); setPage(0); }}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
-                  <span style={{ color: "#000", fontSize: 14.5 }}>to</span>
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)" }} />
+                  <span style={{ color: "var(--hz-ink)", fontSize: "var(--hz-text-md)" }}>to</span>
                   <input type="date" value={dateTo} min={dateFrom} max={fmt(today)}
                     onChange={e => { setDateTo(e.target.value); setPage(0); }}
-                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: 14.5, fontFamily: "inherit", outline: "none", color: "#000" }} />
+                    style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)" }} />
                 </>
               )}
               {datePreset && (
                 <button onClick={() => { setDatePreset(""); setDateFrom(""); setDateTo(""); setPage(0); }}
-                  style={{ border: "none", background: "none", color: "#000", fontSize: 14.5, cursor: "pointer", padding: "6px 8px" }}>
+                  style={{ border: "none", background: "none", color: "var(--hz-ink)", fontSize: "var(--hz-text-md)", cursor: "pointer", padding: "6px 8px" }}>
                   ✕ Clear
                 </button>
               )}
@@ -4837,16 +4850,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </select>
           )}
           <button onClick={() => { setIssuedModal(true); fetchProjects(); if (projectF && projectF !== issuedProject) loadIssuedFor(projectF); }} title="Search the items of issued PRs, project-wise"
-            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#0f172a", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink)", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             📦 Issued Items
           </button>
           <button onClick={fetchEntries} title="Refresh entries"
-            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0px 8px", fontSize: 36, cursor: "pointer", color: "#000", lineHeight: 1 }}>
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0px 8px", fontSize: 36, cursor: "pointer", color: "var(--hz-ink)", lineHeight: 1 }}>
             ↺
           </button>
           <button
             onClick={() => { setSearch(""); setProjectF(""); setStatusF("ALL"); setApprovalF("ALL"); setOpenKindF("ALL"); setRaisedByF(""); setDependencyF(""); setDateFrom(""); setDateTo(""); setDatePreset(""); setPage(0); }}
-            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            style={{ background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink)", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             ✕ Clear Filters
           </button>
           <div style={s.resultCount}>{colorTotalElements} results</div>
@@ -4889,7 +4902,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           onClick={e => e.stopPropagation()}
                           onChange={e => { setOpenKindF(e.target.value); setPage(0); }}
                           title="Filter Open rows by color, across every matching result"
-                          style={{ marginLeft: 4, width: 46, border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 2px 2px 5px", fontSize: 15, lineHeight: 1, fontFamily: "inherit", background: "#fff", color: "#0f172a", fontWeight: 500, cursor: "pointer" }}>
+                          style={{ marginLeft: 4, width: 46, border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 2px 2px 5px", fontSize: "var(--hz-text-md)", lineHeight: 1, fontFamily: "inherit", background: "#fff", color: "var(--hz-ink)", fontWeight: 500, cursor: "pointer" }}>
                           <option value="ALL">⚪</option>
                           <option value="NORMAL">🟡</option>
                           <option value="STALE">🔴</option>
@@ -4914,21 +4927,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         disabled={!isEligible}
                         onChange={() => toggleSelect(row.id)} style={{ cursor: isEligible ? "pointer" : "not-allowed" }} />
                     </td>
-                    <td className="freeze-col freeze-2" style={{ ...s.td, color: "#1e293b", fontSize: 13 }} onClick={() => setDetailRow(row)}>{row.id}</td>
+                    <td className="freeze-col freeze-2" style={{ ...s.td, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)" }} onClick={() => setDetailRow(row)}>{row.id}</td>
                     <td className="freeze-col freeze-3" style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.createdAt || row.timestamp)}
                     </td>
                     <td className="freeze-col freeze-4" style={{ ...s.td, fontWeight: 500 }} onClick={() => setDetailRow(row)}>
                       {row.raisedBy}
                       {isEngineer && row.raisedBy !== (user?.fullName || user?.username) && (
-                        <span className="cell-badge" title="Shared by another engineer" style={{ marginLeft: 6, fontSize: 11, color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
+                        <span className="cell-badge" title="Shared by another engineer" style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", color: "#0f766e", background: "#ccfbf1", borderRadius: 20, padding: "1px 7px", fontWeight: 600 }}>Shared</span>
                       )}
                     </td>
                     <td className="cell-trunc-lg freeze-col freeze-5" style={{ ...s.td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.projectName} onClick={() => setDetailRow(row)}>{row.projectName}</td>
                     <td className="cell-trunc-lg freeze-col freeze-6" style={{ ...s.td, fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.materialRequired} onClick={() => setDetailRow(row)}>
                       {row.materialRequired}
                       {parseImageRefs(row.imageReference).length > 0 && (
-                        <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: 14, cursor: "pointer" }}>🖼️</span>
+                        <span title={`${parseImageRefs(row.imageReference).length} reference image(s) — click row to view`} style={{ marginLeft: 5, fontSize: "var(--hz-text-md)", cursor: "pointer" }}>🖼️</span>
                       )}
                     </td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }} onClick={() => setDetailRow(row)}>{fmtDate(row.dateOfRequirement)}</td>
@@ -4951,22 +4964,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               if (r.success) fetchEntries();
                               else showToast(r.message || "Update failed", "error");
                             }}
-                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--hz-text-xl)", lineHeight: 1, padding: "2px 4px" }}>
                             {row.pwjIssued ? <span style={{ color: "#16a34a" }}>✓</span> : <span style={{ color: "#ef4444" }}>✗</span>}
                           </button>
                         ) : (
-                          <span style={{ fontSize: 16, color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
+                          <span style={{ fontSize: "var(--hz-text-lg)", color: row.pwjIssued ? "#16a34a" : "#ef4444" }}>{row.pwjIssued ? "✓" : "✗"}</span>
                         )}
                       </td>
                     )}
                     {/* Delivered Date */}
-                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "#1e293b" }} onClick={() => setDetailRow(row)}>
+                    <td style={{ ...s.td, whiteSpace: "nowrap", color: "var(--hz-ink-2)" }} onClick={() => setDetailRow(row)}>
                       {fmtDate(row.deliveredDate)}
                     </td>
                     {/* Status */}
                     <td style={s.td} onClick={() => setDetailRow(row)}>
                       {(() => {
-                        const meta = isIssuedStale(row) ? { bg: "#dc2626", color: "#fff", dot: "#fff" } : STATUS_META[row.status];
+                        const meta = isIssuedStale(row) ? { bg: "#dc2626", color: "var(--hz-on-dark)", dot: "#fff" } : STATUS_META[row.status];
                         return (
                           <span className="cell-badge" style={s.badge(meta)}>
                             <span style={s.dot(meta?.dot || "#94a3b8")} />
@@ -4978,7 +4991,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Dependency */}
                     <td style={{ ...s.td }} onClick={e => e.stopPropagation()}>
                       {row.status === "CLOSED" ? (
-                        <span style={{ color: "#374151" }}>—</span>
+                        <span style={{ color: "var(--hz-ink-2)" }}>—</span>
                       ) : canProc(row) ? (
                         <select value={row.dependency || ""}
                           onChange={async e => {
@@ -4991,7 +5004,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               showToast("Network error — could not update dependency", "error");
                             }
                           }}
-                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: 16, background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 140 }}>
+                          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 6px", fontSize: "var(--hz-text-lg)", background: "#fff", cursor: "pointer", fontFamily: "inherit", maxWidth: 140 }}>
                           <option value="">— None —</option>
                           <option value="OH Approval">OH Approval</option>
                           <option value="Procurement">Procurement</option>
@@ -5001,16 +5014,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           {row.dependency === "VP Approval" && <option value="VP Approval">VP Approval</option>}
                         </select>
                       ) : row.dependency ? (
-                        <span className="cell-badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "#475569", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap" }}>
+                        <span className="cell-badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: DEPENDENCY_META[row.dependency]?.bg || "#f1f5f9", color: DEPENDENCY_META[row.dependency]?.color || "var(--hz-ink-2)", borderRadius: 20, padding: "5px 13px", fontWeight: 600, fontSize: "var(--hz-text-md)", whiteSpace: "nowrap" }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: DEPENDENCY_META[row.dependency]?.dot || "#94a3b8", display: "inline-block", flexShrink: 0 }} />
                           {row.dependency}
                         </span>
                       ) : (
-                        <span style={{ color: "#374151" }}>—</span>
+                        <span style={{ color: "var(--hz-ink-2)" }}>—</span>
                       )}
                       {row.siteRemarks && (
                         <span title="Remarks available — click to view" onClick={() => setDetailRow(row)}
-                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 6, width: 22, height: 22, borderRadius: "50%", background: "#f5f3ff", border: "1px solid #ddd6fe", color: "#7c3aed", fontSize: 12, cursor: "pointer", verticalAlign: "middle" }}>
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 6, width: 22, height: 22, borderRadius: "50%", background: "#f5f3ff", border: "1px solid #ddd6fe", color: "#7c3aed", fontSize: "var(--hz-text-xs)", cursor: "pointer", verticalAlign: "middle" }}>
                           💬
                         </span>
                       )}
@@ -5024,12 +5037,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button
                               disabled
                               title="Editing locked — entry has been OH approved"
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               🔒 Locked
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openEditEntry(row)}>
                               ✏️ Edit
                             </button>
@@ -5037,7 +5050,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         )}
                         {isOH && (
                           row.approvalStatus === "PROCEED"
-                            ? <span className="cell-badge" style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
+                            ? <span className="cell-badge" style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 7, padding: "5px 10px", whiteSpace: "nowrap" }}>✅ Approved</span>
                             : canApprove(row) && (
                               <ApproveBtn onClick={() => {
                                   setApprovalForm({ approvalStatus: "PROCEED", comment: "", approvedBy: "OH" });
@@ -5052,12 +5065,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <button
                               disabled
                               title="OH approval pending — vendor can be assigned only after OH approves"
-                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "#374151", fontSize: 13, fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              style={{ background: "#e2e8f0", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "not-allowed", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                               ⏳ Pending OH
                             </button>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openAssign(row)}>
                               ✏️ Assign
                             </button>
@@ -5068,12 +5081,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
                             return <>
-                              <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                                 onClick={() => primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info")}>
                                 📎 Clubs #{clubbedWithId}
                               </button>
                               <button title="Unclub — pull this PR back out as an independent entry"
-                                style={{ background: "#fff", border: "1.5px solid #c4b5fd", borderRadius: 7, padding: "5px 8px", color: "#7c3aed", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                                style={{ background: "#fff", border: "1.5px solid #c4b5fd", borderRadius: 7, padding: "5px 8px", color: "#7c3aed", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                                 onClick={() => unclubEntry(row.id)}>
                                 ✂️ Unclub
                               </button>
@@ -5085,7 +5098,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length} ⚠` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : row.docStatus === "REVOKED" ? "linear-gradient(135deg,#6b21a8,#9333ea)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
                           return (
-                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => openDocModal(row)}>
                               📄 {lbl}
                             </button>
@@ -5109,9 +5122,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           } catch {}
                           if (docOptions && docOptions.length === 0) return null; // nothing issued yet to pay against
                           return (
-                            <button style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            <button style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => {
-                                setPaymentAmount(""); setPaymentRemarks(""); setPaymentStage(""); setPaymentAgainstSel(row.pwjType || "");
+                                setPaymentAmount(""); setPaymentRemarks(""); setPaymentRequiredBy(""); setPaymentItemDesc(payItemDescFor(row, docOptions ? docOptions[0].docNumber : "")); setPaymentStage(""); setPaymentAgainstSel(row.pwjType || "");
                                 setSendPaymentDocNumber(docOptions ? docOptions[0].docNumber : "");
                                 setSendPaymentModal({ entry: row, docOptions });
                               }}>
@@ -5128,18 +5141,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <>
                               {pending.map(p => (
                                 <div key={p.id} className="payreq-badge" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "4px 10px" }}>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e", whiteSpace: "nowrap" }}>
+                                  <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#92400e", whiteSpace: "nowrap" }}>
                                     Payment request {fmtRupee(p.amount)} · {p.canDecide ? `from ${p.requestedByName}` : `awaiting ${p.approverName || "procurement"}`}
                                   </span>
                                   {p.canDecide && <>
                                     <ApproveBtn size="sm" title="Approve — send to Accounts" onClick={() => decidePayReq(p, "approve")} />
                                     <RejectBtn size="sm" title="Reject" onClick={() => decidePayReq(p, "reject")} />
                                   </>}
-                                  {p.canCancel && <button type="button" onClick={() => decidePayReq(p, "cancel")} style={{ border: "none", background: "none", color: "#92400e", fontSize: 12.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>Withdraw</button>}
+                                  {p.canCancel && <button type="button" onClick={() => decidePayReq(p, "cancel")} style={{ border: "none", background: "none", color: "#92400e", fontSize: "var(--hz-text-xs)", fontWeight: 700, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>Withdraw</button>}
                                 </div>
                               ))}
                               {lastRejected && (
-                                <span title={lastRejected.decisionRemark || ""} style={{ fontSize: 13, fontWeight: 700, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "4px 10px", whiteSpace: "nowrap" }}>
+                                <span title={lastRejected.decisionRemark || ""} style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "4px 10px", whiteSpace: "nowrap" }}>
                                   Payment request {fmtRupee(lastRejected.amount)} rejected{lastRejected.decisionRemark ? ` — ${lastRejected.decisionRemark}` : ""}
                                 </span>
                               )}
@@ -5150,7 +5163,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const clubbedWithId = (() => { try { return JSON.parse(row.docData||"{}").clubbedWithId || null; } catch { return null; } })();
                           if (clubbedWithId) {
                             const primary = entries.find(e => e.id === clubbedWithId);
-                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            return <button style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); primary ? openDocModal(primary) : showToast(`Open entry #${clubbedWithId} to view the doc`, "info"); }}>
                               📎 Clubs #{clubbedWithId}
                             </button>;
@@ -5161,7 +5174,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length}` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)";
                           return (
-                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               onClick={() => { setEngDocFile(null); openDocModal(row); }}>
                               📄 {lbl}
                             </button>
@@ -5170,20 +5183,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {(isAdmin || isVP || isOH) && row.status === "OPEN" ? (
                           <select value={row.allocatedTo || ""} disabled={allocBusy === row.id}
                             onChange={e => allocatePr(row, e.target.value)} title="Allocate this PR to a procurement user"
-                            style={{ border: `1.5px solid ${row.allocatedTo ? "#a5b4fc" : "#e2e8f0"}`, background: row.allocatedTo ? "#eef2ff" : "#fff", color: row.allocatedTo ? "#3730a3" : "#64748b", borderRadius: 7, padding: "4px 6px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", maxWidth: 150, cursor: "pointer" }}>
+                            style={{ border: `1.5px solid ${row.allocatedTo ? "#a5b4fc" : "#e2e8f0"}`, background: row.allocatedTo ? "#eef2ff" : "#fff", color: row.allocatedTo ? "#3730a3" : "var(--hz-muted)", borderRadius: 7, padding: "4px 6px", fontSize: "var(--hz-text-sm)", fontWeight: 600, fontFamily: "inherit", maxWidth: 150, cursor: "pointer" }}>
                             <option value="">👤 Allocate…</option>
                             {procUsers.map(u => <option key={u.id} value={u.username}>{u.fullName || u.username}</option>)}
                             {row.allocatedTo && !procUsers.some(u => u.username === row.allocatedTo) && <option value={row.allocatedTo}>{row.allocatedToName || row.allocatedTo}</option>}
                           </select>
                         ) : row.allocatedToName ? (
-                          <span title={`Allocated by ${row.allocatedBy || "—"}`} style={{ fontSize: 12.5, fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>👤 {row.allocatedToName}</span>
+                          <span title={`Allocated by ${row.allocatedBy || "—"}`} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#3730a3", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>👤 {row.allocatedToName}</span>
                         ) : null}
                         {isAdmin && row.status === "OPEN" && (
                           row.closureRequestStatus === "PENDING" ? (
-                            <span title={row.closureReason} style={{ fontSize: 12.5, fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>⏳ Closure pending VP</span>
+                            <span title={row.closureReason} style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "4px 8px", whiteSpace: "nowrap" }}>⏳ Closure pending VP</span>
                           ) : (
                             <button
-                              style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                              style={{ background: "linear-gradient(135deg,#0f766e,#14b8a6)", border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
                               title={row.closureRequestStatus === "REJECTED" ? `VP rejected the last request${row.closureDecisionComment ? `: ${row.closureDecisionComment}` : ""}` : "Close this PR manually (needs VP approval)"}
                               onClick={() => { setClosureReason(""); setClosureReqModal(row); }}>
                               🔒 Close PR
@@ -5206,7 +5219,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           try {
                             const dd = JSON.parse(row.docData || "{}");
                             if (Array.isArray(dd.clubbedEntryIds) && dd.clubbedEntryIds.length > 0) return (
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "var(--hz-text-xs)", color: "#7c3aed", fontWeight: 700, background: "#f5f3ff", borderRadius: 5, padding: "3px 7px", border: "1px solid #ddd6fe", whiteSpace: "nowrap" }}>
                                 📎 Clubs
                                 {dd.clubbedEntryIds.map((cid, ci) => (
                                   <span key={cid} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
@@ -5214,7 +5227,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                     #{cid}
                                     {canProc(row) && (
                                       <button title={`Unclub entry #${cid}`}
-                                        style={{ border: "none", background: "none", color: "#7c3aed", cursor: "pointer", padding: "0 1px", fontSize: 11, lineHeight: 1 }}
+                                        style={{ border: "none", background: "none", color: "#7c3aed", cursor: "pointer", padding: "0 1px", fontSize: "var(--hz-text-2xs)", lineHeight: 1 }}
                                         onClick={() => unclubEntry(cid)}>
                                         ✂️
                                       </button>
@@ -5252,7 +5265,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <button style={s.pageBtn(false)} onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>‹</button>
             {pageNumbers.map((p, i, arr) => (
               <>
-                {i > 0 && arr[i] - arr[i-1] > 1 && <span key={`e${i}`} style={{ padding: "0 4px", color: "#000", lineHeight: "32px" }}>…</span>}
+                {i > 0 && arr[i] - arr[i-1] > 1 && <span key={`e${i}`} style={{ padding: "0 4px", color: "var(--hz-ink)", lineHeight: "32px" }}>…</span>}
                 <button key={p} style={s.pageBtn(p === page)} onClick={() => setPage(p)}>{p + 1}</button>
               </>
             ))}
@@ -5267,7 +5280,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           const STATUS_CFG = {
             PENDING_APPROVAL: { label: "Pending",  bg: "#fef3c7", color: "#b45309", dot: "#f59e0b" },
             APPROVED:         { label: "Approved", bg: "#dcfce7", color: "#15803d", dot: "#22c55e" },
-            REJECTED:         { label: "Rejected", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
+            REJECTED:         { label: "Rejected", bg: "#fee2e2", color: "var(--hz-danger)", dot: "#ef4444" },
           };
           const vtabs = [
             { key: "ALL",              label: "All" },
@@ -5289,12 +5302,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ padding: "24px 36px" }}>
               {/* Top bar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>
+                <div style={{ fontFamily: "var(--hz-font-display)", fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)", letterSpacing: "-0.2px" }}>
                   Vendor Management
-                  <span style={{ marginLeft: 10, fontSize: 14, fontWeight: 500, color: "#1e293b" }}>{displayed.length} of {allVendorsStatus.length}</span>
+                  <span style={{ marginLeft: 10, fontSize: "var(--hz-text-md)", fontWeight: 500, color: "var(--hz-ink-2)" }}>{displayed.length} of {allVendorsStatus.length}</span>
                 </div>
                 {(isAdmin || isProcurement || isProcurementEngineer) && (
-                  <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
+                  <button style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}
                     onClick={() => { setAddVendorForm(BLANK_VENDOR_FORM); setAddVendorPage(true); }}>
                     ➕ Add Vendor
                   </button>
@@ -5309,12 +5322,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <button key={t.key} onClick={() => setVendorStatusTab(t.key)}
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                        padding: "10px 18px", fontSize: 14, fontWeight: active ? 700 : 500,
-                        color: active ? "#1a6ab1" : "#0f172a",
+                        padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 500,
+                        color: active ? "#1a6ab1" : "var(--hz-ink)",
                         borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent", marginBottom: -2 }}>
                       {t.label}
-                      <span style={{ marginLeft: 6, fontSize: 13, background: active ? "#dbeafe" : "#f1f5f9",
-                        color: active ? "#1d4ed8" : "#64748b", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
+                      <span style={{ marginLeft: 6, fontSize: "var(--hz-text-sm)", background: active ? "#dbeafe" : "#f1f5f9",
+                        color: active ? "#1d4ed8" : "var(--hz-muted)", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
                         {count}
                       </span>
                     </button>
@@ -5325,20 +5338,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Search + filter bar */}
               <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
-                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#374151", fontSize: 15, pointerEvents: "none" }}>🔍</span>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)", pointerEvents: "none" }}>🔍</span>
                   <input
                     type="text" placeholder="Search name, category, contact, GST, email…"
                     value={vendorSearch} onChange={e => setVendorSearch(e.target.value)}
-                    style={{ width: "100%", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", boxSizing: "border-box" }} />
+                    style={{ width: "100%", border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", background: "#fff", color: "var(--hz-ink)", boxSizing: "border-box" }} />
                 </div>
                 <select value={vendorCategoryFilter} onChange={e => setVendorCategoryFilter(e.target.value)}
-                  style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 14, fontFamily: "inherit", background: "#fff", color: vendorCategoryFilter ? "#0f172a" : "#94a3b8", outline: "none", cursor: "pointer", minWidth: 160 }}>
+                  style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", background: "#fff", color: vendorCategoryFilter ? "var(--hz-ink)" : "var(--hz-faint)", outline: "none", cursor: "pointer", minWidth: 160 }}>
                   <option value="">All Categories</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {(vendorSearch || vendorCategoryFilter) && (
                   <button onClick={() => { setVendorSearch(""); setVendorCategoryFilter(""); }}
-                    style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontFamily: "inherit", background: "#fff", color: "#374151", cursor: "pointer", fontWeight: 600 }}>
+                    style={{ border: "1.5px solid #e2eaf5", borderRadius: 10, padding: "9px 14px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff", color: "var(--hz-ink-2)", cursor: "pointer", fontWeight: 600 }}>
                     ✕ Clear
                   </button>
                 )}
@@ -5346,15 +5359,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Vendor list table */}
               {vpLoading ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#374151" }}>Loading vendors…</div>
+                <div style={{ textAlign: "center", padding: 60, color: "var(--hz-ink-2)" }}>Loading vendors…</div>
               ) : displayed.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#374151", fontSize: 14 }}>No vendors found</div>
+                <div style={{ textAlign: "center", padding: 60, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>No vendors found</div>
               ) : (
                 <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #e2eaf5", overflow: "hidden" }}>
                   {/* Table header */}
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1.4fr 1.2fr 1fr 120px", gap: 0, background: "#f8fafc", borderBottom: "1.5px solid #e2eaf5", padding: "10px 20px" }}>
                     {["Vendor", "Category", "Contact", "GST / Code", "Status", "Actions"].map(h => (
-                      <div key={h} style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
+                      <div key={h} style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: ".05em" }}>{h}</div>
                     ))}
                   </div>
                   {/* Rows */}
@@ -5368,28 +5381,28 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafbfe"}>
                         {/* Name */}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{v.name}</div>
-                          <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>
+                          <div style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{v.name}</div>
+                          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2 }}>
                             Added {fmtDate(v.createdAt)}
                           </div>
                         </div>
                         {/* Category */}
-                        <div style={{ fontSize: 14, color: "#0f172a" }}>{v.category || "—"}</div>
+                        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{v.category || "—"}</div>
                         {/* Contact */}
                         <div>
-                          {v.contactPerson && <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 500 }}>{v.contactPerson}</div>}
-                          {v.phoneNumber && <div style={{ fontSize: 13, color: "#1e293b" }}>📞 {v.phoneNumber}</div>}
-                          {v.email && <div style={{ fontSize: 13, color: "#1e293b" }}>✉️ {v.email}</div>}
+                          {v.contactPerson && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", fontWeight: 500 }}>{v.contactPerson}</div>}
+                          {v.phoneNumber && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>📞 {v.phoneNumber}</div>}
+                          {v.email && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>✉️ {v.email}</div>}
                         </div>
                         {/* GST / Code */}
                         <div>
-                          {v.gstNumber && <div style={{ fontSize: 14, color: "#0f172a" }}>{v.gstNumber}</div>}
-                          {v.vendorCode && <div style={{ fontSize: 13, color: "#1e293b" }}>#{v.vendorCode}</div>}
-                          {!v.gstNumber && !v.vendorCode && <span style={{ color: "#374151" }}>—</span>}
+                          {v.gstNumber && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{v.gstNumber}</div>}
+                          {v.vendorCode && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>#{v.vendorCode}</div>}
+                          {!v.gstNumber && !v.vendorCode && <span style={{ color: "var(--hz-ink-2)" }}>—</span>}
                         </div>
                         {/* Status badge */}
                         <div>
-                          <span style={{ fontSize: 13, fontWeight: 700, borderRadius: 20, padding: "3px 10px",
+                          <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, borderRadius: 20, padding: "3px 10px",
                             background: cfg.bg, color: cfg.color, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot }} />
                             {cfg.label}
@@ -5398,7 +5411,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {/* Actions */}
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button onClick={() => setViewVendor(v)}
-                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: "#f1f5f9", border: "1px solid #e2eaf5", borderRadius: 7, padding: "5px 10px", color: "#1a6ab1", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
                             👁 View
                           </button>
                           {(isVP || isAdmin) && isPending && (<>
@@ -5407,7 +5420,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </>)}
                           {(isAdmin || isVP) && (
                             <button onClick={() => openEditVendor(v)}
-                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 10px", color: "#1d4ed8", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
                               ✏️ Edit
                             </button>
                           )}
@@ -5437,7 +5450,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           const statusBadge = (status, type) => {
             const col = status === "Received" ? "#166534" : status === "Pending" ? "#92400e" : "#475569";
             const bg  = status === "Received" ? "#dcfce7"  : status === "Pending" ? "#fef3c7"  : "#f1f5f9";
-            return <span style={{ background: bg, color: col, borderRadius: 20, padding: "2px 10px", fontSize: 13, fontWeight: 700 }}>{status || "—"}</span>;
+            return <span style={{ background: bg, color: col, borderRadius: 20, padding: "2px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 700 }}>{status || "—"}</span>;
           };
 
           const openCreateProject = async () => {
@@ -5534,10 +5547,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
             finally { setUploading(false); }
           };
 
-          const inpSt = { width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" };
+          const inpSt = { width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "#fff" };
           const selSt = { ...inpSt, cursor: "pointer" };
-          const lbl   = (txt) => <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{txt}</label>;
-          const sec   = (txt) => <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: 1, borderBottom: "2px solid #e2e8f0", paddingBottom: 6, marginBottom: 14, marginTop: 6 }}>{txt}</div>;
+          const lbl   = (txt) => <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>{txt}</label>;
+          const sec   = (txt) => <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: "var(--hz-ink)", textTransform: "uppercase", letterSpacing: 1, borderBottom: "2px solid #e2e8f0", paddingBottom: 6, marginBottom: 14, marginTop: 6 }}>{txt}</div>;
 
           // auto-fill client fields when client is selected from datalist
           const onClientSelect = (name) => {
@@ -5568,21 +5581,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.2px" }}>Project Management</div>
-                  <div style={{ fontSize: 14, color: "#374151", marginTop: 2 }}>
+                  <div style={{ fontFamily: "var(--hz-font-display)", fontSize: "var(--hz-text-xl)", fontWeight: 700, color: "var(--hz-ink)", letterSpacing: "-0.2px" }}>Project Management</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 2 }}>
                     {activeProjects.length} active project{activeProjects.length !== 1 ? "s" : ""} · Engineers select from this list when creating entries
                   </div>
                 </div>
                 {!isCeo && (
                   <button onClick={openCreateProject}
-                    style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "10px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                     + Add Project
                   </button>
                 )}
               </div>
 
               {activeProjects.length === 0 && (
-                <div style={{ textAlign: "center", padding: "48px 0", color: "#374151", fontSize: 15 }}>
+                <div style={{ textAlign: "center", padding: "48px 0", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
                   No active projects yet. Click <strong>+ Add Project</strong> to get started.
                 </div>
               )}
@@ -5595,16 +5608,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{p.name}</div>
+                          <div style={{ fontWeight: 800, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{p.name}</div>
                           {p.eligibleForAccounts && (
-                            <span style={{ background: "#ede9fe", color: "#7c3aed", borderRadius: 20, padding: "2px 8px", fontSize: 12, fontWeight: 700, letterSpacing: 0.3 }}>Accounts ✓</span>
+                            <span style={{ background: "#ede9fe", color: "#7c3aed", borderRadius: 20, padding: "2px 8px", fontSize: "var(--hz-text-xs)", fontWeight: 700, letterSpacing: 0.3 }}>Accounts ✓</span>
                           )}
                         </div>
-                        {p.location && <div style={{ fontSize: 13, color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
+                        {p.location && <div style={{ fontSize: "var(--hz-text-sm)", color: "#3b82f6", marginTop: 2 }}>📍 {p.location}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>✏️ Edit</button>}
-                        {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#dc2626", fontFamily: "inherit" }}>Deactivate</button>}
+                        {!isCeo && <button onClick={() => openEditProject(p)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink-2)", fontFamily: "inherit" }}>✏️ Edit</button>}
+                        {!isCeo && <button onClick={() => deactivateProject(p)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "4px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "var(--hz-danger)", fontFamily: "inherit" }}>Deactivate</button>}
                         {(isAdmin || isVP) && (
                           <DeleteBtn onClick={async () => {
                             if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
@@ -5622,7 +5635,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 showToast("Marked eligible for Accounts ✅");
                               } else showToast(r.message || "Failed", "error");
                             }}
-                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>
+                            style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "4px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink-2)", fontFamily: "inherit" }}>
                             ＋ Add to Accounts
                           </button>
                         )}
@@ -5636,7 +5649,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 showToast("Removed from Accounts module");
                               } else showToast(r.message || "Failed", "error");
                             }}
-                            style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 7, padding: "4px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#7c3aed", fontFamily: "inherit" }}>
+                            style={{ background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 7, padding: "4px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "#7c3aed", fontFamily: "inherit" }}>
                             ✓ Added to Accounts
                           </button>
                         )}
@@ -5646,34 +5659,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Client row */}
                     {p.clientName && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
-                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Client</div><div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{p.clientName}</div></div>
-                        {p.clientGstNo && <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 13, color: "#374151" }}>{p.clientGstNo}</div></div>}
+                        <div><div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase" }}>Client</div><div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink)" }}>{p.clientName}</div></div>
+                        {p.clientGstNo && <div><div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{p.clientGstNo}</div></div>}
                       </div>
                     )}
 
                     {/* Financial row */}
                     {p.projectValue != null && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 10px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #f1f5f9" }}>
-                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Gross Value</div><div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{fmtINR(p.projectValue)}</div></div>
-                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: 13, color: "#374151" }}>{p.gstPct != null ? `${p.gstPct}%` : "—"}</div></div>
-                        <div><div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase" }}>Total Value</div><div style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{fmtINR(p.totalValue)}</div></div>
+                        <div><div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase" }}>Gross Value</div><div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink)" }}>{fmtINR(p.projectValue)}</div></div>
+                        <div><div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase" }}>GST</div><div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{p.gstPct != null ? `${p.gstPct}%` : "—"}</div></div>
+                        <div><div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase" }}>Total Value</div><div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#166534" }}>{fmtINR(p.totalValue)}</div></div>
                       </div>
                     )}
 
                     {/* PO/WO row */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px" }}>
                       <div>
-                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
+                        <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.poWoStatus)}
-                          {p.poWoDocUrl && <a href={`${BACKEND_BASE}${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.poWoDocUrl && <a href={`${BACKEND_BASE}${p.poWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
+                        <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase", marginBottom: 3 }}>Amended PO / WO</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {statusBadge(p.amendedPoWoStatus)}
-                          {p.amendedPoWoDocUrl && <a href={`${BACKEND_BASE}${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
+                          {p.amendedPoWoDocUrl && <a href={`${BACKEND_BASE}${p.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>📎 View</a>}
                         </div>
                       </div>
                     </div>
@@ -5686,7 +5699,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         { key: "subcontract",   label: "Sub-Contract",   color: "#8b5cf6" },
                         { key: "labour",        label: "Labour",         color: "#3b82f6" },
                         { key: "consultants",   label: "Consultants",    color: "#f59e0b" },
-                        { key: "miscellaneous", label: "Miscellaneous",  color: "#374151" },
+                        { key: "miscellaneous", label: "Miscellaneous",  color: "var(--hz-ink-2)" },
                       ];
                       const totalExp = cats.reduce((s, c) => s + (summary[c.key] || 0), 0);
                       const activeCats = cats.filter(c => (summary[c.key] || 0) > 0);
@@ -5696,8 +5709,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, color: "#374151", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget Utilisation</span>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: barColor }}>{pct.toFixed(1)}%</span>
+                            <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget Utilisation</span>
+                            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 800, color: barColor }}>{pct.toFixed(1)}%</span>
                           </div>
                           <div style={{ background: "#f1f5f9", borderRadius: 100, height: 7, marginBottom: 10 }}>
                             <div style={{ width: `${pct}%`, background: barColor, borderRadius: 100, height: "100%", transition: "width 0.4s ease" }} />
@@ -5708,34 +5721,34 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             return (
                               <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                                <span style={{ fontSize: 12, color: "#374151", width: 78, flexShrink: 0 }}>{label}</span>
+                                <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", width: 78, flexShrink: 0 }}>{label}</span>
                                 <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 100, height: 4 }}>
                                   <div style={{ width: `${expPct}%`, background: color, borderRadius: 100, height: "100%" }} />
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", width: 85, textAlign: "right", flexShrink: 0 }}>
+                                <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink)", width: 85, textAlign: "right", flexShrink: 0 }}>
                                   ₹{Number(val).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                 </span>
                               </div>
                             );
                           })}
                           {activeCats.length === 0 && (
-                            <div style={{ fontSize: 13, color: "#374151", textAlign: "center", padding: "4px 0" }}>No PWJ documents raised yet</div>
+                            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", textAlign: "center", padding: "4px 0" }}>No PWJ documents raised yet</div>
                           )}
                           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1px solid #f1f5f9" }}>
                             <div>
-                              <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total Expenses</div>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: "#ef4444" }}>₹{Number(totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                              <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total Expenses</div>
+                              <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color: "#ef4444" }}>₹{Number(totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                             </div>
                             {budget != null && (
                               <div style={{ textAlign: "center" }}>
-                                <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Budget (80%)</div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: "#6366f1" }}>₹{Number(budget).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                                <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Budget (80%)</div>
+                                <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color: "#6366f1" }}>₹{Number(budget).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                               </div>
                             )}
                             {budget != null && (
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: 11, color: "#374151", textTransform: "uppercase", letterSpacing: "0.04em" }}>Est. Profit</div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: (p.quoteValue - totalExp) >= p.quoteValue * 0.2 ? "#10b981" : "#f59e0b" }}>
+                                <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Est. Profit</div>
+                                <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color: (p.quoteValue - totalExp) >= p.quoteValue * 0.2 ? "#10b981" : "#f59e0b" }}>
                                   ₹{Number(p.quoteValue - totalExp).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                 </div>
                               </div>
@@ -5744,7 +5757,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         </div>
                       );
                     })()}
-                    <div style={{ fontSize: 12, color: "#374151", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", marginTop: 10 }}>Added {fmtDate(p.createdAt)}</div>
                   </div>
                 ))}
               </div>
@@ -5752,16 +5765,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Inactive projects */}
               {inactiveProjects.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>INACTIVE PROJECTS ({inactiveProjects.length})</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 10 }}>INACTIVE PROJECTS ({inactiveProjects.length})</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 10 }}>
                     {inactiveProjects.map(p => (
                       <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 18px", opacity: 0.6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: "#374151", textDecoration: "line-through" }}>{p.name}</div>
-                          {p.location && <div style={{ fontSize: 13, color: "#374151" }}>📍 {p.location}</div>}
+                          <div style={{ fontWeight: 600, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", textDecoration: "line-through" }}>{p.name}</div>
+                          {p.location && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>📍 {p.location}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
+                          {!isCeo && <button onClick={() => reactivateProject(p)} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 7, padding: "5px 12px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "#16a34a", fontFamily: "inherit" }}>Reactivate</button>}
                           {(isAdmin || isVP) && (
                             <DeleteBtn onClick={async () => {
                               if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
@@ -5784,7 +5797,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <div style={{ background: "#fff", borderRadius: 18, width: "96%", maxWidth: 1000, maxHeight: "92vh", overflowY: "auto", padding: "28px 32px", boxShadow: "0 24px 80px rgba(0,0,0,.22)" }}
                     onClick={e => e.stopPropagation()}>
 
-                    <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", marginBottom: 22 }}>
+                    <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)", marginBottom: 22 }}>
                       {editingProject ? "✏️ Edit Project" : "🏗️ New Project"}
                     </div>
 
@@ -5858,7 +5871,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           placeholder="Billing address…" disabled={projectMgmtForm.billingSameAsClient}
                           value={projectMgmtForm.billingSameAsClient ? projectMgmtForm.clientAddress : projectMgmtForm.billingAddress}
                           onChange={e => setF("billingAddress", e.target.value)} />
-                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#1e293b", marginTop: 5, cursor: "pointer" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 5, cursor: "pointer" }}>
                           <input type="checkbox" checked={projectMgmtForm.billingSameAsClient}
                             onChange={e => {
                               setF("billingSameAsClient", e.target.checked);
@@ -5893,14 +5906,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Quote Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("quoteDocUrl", e.target.files[0], setQuoteDocUploading)} />
                             {quoteDocUploading ? "Uploading…" : projectMgmtForm.quoteDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.quoteDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.quoteDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -5928,14 +5941,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Work Order Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
                             {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.poWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -5964,14 +5977,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("additionalQuoteDocUrl", e.target.files[0], setAddQuoteDocUploading)} />
                             {addQuoteDocUploading ? "Uploading…" : projectMgmtForm.additionalQuoteDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.additionalQuoteDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.additionalQuoteDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -6001,14 +6014,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("additionalWoDocUrl", e.target.files[0], setAddWoDocUploading)} />
                             {addWoDocUploading ? "Uploading…" : projectMgmtForm.additionalWoDocUrl ? "📎 Replace" : "📎 Attach"}
                           </label>
                           {projectMgmtForm.additionalWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.additionalWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -6026,14 +6039,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("poWoDocUrl", e.target.files[0], setPoWoUploading)} />
                             {poWoUploading ? "Uploading…" : projectMgmtForm.poWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.poWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.poWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -6053,14 +6066,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div>
                         {lbl("Document")}
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: 13, color: "#374151" }}>
+                          <label style={{ flex: 1, border: "1.5px dashed #94a3b8", borderRadius: 8, padding: "7px 12px", cursor: "pointer", background: "#fafafa", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             <input type="file" accept=".pdf,.doc,.docx,image/*" style={{ display: "none" }}
                               onChange={e => e.target.files[0] && uploadProjectDoc("amendedPoWoDocUrl", e.target.files[0], setAmendedPoWoUploading)} />
                             {amendedPoWoUploading ? "Uploading…" : projectMgmtForm.amendedPoWoDocUrl ? "📎 Replace doc" : "📎 Attach doc"}
                           </label>
                           {projectMgmtForm.amendedPoWoDocUrl && (
                             <a href={`${BACKEND_BASE}${projectMgmtForm.amendedPoWoDocUrl}`} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
+                              style={{ fontSize: "var(--hz-text-sm)", color: "#0369a1", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>👁 View</a>
                           )}
                         </div>
                       </div>
@@ -6069,11 +6082,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Buttons */}
                     <div style={{ display: "flex", gap: 10 }}>
                       <button onClick={saveProject} disabled={projectMgmtLoading}
-                        style={{ flex: 1, background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "12px 0", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                        style={{ flex: 1, background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", border: "none", borderRadius: 10, padding: "12px 0", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                         {projectMgmtLoading ? "Saving…" : editingProject ? "💾 Save Changes" : "✅ Create Project"}
                       </button>
                       <button onClick={() => setProjectMgmtModal(false)}
-                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#374151", fontFamily: "inherit" }}>
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 20px", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", color: "var(--hz-ink-2)", fontFamily: "inherit" }}>
                         Cancel
                       </button>
                     </div>
@@ -6085,7 +6098,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         })()}
 
         {/* ─── ACCOUNT MODULE ─── */}
-        {mainTab === "account" && <AccountSection notifs={notifs} isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} userName={user.fullName || user.username} username={user.username} />}
+        {mainTab === "account" && <AccountSection notifs={notifs} isCeo={isCeo} isOH={isOH} isVP={isVP} isAdmin={isAdmin} procurementOnly={isProcurement || isProcurementEngineer} userName={user.fullName || user.username} username={user.username} />}
         {mainTab === "sales"   && <SalesPage userName={user.fullName || user.username} username={user.username} role={user.role} />}
 
       </div>
@@ -6186,11 +6199,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const m = line.match(/^\[(.+?)\]\s*(.*)/);
                           return m ? (
                             <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
-                              <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                              <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", lineHeight: 1.5 }}>{m[2]}</div>
                             </div>
                           ) : (
-                            <div key={i} style={{ fontSize: 14, color: "#0f172a" }}>{line}</div>
+                            <div key={i} style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{line}</div>
                           );
                         })}
                       </div>
@@ -6204,7 +6217,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ones already OH-approved; never changes approvalStatus. */}
               {canProc(detailRow) && (
                 detailRow.dependency === "Site team" ? (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#f5f3ff", borderRadius: 8, border: "1px solid #ddd6fe", fontSize: 13, color: "#5b21b6" }}>
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#f5f3ff", borderRadius: 8, border: "1px solid #ddd6fe", fontSize: "var(--hz-text-sm)", color: "#5b21b6" }}>
                     🏗️ Awaiting clarification from Site Team.
                   </div>
                 ) : (
@@ -6215,7 +6228,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       placeholder="What do you need clarified? This sends the PR back to Site Team…"
                       value={prClarifyNote}
                       onChange={e => setPrClarifyNote(e.target.value)}
-                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical", outline: "none", color: "var(--hz-ink)", boxSizing: "border-box", marginBottom: 8 }}
                     />
                     <button onClick={sendToSiteTeam} disabled={prClarifySaving || !prClarifyNote.trim()}
                       style={{ ...s.submitBtn("linear-gradient(135deg,#6d28d9,#8b5cf6)"), opacity: (prClarifySaving || !prClarifyNote.trim()) ? 0.6 : 1 }}>
@@ -6234,7 +6247,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     placeholder="Answer Procurement's question — this sends the PR back to them…"
                     value={prReplyNote}
                     onChange={e => setPrReplyNote(e.target.value)}
-                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", color: "#0f172a", boxSizing: "border-box", marginBottom: 8 }}
+                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical", outline: "none", color: "var(--hz-ink)", boxSizing: "border-box", marginBottom: 8 }}
                   />
                   <button onClick={sendBackToProcurement} disabled={prReplySaving || !prReplyNote.trim()}
                     style={{ ...s.submitBtn("linear-gradient(135deg,#0369a1,#0ea5e9)"), opacity: (prReplySaving || !prReplyNote.trim()) ? 0.6 : 1 }}>
@@ -6246,7 +6259,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Edit button inside detail modal for engineer/PM (locked when PROCEED) */}
               {(isEngineer || isProjectManager) && detailRow.raisedBy === (user?.fullName || user?.username) && (
                 detailRow.approvalStatus === "PROCEED" ? (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: 13, color: "#92400e" }}>
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#fef9c3", borderRadius: 8, border: "1px solid #fde68a", fontSize: "var(--hz-text-sm)", color: "#92400e" }}>
                     🔒 This entry has been OH approved and can no longer be edited.
                   </div>
                 ) : (
@@ -6261,7 +6274,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {canProc(detailRow) && (
                 <div style={{ marginTop: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ fontSize: 13, color: "#334155" }}>
+                    <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                       {detailRow.visibility === "ENGINEERS"
                         ? "👁️ Shared — visible to ALL engineers"
                         : (detailRow.sharedWithEngineers || []).length > 0
@@ -6278,21 +6291,21 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           showToast(next === "ENGINEERS" ? "Shared with all engineers" : "Made private again");
                         } else showToast(r.message || "Update failed", "error");
                       }}
-                      style={{ border: "1.5px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#0f172a", whiteSpace: "nowrap" }}>
+                      style={{ border: "1.5px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: "var(--hz-text-sm)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink)", whiteSpace: "nowrap" }}>
                       {detailRow.visibility === "ENGINEERS" ? "Unshare from All" : "Share with All Engineers"}
                     </button>
                   </div>
                   {detailRow.visibility !== "ENGINEERS" && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#374151", marginBottom: 6 }}>…or share with specific engineers</div>
+                      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 6 }}>…or share with specific engineers</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 100, overflowY: "auto" }}>
                         {allUsers
-                          .filter(u => u.role === "ENGINEER" && u.active !== false && u.fullName !== detailRow.raisedBy)
+                          .filter(u => ["ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"].includes(u.role) && u.active !== false && u.fullName !== detailRow.raisedBy)
                           .map(u => {
                             const name = u.fullName || u.username;
                             const checked = (detailRow.sharedWithEngineers || []).includes(name);
                             return (
-                              <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#374151", cursor: "pointer", background: checked ? "#eef5fb" : "#fff", border: "1px solid #e2e8f0", padding: "3px 9px", borderRadius: 20 }}>
+                              <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", cursor: "pointer", background: checked ? "#eef5fb" : "#fff", border: "1px solid #e2e8f0", padding: "3px 9px", borderRadius: 20 }}>
                                 <input type="checkbox" checked={checked}
                                   onChange={async e => {
                                     const cur = new Set(detailRow.sharedWithEngineers || []);
@@ -6317,7 +6330,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Approve button inside detail modal */}
               {isOH && (
                 detailRow.approvalStatus === "PROCEED"
-                  ? <div style={{ marginTop: 16, padding: "10px 14px", background: "#dcfce7", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 14, color: "#166534", fontWeight: 600 }}>✅ This entry has been approved. No further action required.</div>
+                  ? <div style={{ marginTop: 16, padding: "10px 14px", background: "#dcfce7", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: "var(--hz-text-md)", color: "#166534", fontWeight: 600 }}>✅ This entry has been approved. No further action required.</div>
                   : canApprove(detailRow) && (
                     <button style={{ ...s.submitBtn(), marginTop: 20 }}
                       onClick={() => {
@@ -6349,19 +6362,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {approvalModal.entry.approvalStatus === "PROCEED" ? (
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "#166534" }}>Already Approved</div>
-                  <div style={{ fontSize: 14, color: "#374151", marginTop: 6 }}>This entry has been approved and cannot be changed.</div>
-                  <button style={{ marginTop: 20, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }} onClick={() => setApprovalModal(null)}>Close</button>
+                  <div style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "#166534" }}>Already Approved</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 6 }}>This entry has been approved and cannot be changed.</div>
+                  <button style={{ marginTop: 20, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", color: "var(--hz-ink-2)" }} onClick={() => setApprovalModal(null)}>Close</button>
                 </div>
               ) : (<>
               {/* Current status */}
               <div style={{ background: "#f8fbff", borderRadius: 10, padding: "12px 16px", marginBottom: 18, display: "flex", gap: 12, alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: "#374151" }}>Current:</span>
+                <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>Current:</span>
                 <span style={s.badge(APPROVAL_META[approvalModal.entry.approvalStatus])}>
                   <span style={s.dot(APPROVAL_META[approvalModal.entry.approvalStatus]?.dot)} />
                   {APPROVAL_META[approvalModal.entry.approvalStatus]?.label}
                 </span>
-                <span style={{ fontSize: 13, color: "#374151" }}>→ Change to:</span>
+                <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>→ Change to:</span>
               </div>
 
               <div style={s.formGroup}>
@@ -6377,7 +6390,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>Approved By</label>
-                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>OH</div>
+                <div style={{ ...s.input, background: "#f8fafc", color: "var(--hz-ink-2)", cursor: "default", display: "flex", alignItems: "center" }}>OH</div>
               </div>
               <div style={s.formGroup}>
                 <label style={s.label}>
@@ -6408,7 +6421,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {/* ─── SEND FOR PAYMENT MODAL (Procurement) ─── */}
       {sendPaymentModal && (
         <div style={s.overlay} onClick={() => !paymentLoading && (setSendPaymentModal(null), setSendPaymentDocNumber(""))}>
-          <div style={s.modalBox(440)} onClick={e => e.stopPropagation()}>
+          <div style={s.modalBox(980)} onClick={e => e.stopPropagation()}>
             <div style={s.mHeader}>
               <div>
                 <div style={s.mTitle}>Request Payment</div>
@@ -6416,19 +6429,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               <button style={s.closeBtn} onClick={() => { setSendPaymentModal(null); setSendPaymentDocNumber(""); }}>✕</button>
             </div>
-            <div style={s.mBody}>
-              <div style={{ fontSize: 13.5, color: "#0f172a", background: "#f1f5f9", borderRadius: 8, padding: "8px 12px", marginBottom: 12, lineHeight: 1.45 }}>
-                This request goes to <b>{sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "the allocated procurement person"}</b> for approval. Once approved it reaches Accounts → Send for Payment.
-              </div>
+            <div style={{ ...s.mBody, padding: "18px 26px 6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))", gap: "0 30px", alignItems: "start" }}>
+                <div>
+                <div style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#0f766e", margin: "0 0 10px" }}>Document</div>
               {sendPaymentModal.docOptions ? (
                 <div style={s.formGroup}>
                   <label style={s.label}>PO / Vendor *</label>
-                  <select style={s.input} value={sendPaymentDocNumber} onChange={e => setSendPaymentDocNumber(e.target.value)}>
+                  <select style={s.input} value={sendPaymentDocNumber} onChange={e => { setSendPaymentDocNumber(e.target.value); setPaymentItemDesc(payItemDescFor(sendPaymentModal.entry, e.target.value)); }}>
                     {sendPaymentModal.docOptions.map(d => (
                       <option key={d.docNumber} value={d.docNumber}>{d.docNumber} — {d.vendor || "—"}</option>
                     ))}
                   </select>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", marginTop: 4 }}>
                     This PR has multiple POs — only VP-approved ones are listed here.
                   </div>
                 </div>
@@ -6436,13 +6449,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <>
                   <div style={s.formGroup}>
                     <label style={s.label}>Vendor</label>
-                    <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                    <div style={{ ...s.input, background: "#f8fafc", color: "var(--hz-ink-2)", cursor: "default", display: "flex", alignItems: "center" }}>
                       {sendPaymentModal.entry.vendor || "—"}
                     </div>
                   </div>
                   <div style={s.formGroup}>
                     <label style={s.label}>PWJ Doc Number</label>
-                    <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                    <div style={{ ...s.input, background: "#f8fafc", color: "var(--hz-ink-2)", cursor: "default", display: "flex", alignItems: "center" }}>
                       {sendPaymentModal.entry.docNumber || "—"}
                     </div>
                   </div>
@@ -6450,10 +6463,43 @@ function Dashboard({ user, onLogout: handleLogout }) {
               )}
               <div style={s.formGroup}>
                 <label style={s.label}>Project</label>
-                <div style={{ ...s.input, background: "#f8fafc", color: "#374151", cursor: "default", display: "flex", alignItems: "center" }}>
+                <div style={{ ...s.input, background: "#f8fafc", color: "var(--hz-ink-2)", cursor: "default", display: "flex", alignItems: "center" }}>
                   {sendPaymentModal.entry.projectName || "—"}
                 </div>
               </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Item description</label>
+                <textarea style={s.textarea} rows={3} placeholder="What this payment is for…"
+                  value={paymentItemDesc} onChange={e => setPaymentItemDesc(e.target.value)} />
+                <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-muted)", marginTop: 4 }}>Fetched from the document — edit it if this payment covers something different.</div>
+              </div>
+              {(() => {
+                const reqs = payReqsFor(sendPaymentModal.entry.id);
+                if (!reqs.length) return null;
+                const fdt = (d) => d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+                const stCol = { PENDING: "#b45309", APPROVED: "#166534", REJECTED: "#991b1b" };
+                return (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>Payment request cycle ({reqs.length})</div>
+                    <div style={{ maxHeight: 170, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                      {reqs.map(r => (
+                        <div key={r.id} style={{ padding: "7px 10px", fontSize: "var(--hz-text-xs)", borderBottom: "1px solid #f1f5f9", lineHeight: 1.45 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                            <b>₹{Number(r.amount).toLocaleString("en-IN")}{r.paymentStage ? ` · ${r.paymentStage}` : ""}{r.docNumber ? ` · ${r.docNumber}` : ""}</b>
+                            <span style={{ color: stCol[r.status] || "var(--hz-muted)", fontWeight: 700, whiteSpace: "nowrap" }}>{r.status === "PENDING" ? "Awaiting procurement" : r.status === "APPROVED" ? "Sent to Accounts" : r.status === "REJECTED" ? "Rejected" : r.status}</span>
+                          </div>
+                          {r.requiredByDate && <div style={{ color: "#0f766e", fontWeight: 600 }}>Required by: {new Date(r.requiredByDate + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>}
+                          <div style={{ color: "var(--hz-ink-2)" }}>Requested: {fdt(r.requestedAt)}{r.requestedByName || r.requestedBy ? ` · ${r.requestedByName || r.requestedBy}` : ""}</div>
+                          {r.decidedAt && <div style={{ color: "var(--hz-ink-2)" }}>{r.status === "REJECTED" ? "Rejected" : "Approved"}: {fdt(r.decidedAt)}{r.decidedBy ? ` · ${r.decidedBy}` : ""}{r.status === "REJECTED" && r.decisionRemark ? ` — ${r.decisionRemark}` : ""}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+                </div>
+                <div>
+                <div style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#0f766e", margin: "0 0 10px" }}>Payment</div>
               <div style={s.formGroup}>
                 <label style={s.label}>Amount Available to Send</label>
                 <div style={{ ...s.input, background: "#f0fdfa", color: "#0f766e", fontWeight: 700, cursor: "default", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -6463,18 +6509,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       : `₹ ${Number(paymentAvail.available || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </span>
                   {paymentAvail && paymentAvail !== "loading" && paymentAvail !== "error" && (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "var(--hz-text-2xs)", fontWeight: 500, color: "var(--hz-muted)", whiteSpace: "nowrap" }}>
                       PO ₹{Number(paymentAvail.poValue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} · already sent ₹{Number(paymentAvail.alreadySent || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   )}
                 </div>
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.pendingRequestId && (
-                  <div style={{ fontSize: 11.5, color: "#dc2626", fontWeight: 600, marginTop: 4 }}>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-danger)", fontWeight: 600, marginTop: 4 }}>
                     A request of ₹{Number(paymentAvail.pendingAmount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })} for this PR is still pending approval — a new request can be raised once it is approved or rejected.
                   </div>
                 )}
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved === false && (
-                  <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "#b45309", marginTop: 4 }}>
                     Couldn’t resolve the PO total here — the amount cap is still enforced on submit.
                   </div>
                 )}
@@ -6485,11 +6531,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} autoFocus />
                 {paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved !== false
                   && paymentAmount && Number(paymentAmount) > Number(paymentAvail.available || 0) && (
-                  <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>
+                  <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-danger)", marginTop: 4 }}>
                     Exceeds amount available (₹{Number(paymentAvail.available || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
                   </div>
                 )}
               </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: "0 14px" }}>
               <div style={s.formGroup}>
                 <label style={s.label}>Stage payment</label>
                 <select style={s.select2 || s.input} value={paymentStage} onChange={e => {
@@ -6503,6 +6550,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   ))}
                 </select>
               </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Payment required by (date)</label>
+                <input type="date" style={s.input} value={paymentRequiredBy} min={new Date().toISOString().slice(0, 10)} onChange={e => setPaymentRequiredBy(e.target.value)} />
+              </div>
+                </div>
               <div style={s.formGroup}>
                 <label style={s.label}>Payment made against</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -6518,7 +6570,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <label key={val} title={locked ? "Final payment is made against the Vendor Invoice" : undefined}
                           style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.5 : 1,
                             border: `1.5px solid ${on ? "#0f766e" : "#e2e8f0"}`, background: on ? "#f0fdfa" : "#fff",
-                            color: on ? "#0f766e" : "#334155", fontSize: 13, fontWeight: 600 }}>
+                            color: on ? "#0f766e" : "var(--hz-ink-2)", fontSize: "var(--hz-text-sm)", fontWeight: 600 }}>
                           <input type="radio" name="paymentMadeAgainst" checked={on} disabled={locked}
                             onChange={() => setPaymentAgainstSel(val)} />
                           {lbl}
@@ -6533,7 +6585,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <textarea style={s.textarea} placeholder="Add a note for the Accounts team (optional)…"
                   value={paymentRemarks} onChange={e => setPaymentRemarks(e.target.value)} />
               </div>
-              <button style={s.submitBtn("linear-gradient(135deg,#0f766e,#14b8a6)")}
+                </div>
+              </div>
+            </div>
+            <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #e2e8f0", padding: "12px 26px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", background: "#f1f5f9", borderRadius: 8, padding: "8px 12px", margin: 0, lineHeight: 1.45, flex: 1 }}>
+                This request goes to <b>{sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "the allocated procurement person"}</b> for approval. Once approved it reaches Accounts → Send for Payment.
+              </div>
+              <button style={{ ...s.submitBtn("linear-gradient(135deg,#0f766e,#14b8a6)"), width: "auto", minWidth: 190, flexShrink: 0 }}
                 disabled={paymentLoading || !paymentAmount || Number(paymentAmount) <= 0
                   || (paymentAvail && typeof paymentAvail === "object" && !!paymentAvail.pendingRequestId)
                   || (paymentAvail && typeof paymentAvail === "object" && paymentAvail.resolved !== false
@@ -6541,7 +6600,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 onClick={async () => {
                   setPaymentLoading(true);
                   try {
-                    const r = await api.requestPwjPayment(user.username, sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined);
+                    const r = await api.requestPwjPayment(user.username, sendPaymentModal.entry.id, Number(paymentAmount), paymentRemarks, paymentAgainstSel, paymentStage, sendPaymentDocNumber || undefined, paymentRequiredBy || undefined, paymentItemDesc);
                     if (r.success) {
                       showToast((isProcurementEngineer || isProcurement || isAdmin) ? "Payment sent to Accounts ✅" : `Payment request sent to ${sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "procurement"} for approval ✅`);
                       loadPaymentRequests();
@@ -6571,23 +6630,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 20, color: "#000", letterSpacing: "-0.2px" }}>Pending OH Approval</div>
-                  <div style={{ fontSize: 16, color: "#000", marginTop: 2 }}>{pendingList.length} entr{pendingList.length !== 1 ? "ies" : "y"} awaiting action · sorted by latest</div>
+                  <div style={{ fontFamily: "var(--hz-font-display)", fontWeight: 700, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)", letterSpacing: "-0.2px" }}>Pending OH Approval</div>
+                  <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", marginTop: 2 }}>{pendingList.length} entr{pendingList.length !== 1 ? "ies" : "y"} awaiting action · sorted by latest</div>
                 </div>
-                <button onClick={() => setPendingModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#000", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <button onClick={() => setPendingModal(false)} style={{ background: "#f1f5f9", border: "none", color: "var(--hz-ink)", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: "var(--hz-text-xl)", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
               {/* Search */}
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#000", pointerEvents: "none" }}>🔍</span>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", pointerEvents: "none" }}>🔍</span>
                 <input
                   autoFocus
                   placeholder="Search by material, project, raised by…"
                   value={pendingSearch}
                   onChange={e => setPendingSearch(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px 10px 34px", fontSize: 16.5, fontFamily: "inherit", outline: "none", color: "#000", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px 10px 34px", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)", boxSizing: "border-box" }}
                 />
                 {pendingSearch && (
-                  <button onClick={() => setPendingSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#000", cursor: "pointer", fontSize: 16, padding: 0 }}>✕</button>
+                  <button onClick={() => setPendingSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--hz-ink)", cursor: "pointer", fontSize: "var(--hz-text-lg)", padding: 0 }}>✕</button>
                 )}
               </div>
             </div>
@@ -6605,7 +6664,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 ) : sorted;
 
                 if (filtered.length === 0) return (
-                  <div style={{ textAlign: "center", padding: "48px 0", color: "#000", fontSize: 17 }}>
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "var(--hz-ink)", fontSize: "var(--hz-text-lg)" }}>
                     {q ? `No results for "${pendingSearch}"` : "🎉 No pending approvals!"}
                   </div>
                 );
@@ -6628,16 +6687,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div key={row.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, padding: "20px 22px", marginBottom: 14 }}>
                       {/* Top row */}
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-                        <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>#{idx + 1}</span>
+                        <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#1e3a5f", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>#{idx + 1}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 17, color: "#000", marginBottom: 4 }}>{row.materialRequired}</div>
-                          <div style={{ fontSize: 15, color: "#000" }}>
+                          <div style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", marginBottom: 4 }}>{row.materialRequired}</div>
+                          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>
                             {row.projectName}
                             {row.boqNo && <span> · BOQ: {row.boqNo}</span>}
                             {row.vendor && <span> · {row.vendor}</span>}
                           </div>
-                          <div style={{ fontSize: 14.5, color: "#000", marginTop: 4 }}>
-                            Raised by <strong style={{ color: "#000" }}>{row.raisedBy}</strong> · #{row.id}
+                          <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginTop: 4 }}>
+                            Raised by <strong style={{ color: "var(--hz-ink)" }}>{row.raisedBy}</strong> · #{row.id}
                             {relTime && <span> · {relTime}</span>}
                           </div>
                         </div>
@@ -6655,7 +6714,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         ].map(opt => (
                           <button key={opt.val} disabled={action.saving}
                             onClick={() => opt.val === "PROCEED" ? submitInlineOH(row, { status: "PROCEED", comment: "" }) : setAction({ status: opt.val })}
-                            style={{ flex: 1, padding: "10px 8px", border: opt.border, borderRadius: 9, background: "#fff", color: action.status === opt.val ? opt.accent : "#000", fontSize: 15, fontWeight: 700, cursor: action.saving ? "default" : "pointer", fontFamily: "inherit", transition: "all .15s", opacity: action.saving ? 0.7 : 1 }}>
+                            style={{ flex: 1, padding: "10px 8px", border: opt.border, borderRadius: 9, background: "#fff", color: action.status === opt.val ? opt.accent : "var(--hz-ink)", fontSize: "var(--hz-text-md)", fontWeight: 700, cursor: action.saving ? "default" : "pointer", fontFamily: "inherit", transition: "all .15s", opacity: action.saving ? 0.7 : 1 }}>
                             {opt.label}
                           </button>
                         ))}
@@ -6669,14 +6728,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             placeholder="Remarks required — state reason for Hold / Not Approved…"
                             value={action.comment || ""}
                             onChange={e => setAction({ comment: e.target.value })}
-                            style={{ width: "100%", border: `1.5px solid ${!action.comment?.trim() ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 9, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#000", boxSizing: "border-box", marginBottom: 10 }}
+                            style={{ width: "100%", border: `1.5px solid ${!action.comment?.trim() ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 9, padding: "10px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "var(--hz-ink)", boxSizing: "border-box", marginBottom: 10 }}
                           />
                           <button
                             onClick={() => submitInlineOH(row)}
                             disabled={action.saving || !action.comment?.trim()}
-                            style={{ display: "inline-block", width: "auto", padding: "10px 22px", border: "none", borderRadius: 9, cursor: (action.saving || !action.comment?.trim()) ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 17.5,
+                            style={{ display: "inline-block", width: "auto", padding: "10px 22px", border: "none", borderRadius: 9, cursor: (action.saving || !action.comment?.trim()) ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: "var(--hz-text-lg)",
                               background: action.status === "HOLD" ? "#f59e0b" : "#ef4444",
-                              color: "#000", opacity: (action.saving || !action.comment?.trim()) ? 0.6 : 1 }}>
+                              color: "var(--hz-ink)", opacity: (action.saving || !action.comment?.trim()) ? 0.6 : 1 }}>
                             {action.saving ? "Saving…" : `Submit — ${action.status === "HOLD" ? "Hold" : "Not Approved"}`}
                           </button>
                         </>
@@ -6720,7 +6779,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         ))}
                     </select>
                     {createForm.onBehalf && (
-                      <div style={{ fontSize: 12, color: "#059669", marginTop: 4, fontWeight: 500 }}>
+                      <div style={{ fontSize: "var(--hz-text-xs)", color: "#059669", marginTop: 4, fontWeight: 500 }}>
                         ✅ This PR will be raised on behalf of {createForm.onBehalf}
                       </div>
                     )}
@@ -6743,7 +6802,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       onChange={e => setCreateForm(f => ({ ...f, projectName: e.target.value }))} />
                   )}
                   {managedProjects.filter(p => p.active).length === 0 && (
-                    <div style={{ fontSize: 13, color: "#374151", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 3 }}>No projects configured — contact Administrator to add projects.</div>
                   )}
                 </div>
                 {/* 2. BOQ No. */}
@@ -6758,7 +6817,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       boqTimerRef.current = setTimeout(() => autofillFromBoq(v, createForm.projectName), 500);
                     }}
                     onBlur={e => { clearTimeout(boqTimerRef.current); autofillFromBoq(e.target.value, createForm.projectName); }} />
-                  {boqLookup && <div style={{ fontSize: 12.5, marginTop: 4, color: boqLookup.startsWith("✓") ? "#166534" : "#b45309" }}>{boqLookup}</div>}
+                  {boqLookup && <div style={{ fontSize: "var(--hz-text-xs)", marginTop: 4, color: boqLookup.startsWith("✓") ? "#166534" : "#b45309" }}>{boqLookup}</div>}
                 </div>
                 {/* 3. Material Required */}
                 <div style={{ gridColumn: "1/-1", ...s.formGroup }}>
@@ -6795,8 +6854,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             {isPdf ? (
                               <a href={BACKEND_BASE + url} target="_blank" rel="noreferrer"
                                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 90, width: 90, borderRadius: 8, border: "1.5px solid #e2eaf5", background: "#fef2f2", gap: 4, textDecoration: "none" }}>
-                                <span style={{ fontSize: 28 }}>📄</span>
-                                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700 }}>PDF</span>
+                                <span style={{ fontSize: "var(--hz-text-3xl)" }}>📄</span>
+                                <span style={{ fontSize: "var(--hz-text-2xs)", color: "#ef4444", fontWeight: 700 }}>PDF</span>
                               </a>
                             ) : (
                               <img src={BACKEND_BASE + url} alt={`preview-${i + 1}`}
@@ -6807,7 +6866,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const updated = parseImageRefs(createForm.imageReference).filter((_, idx) => idx !== i);
                                 setCreateForm(f => ({ ...f, imageReference: updated.length ? JSON.stringify(updated) : "" }));
                               }}
-                              style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                              style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "var(--hz-on-dark)", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: "var(--hz-text-xs)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                               ✕
                             </button>
                           </div>
@@ -6856,7 +6915,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </div>
               {/* Visibility controls — only Admin or Procurement can share a PR with other engineers */}
               {(isAdmin || isProcurement) && (<>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 14, color: "#374151", cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", cursor: "pointer" }}>
                 <input type="checkbox"
                   checked={createForm.visibility === "ENGINEERS"}
                   onChange={e => setCreateForm(f => ({ ...f, visibility: e.target.checked ? "ENGINEERS" : "PRIVATE" }))} />
@@ -6864,17 +6923,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
               </label>
               {createForm.visibility !== "ENGINEERS" && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 6 }}>
                     …or share with specific engineers only
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 110, overflowY: "auto", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
                     {allUsers
-                      .filter(u => u.role === "ENGINEER" && u.active !== false && u.fullName !== (user.fullName || user.username))
+                      .filter(u => ["ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"].includes(u.role) && u.active !== false && u.fullName !== (user.fullName || user.username))
                       .map(u => {
                         const name = u.fullName || u.username;
                         const checked = (createForm.sharedWithEngineers || []).includes(name);
                         return (
-                          <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#374151", cursor: "pointer", background: checked ? "#eef5fb" : "transparent", padding: "3px 8px", borderRadius: 20 }}>
+                          <label key={u.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", cursor: "pointer", background: checked ? "#eef5fb" : "transparent", padding: "3px 8px", borderRadius: 20 }}>
                             <input type="checkbox" checked={checked}
                               onChange={e => setCreateForm(f => {
                                 const cur = f.sharedWithEngineers || [];
@@ -6903,16 +6962,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const sec = (key) => ({
           wrap: { border: "1px solid #dbe6f3", borderRadius: 12, marginBottom: 14, overflow: "hidden" },
           head: { background: "#eef5fb", padding: "11px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" },
-          headL: { display: "flex", alignItems: "center", gap: 7, fontSize: 14, fontWeight: 700, color: "#1a6ab1" },
+          headL: { display: "flex", alignItems: "center", gap: 7, fontSize: "var(--hz-text-md)", fontWeight: 700, color: "#1a6ab1" },
           body: vendorSec[key] ? { padding: "16px 18px" } : { display: "none" },
         });
         const grid = (cols) => ({ display: "grid", gridTemplateColumns: cols, gap: 10, marginBottom: 10 });
         const fld = { display: "flex", flexDirection: "column", gap: 4 };
-        const lbl = { fontSize: 13.5, fontWeight: 600, color: "#374151" };
-        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
+        const lbl = { fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)" };
+        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
         const toggle = (key) => setVendorSec(s => ({ ...s, [key]: !s[key] }));
         const minusBtn = (key) => (
-          <button type="button" onClick={() => toggle(key)} style={{ background: "#1a6ab1", border: "none", color: "#fff", width: 22, height: 22, borderRadius: "50%", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button type="button" onClick={() => toggle(key)} style={{ background: "#1a6ab1", border: "none", color: "var(--hz-on-dark)", width: 22, height: 22, borderRadius: "50%", cursor: "pointer", fontSize: "var(--hz-text-md)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             {vendorSec[key] ? "−" : "+"}
           </button>
         );
@@ -6949,7 +7008,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ display: "flex", gap: 3, paddingTop: 8 }}>
                             {[1,2,3,4,5].map(n => (
                               <span key={n} onClick={() => setF("ratings", vf.ratings === n ? 0 : n)}
-                                style={{ fontSize: 22, cursor: "pointer", color: n <= vf.ratings ? "#f59e0b" : "#d1d5db" }}>★</span>
+                                style={{ fontSize: "var(--hz-text-2xl)", cursor: "pointer", color: n <= vf.ratings ? "#f59e0b" : "#d1d5db" }}>★</span>
                             ))}
                           </div>
                         </div>
@@ -7051,7 +7110,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <span style={{ position: "absolute", left: vf.sameAddressForBillingShipping ? 20 : 3, top: 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: ".2s" }} />
                             </span>
                           </label>
-                          <span style={{ fontSize: 14, color: "#1e293b" }}>Same Address For Billing &amp; Shipping</span>
+                          <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>Same Address For Billing &amp; Shipping</span>
                         </div>
                       </div>
                     </div>
@@ -7072,11 +7131,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={fld}><label style={lbl}>Contact Number</label><input style={inp} placeholder="Enter Contact Number" value={c.contactNumber || ""} onChange={e => setVendorForm(f => ({ ...f, contacts: f.contacts.map((x,j) => j===i ? {...x, contactNumber: e.target.value} : x) }))} /></div>
                           <div style={fld}><label style={lbl}>Email Address</label><input style={inp} placeholder="Enter Email Address" value={c.email || ""} onChange={e => setVendorForm(f => ({ ...f, contacts: f.contacts.map((x,j) => j===i ? {...x, email: e.target.value} : x) }))} /></div>
                           <button type="button" onClick={() => setVendorForm(f => ({ ...f, contacts: f.contacts.filter((_,j) => j!==i) }))}
-                            style={{ background: "#fee2e2", border: "none", borderRadius: 8, width: 34, height: 36, cursor: "pointer", color: "#ef4444", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                            style={{ background: "#fee2e2", border: "none", borderRadius: 8, width: 34, height: 36, cursor: "pointer", color: "#ef4444", fontSize: "var(--hz-text-lg)", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                         </div>
                       ))}
                       <button type="button" onClick={() => setVendorForm(f => ({ ...f, contacts: [...f.contacts, { personName: "", role: "", contactNumber: "", email: "" }] }))}
-                        style={{ background: "#1a6ab1", border: "none", borderRadius: 8, padding: "7px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                        style={{ background: "#1a6ab1", border: "none", borderRadius: 8, padding: "7px 18px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                         + Add Contact
                       </button>
                     </div>
@@ -7092,23 +7151,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={st.body}>
                       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                         <div style={{ flexShrink: 0, width: 120 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a6ab1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>📄 Document Reference</div>
+                          <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#1a6ab1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>📄 Document Reference</div>
                           <label style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 120, borderRadius: 10, cursor: "pointer", border: vendorDocPreview ? "2px solid #93c5fd" : "2px dashed #93c5fd", background: vendorDocPreview ? "#f0f7ff" : "#f8fbff", overflow: "hidden", position: "relative" }}>
                             <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleVendorDoc} />
-                            {vendorDocPreview ? <img src={vendorDocPreview} alt="doc" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 32, opacity: 0.35 }}>📎</span>}
+                            {vendorDocPreview ? <img src={vendorDocPreview} alt="doc" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "var(--hz-text-3xl)", opacity: 0.35 }}>📎</span>}
                             {vendorOcrLoading && (
                               <div style={{ position: "absolute", inset: 0, background: "rgba(15,76,129,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                <div style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>Reading…</div>
+                                <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-on-dark)", fontWeight: 700 }}>Reading…</div>
                                 <div style={{ width: 72, height: 5, background: "rgba(255,255,255,.3)", borderRadius: 4, overflow: "hidden" }}>
                                   <div style={{ height: "100%", width: `${vendorOcrProgress}%`, background: "#7dd3fc", borderRadius: 4, transition: "width .3s" }} />
                                 </div>
-                                <div style={{ fontSize: 12, color: "#bae6fd" }}>{vendorOcrProgress}%</div>
+                                <div style={{ fontSize: "var(--hz-text-xs)", color: "#bae6fd" }}>{vendorOcrProgress}%</div>
                               </div>
                             )}
                           </label>
-                          <div style={{ fontSize: 12, color: "#374151", marginTop: 4, textAlign: "center", lineHeight: 1.4 }}>Click to upload<br/>passbook / doc</div>
+                          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", marginTop: 4, textAlign: "center", lineHeight: 1.4 }}>Click to upload<br/>passbook / doc</div>
                           {vendorDocFile && !vendorOcrLoading && (
-                            <button style={{ marginTop: 6, width: "100%", background: "#e0f2fe", border: "1px solid #93c5fd", borderRadius: 6, padding: "4px 0", fontSize: 12, fontWeight: 700, color: "#0369a1", cursor: "pointer", fontFamily: "inherit" }} onClick={() => runVendorOcr(vendorDocFile)}>🔄 Re-process</button>
+                            <button style={{ marginTop: 6, width: "100%", background: "#e0f2fe", border: "1px solid #93c5fd", borderRadius: 6, padding: "4px 0", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "#0369a1", cursor: "pointer", fontFamily: "inherit" }} onClick={() => runVendorOcr(vendorDocFile)}>🔄 Re-process</button>
                           )}
                         </div>
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -7118,7 +7177,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={fld}><label style={lbl}>IFSC Code</label><input style={inp} placeholder="IFSC Code" value={vf.ifscCode} onChange={e => setF("ifscCode", e.target.value)} /></div>
                           </div>
                           <div style={fld}>
-                            <label style={lbl}>Combined Bank Details <span style={{ color: "#374151", fontWeight: 400 }}>(auto-filled)</span></label>
+                            <label style={lbl}>Combined Bank Details <span style={{ color: "var(--hz-ink-2)", fontWeight: 400 }}>(auto-filled)</span></label>
                             <textarea style={{ ...inp, minHeight: 56, resize: "vertical" }} placeholder="Bank Name | A/C No: … | IFSC: …" value={vf.bankDetails} onChange={e => setF("bankDetails", e.target.value)} />
                           </div>
                         </div>
@@ -7148,7 +7207,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           style={{ ...inp, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
                         />
                       </div>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#1e293b", cursor: "pointer", marginTop: 4 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", cursor: "pointer", marginTop: 4 }}>
                         <input type="checkbox" checked={vf.vendorPaysReturnShipping} onChange={e => setF("vendorPaysReturnShipping", e.target.checked)} />
                         Yes, Vendor Pays For Return Shipping Charges
                       </label>
@@ -7171,7 +7230,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const STATUS_CFG = {
           PENDING_APPROVAL: { label: "Pending",  bg: "#fef3c7", color: "#b45309", dot: "#f59e0b" },
           APPROVED:         { label: "Approved", bg: "#dcfce7", color: "#15803d", dot: "#22c55e" },
-          REJECTED:         { label: "Rejected", bg: "#fee2e2", color: "#dc2626", dot: "#ef4444" },
+          REJECTED:         { label: "Rejected", bg: "#fee2e2", color: "var(--hz-danger)", dot: "#ef4444" },
         };
         const tabs = [
           { key: "ALL",              label: "All" },
@@ -7201,13 +7260,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <button key={t.key} onClick={() => setVendorStatusTab(t.key)}
                       style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
-                        padding: "8px 16px", fontSize: 14, fontWeight: active ? 700 : 500,
-                        color: active ? "#1a6ab1" : "#64748b",
+                        padding: "8px 16px", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 500,
+                        color: active ? "#1a6ab1" : "var(--hz-muted)",
                         borderBottom: active ? "2px solid #1a6ab1" : "2px solid transparent",
                         marginBottom: -2 }}>
                       {t.label}
-                      <span style={{ marginLeft: 6, fontSize: 13, background: active ? "#dbeafe" : "#f1f5f9",
-                        color: active ? "#1d4ed8" : "#64748b", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
+                      <span style={{ marginLeft: 6, fontSize: "var(--hz-text-sm)", background: active ? "#dbeafe" : "#f1f5f9",
+                        color: active ? "#1d4ed8" : "var(--hz-muted)", borderRadius: 10, padding: "1px 7px", fontWeight: 700 }}>
                         {count}
                       </span>
                     </button>
@@ -7217,9 +7276,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               <div style={{ ...s.mBody, overflowY: "auto", flex: 1 }}>
                 {vpLoading ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#374151" }}>Loading…</div>
+                  <div style={{ textAlign: "center", padding: 40, color: "var(--hz-ink-2)" }}>Loading…</div>
                 ) : displayed.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#374151" }}>No vendors in this category</div>
+                  <div style={{ textAlign: "center", padding: 40, color: "var(--hz-ink-2)" }}>No vendors in this category</div>
                 ) : displayed.map(v => {
                   const cfg = STATUS_CFG[v.status] || STATUS_CFG.PENDING_APPROVAL;
                   const isPending = v.status === "PENDING_APPROVAL";
@@ -7228,20 +7287,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>{v.name}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, borderRadius: 20, padding: "2px 10px",
+                            <span style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{v.name}</span>
+                            <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, borderRadius: 20, padding: "2px 10px",
                               background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", gap: 4 }}>
                               <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
                               {cfg.label}
                             </span>
                           </div>
-                          <div style={{ fontSize: 13, color: "#374151" }}>
+                          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
                             {v.category && <span style={{ marginRight: 12 }}>📦 {v.category}</span>}
                             {v.email && <span style={{ marginRight: 12 }}>✉️ {v.email}</span>}
                             {v.phoneNumber && <span>📞 {v.phoneNumber}</span>}
                           </div>
-                          {v.bankDetails && <div style={{ fontSize: 13, color: "#1e293b", marginTop: 4 }}>🏦 {v.bankDetails}</div>}
-                          <div style={{ fontSize: 13, color: "#374151", marginTop: 4 }}>Submitted: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
+                          {v.bankDetails && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 4 }}>🏦 {v.bankDetails}</div>}
+                          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 4 }}>Submitted: {v.createdAt ? v.createdAt.substring(0, 10) : "—"}</div>
                         </div>
                         {(isVP || isAdmin) && isPending && (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 16 }}>
@@ -7290,8 +7349,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Engineer's reference info for procurement */}
               {assignModal.materialRequired && (
                 <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, color: "#1e293b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
-                  <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700 }}>{assignModal.materialRequired}</div>
+                  <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Material</div>
+                  <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", fontWeight: 700 }}>{assignModal.materialRequired}</div>
                 </div>
               )}
               <div style={s.formGroup}>
@@ -7301,8 +7360,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <button key={val} type="button"
                       onClick={() => setAssignForm(f => ({ ...f, pwjType: f.pwjType === val ? "" : val }))}
                       style={{ flex: 1, border: `2px solid ${assignForm.pwjType === val ? col : "#e2e8f0"}`, borderRadius: 10, padding: "10px 6px", cursor: "pointer", background: assignForm.pwjType === val ? col : "#fff", transition: "all .15s", textAlign: "center" }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: assignForm.pwjType === val ? "#fff" : "#1e293b" }}>{val}</div>
-                      <div style={{ fontSize: 12, color: assignForm.pwjType === val ? "rgba(255,255,255,0.85)" : "#475569", marginTop: 2 }}>{desc}</div>
+                      <div style={{ fontWeight: 800, fontSize: "var(--hz-text-md)", color: assignForm.pwjType === val ? "var(--hz-on-dark)" : "var(--hz-ink-2)" }}>{val}</div>
+                      <div style={{ fontSize: "var(--hz-text-xs)", color: assignForm.pwjType === val ? "rgba(255,255,255,0.85)" : "#475569", marginTop: 2 }}>{desc}</div>
                     </button>
                   ))}
                 </div>
@@ -7312,9 +7371,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {assignForm.vendors.map((vendor, vi) => (
                   <div key={vi} style={{ position: "relative", marginBottom: 8 }}>
                     {assignVendorLocked[vi] ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "#f1f5f9", border: "1.5px solid #e2e8f0", borderRadius: 10, color: "#374151", fontSize: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "#f1f5f9", border: "1.5px solid #e2e8f0", borderRadius: 10, color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
                         🔒 <span style={{ fontWeight: 600 }}>{vendor || `Vendor ${vi + 1}`}</span>
-                        <span style={{ marginLeft: "auto", fontSize: 12, color: "#64748b" }}>Already issued — PO locked</span>
+                        <span style={{ marginLeft: "auto", fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>Already issued — PO locked</span>
                       </div>
                     ) : (
                     <>
@@ -7339,7 +7398,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           setAssignVendorSearches(s => s.filter((_, i) => i !== vi));
                           setShowAssignVendorDrops(d => d.filter((_, i) => i !== vi));
                           setAssignVendorLocked(l => l.filter((_, i) => i !== vi));
-                        }} style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>×</button>
+                        }} style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: "var(--hz-text-lg)", lineHeight: 1 }}>×</button>
                       )}
                     </div>
                     {showAssignVendorDrops[vi] && (() => {
@@ -7348,7 +7407,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       return (
                         <div style={{ position: "absolute", top: "100%", left: 0, right: assignForm.vendors.length > 1 ? 46 : 0, background: "#fff", border: "1.5px solid #bae6fd", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 999, maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
                           {filtered.length === 0 ? (
-                            <div style={{ padding: "12px 14px", fontSize: 13, color: "#374151", textAlign: "center" }}>
+                            <div style={{ padding: "12px 14px", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", textAlign: "center" }}>
                               {approvedVendors.length === 0 ? "No approved vendors. Approve vendors from the Vendors tab first." : "No vendors match your search."}
                             </div>
                           ) : filtered.map(v => (
@@ -7358,18 +7417,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const ns = [...assignVendorSearches]; ns[vi] = v.name; setAssignVendorSearches(ns);
                                 const nd = [...showAssignVendorDrops]; nd[vi] = false; setShowAssignVendorDrops(nd);
                               }}
-                              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 14 }}
+                              style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: "var(--hz-text-md)" }}
                               onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
                               onMouseLeave={e => e.currentTarget.style.background = "#fff"}
                             >
-                              <span style={{ fontWeight: 600, color: "#0f172a" }}>{v.name}</span>
-                              {v.category && <span style={{ fontSize: 13, color: "#374151", marginLeft: 8 }}>{v.category}</span>}
+                              <span style={{ fontWeight: 600, color: "var(--hz-ink)" }}>{v.name}</span>
+                              {v.category && <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginLeft: 8 }}>{v.category}</span>}
                             </div>
                           ))}
                         </div>
                       );
                     })()}
-                    {vendor && <div style={{ marginTop: 4, fontSize: 13, color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
+                    {vendor && <div style={{ marginTop: 4, fontSize: "var(--hz-text-sm)", color: "#166534", fontWeight: 600 }}>✓ {vendor}</div>}
                     </>
                     )}
                   </div>
@@ -7379,7 +7438,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   setAssignVendorSearches(s => [...s, ""]);
                   setShowAssignVendorDrops(d => [...d, false]);
                   setAssignVendorLocked(l => [...l, false]);
-                }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+                }} style={{ marginTop: 2, background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: "var(--hz-text-md)", fontFamily: "inherit" }}>
                   + Add Vendor
                 </button>
               </div>
@@ -7387,7 +7446,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 <button style={{ ...s.submitBtn(), flex: 1 }} onClick={submitAssign} disabled={assignLoading}>
                   {assignLoading ? "Saving…" : "💾 Save"}
                 </button>
-                <button style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }}
+                <button style={{ flex: 1, background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", color: "var(--hz-ink-2)" }}
                   onClick={() => setAssignModal(null)}>
                   Cancel
                 </button>
@@ -7444,16 +7503,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   {/* Top bar */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ background: typeBg, color: typeColor, borderRadius: 8, padding: "4px 14px", fontWeight: 800, fontSize: 14 }}>{e.pwjType}</span>
-                      <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{typeName}</span>
-                      <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700 }}>{statusLabel}</span>
+                      <span style={{ background: typeBg, color: typeColor, borderRadius: 8, padding: "4px 14px", fontWeight: 800, fontSize: "var(--hz-text-md)" }}>{e.pwjType}</span>
+                      <span style={{ fontFamily: "var(--hz-font-display)", fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{typeName}</span>
+                      <span style={{ background: statusBg, color: statusColor, borderRadius: 20, padding: "3px 12px", fontSize: "var(--hz-text-sm)", fontWeight: 700 }}>{statusLabel}</span>
                       {isPartiallyIssued && (
-                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: 13, fontWeight: 700, border: "1px solid #fde68a" }}>
+                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 20, padding: "3px 12px", fontSize: "var(--hz-text-sm)", fontWeight: 700, border: "1px solid #fde68a" }}>
                           ⚠️ Partially Issued — {multiIssuedCount}/{multiDocs.length} issued · {multiDocs.length - multiIssuedCount}/{multiDocs.length} pending
                         </span>
                       )}
                       {isMulti && (
-                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 8, padding: "3px 10px", fontSize: 13, fontWeight: 700, border: "1px solid #bfdbfe" }}>
+                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 8, padding: "3px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 700, border: "1px solid #bfdbfe" }}>
                           📄 {multiCount} Vendors
                         </span>
                       )}
@@ -7463,10 +7522,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       {isMulti && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 10, padding: "4px 10px", border: "1px solid #e2e8f0" }}>
                           <button onClick={() => setDocViewIndex(i => Math.max(0, i - 1))} disabled={safeIdx === 0}
-                            style={{ background: "none", border: "none", cursor: safeIdx === 0 ? "default" : "pointer", color: safeIdx === 0 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>‹</button>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#374151", minWidth: 70, textAlign: "center" }}>
+                            style={{ background: "none", border: "none", cursor: safeIdx === 0 ? "default" : "pointer", color: safeIdx === 0 ? "#cbd5e1" : "#1d4ed8", fontSize: "var(--hz-text-lg)", fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>‹</button>
+                          <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", minWidth: 70, textAlign: "center" }}>
                             {multiDocs[safeIdx].vendor || `PO ${safeIdx + 1}`}<br/>
-                            <span style={{ fontWeight: 500, color: "#374151" }}>{safeIdx + 1} / {multiCount}</span><br/>
+                            <span style={{ fontWeight: 500, color: "var(--hz-ink-2)" }}>{safeIdx + 1} / {multiCount}</span><br/>
                             {multiDocs.map((doc, di) => {
                               const sub = doc.docStatus || "DRAFT";
                               const st = e.docStatus === "REVOKED" ? "REVOKED"
@@ -7476,15 +7535,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               const c = st === "VP_APPROVED" ? "#16a34a" : st === "PENDING_VP_APPROVAL" ? "#d97706" : st === "REVOKED" ? "#7c3aed" : "#94a3b8";
                               const lbl = st === "VP_APPROVED" ? "✅" : st === "PENDING_VP_APPROVAL" ? "⏳" : st === "REVOKED" ? "↩" : "—";
                               return di === safeIdx
-                                ? <span key={di} style={{ fontSize: 13, color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : st === "REVOKED" ? "Revoked" : "Draft"}</span>
+                                ? <span key={di} style={{ fontSize: "var(--hz-text-sm)", color: c, fontWeight: 700 }}>{lbl} {st === "VP_APPROVED" ? "Issued" : st === "PENDING_VP_APPROVAL" ? "Pending" : st === "REVOKED" ? "Revoked" : "Draft"}</span>
                                 : null;
                             })}
                           </span>
                           <button onClick={() => setDocViewIndex(i => Math.min(multiCount - 1, i + 1))} disabled={safeIdx === multiCount - 1}
-                            style={{ background: "none", border: "none", cursor: safeIdx === multiCount - 1 ? "default" : "pointer", color: safeIdx === multiCount - 1 ? "#cbd5e1" : "#1d4ed8", fontSize: 16, fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>›</button>
+                            style={{ background: "none", border: "none", cursor: safeIdx === multiCount - 1 ? "default" : "pointer", color: safeIdx === multiCount - 1 ? "#cbd5e1" : "#1d4ed8", fontSize: "var(--hz-text-lg)", fontWeight: 700, padding: "0 4px", lineHeight: 1 }}>›</button>
                         </div>
                       )}
-                      <button onClick={() => { setDocModal(null); setDocEditMode(false); setDocViewIndex(0); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#374151" }}>✕</button>
+                      <button onClick={() => { setDocModal(null); setDocEditMode(false); setDocViewIndex(0); }} style={{ background: "#e2e8f0", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink-2)" }}>✕</button>
                     </div>
                   </div>
 
@@ -7507,9 +7566,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     const docNum  = docData.docNumber || (isMulti ? multiDocs[safeIdx]?.docNumber : null) || e.docNumber || autoDocNumber(e);
                     const totals  = calcTotals(docData.items, docData.cgstPct, docData.sgstPct, docData.igstPct);
                     const terms   = e.pwjType === "PO" ? PO_TERMS : e.pwjType === "WO" ? WO_TERMS : JO_TERMS;
-                    const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
-                    const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: 13 };
-                    const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: 13, textAlign: "left" };
+                    const inpSt   = { border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", outline: "none", background: "#f0f9ff", width: "100%", boxSizing: "border-box" };
+                    const tdSt    = { padding: "7px 10px", borderBottom: "1px solid #ddd", fontSize: "var(--hz-text-sm)" };
+                    const thSt    = { padding: "8px 10px", color: "#111", fontWeight: 700, fontSize: "var(--hz-text-sm)", textAlign: "left" };
                     const fmtCcy  = (n) => `₹ ${Number(n || 0).toFixed(2)}`;
                     const fmtTotal = (n) => `₹ ${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const setItem = (i, field, val) => {
@@ -7536,7 +7595,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     };
                     return (
                       <div className="doc-content-scroll" style={{ overflowY: "auto", flex: 1 }}>
-                        <div style={{ padding: "24px 28px", fontFamily: "Arial, sans-serif", fontSize: 14, color: "#111" }}>
+                        <div style={{ padding: "24px 28px", fontFamily: "Arial, sans-serif", fontSize: "var(--hz-text-md)", color: "#111" }}>
 
                           {/* --- HEADER --- */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 16 }}>
@@ -7544,9 +7603,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <img src={HAPPIZO_LOGO_URL} alt="Happizo" style={{ width: 120, height: "auto", display: "block" }} />
                             </div>
                             <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 900, fontSize: 19, color: "#111", marginBottom: 6 }}>{typeName}</div>
-                              <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: 14, alignItems: "center" }}>
-                                <span style={{ color: "#111" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
+                              <div style={{ fontWeight: 900, fontSize: "var(--hz-text-xl)", color: "#111", marginBottom: 6 }}>{typeName}</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "auto 8px 1fr", gap: "3px 0", fontSize: "var(--hz-text-md)", alignItems: "center" }}>
+                                <span style={{ color: "#111" }}>{e.pwjType} Number</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docEditMode ? <input type="text" value={docEditForm.docNumber || ""} onChange={ev => setDocEditForm(f => ({ ...f, docNumber: ev.target.value }))} style={{ border: "1.5px solid #bae6fd", borderRadius: 4, padding: "3px 6px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#f0f9ff", display: "inline", width: 140 }} placeholder={docNum} /> : docNum}</strong></span>
                                 <span style={{ color: "#111" }}>{e.pwjType} Date</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{docDate}</strong></span>
                                 <span style={{ color: "#111" }}>Project Name</span><span style={{ textAlign: "center" }}>:</span><span style={{ textAlign: "left" }}><strong>{e.projectName}</strong></span>
                               </div>
@@ -7620,7 +7679,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           </div>
 
                           {/* --- ITEM TABLE --- */}
-                          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: 14 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0, fontSize: "var(--hz-text-md)" }}>
                             <thead>
                               <tr style={{ background: "#ededeb" }}>
                                 <th style={{ ...thSt, width: 36, textAlign: "center" }}>S.No</th>
@@ -7653,11 +7712,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         ? <textarea
                                             value={row.spec || ""}
                                             onChange={ev => { setItem(i, "spec", ev.target.value); ev.target.style.height = "auto"; ev.target.style.height = ev.target.scrollHeight + "px"; }}
-                                            style={{ ...inpSt, resize: "none", overflow: "hidden", minHeight: 28, lineHeight: 1.4, fontSize: 12, marginTop: 4 }}
+                                            style={{ ...inpSt, resize: "none", overflow: "hidden", minHeight: 28, lineHeight: 1.4, fontSize: "var(--hz-text-xs)", marginTop: 4 }}
                                             placeholder="Specification"
                                             rows={1}
                                           />
-                                        : row.spec ? <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: 12, color: "#555", marginTop: 3, lineHeight: 1.4 }}>{row.spec}</div> : null}
+                                        : row.spec ? <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: "var(--hz-text-xs)", color: "#555", marginTop: 3, lineHeight: 1.4 }}>{row.spec}</div> : null}
                                     </td>
                                     <td style={{ ...tdSt, textAlign: "center" }}>
                                       {docEditMode ? <input list="unit-list" value={row.unit || ""} onChange={ev => setItem(i, "unit", ev.target.value)} style={{ ...inpSt, textAlign: "center", width: 70 }} placeholder="—" autoComplete="off" /> : row.unit || ""}
@@ -7674,7 +7733,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         <button
                                           onClick={() => setDocEditForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
                                           title="Remove row"
-                                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 16, fontWeight: 700, lineHeight: 1, padding: "2px 4px", borderRadius: 4 }}>
+                                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "var(--hz-text-lg)", fontWeight: 700, lineHeight: 1, padding: "2px 4px", borderRadius: 4 }}>
                                           ×
                                         </button>
                                       </td>
@@ -7687,15 +7746,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 <tr>
                                   <td colSpan={7} style={{ padding: "4px 10px" }}>
                                     <button onClick={() => setDocEditForm(f => ({ ...f, items: [...f.items, { item: "", unit: "", qty: "", rate: "", spec: "", vendor: "" }] }))}
-                                      style={{ fontSize: 14, color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
+                                      style={{ fontSize: "var(--hz-text-md)", color: "#0369a1", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add Row</button>
                                   </td>
                                 </tr>
                               )}
                               {/* Totals */}
                               <tr>
                                 <td colSpan={4} rowSpan={6} style={{ borderBottom: "1px solid #ddd", borderRight: "1px solid #ddd", padding: "8px 10px", verticalAlign: "top" }}>
-                                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Amount in words</div>
-                                  <div style={{ fontSize: 14, color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
+                                  <div style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", marginBottom: 4 }}>Amount in words</div>
+                                  <div style={{ fontSize: "var(--hz-text-md)", color: "#444", fontStyle: "italic" }}>{amountToWords(totals.total)}</div>
                                 </td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 600 }}>Sub Total</td>
                                 <td style={{ ...tdSt, textAlign: "right" }}>{fmtCcy(totals.subTotal)}</td>
@@ -7709,7 +7768,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                         ? <select value={docData[field] || "0"} onChange={ev => {
                                             setField(field, ev.target.value);
                                             if (field === "cgstPct") setField("sgstPct", ev.target.value);
-                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: 14, padding: "1px 4px" }}>
+                                          }} style={{ border: "1px solid #bae6fd", borderRadius: 3, fontSize: "var(--hz-text-md)", padding: "1px 4px" }}>
                                             {options.map(v => <option key={v} value={v}>{v}%</option>)}
                                           </select>
                                         : <span style={{ color: "#111" }}>({docData[field] || 0}%)</span>}
@@ -7719,7 +7778,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 </tr>
                               ))}
                               <tr>
-                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: 13 }}>(Rounded off)</span></td>
+                                <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>Total <span style={{ fontWeight: 400, fontStyle: "italic", fontSize: "var(--hz-text-sm)" }}>(Rounded off)</span></td>
                                 <td style={{ ...tdSt, textAlign: "right", fontWeight: 700, borderBottom: "2px solid #111" }}>{fmtTotal(totals.total)}</td>
                               </tr>
                             </tbody>
@@ -7748,7 +7807,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 {e.pwjType === "PO" && (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && (docData.extraSupplyDates || []).length < 6 && (
                                   <button type="button" title="Add another Date of Supply"
                                     onClick={() => saveDocDateInline("extraSupplyDates", [...(Array.isArray(docData.extraSupplyDates) ? docData.extraSupplyDates : []), ""])}
-                                    style={{ width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #94a3b8", background: "#fff", color: "#334155", fontSize: 17, fontWeight: 700, lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit" }}>+</button>
+                                    style={{ width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #94a3b8", background: "#fff", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-lg)", fontWeight: 700, lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit" }}>+</button>
                                 )}
                               </div>
                               {(canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED"
@@ -7757,7 +7816,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                     style={{ ...inpSt, marginBottom: 6, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }), ...(!docData.completionDate ? { border: "1.5px solid #ef4444", background: "#fef2f2" } : {}) }} />
                                 : <div style={{ marginBottom: 6 }}>{docData.completionDate ? fmtDateDash(docData.completionDate) : <span style={{ color: "#ef4444" }}>Not entered</span>}</div>}
                               {(canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && !docData.completionDate && (
-                                <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 4 }}>Required — enter the date to continue</div>
+                                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-danger)", marginBottom: 4 }}>Required — enter the date to continue</div>
                               )}
                               {/* Purchase Orders: further supply dates (e.g. staggered deliveries) via "+ Date of Supply" */}
                               {e.pwjType === "PO" && (() => {
@@ -7774,7 +7833,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                             <input type="date" value={d || ""} onChange={ev => save(extras.map((x, k) => k === i ? ev.target.value : x))}
                                               style={{ ...inpSt, ...(docEditMode ? {} : { background: "#fff", border: "1.5px solid #e2e8f0" }) }} />
                                             <button type="button" title="Remove this date" onClick={() => save(extras.filter((_, k) => k !== i))}
-                                              style={{ border: "none", background: "#f1f5f9", color: "#64748b", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>✕</button>
+                                              style={{ border: "none", background: "#f1f5f9", color: "var(--hz-muted)", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: "var(--hz-text-sm)", flexShrink: 0 }}>✕</button>
                                           </div>
                                         ) : <div>{fmtDateDash(d)}</div>}
                                       </div>
@@ -7801,7 +7860,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>General Terms</div>
                             {terms.map((t, i) => (
-                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: 14 }}>
+                              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, fontSize: "var(--hz-text-md)" }}>
                                 <span style={{ minWidth: 16, fontWeight: 600 }}>{i + 1}</span>
                                 <span style={{ color: "#333" }}>{t}</span>
                               </div>
@@ -7812,18 +7871,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           <div style={{ marginBottom: 16 }}>
                             <div style={{ fontWeight: 700, borderBottom: "1px solid #111", paddingBottom: 4, marginBottom: 8 }}>Payment Terms <span style={{ color: "#ef4444" }}>*</span>
                               {!hasPaymentStage(docData) && (canProc(e) || isVP) && activeDocStatus !== "VP_APPROVED" && (
-                                <span style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 600, color: "#dc2626" }}>Required — fill in at least one stage</span>
+                                <span style={{ marginLeft: 10, fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-danger)" }}>Required — fill in at least one stage</span>
                               )}
                             </div>
                             {[["stage1","Stage 1"],["stage2","Stage 2"],["stage3","Stage 3"],["stageF","Final stage"]].map(([key, lbl]) => (
-                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 14 }}>
+                              <div key={key} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: "var(--hz-text-md)" }}>
                                 <span style={{ fontWeight: 600, minWidth: 70 }}>{lbl} -</span>
                                 {docEditMode
                                   ? <input value={docData[key] || ""} onChange={ev => setField(key, ev.target.value)} style={{ ...inpSt, flex: 1, ...(!hasPaymentStage(docData) ? { border: "1.5px solid #fca5a5" } : {}) }} placeholder={lbl} />
                                   : <span>{docData[key] || ""}</span>}
                               </div>
                             ))}
-                            <div style={{ marginTop: 10, fontSize: 14, paddingLeft: 4 }}>
+                            <div style={{ marginTop: 10, fontSize: "var(--hz-text-md)", paddingLeft: 4 }}>
                               <div><u>Note:</u> For smooth payment process, original invoice to be submitted at office along with</div>
                               <div style={{ paddingLeft: 12 }}>- site engineer signed copy along with measurement sheet and DC copy</div>
                               <div style={{ paddingLeft: 12 }}>- test / warranty / guarantee certificate, etc</div>
@@ -7832,7 +7891,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                           {/* VP Comments banner */}
                           {e.docComments && (isEngineer || e.docStatus === "VP_APPROVED" || (!isEngineer && e.docStatus === "REVISION_REQUESTED")) && (
-                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: 14 }}>
+                            <div style={{ background: e.docStatus === "REVISION_REQUESTED" ? "#fff7ed" : e.docStatus === "VP_REJECTED" ? "#fff1f2" : "#f0fdf4", borderRadius: 8, padding: "12px 14px", border: `1.5px solid ${e.docStatus === "REVISION_REQUESTED" ? "#fed7aa" : e.docStatus === "VP_REJECTED" ? "#fecdd3" : "#bbf7d0"}`, marginBottom: 16, fontSize: "var(--hz-text-md)" }}>
                               <div style={{ fontWeight: 700, color: e.docStatus === "REVISION_REQUESTED" ? "#c2410c" : e.docStatus === "VP_REJECTED" ? "#be123c" : "#166534", marginBottom: 4 }}>
                                 {e.docStatus === "REVISION_REQUESTED" ? "⚠️ VP Revision Request" : e.docStatus === "VP_REJECTED" ? "❌ VP Comments" : "✅ VP Comments"}
                               </div>
@@ -7845,18 +7904,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ fontWeight: 600, marginBottom: 24, whiteSpace: "nowrap" }}>For <strong>{COMPANY_INFO.name}</strong></div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", paddingTop: 8, borderTop: "1px solid #ddd" }}>
                               <div>
-                                <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Approved By</div>
+                                <div style={{ color: "#111", fontSize: "var(--hz-text-md)", marginBottom: 4 }}>Approved By</div>
                                 {activeDocStatus === "VP_APPROVED"
                                   ? <img src={VP_SIGNATURE_URL} alt="VP Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: "var(--hz-text-md)" }}>Signature & Date</div>
                               </div>
                               <div>
-                                <div style={{ color: "#111", fontSize: 14, marginBottom: 4 }}>Procurement Executive</div>
+                                <div style={{ color: "#111", fontSize: "var(--hz-text-md)", marginBottom: 4 }}>Procurement Executive</div>
                                 {activeDocStatus === "VP_APPROVED"
                                   ? <img src={PROCUREMENT_SIGNATURE_URL} alt="Procurement Signature" style={{ height: 48, maxWidth: "100%", objectFit: "contain", objectPosition: "left", display: "block", marginBottom: 4 }} onError={ev => ev.target.style.display = "none"} />
                                   : <div style={{ height: 48 }} />}
-                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: 14 }}>Signature & Date</div>
+                                <div style={{ borderTop: "1px solid #888", paddingTop: 4, fontSize: "var(--hz-text-md)" }}>Signature & Date</div>
                               </div>
                             </div>
                           </div>
@@ -7881,7 +7940,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", gap: 24, flexWrap: "wrap" }}>
                                 {/* Delivered Date */}
                                 <div style={{ flex: "0 0 auto" }}>
-                                  <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                  <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                                     📅 Delivered Date
                                   </div>
                                   {canEdit ? (
@@ -7892,35 +7951,35 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                           const today = new Date().toISOString().split("T")[0];
                                           setEngDeliveredDate(ev.target.value > today ? today : ev.target.value);
                                         }}
-                                        style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
+                                        style={{ border: "1.5px solid #86efac", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#f0fdf4" }} />
                                       <button onClick={saveEngDeliveredDate} disabled={!engDeliveredDate || engDateSaving}
-                                        style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        style={{ background: engDeliveredDate ? "linear-gradient(135deg,#166534,#16a34a)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: engDeliveredDate ? "var(--hz-on-dark)" : "var(--hz-faint)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: engDeliveredDate ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                         {engDateSaving ? "Saving…" : "💾 Save"}
                                       </button>
                                     </div>
                                   ) : (
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: e.deliveredDate ? "#166534" : "#94a3b8" }}>
+                                    <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 600, color: e.deliveredDate ? "#166534" : "var(--hz-faint)" }}>
                                       {e.deliveredDate ? fmtDate(e.deliveredDate) : "Not yet delivered"}
                                     </div>
                                   )}
                                 </div>
                                 {/* Remarks */}
                                 <div style={{ flex: 1, minWidth: 220 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                                  <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                                     📝 Remarks
                                   </div>
                                   {canEdit ? (
                                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                                       <textarea value={engRemarks} onChange={ev => setEngRemarks(ev.target.value)}
                                         placeholder="Add remarks…" rows={2}
-                                        style={{ flex: 1, border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#eff6ff", resize: "vertical" }} />
+                                        style={{ flex: 1, border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#eff6ff", resize: "vertical" }} />
                                       <button onClick={saveEngRemarks} disabled={engRemarksSaving}
-                                        style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                        style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "9px 18px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                         {engRemarksSaving ? "Saving…" : "💾 Save"}
                                       </button>
                                     </div>
                                   ) : (
-                                    <div style={{ fontSize: 14, color: e.remarks ? "#0f172a" : "#94a3b8", lineHeight: 1.6 }}>
+                                    <div style={{ fontSize: "var(--hz-text-md)", color: e.remarks ? "var(--hz-ink)" : "var(--hz-faint)", lineHeight: 1.6 }}>
                                       {e.remarks || "No remarks"}
                                     </div>
                                   )}
@@ -7948,7 +8007,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       const logEntries = (e.siteRemarks || "").split("\n").filter(Boolean);
                       return (
                         <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                          <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
                             🏗️ Remarks for Site Team
                           </div>
                           {logEntries.length > 0 && (
@@ -7957,11 +8016,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 const m = line.match(/^\[(.+?)\]\s*(.*)/);
                                 return m ? (
                                   <div key={i} style={{ borderLeft: "3px solid #d8b4fe", paddingLeft: 10 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
-                                    <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{m[2]}</div>
+                                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#7c3aed", marginBottom: 2 }}>{m[1]}</div>
+                                    <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", lineHeight: 1.5 }}>{m[2]}</div>
                                   </div>
                                 ) : (
-                                  <div key={i} style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.5 }}>{line}</div>
+                                  <div key={i} style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", lineHeight: 1.5 }}>{line}</div>
                                 );
                               })}
                             </div>
@@ -7970,15 +8029,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                               <textarea value={siteRemarks} onChange={ev => setSiteRemarks(ev.target.value)}
                                 placeholder="Add a new remark for the site team…" rows={2}
-                                style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
+                                style={{ flex: 1, border: "1.5px solid #d8b4fe", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: "#faf5ff", resize: "vertical" }} />
                               <button onClick={saveSiteRemarks} disabled={siteRemarksSaving || !siteRemarks.trim()}
-                                style={{ background: siteRemarks.trim() ? "linear-gradient(135deg,#7e22ce,#a855f7)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: siteRemarks.trim() ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: siteRemarks.trim() ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                                style={{ background: siteRemarks.trim() ? "linear-gradient(135deg,#7e22ce,#a855f7)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 18px", color: siteRemarks.trim() ? "var(--hz-on-dark)" : "var(--hz-faint)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: siteRemarks.trim() ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                                 {siteRemarksSaving ? "Saving…" : "💾 Add"}
                               </button>
                             </div>
                           ) : (
                             !logEntries.length && (
-                              <div style={{ fontSize: 14, color: "#374151" }}>No remarks for site team yet.</div>
+                              <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>No remarks for site team yet.</div>
                             )
                           )}
                         </div>
@@ -7988,16 +8047,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Revision notice + actions for Procurement */}
                     {canProc(e) && e.docStatus === "REVISION_REQUESTED" && e.docComments && (
                       <div style={{ margin: "0 24px 0", padding: "14px 18px", background: "#fff7ed", border: "1.5px solid #fed7aa", borderRadius: 12 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                        <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "#c2410c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                           ⚠️ VP Revision Request
                         </div>
-                        <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.6, marginBottom: 12 }}>{e.docComments}</div>
-                        <div style={{ fontSize: 13, color: "#78350f" }}>
+                        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", lineHeight: 1.6, marginBottom: 12 }}>{e.docComments}</div>
+                        <div style={{ fontSize: "var(--hz-text-sm)", color: "#78350f" }}>
                           Edit the entry as needed, then resubmit for VP approval.
                         </div>
                         <button
                           onClick={() => { setDocModal(null); openAssign(e); }}
-                          style={{ marginTop: 10, background: "linear-gradient(135deg,#c2410c,#f97316)", border: "none", borderRadius: 8, padding: "9px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ marginTop: 10, background: "linear-gradient(135deg,#c2410c,#f97316)", border: "none", borderRadius: 8, padding: "9px 18px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
                           ✏️ Edit Vendor / PWJ Type
                         </button>
                       </div>
@@ -8013,7 +8072,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             placeholder="Comments (optional) — pricing concerns, revision needed…"
                             value={vpCommentMap[commentKey] || ""}
                             onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
-                            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#0f172a", boxSizing: "border-box", marginBottom: 10 }}
+                            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "var(--hz-ink)", boxSizing: "border-box", marginBottom: 10 }}
                           />
                           <div style={{ display: "flex", gap: 10 }}>
                             <ApproveBtn onClick={() => { (isMulti ? handleSubDocApprove(e.id, safeIdx) : handleDocApprove(e.id)); setDocModal(null); }} title="Approve" size="lg" />
@@ -8031,7 +8090,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           additional PO itself is not eligible to spawn another one. */}
                       {canProc(e) && (e.pwjIssued || e.docStatus === "VP_APPROVED") && (!isMulti || safeIdx === 0) && (
                         <button onClick={() => addAdditionalPO(e)}
-                          style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                           ➕ Additional PO
                         </button>
                       )}
@@ -8043,12 +8102,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         // because the base PO it was raised under is already issued.
                         canProc(e) && !isMulti && e.pwjIssued ? (
                           <button disabled title="PWJ issued — editing locked"
-                            style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "inherit" }}>
+                            style={{ background: "#e2e8f0", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-ink-2)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "not-allowed", fontFamily: "inherit" }}>
                             🔒 Locked
                           </button>
                         ) : (
                           <button onClick={startDocEdit}
-                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: "linear-gradient(135deg,#0369a1,#0ea5e9)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                             ✏️ Edit
                           </button>
                         )
@@ -8060,20 +8119,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           return (
                             <>
                               {jobOrderOverLimit && (
-                                <div style={{ width: "100%", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 14px", color: "#991b1b", fontSize: 13, fontWeight: 600 }}>
+                                <div style={{ width: "100%", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 14px", color: "#991b1b", fontSize: "var(--hz-text-sm)", fontWeight: 600 }}>
                                   ⚠ Job Order total (₹{Number(liveTotal).toLocaleString("en-IN")}) exceeds the ₹30,000 limit — reduce the amount or switch to a PO/WO before saving.
                                 </div>
                               )}
                               <button onClick={() => saveDocEdits()} disabled={docSaving || jobOrderOverLimit}
                                 title={jobOrderOverLimit ? "Job Order amount cannot exceed ₹30,000" : undefined}
-                                style={{ background: jobOrderOverLimit ? "#cbd5e1" : "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: jobOrderOverLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+                                style={{ background: jobOrderOverLimit ? "#cbd5e1" : "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: jobOrderOverLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                                 {docSaving ? "Saving…" : "💾 Save"}
                               </button>
                             </>
                           );
                         })()}
                         <button onClick={() => setDocEditMode(false)}
-                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                           Cancel
                         </button>
                       </>)}
@@ -8081,13 +8140,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         activeDocStatus !== "PENDING_VP_APPROVAL" &&
                         activeDocStatus !== "VP_APPROVED" && (
                           <button onClick={sendDocForApproval} disabled={docLoading}
-                            style={{ background: (activeDocStatus === "REVISION_REQUESTED" || activeDocStatus === "REVOKED") ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ background: (activeDocStatus === "REVISION_REQUESTED" || activeDocStatus === "REVOKED") ? "linear-gradient(135deg,#c2410c,#f97316)" : "linear-gradient(135deg,#5b21b6,#7c3aed)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                             {docLoading ? "Sending…" : isMulti ? `🚀 Send PO ${safeIdx + 1} for VP Approval` : (activeDocStatus === "REVISION_REQUESTED" || activeDocStatus === "REVOKED") ? "🚀 Resubmit for VP Approval" : "🚀 Send for VP Approval"}
                           </button>
                         )}
                       {activeDocStatus === "VP_APPROVED" && !isEngineer && (
                         <button onClick={downloadDoc}
-                          style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          style={{ flex: 1, background: "linear-gradient(135deg,#166534,#16a34a)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           ⬇ {isMulti ? `Download PO ${safeIdx + 1} PDF` : "Download PDF"}
                         </button>
                       )}
@@ -8104,7 +8163,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }
                           } catch { showToast("Network error", "error"); }
                         }}
-                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#166534,#16a34a)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#166534,#16a34a)" : "linear-gradient(135deg,#64748b,#94a3b8)", border: "none", borderRadius: 10, padding: "11px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           {e.vendorEmailEnabled ? "📧 Email ON" : "📧 Email OFF"}
                         </button>
                       )}
@@ -8147,19 +8206,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               showToast(r.message || "Revoke failed", "error");
                             }
                           }}
-                          style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                          style={{ background: "linear-gradient(135deg,#92400e,#d97706)", border: "none", borderRadius: 10, padding: "11px 18px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
                           ↩ Revoke Approval
                         </button>
                       )}
                       {activeDocStatus === "VP_APPROVED" && canProc(e) && (
                         <button onClick={sendDocToVendor} disabled={!e.vendorEmailEnabled}
                           title={!e.vendorEmailEnabled ? "Email not enabled by VP/Admin" : "Send document to vendor"}
-                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          style={{ flex: 1, background: e.vendorEmailEnabled ? "linear-gradient(135deg,#0369a1,#0ea5e9)" : "linear-gradient(135deg,#cbd5e1,#e2e8f0)", border: "none", borderRadius: 10, padding: "11px 20px", color: e.vendorEmailEnabled ? "var(--hz-on-dark)" : "var(--hz-faint)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: e.vendorEmailEnabled ? "pointer" : "not-allowed", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                           📧 Send to Vendor
                         </button>
                       )}
                       <button onClick={() => { setDocModal(null); setEngDocFile(null); }}
-                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit", color: "#1e293b" }}>
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "11px 20px", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", color: "var(--hz-ink-2)" }}>
                         Close
                       </button>
                     </div>
@@ -8178,44 +8237,44 @@ function Dashboard({ user, onLogout: handleLogout }) {
             style={{ background: "#fff", borderRadius: 20, width: 1100, maxWidth: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden" }}>
             <div style={{ padding: "18px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 20, color: "#0f172a" }}>📦 Issued Items</div>
-                <div style={{ fontSize: 14, color: "#64748b", marginTop: 2 }}>Item lines of PRs already issued (PO / WO / JO) — pick a project, then search an item.</div>
+                <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>📦 Issued Items</div>
+                <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", marginTop: 2 }}>Item lines of PRs already issued (PO / WO / JO) — pick a project, then search an item.</div>
               </div>
-              <button onClick={() => setIssuedModal(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 10, width: 38, height: 38, fontSize: 18, cursor: "pointer", color: "#334155" }}>✕</button>
+              <button onClick={() => setIssuedModal(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 10, width: 38, height: 38, fontSize: "var(--hz-text-xl)", cursor: "pointer", color: "var(--hz-ink-2)" }}>✕</button>
             </div>
             <div style={{ padding: "14px 24px", display: "flex", gap: 10, flexWrap: "wrap", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
               <select value={issuedProject} onChange={e => loadIssuedFor(e.target.value)}
-                style={{ border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", minWidth: 240, background: "#fff" }}>
+                style={{ border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", minWidth: 240, background: "#fff" }}>
                 <option value="">Select project…</option>
                 {projects.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
               <input autoFocus value={issuedQuery} onChange={e => setIssuedQuery(e.target.value)} disabled={!issuedProject}
                 placeholder={issuedProject ? "Search item, specification, vendor, doc number or PR #…" : "Select a project first"}
-                style={{ flex: 1, minWidth: 240, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff" }} />
+                style={{ flex: 1, minWidth: 240, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 14px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", background: "#fff" }} />
             </div>
             <div style={{ overflow: "auto", padding: "16px 24px 22px" }}>
               {!issuedProject ? (
-                <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontSize: 15 }}>Select a project to see its issued items.</div>
+                <div style={{ textAlign: "center", color: "var(--hz-faint)", padding: "40px 0", fontSize: "var(--hz-text-md)" }}>Select a project to see its issued items.</div>
               ) : issuedLoading ? (
-                <div style={{ textAlign: "center", color: "#64748b", padding: "40px 0", fontSize: 15 }}>Loading…</div>
+                <div style={{ textAlign: "center", color: "var(--hz-muted)", padding: "40px 0", fontSize: "var(--hz-text-md)" }}>Loading…</div>
               ) : issuedRows.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontSize: 15 }}>No issued PRs in this project yet.</div>
+                <div style={{ textAlign: "center", color: "var(--hz-faint)", padding: "40px 0", fontSize: "var(--hz-text-md)" }}>No issued PRs in this project yet.</div>
               ) : (<>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                  <span style={{ fontSize: 14, color: "#475569" }}><b>{issuedMatches.length}</b> item line{issuedMatches.length === 1 ? "" : "s"} · <b>{new Set(issuedMatches.map(r => r.entryId)).size}</b> PR{new Set(issuedMatches.map(r => r.entryId)).size === 1 ? "" : "s"}</span>
+                  <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}><b>{issuedMatches.length}</b> item line{issuedMatches.length === 1 ? "" : "s"} · <b>{new Set(issuedMatches.map(r => r.entryId)).size}</b> PR{new Set(issuedMatches.map(r => r.entryId)).size === 1 ? "" : "s"}</span>
                   {issuedQuery.trim() && issuedTotals.slice(0, 6).map(t => (
-                    <span key={t.item + t.unit} title={`${t.item}: ${Math.round(t.qty * 100) / 100} ${t.unit}`} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 11px", fontSize: 13, fontWeight: 700, maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                    <span key={t.item + t.unit} title={`${t.item}: ${Math.round(t.qty * 100) / 100} ${t.unit}`} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: 999, padding: "3px 11px", fontSize: "var(--hz-text-sm)", fontWeight: 700, maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
                       {highlightText(t.item, issuedQuery)}: {Math.round(t.qty * 100) / 100} {t.unit}
                     </span>
                   ))}
                 </div>
                 {issuedMatches.length === 0 ? (
-                  <div style={{ textAlign: "center", color: "#94a3b8", padding: "30px 0", fontSize: 15 }}>No issued item matches “{issuedQuery}”.</div>
+                  <div style={{ textAlign: "center", color: "var(--hz-faint)", padding: "30px 0", fontSize: "var(--hz-text-md)" }}>No issued item matches “{issuedQuery}”.</div>
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
                     <thead>
                       <tr>{["PR #", "Item", "Qty", "Vendor", "Doc No.", "Date", "Status"].map(h => (
-                        <th key={h} style={{ textAlign: "left", padding: "9px 10px", fontSize: 12.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: .4, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0 }}>{h}</th>
+                        <th key={h} style={{ textAlign: "left", padding: "9px 10px", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: .4, background: "#f8fafc", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0 }}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>
@@ -8223,23 +8282,23 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <tr key={i} style={{ background: i % 2 ? "#fcfdff" : "#fff" }}>
                           <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
                             <button title={`Open PR #${r.entryId}`} onClick={() => { setIssuedModal(false); setDetailRow(r.entry); }}
-                              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14.5, fontWeight: 700, color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 3 }}>#{highlightText(r.entryId, issuedQuery)}</button>
+                              style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 3 }}>#{highlightText(r.entryId, issuedQuery)}</button>
                           </td>
-                          <td style={{ padding: "10px", fontSize: 14.5, color: "#0f172a", borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "10px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", borderBottom: "1px solid #f1f5f9" }}>
                             <div style={{ fontWeight: 600 }}>{highlightText(r.item, issuedQuery)}</div>
-                            {r.spec && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{highlightText(r.spec, issuedQuery)}</div>}
+                            {r.spec && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{highlightText(r.spec, issuedQuery)}</div>}
                           </td>
-                          <td style={{ padding: "10px", fontSize: 14.5, fontWeight: 700, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.qty} {r.unit}</td>
-                          <td style={{ padding: "10px", fontSize: 14.5, color: "#334155", borderBottom: "1px solid #f1f5f9" }}>{r.vendor ? highlightText(r.vendor, issuedQuery) : "—"}</td>
-                          <td style={{ padding: "10px", fontSize: 14, color: "#334155", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                          <td style={{ padding: "10px", fontSize: "var(--hz-text-md)", fontWeight: 700, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{r.qty} {r.unit}</td>
+                          <td style={{ padding: "10px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", borderBottom: "1px solid #f1f5f9" }}>{r.vendor ? highlightText(r.vendor, issuedQuery) : "—"}</td>
+                          <td style={{ padding: "10px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
                             {r.docNumber ? (
                               <button title="Open the document" onClick={() => { setIssuedModal(false); setEngDocFile(null); openDocModal(r.entry); }}
-                                style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#7c3aed", textDecoration: "underline", textUnderlineOffset: 3 }}>{highlightText(r.docNumber, issuedQuery)}</button>
+                                style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#7c3aed", textDecoration: "underline", textUnderlineOffset: 3 }}>{highlightText(r.docNumber, issuedQuery)}</button>
                             ) : "—"}
-                            {r.pwjType ? <span style={{ marginLeft: 6, fontSize: 11.5, fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}
+                            {r.pwjType ? <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: "#7c3aed", background: "#f5f3ff", borderRadius: 6, padding: "1px 6px" }}>{r.pwjType}</span> : null}
                           </td>
-                          <td style={{ padding: "10px", fontSize: 14, color: "#475569", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{fmtDate(r.date)}</td>
-                          <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9" }}><span style={{ fontSize: 12.5, fontWeight: 700, color: r.status === "CLOSED" ? "#475569" : "#047857", background: r.status === "CLOSED" ? "#f1f5f9" : "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>{r.status === "CLOSED" ? "Closed" : "Open"}</span></td>
+                          <td style={{ padding: "10px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{fmtDate(r.date)}</td>
+                          <td style={{ padding: "10px", borderBottom: "1px solid #f1f5f9" }}><span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: r.status === "CLOSED" ? "var(--hz-ink-2)" : "#047857", background: r.status === "CLOSED" ? "#f1f5f9" : "#ecfdf5", borderRadius: 999, padding: "3px 10px" }}>{r.status === "CLOSED" ? "Closed" : "Open"}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -8257,22 +8316,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 310, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 18, width: 520, maxWidth: "100%", padding: 24, boxShadow: "0 30px 80px rgba(0,0,0,.3)" }} role="dialog" aria-label="Reassign PR">
-            <div style={{ fontWeight: 800, fontSize: 19, color: "#0f172a" }}>
+            <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>
               {reassignModal.username ? `Reassign PR #${old.id}` : `Remove assignee from PR #${old.id}`}
             </div>
-            <div style={{ fontSize: 14, color: "#475569", marginTop: 4, marginBottom: 14 }}>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 4, marginBottom: 14 }}>
               {old.allocatedToName || old.allocatedTo} → {reassignModal.username ? (target?.fullName || reassignModal.username) : "unassigned"}.
               Leave a comment about <b>{old.allocatedToName || old.allocatedTo}</b> — it is added to their profile as a performance comment, which they can accept or appeal within 48 hours.
             </div>
-            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Comment for {old.allocatedToName || old.allocatedTo} <span style={{ color: "#ef4444" }}>*</span></label>
+            <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)" }}>Comment for {old.allocatedToName || old.allocatedTo} <span style={{ color: "#ef4444" }}>*</span></label>
             <textarea autoFocus value={reassignComment} onChange={e => setReassignComment(e.target.value)} rows={4} maxLength={900}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && reassignComment.trim() && allocBusy !== old.id) { e.preventDefault(); allocatePr(old, reassignModal.username, reassignComment.trim()); } }}
               placeholder="Why is this PR being taken from them? (e.g. no progress on vendor finalisation)"
-              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical" }} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button onClick={() => { setReassignModal(null); setReassignComment(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, background: "#f1f5f9", color: "#334155", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={() => { setReassignModal(null); setReassignComment(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, background: "#f1f5f9", color: "var(--hz-ink-2)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               <button onClick={() => allocatePr(old, reassignModal.username, reassignComment.trim())} disabled={allocBusy === old.id || !reassignComment.trim()}
-                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "inherit",
+                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-on-dark)", fontFamily: "inherit",
                   background: reassignComment.trim() ? "#4338ca" : "#cbd5e1", cursor: reassignComment.trim() && allocBusy !== old.id ? "pointer" : "not-allowed" }}>
                 {allocBusy === old.id ? "Saving…" : reassignModal.username ? "Reassign & add comment" : "Remove & add comment"}
               </button>
@@ -8285,18 +8344,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {closureReqModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,8,23,.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 310, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 18, width: 520, maxWidth: "100%", padding: 24, boxShadow: "0 30px 80px rgba(0,0,0,.3)" }} role="dialog" aria-label="Request manual closure">
-            <div style={{ fontWeight: 800, fontSize: 19, color: "#0f172a" }}>Close PR #{closureReqModal.id} manually</div>
-            <div style={{ fontSize: 14, color: "#475569", marginTop: 4, marginBottom: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>Close PR #{closureReqModal.id} manually</div>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 4, marginBottom: 14 }}>
               {closureReqModal.materialRequired} · {closureReqModal.projectName}. The VP must approve before the PR is closed.
             </div>
-            <label style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Reason for closing <span style={{ color: "#ef4444" }}>*</span></label>
+            <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)" }}>Reason for closing <span style={{ color: "#ef4444" }}>*</span></label>
             <textarea autoFocus value={closureReason} onChange={e => setClosureReason(e.target.value)} rows={4} maxLength={1000}
               placeholder="Why is this PR being closed without the normal delivery flow? This is saved in the PR's remarks."
-              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, border: "1.5px solid #cbd5e1", borderRadius: 10, padding: "10px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical" }} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button onClick={() => { setClosureReqModal(null); setClosureReason(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, background: "#f1f5f9", color: "#334155", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={() => { setClosureReqModal(null); setClosureReason(""); }} style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, background: "#f1f5f9", color: "var(--hz-ink-2)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               <button onClick={submitClosureRequest} disabled={closureBusy || !closureReason.trim()}
-                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "inherit",
+                style={{ border: "none", borderRadius: 9, padding: "10px 18px", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-on-dark)", fontFamily: "inherit",
                   background: closureReason.trim() ? "#0f766e" : "#cbd5e1", cursor: closureReason.trim() && !closureBusy ? "pointer" : "not-allowed" }}>
                 {closureBusy ? "Sending…" : "Send for VP approval"}
               </button>
@@ -8311,29 +8370,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
             style={{ background: "#fff", borderRadius: 20, width: 880, maxWidth: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 40px 100px rgba(0,0,0,.28)", overflow: "hidden" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 20, color: "#0f172a" }}>Closure Approvals</div>
-                <div style={{ fontSize: 14, color: "#64748b", marginTop: 2 }}>{pendingClosures.length} manual closure request{pendingClosures.length === 1 ? "" : "s"} waiting</div>
+                <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>Closure Approvals</div>
+                <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", marginTop: 2 }}>{pendingClosures.length} manual closure request{pendingClosures.length === 1 ? "" : "s"} waiting</div>
               </div>
-              <button onClick={() => setClosuresModal(false)} aria-label="Close" style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18 }}>✕</button>
+              <button onClick={() => setClosuresModal(false)} aria-label="Close" style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: "var(--hz-text-xl)" }}>✕</button>
             </div>
             <div style={{ overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-              {closuresLoading ? <div style={{ color: "#64748b" }}>Loading…</div>
-                : pendingClosures.length === 0 ? <div style={{ textAlign: "center", color: "#64748b", padding: 36 }}>No closure requests pending.</div>
+              {closuresLoading ? <div style={{ color: "var(--hz-muted)" }}>Loading…</div>
+                : pendingClosures.length === 0 ? <div style={{ textAlign: "center", color: "var(--hz-muted)", padding: 36 }}>No closure requests pending.</div>
                 : pendingClosures.map(c => (
                   <div key={c.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>#{c.id} · {c.materialRequired}</div>
-                        <div style={{ fontSize: 14, color: "#475569", marginTop: 2 }}>{c.projectName} · raised by {c.raisedBy}{c.boqNo ? ` · BOQ ${c.boqNo}` : ""}</div>
+                        <div style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>#{c.id} · {c.materialRequired}</div>
+                        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 2 }}>{c.projectName} · raised by {c.raisedBy}{c.boqNo ? ` · BOQ ${c.boqNo}` : ""}</div>
                       </div>
-                      <div style={{ fontSize: 13, color: "#64748b", textAlign: "right" }}>Requested by <b>{c.closureRequestedBy || "Admin"}</b><br />{c.closureRequestedAt ? fmtDateTime(c.closureRequestedAt) : ""}</div>
+                      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", textAlign: "right" }}>Requested by <b>{c.closureRequestedBy || "Admin"}</b><br />{c.closureRequestedAt ? fmtDateTime(c.closureRequestedAt) : ""}</div>
                     </div>
-                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 12px", marginTop: 12, fontSize: 14.5, color: "#78350f", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 12px", marginTop: 12, fontSize: "var(--hz-text-md)", color: "#78350f", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                       <b>Reason: </b>{c.closureReason}
                     </div>
                     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                       <textarea value={closureComment[c.id] || ""} onChange={e => setClosureComment(m => ({ ...m, [c.id]: e.target.value }))} rows={2} placeholder="Comment (optional)…"
-                        style={{ flex: 1, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontFamily: "inherit", resize: "none" }} />
+                        style={{ flex: 1, minWidth: 220, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "8px 10px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "none" }} />
                       <ApproveBtn onClick={() => decideClosure(c.id, true)} disabled={!!closureActing} title="Approve & close" />
                       <RejectBtn onClick={() => decideClosure(c.id, false)} disabled={!!closureActing} title="Reject" />
                     </div>
@@ -8351,29 +8410,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ padding: "22px 28px 16px", borderBottom: "1px solid #f1f5f9" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", fontWeight: 700, fontSize: 20, color: "#000", letterSpacing: "-0.2px" }}>Document Approvals</div>
-                  <div style={{ fontSize: 16, color: "#000", marginTop: 2 }}>{countPendingDocItems(pendingDocs)} document{countPendingDocItems(pendingDocs) !== 1 ? "s" : ""} pending · sorted by latest request</div>
+                  <div style={{ fontFamily: "var(--hz-font-display)", fontWeight: 700, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)", letterSpacing: "-0.2px" }}>Document Approvals</div>
+                  <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", marginTop: 2 }}>{countPendingDocItems(pendingDocs)} document{countPendingDocItems(pendingDocs) !== 1 ? "s" : ""} pending · sorted by latest request</div>
                 </div>
-                <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "#000", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <button onClick={() => setPendingDocsModal(false)} style={{ background: "#f1f5f9", border: "none", color: "var(--hz-ink)", width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: "var(--hz-text-xl)", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
               {/* Search */}
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#000", pointerEvents: "none" }}>🔍</span>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", pointerEvents: "none" }}>🔍</span>
                 <input
                   autoFocus
                   placeholder="Search by project, doc number, vendor, material…"
                   value={docApprovalSearch}
                   onChange={e => setDocApprovalSearch(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px 10px 34px", fontSize: 16.5, fontFamily: "inherit", outline: "none", color: "#000", boxSizing: "border-box" }}
+                  style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 12px 10px 34px", fontSize: "var(--hz-text-lg)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)", boxSizing: "border-box" }}
                 />
                 {docApprovalSearch && (
-                  <button onClick={() => setDocApprovalSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#000", cursor: "pointer", fontSize: 16, padding: 0 }}>✕</button>
+                  <button onClick={() => setDocApprovalSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--hz-ink)", cursor: "pointer", fontSize: "var(--hz-text-lg)", padding: 0 }}>✕</button>
                 )}
               </div>
             </div>
             <div style={{ overflowY: "auto", flex: 1, padding: "16px 28px" }}>
               {pendingDocsLoading ? (
-                <div style={{ textAlign: "center", padding: 60, color: "#000" }}>Loading…</div>
+                <div style={{ textAlign: "center", padding: 60, color: "var(--hz-ink)" }}>Loading…</div>
               ) : (() => {
                 const q = docApprovalSearch.trim().toLowerCase();
                 const sorted = [...pendingDocs].sort((a, b) => new Date(b.updatedAt || b.timestamp || 0) - new Date(a.updatedAt || a.timestamp || 0));
@@ -8385,7 +8444,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   (d.raisedBy || "").toLowerCase().includes(q)
                 ) : sorted;
                 if (filtered.length === 0) return (
-                  <div style={{ textAlign: "center", padding: 60, color: "#000", fontSize: 17 }}>
+                  <div style={{ textAlign: "center", padding: 60, color: "var(--hz-ink)", fontSize: "var(--hz-text-lg)" }}>
                     {q ? `No results for "${docApprovalSearch}"` : "No documents pending approval"}
                   </div>
                 );
@@ -8412,27 +8471,27 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   return (
                     <div key={doc.id} style={{ background: "#fafbfe", border: "1px solid #e2e8f0", borderRadius: 14, marginBottom: 14, overflow: "hidden" }}>
                       <div style={{ background: "#f8fafc", padding: "14px 22px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
-                        <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 14 }}>{doc.pwjType}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16, color: "#000" }}>{doc.docNumber}</span>
-                        <span style={{ fontSize: 15, color: "#000" }}>· {doc.projectName}</span>
-                        {relTime && <span style={{ fontSize: 15, color: "#000", marginLeft: 2 }}>· {relTime}</span>}
-                        <span style={{ marginLeft: "auto", background: "#eff6ff", color: "#1d4ed8", borderRadius: 6, padding: "3px 10px", fontSize: 14, fontWeight: 700 }}>
+                        <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                        <span style={{ background: typeBg, color: "var(--hz-on-dark)", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: "var(--hz-text-md)" }}>{doc.pwjType}</span>
+                        <span style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{doc.docNumber}</span>
+                        <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>· {doc.projectName}</span>
+                        {relTime && <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginLeft: 2 }}>· {relTime}</span>}
+                        <span style={{ marginLeft: "auto", background: "#eff6ff", color: "#1d4ed8", borderRadius: 6, padding: "3px 10px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>
                           {pendingSubDocs.length}/{multiDocs.length} vendor POs pending
                         </span>
                       </div>
-                      <div style={{ fontSize: 15, color: "#000", padding: "8px 22px", borderBottom: "1px solid #f1f5f9" }}>{doc.materialRequired}</div>
+                      <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", padding: "8px 22px", borderBottom: "1px solid #f1f5f9" }}>{doc.materialRequired}</div>
                       {pendingSubDocs.map(subDoc => {
                         const commentKey = `${doc.id}_${subDoc.idx}`;
                         return (
                           <div key={subDoc.idx} style={{ padding: "14px 22px", borderBottom: "1px solid #f8fafc" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                               <div>
-                                <span style={{ fontWeight: 700, fontSize: 16, color: "#000" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
-                                <span style={{ fontSize: 14, color: "#92400e", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
+                                <span style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>Vendor {subDoc.idx + 1}: {subDoc.vendor}</span>
+                                <span style={{ fontSize: "var(--hz-text-md)", color: "#92400e", marginLeft: 8, fontWeight: 600 }}>⏳ Awaiting Approval</span>
                               </div>
                               <button onClick={() => { openDocModal(doc); setDocViewIndex(subDoc.idx); }}
-                                style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 14px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit" }}>
+                                style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 14px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink)", fontFamily: "inherit" }}>
                                 👁 Preview
                               </button>
                             </div>
@@ -8441,7 +8500,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                               placeholder="Comments (optional) — pricing concerns, revision needed…"
                               value={vpCommentMap[commentKey] || ""}
                               onChange={ev => setVpCommentMap(m => ({ ...m, [commentKey]: ev.target.value }))}
-                              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#000", boxSizing: "border-box", marginBottom: 8 }}
+                              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "var(--hz-ink)", boxSizing: "border-box", marginBottom: 8 }}
                             />
                             <div style={{ display: "flex", gap: 8 }}>
                               <ApproveBtn onClick={() => handleSubDocApprove(doc.id, subDoc.idx)} title="Approve" size="lg" />
@@ -8459,28 +8518,28 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
-                          <span style={{ background: typeBg, color: "#fff", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: 14 }}>{doc.pwjType}</span>
-                          <span style={{ fontWeight: 700, fontSize: 16, color: "#000" }}>{doc.docNumber}</span>
-                          <span style={{ fontSize: 15, color: "#000" }}>· {typeName}</span>
-                          {relTime && <span style={{ fontSize: 15, color: "#000" }}>· {relTime}</span>}
+                          <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e3a5f", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>#{docIdx + 1}</span>
+                          <span style={{ background: typeBg, color: "var(--hz-on-dark)", borderRadius: 6, padding: "3px 10px", fontWeight: 800, fontSize: "var(--hz-text-md)" }}>{doc.pwjType}</span>
+                          <span style={{ fontWeight: 700, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)" }}>{doc.docNumber}</span>
+                          <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>· {typeName}</span>
+                          {relTime && <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>· {relTime}</span>}
                         </div>
-                        <div style={{ fontSize: 16, color: "#000", fontWeight: 600, marginBottom: 3 }}>{doc.materialRequired}</div>
-                        <div style={{ fontSize: 15, color: "#000" }}>{doc.projectName} · Vendor: <strong>{doc.vendor}</strong></div>
-                        {doc.quantity && <div style={{ fontSize: 15, color: "#000", marginTop: 3 }}>Qty: {doc.quantity} {doc.unit} · Raised by: {doc.raisedBy}</div>}
+                        <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", fontWeight: 600, marginBottom: 3 }}>{doc.materialRequired}</div>
+                        <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)" }}>{doc.projectName} · Vendor: <strong>{doc.vendor}</strong></div>
+                        {doc.quantity && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", marginTop: 3 }}>Qty: {doc.quantity} {doc.unit} · Raised by: {doc.raisedBy}</div>}
                       </div>
-                      <button onClick={() => openDocModal(doc)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#000", fontFamily: "inherit", marginLeft: 16, flexShrink: 0 }}>
+                      <button onClick={() => openDocModal(doc)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", color: "var(--hz-ink)", fontFamily: "inherit", marginLeft: 16, flexShrink: 0 }}>
                         👁 Preview
                       </button>
                     </div>
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#000", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".04em" }}>Comments / Notes (optional)</div>
+                      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)", marginBottom: 5, textTransform: "uppercase", letterSpacing: ".04em" }}>Comments / Notes (optional)</div>
                       <textarea
                         rows={2}
                         placeholder="Add comments for Procurement — e.g. pricing concerns, revision needed, approved as-is…"
                         value={vpCommentMap[doc.id] || ""}
                         onChange={ev => setVpCommentMap(m => ({ ...m, [doc.id]: ev.target.value }))}
-                        style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 15, fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "#000", boxSizing: "border-box" }}
+                        style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", resize: "vertical", outline: "none", background: "#fff", color: "var(--hz-ink)", boxSizing: "border-box" }}
                       />
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -8504,29 +8563,29 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Header ── */}
             <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)", padding: "24px 32px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Manage Users</div>
-                <div style={{ fontSize: 14, color: "#374151", marginTop: 3 }}>{visibleUsers.length} team member{visibleUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
+                <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-on-dark)", letterSpacing: "-0.3px" }}>Manage Users</div>
+                <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginTop: 3 }}>{visibleUsers.length} team member{visibleUsers.length !== 1 ? "s" : ""} · Happizo CloudDesk</div>
               </div>
               <button onClick={() => setUserMgmtModal(false)}
-                style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", width: 36, height: 36, borderRadius: 10, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>×</button>
+                style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)", color: "var(--hz-on-dark)", width: 36, height: 36, borderRadius: 10, cursor: "pointer", fontSize: "var(--hz-text-xl)", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>×</button>
             </div>
 
             {/* ── Add user form ── */}
             <div style={{ padding: "20px 32px", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", flexShrink: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
+              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Add New Member</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 {[["Full Name","fullName","text"],["Username","username","text"],["Password","password","password"],["Email","email","email"],["Phone","phone","tel"],["Designation","designation","text"]].map(([label, key, type]) => (
                   <div key={key}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>{label}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 5 }}>{label}</div>
                     <input type={type} placeholder={label} value={newUserForm[key]}
                       onChange={e => setNewUserForm(f => ({ ...f, [key]: e.target.value }))}
-                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "#0f172a" }} />
+                      style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: "#fff", color: "var(--hz-ink)" }} />
                   </div>
                 ))}
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Role</div>
+                  <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 5 }}>Role</div>
                   <select value={newUserForm.role} onChange={e => setNewUserForm(f => ({ ...f, role: e.target.value }))}
-                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", color: "#0f172a", cursor: "pointer" }}>
+                    style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", background: "#fff", color: "var(--hz-ink)", cursor: "pointer" }}>
                     <option value="ENGINEER">Engineer</option>
                     <option value="PROCUREMENT">Procurement</option>
                     <option value="ADMIN">Admin</option>
@@ -8541,7 +8600,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
                 <div style={{ paddingTop: 16 }}>
                   <button onClick={submitNewUser}
-                    style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "8px 20px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", height: 36 }}>
+                    style={{ background: "linear-gradient(135deg,#1e3a5f,#2563eb)", border: "none", borderRadius: 8, padding: "8px 20px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", height: 36 }}>
                     + Add
                   </button>
                 </div>
@@ -8551,14 +8610,14 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Table header ── */}
             <div style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 1.2fr 100px 120px", gap: 0, padding: "10px 32px", background: "#f8fafc", borderBottom: "1.5px solid #e2e8f0", flexShrink: 0 }}>
               {["", "Member", "Role", "Contact", "Joined", "Actions"].map((h, i) => (
-                <div key={i} style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</div>
+                <div key={i} style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</div>
               ))}
             </div>
 
             {/* ── Users list ── */}
             <div style={{ overflowY: "auto", flex: 1 }}>
               {userMgmtLoading ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "#374151", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "var(--hz-ink-2)", gap: 10 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #e2e8f0", borderTopColor: "#6366f1", animation: "acct-spin 0.7s linear infinite" }} />
                   Loading members…
                 </div>
@@ -8571,7 +8630,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   CEO:         "linear-gradient(135deg,#ef4444,#dc2626)",
                   OH:          "linear-gradient(135deg,#ec4899,#be185d)",
                 };
-                const rm = ROLE_META[u.role] || { label: u.role, color: "#1e293b", bg: "#f1f5f9" };
+                const rm = ROLE_META[u.role] || { label: u.role, color: "var(--hz-ink-2)", bg: "#f1f5f9" };
                 const isSelf = u.id === user.id;
                 const canRemove = !isSelf && (isVP || u.role !== "VP");
                 const initials = (u.fullName || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
@@ -8583,7 +8642,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     onMouseLeave={e => e.currentTarget.style.background = ""}>
 
                     {/* Avatar */}
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_GRAD[u.role] || "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--hz-on-dark)", fontWeight: 800, fontSize: "var(--hz-text-md)", flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>
                       {initials}
                     </div>
 
@@ -8598,13 +8657,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, fullName: val } : x)); showToast("Name updated ✅"); }
                             else showToast(r.message || "Failed", "error");
                           }}
-                          style={{ ...inp, fontWeight: 600, fontSize: 14, color: "#0f172a", width: "auto", maxWidth: 180 }}
+                          style={{ ...inp, fontWeight: 600, fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", width: "auto", maxWidth: 180 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
                           onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
-                        {isSelf && <span style={{ fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>You</span>}
+                        {isSelf && <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, background: "#dbeafe", color: "#1d4ed8", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>You</span>}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2 }}>
-                        <span style={{ fontSize: 13, color: "#374151" }}>@</span>
+                        <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>@</span>
                         <input type="text" defaultValue={u.username || ""} placeholder="username"
                           onBlur={async e => {
                             const val = e.target.value.trim();
@@ -8613,7 +8672,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, username: val } : x)); showToast("Username updated ✅"); }
                             else { showToast(r.message || "Failed", "error"); e.target.value = u.username || ""; }
                           }}
-                          style={{ ...inp, fontSize: 13, color: "#374151", width: 120 }}
+                          style={{ ...inp, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", width: 120 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
                           onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }} />
                       </div>
@@ -8630,12 +8689,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val || null } : x)); showToast("Designation updated ✅"); }
                             else showToast(r.message || "Failed", "error");
                           }}
-                          style={{ border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 14, fontWeight: 600, color: "#0f172a", width: "100%", maxWidth: 200 }}
+                          style={{ border: "1px solid transparent", borderRadius: 6, padding: "3px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink)", width: "100%", maxWidth: 200 }}
                           onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; }}
                           onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; }} />
                       ) : (
                         <>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--hz-text-sm)", fontWeight: 600, borderRadius: 20, padding: "4px 12px", background: rm.bg, color: rm.color, whiteSpace: "nowrap" }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: rm.color }} />
                             {rm.label}
                           </span>
@@ -8648,7 +8707,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                                 if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, designation: val } : x)); showToast("Designation set ✅"); e.target.value = ""; }
                                 else showToast(r.message || "Failed", "error");
                               }}
-                              style={{ border: "1px solid transparent", borderRadius: 6, padding: "2px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: 13, color: "#374151", width: "100%", maxWidth: 200 }}
+                              style={{ border: "1px solid transparent", borderRadius: 6, padding: "2px 7px", background: "transparent", outline: "none", fontFamily: "inherit", cursor: "text", fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", width: "100%", maxWidth: 200 }}
                               onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
                               onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }} />
                           )}
@@ -8658,7 +8717,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                     {/* Contact */}
                     <div style={{ minWidth: 0 }}>
-                      {u.email && <div style={{ fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>}
+                      {u.email && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>}
                       <input type="tel" defaultValue={u.phone || ""} placeholder="Add phone"
                         onBlur={async e => {
                           const val = e.target.value.trim();
@@ -8667,19 +8726,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           if (r.success) { setAllUsers(prev => prev.map(x => x.id === u.id ? { ...x, phone: val || null } : x)); showToast("Phone updated ✅"); }
                           else showToast(r.message || "Failed", "error");
                         }}
-                        style={{ ...inp, fontSize: 13, color: u.phone ? "#475569" : "#cbd5e1", marginTop: 2, width: "100%", maxWidth: 140 }}
+                        style={{ ...inp, fontSize: "var(--hz-text-sm)", color: u.phone ? "var(--hz-ink-2)" : "#cbd5e1", marginTop: 2, width: "100%", maxWidth: 140 }}
                         onFocus={e => { e.currentTarget.style.border = "1px solid #bfdbfe"; e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#0f172a"; }}
                         onBlurCapture={e => { e.currentTarget.style.border = "1px solid transparent"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = u.phone ? "#475569" : "#cbd5e1"; }} />
                     </div>
 
                     {/* Joined */}
-                    <div style={{ fontSize: 13, color: "#374151" }}>{fmtDate(u.createdAt)}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>{fmtDate(u.createdAt)}</div>
 
                     {/* Actions */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
                       {isAdmin && (
                         <button onClick={() => { setPwdModal({ id: u.id, username: u.username }); setNewPwd(""); }}
-                          style={{ background: "#f5f3ff", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: 13, fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
+                          style={{ background: "#f5f3ff", border: "none", color: "#7c3aed", cursor: "pointer", fontSize: "var(--hz-text-sm)", fontWeight: 700, padding: "5px 10px", borderRadius: 7, fontFamily: "inherit", whiteSpace: "nowrap", transition: "background .12s" }}
                           onMouseEnter={e => e.currentTarget.style.background = "#ede9fe"}
                           onMouseLeave={e => e.currentTarget.style.background = "#f5f3ff"}>
                           🔑 Pwd
@@ -8726,11 +8785,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={() => { setPwdModal(null); setNewPwd(""); }}
-                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 22px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "9px 22px", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer" }}>
                 Cancel
               </button>
               <button onClick={submitChangePassword} disabled={pwdLoading}
-                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 24px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: pwdLoading ? .7 : 1 }}>
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "9px 24px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", opacity: pwdLoading ? .7 : 1 }}>
                 {pwdLoading ? "Saving…" : "🔑 Update Password"}
               </button>
             </div>
@@ -8742,19 +8801,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {/* ─── MULTI-ENTRY FLOATING BAR ─── */}
       {selectedIds.size > 0 && (
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 500, background: "linear-gradient(135deg,#0f172a,#1e3a5f)", borderRadius: 14, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 32px rgba(0,0,0,.35)" }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
+          <span style={{ color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)" }}>{selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected</span>
           {(isAdmin || isProcurement) && entries.filter(x => selectedIds.has(x.id)).every(canProc) && (
             <button onClick={async () => {
                 setGenDocItemVendors({}); setGenDocApplyAll(""); setGenDocVendors([""]); setGenDocPwjType("PO");
                 try { const r = await api.getApprovedVendors(); if (r.success) setApprovedVendors(r.data); } catch {}
                 setGenDocModal(true);
               }}
-              style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", borderRadius: 9, padding: "8px 18px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
               📄 Generate PO / WO / JO
             </button>
           )}
           <button onClick={() => setSelectedIds(new Set())}
-            style={{ background: "rgba(255,255,255,.12)", border: "none", borderRadius: 8, padding: "7px 12px", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ background: "rgba(255,255,255,.12)", border: "none", borderRadius: 8, padding: "7px 12px", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
             Clear
           </button>
         </div>
@@ -8784,20 +8843,20 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Header */}
               <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📄 Generate Document(s)</div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,.7)", marginTop: 2 }}>{selected.length} {selected.length === 1 ? "item" : "items"} selected</div>
+                  <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-on-dark)" }}>📄 Generate Document(s)</div>
+                  <div style={{ fontSize: "var(--hz-text-sm)", color: "rgba(255,255,255,.7)", marginTop: 2 }}>{selected.length} {selected.length === 1 ? "item" : "items"} selected</div>
                 </div>
-                <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+                <button onClick={() => setGenDocModal(false)} style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xl)", cursor: "pointer" }}>✕</button>
               </div>
 
               <div style={{ overflowY: "auto", flex: 1, padding: "20px 24px" }}>
                 {/* Doc Type */}
                 <div style={{ marginBottom: 18 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>Doc Type</label>
+                  <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>Doc Type</label>
                   <div style={{ display: "flex", gap: 10 }}>
                     {["PO","WO","JO"].map(t => (
                       <button key={t} onClick={() => setGenDocPwjType(t)}
-                        style={{ flex: 1, padding: "10px 0", border: `2px solid ${genDocPwjType === t ? "#2563eb" : "#e2e8f0"}`, borderRadius: 10, background: genDocPwjType === t ? "#eff6ff" : "#f8fafc", color: genDocPwjType === t ? "#1d4ed8" : "#64748b", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                        style={{ flex: 1, padding: "10px 0", border: `2px solid ${genDocPwjType === t ? "#2563eb" : "#e2e8f0"}`, borderRadius: 10, background: genDocPwjType === t ? "#eff6ff" : "#f8fafc", color: genDocPwjType === t ? "#1d4ed8" : "var(--hz-muted)", fontWeight: 800, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                         {t}
                       </button>
                     ))}
@@ -8806,8 +8865,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
                 {/* Vendor selection — one vendor applies to every item; add more for a multi-vendor entry */}
                 <div style={{ marginBottom: 18, background: "#f8fafc", borderRadius: 10, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
-                    {isMultiGen ? "Vendors" : "Vendor"} <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "#374151" }}>— {isMultiGen ? `one ${genDocPwjType} per vendor, each with all ${selected.length} item(s)` : `applies to all ${selected.length} item(s)`}</span>
+                  <label style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>
+                    {isMultiGen ? "Vendors" : "Vendor"} <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0, color: "var(--hz-ink-2)" }}>— {isMultiGen ? `one ${genDocPwjType} per vendor, each with all ${selected.length} item(s)` : `applies to all ${selected.length} item(s)`}</span>
                   </label>
                   {genDocVendors.map((gv, vi) => (
                     <div key={vi} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -8818,26 +8877,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           if (vi === 0) setGenDocApplyAll(val);
                           if (genDocVendors.length === 1) { const map = {}; selected.forEach(e => { map[e.id] = val; }); setGenDocItemVendors(map); }
                         }}
-                        style={{ flex: 1, border: `1.5px solid ${gv ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: gv ? "#f0fdf4" : "#fff" }}>
+                        style={{ flex: 1, border: `1.5px solid ${gv ? "#86efac" : "#e2e8f0"}`, borderRadius: 8, padding: "9px 10px", fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", background: gv ? "#f0fdf4" : "#fff" }}>
                         <option value="">— Select vendor {genDocVendors.length > 1 ? vi + 1 : ""}—</option>
                         {approvedVendors.filter(v => v.name === gv || !chosen.includes(v.name)).map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
                       </select>
                       {genDocVendors.length > 1 && (
                         <button type="button" onClick={() => setGenDocVendors(list => list.filter((_, i) => i !== vi))} aria-label="Remove vendor"
-                          style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>×</button>
+                          style={{ background: "#fee2e2", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: "#ef4444", fontWeight: 700, fontSize: "var(--hz-text-lg)", lineHeight: 1 }}>×</button>
                       )}
                     </div>
                   ))}
                   <button type="button" onClick={() => setGenDocVendors(list => [...list, ""])}
-                    style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+                    style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: 8, padding: "6px 16px", cursor: "pointer", color: "#1d4ed8", fontWeight: 700, fontSize: "var(--hz-text-md)", fontFamily: "inherit" }}>
                     + Add Vendor
                   </button>
-                  {isMultiGen && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 8 }}>Quantities start blank in each vendor's document — split the items between vendors there.</div>}
+                  {isMultiGen && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 8 }}>Quantities start blank in each vendor's document — split the items between vendors there.</div>}
                 </div>
 
                 {/* Summary */}
                 {allAssigned && (isMultiGen || docCount > 0) && (
-                  <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: 14, color: "#166534", fontWeight: 600 }}>
+                  <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, padding: "10px 14px", fontSize: "var(--hz-text-md)", color: "#166534", fontWeight: 600 }}>
                     ✅ {isMultiGen ? `${chosen.length} ${genDocPwjType}s will be created in one entry — ` : `1 ${genDocPwjType} will be created for `}<strong>{isMultiGen ? chosen.join(", ") : chosen[0]}</strong>{isMultiGen ? ` — ${selected.length} line item(s) each` : ` with ${selected.length} line item(s)`}
                   </div>
                 )}
@@ -8845,9 +8904,9 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Footer */}
               <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
-                <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <button onClick={() => setGenDocModal(false)} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 18px", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                 <button onClick={submitGenDoc} disabled={genDocSaving || !allAssigned}
-                  style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "#fff" : "#94a3b8", fontWeight: 700, fontSize: 14, cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
+                  style={{ background: allAssigned ? "linear-gradient(135deg,#1a6ab1,#2563eb)" : "#e2e8f0", border: "none", borderRadius: 8, padding: "9px 20px", color: allAssigned ? "var(--hz-on-dark)" : "var(--hz-faint)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: allAssigned ? "pointer" : "default", fontFamily: "inherit" }}>
                   {genDocSaving ? "Creating…" : "Create & Open Doc"}
                 </button>
               </div>
@@ -8862,26 +8921,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
         const statusBg    = vv.status === "APPROVED" ? "#dcfce7"  : vv.status === "REJECTED" ? "#fee2e2"  : "#fef9c3";
         const Row = ({ label, value }) => value ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-            <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+            <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", fontWeight: 500, wordBreak: "break-word" }}>{value}</div>
           </div>
         ) : null;
         const DocLink = ({ label, url }) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+            <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
             {url
               ? <a href={`${BACKEND_BASE}${url}`} target="_blank" rel="noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: 13, fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "5px 12px", color: "#1a6ab1", fontSize: "var(--hz-text-sm)", fontWeight: 600, textDecoration: "none", width: "fit-content" }}>
                   📎 View Document
                 </a>
-              : <span style={{ fontSize: 13, color: "#374151" }}>Not uploaded</span>
+              : <span style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>Not uploaded</span>
             }
           </div>
         );
         const SectionHead = ({ icon, title }) => (
           <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8, padding: "10px 0 6px", borderBottom: "1.5px solid #e2eaf5", marginTop: 8 }}>
-            <span style={{ fontSize: 15 }}>{icon}</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{title}</span>
+            <span style={{ fontSize: "var(--hz-text-md)" }}>{icon}</span>
+            <span style={{ fontWeight: 700, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>{title}</span>
           </div>
         );
         let contacts = [];
@@ -8894,15 +8953,15 @@ function Dashboard({ user, onLogout: handleLogout }) {
               {/* Header */}
               <div style={{ background: "linear-gradient(135deg,#1a6ab1,#2563eb)", padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{vv.name}</div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,.75)", marginTop: 3 }}>
+                  <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-on-dark)" }}>{vv.name}</div>
+                  <div style={{ fontSize: "var(--hz-text-sm)", color: "rgba(255,255,255,.75)", marginTop: 3 }}>
                     {vv.category || "—"} {vv.vendorCode ? `· Code: ${vv.vendorCode}` : ""}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, background: statusBg, color: statusColor, borderRadius: 20, padding: "4px 14px" }}>{vv.status || "PENDING"}</span>
+                  <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, background: statusBg, color: statusColor, borderRadius: 20, padding: "4px 14px" }}>{vv.status || "PENDING"}</span>
                   <button onClick={() => setViewVendor(null)}
-                    style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                    style={{ background: "rgba(255,255,255,.15)", border: "none", borderRadius: 8, width: 32, height: 32, color: "var(--hz-on-dark)", fontSize: "var(--hz-text-xl)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
               </div>
               {/* Body */}
@@ -8982,10 +9041,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <Row label="Return Fees"                value={vv.returnFees} />
                   <Row label="Vendor Pays Return Shipping" value={vv.vendorPaysReturnShipping ? "Yes" : null} />
                   <div style={{ gridColumn: "1/-1" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>Vendor Policies</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>Vendor Policies</div>
                     {vv.listVendorPolicies
-                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "#1e293b", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontFamily: "inherit", lineHeight: 1.7 }}>{vv.listVendorPolicies}</pre>
-                      : <span style={{ fontSize: 14, color: "#374151" }}>Not specified</span>}
+                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontFamily: "inherit", lineHeight: 1.7 }}>{vv.listVendorPolicies}</pre>
+                      : <span style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)" }}>Not specified</span>}
                   </div>
                 </div>
               </div>
@@ -8999,19 +9058,19 @@ function Dashboard({ user, onLogout: handleLogout }) {
       {addVendorPage && (isAdmin || isVP || isProcurement || isProcurementEngineer) && (() => {
         const avf = addVendorForm;
         const setF = (key, val) => setAddVendorForm(f => ({ ...f, [key]: val }));
-        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
+        const inp = { border: "1.5px solid #dbe6f3", borderRadius: 8, padding: "9px 12px", fontSize: "var(--hz-text-md)", outline: "none", fontFamily: "inherit", background: "#fff", width: "100%", boxSizing: "border-box" };
         const sel = { ...inp };
-        const lbl = { fontSize: 13.5, fontWeight: 600, color: "#1e293b", marginBottom: 4, display: "block" };
+        const lbl = { fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 4, display: "block" };
         const fld = { display: "flex", flexDirection: "column" };
         const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 };
         const grid3 = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 };
         const sectionHead = (letter, title, color = "#1a6ab1") => (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, marginTop: 6 }}>
             <div style={{ width: 4, height: 22, borderRadius: 2, background: color, flexShrink: 0 }} />
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{title}</div>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>{title}</div>
           </div>
         );
-        const subHead = (title) => <div style={{ fontSize: 13.5, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, marginTop: 18, paddingBottom: 6, borderBottom: "1px solid #e2eaf5" }}>{title}</div>;
+        const subHead = (title) => <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, marginTop: 18, paddingBottom: 6, borderBottom: "1px solid #e2eaf5" }}>{title}</div>;
 
         const autoVendorCode = () => "VND-" + Date.now().toString(36).toUpperCase();
 
@@ -9120,22 +9179,22 @@ function Dashboard({ user, onLogout: handleLogout }) {
           }
         };
 
-        const F = { fontFamily: "'Inter','Plus Jakarta Sans',sans-serif" };
-        const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "#0f172a", transition: "border-color .15s" };
-        const lbl2 = { fontSize: 13, fontWeight: 700, color: "#374151", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
+        const F = { fontFamily: "var(--hz-font)" };
+        const inp2 = { border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: "var(--hz-text-md)", outline: "none", ...F, background: "#fff", width: "100%", boxSizing: "border-box", color: "var(--hz-ink)", transition: "border-color .15s" };
+        const lbl2 = { fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", letterSpacing: .8, textTransform: "uppercase", marginBottom: 5, display: "block", ...F };
         const fld2 = { display: "flex", flexDirection: "column" };
         const card = { background: "#fff", borderRadius: 16, padding: "28px 32px", marginBottom: 20, boxShadow: "0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04)" };
         const secTitle = (icon, title, color) => (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{icon}</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", ...F }}>{title}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-xl)" }}>{icon}</div>
+            <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)", ...F }}>{title}</div>
           </div>
         );
-        const divider = (label) => <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", letterSpacing: 1, textTransform: "uppercase", marginTop: 22, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}><span>{label}</span><div style={{ flex: 1, height: 1, background: "#f1f5f9" }} /></div>;
+        const divider = (label) => <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink-2)", letterSpacing: 1, textTransform: "uppercase", marginTop: 22, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}><span>{label}</span><div style={{ flex: 1, height: 1, background: "#f1f5f9" }} /></div>;
         const attachBtn = (uploading, label = "📎 Attach") => ({
           display: "inline-flex", alignItems: "center", gap: 6, background: uploading ? "#f1f5f9" : "#eff6ff",
           border: "1.5px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", cursor: uploading ? "default" : "pointer",
-          fontSize: 13, color: "#2563eb", fontWeight: 700, whiteSpace: "nowrap", ...F,
+          fontSize: "var(--hz-text-sm)", color: "#2563eb", fontWeight: 700, whiteSpace: "nowrap", ...F,
         });
 
         return (
@@ -9145,10 +9204,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: editVendorId ? "#3b82f6" : "#f59e0b" }} />
-                <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", ...F }}>{editVendorId ? "Edit Vendor" : "New Vendor Registration"}</span>
-                {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: 13, fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
+                <span style={{ fontSize: "var(--hz-text-md)", fontWeight: 800, color: "var(--hz-ink)", ...F }}>{editVendorId ? "Edit Vendor" : "New Vendor Registration"}</span>
+                {!editVendorId && <span style={{ background: "#fef3c7", color: "#b45309", fontSize: "var(--hz-text-sm)", fontWeight: 700, borderRadius: 6, padding: "3px 10px", letterSpacing: .5, ...F }}>DRAFT</span>}
               </div>
-              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
+              <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "7px 16px", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", ...F }}>✕ {editVendorId ? "Cancel" : "Discard"}</button>
             </div>
 
             {/* ── Body: sidebar + content ── */}
@@ -9156,18 +9215,18 @@ function Dashboard({ user, onLogout: handleLogout }) {
 
               {/* Left nav */}
               <div style={{ width: 220, background: "#fff", borderRight: "1px solid #e2e8f0", flexShrink: 0, padding: "24px 16px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, paddingLeft: 12, ...F }}>Sections</div>
+                <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, paddingLeft: 12, ...F }}>Sections</div>
                 {NAV.map(n => (
                   <button key={n.id} onClick={() => scrollTo(n.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", width: "100%", ...F, fontSize: 14, fontWeight: 600, color: "#1e293b", transition: "background .15s" }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", width: "100%", ...F, fontSize: "var(--hz-text-md)", fontWeight: 600, color: "var(--hz-ink-2)", transition: "background .15s" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}>
-                    <span style={{ fontSize: 16 }}>{n.icon}</span> {n.label}
+                    <span style={{ fontSize: "var(--hz-text-lg)" }}>{n.icon}</span> {n.label}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
                 <div style={{ padding: "16px 14px", background: "#f8fafc", borderRadius: 10, marginTop: 8 }}>
-                  <div style={{ fontSize: 13, color: "#374151", ...F, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", ...F, lineHeight: 1.6 }}>
                     {editVendorId ? "Changes will update the vendor record immediately." : <>Saved as <strong>Draft</strong>. Pending VP approval before vendor is activated.</>}
                   </div>
                 </div>
@@ -9200,7 +9259,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <label style={lbl}>Rating</label>
                   <div style={{ display: "flex", gap: 6 }}>
                     {[1,2,3,4,5].map(n => (
-                      <span key={n} onClick={() => setF("ratings", n)} style={{ fontSize: 26, cursor: "pointer", color: n <= avf.ratings ? "#f59e0b" : "#d1d5db", transition: "color .15s" }}>★</span>
+                      <span key={n} onClick={() => setF("ratings", n)} style={{ fontSize: "var(--hz-text-2xl)", cursor: "pointer", color: n <= avf.ratings ? "#f59e0b" : "#d1d5db", transition: "color .15s" }}>★</span>
                     ))}
                   </div>
                 </div>
@@ -9227,7 +9286,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             onChange={e => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.map((it, j) => j === ii ? e.target.value : it) } : x))} />
                           {ps.items.length > 1 && (
                             <button type="button" onClick={() => setF("productServices", avf.productServices.map((x, i) => i === pi ? { ...x, items: x.items.filter((_, j) => j !== ii) } : x))}
-                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 13 }}>✕</button>
+                              style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-sm)" }}>✕</button>
                           )}
                         </div>
                       ))}
@@ -9235,12 +9294,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     {/* Remove row */}
                     {avf.productServices.length > 1 && (
                       <button type="button" onClick={() => setF("productServices", avf.productServices.filter((_, i) => i !== pi))}
-                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer", fontSize: 13, marginTop: 18, flexShrink: 0 }}>✕</button>
+                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-sm)", marginTop: 18, flexShrink: 0 }}>✕</button>
                     )}
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("productServices", [...avf.productServices, { category: "", items: [""] }])}
-                  style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", color: "#15803d", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit", width: "100%" }}>+ Add Category</button>
+                  style={{ background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", color: "#15803d", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, fontFamily: "inherit", width: "100%" }}>+ Add Category</button>
 
                 {/* Contact Details */}
                 {subHead("Owner Details")}
@@ -9260,7 +9319,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 </div>
 
                 {subHead("b) SPOC Details")}
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#1e293b", marginBottom: 12, cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: 12, cursor: "pointer" }}>
                   <input type="checkbox" checked={avf.spocSameAsCustomer}
                     onChange={e => {
                       const checked = e.target.checked;
@@ -9287,11 +9346,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <div style={fld}><label style={lbl}>Email</label><input style={inp} value={c.email || ""} onChange={e => setF("contacts", avf.contacts.map((x, i) => i === ci ? { ...x, email: e.target.value } : x))} placeholder="Email" /></div>
                     <div style={fld}><label style={lbl}>Phone</label><input style={inp} value={c.contactNumber || ""} onChange={e => setF("contacts", avf.contacts.map((x, i) => i === ci ? { ...x, contactNumber: e.target.value } : x))} placeholder="Phone" /></div>
                     <button type="button" onClick={() => setF("contacts", avf.contacts.filter((_, i) => i !== ci))}
-                      style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "8px 10px", color: "#dc2626", cursor: "pointer", marginBottom: 0 }}>✕</button>
+                      style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "8px 10px", color: "var(--hz-danger)", cursor: "pointer", marginBottom: 0 }}>✕</button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("contacts", [...avf.contacts, { personName: "", email: "", contactNumber: "" }])}
-                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>+ Add Contact</button>
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: "var(--hz-text-sm)", fontWeight: 600, fontFamily: "inherit" }}>+ Add Contact</button>
 
                 {subHead("Registered Address")}
                 <div style={{ ...grid2, marginBottom: 10 }}>
@@ -9334,7 +9393,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             onClick={() => setF("vendorType", selected
                               ? avf.vendorType.filter(t => t !== code)
                               : [...(avf.vendorType || []), code])}
-                            style={{ border: `2px solid ${selected ? "#7c3aed" : "#dbe6f3"}`, borderRadius: 8, padding: "7px 14px", background: selected ? "#f5f3ff" : "#fff", color: selected ? "#7c3aed" : "#64748b", fontWeight: selected ? 700 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            style={{ border: `2px solid ${selected ? "#7c3aed" : "#dbe6f3"}`, borderRadius: 8, padding: "7px 14px", background: selected ? "#f5f3ff" : "#fff", color: selected ? "#7c3aed" : "var(--hz-muted)", fontWeight: selected ? 700 : 500, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                             {selected ? "✓ " : ""}{label}
                           </button>
                         );
@@ -9346,7 +9405,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {subHead("Vendor Portfolio")}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
                   <span style={{ ...lbl, marginBottom: 0 }}>Portfolio Document</span>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f5f3ff", border: "1px dashed #a78bfa", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 14, color: "#7c3aed", fontWeight: 600 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f5f3ff", border: "1px dashed #a78bfa", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: "var(--hz-text-md)", color: "#7c3aed", fontWeight: 600 }}>
                     {avf.portfolioDocUploading ? "⏳ Uploading…" : "📁 Attach"}
                     <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
                       disabled={avf.portfolioDocUploading}
@@ -9361,13 +9420,13 @@ function Dashboard({ user, onLogout: handleLogout }) {
                       }} />
                   </label>
                   {avf.portfolioDocUrl && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "6px 12px", fontSize: "var(--hz-text-md)" }}>
                       <a href={BACKEND_BASE + avf.portfolioDocUrl} target="_blank" rel="noreferrer"
                         style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "none" }}>
                         📄 {avf.portfolioDocUrl.split("/").pop()}
                       </a>
                       <button type="button" onClick={() => setF("portfolioDocUrl", "")}
-                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                        style={{ background: "none", border: "none", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-md)", padding: 0 }}>✕</button>
                     </div>
                   )}
                 </div>
@@ -9383,16 +9442,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <input style={{ ...inp, flex: 1 }} value={url} onChange={e => setF("socialMedia", avf.socialMedia.map((u, i) => i === si ? e.target.value : u))} placeholder="https://linkedin.com/company/..." />
                     {avf.socialMedia.length > 1 && (
                       <button type="button" onClick={() => setF("socialMedia", avf.socialMedia.filter((_, i) => i !== si))}
-                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "#dc2626", cursor: "pointer" }}>✕</button>
+                        style={{ background: "#fee2e2", border: "none", borderRadius: 6, padding: "6px 10px", color: "var(--hz-danger)", cursor: "pointer" }}>✕</button>
                     )}
                   </div>
                 ))}
                 <button type="button" onClick={() => setF("socialMedia", [...avf.socialMedia, ""])}
-                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", marginBottom: 16 }}>+ Add Social Media</button>
+                  style={{ background: "#eff6ff", border: "1px dashed #93c5fd", borderRadius: 8, padding: "7px 14px", color: "#1d4ed8", cursor: "pointer", fontSize: "var(--hz-text-sm)", fontWeight: 600, fontFamily: "inherit", marginBottom: 16 }}>+ Add Social Media</button>
 
                 <div style={{ ...fld, marginBottom: 6 }}>
                   <label style={lbl}>Catalogues / Documents</label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, color: "#15803d", fontWeight: 600, alignSelf: "flex-start" }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f0fdf4", border: "1px dashed #86efac", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: "var(--hz-text-md)", color: "#15803d", fontWeight: 600, alignSelf: "flex-start" }}>
                     📎 Attach Catalogue
                     <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }}
                       onChange={async e => {
@@ -9407,10 +9466,10 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                     {avf.catalogues.map((url, ci) => (
-                      <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 6, padding: "4px 10px", fontSize: 13 }}>
+                      <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 6, padding: "4px 10px", fontSize: "var(--hz-text-sm)" }}>
                         <span>📄 {url.split("/").pop()}</span>
                         <button type="button" onClick={() => setF("catalogues", avf.catalogues.filter((_, i) => i !== ci))}
-                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                          style={{ background: "none", border: "none", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-md)", padding: 0 }}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -9444,7 +9503,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         <input style={inp} value={avf[key]} onChange={e => setF(key, e.target.value.toUpperCase())} placeholder={placeholder} maxLength={maxLen} />
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 1 }}>
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: "var(--hz-text-sm)", color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {avf[uploadKey] ? "🔍 Reading…" : "📎 Attach & Scan"}
                           <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
                             disabled={avf[uploadKey]}
@@ -9471,11 +9530,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }} />
                         </label>
                         {avf[docKey] && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 13 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: "var(--hz-text-sm)" }}>
                             <a href={BACKEND_BASE + avf[docKey]} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf[docKey].split("/").pop()}</a>
                             <button type="button" onClick={() => setF(docKey, "")}
-                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                              style={{ background: "none", border: "none", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-md)", padding: 0 }}>✕</button>
                           </div>
                         )}
                       </div>
@@ -9492,7 +9551,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                         {["Yes", "No"].map(opt => (
                           <button key={opt} type="button"
                             onClick={() => setF("msmeRegistered", opt)}
-                            style={{ border: `2px solid ${avf.msmeRegistered === opt ? "#0d9488" : "#e2eaf5"}`, borderRadius: 8, padding: "7px 22px", background: avf.msmeRegistered === opt ? "#f0fdfa" : "#fff", color: avf.msmeRegistered === opt ? "#0d9488" : "#64748b", fontWeight: avf.msmeRegistered === opt ? 700 : 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                            style={{ border: `2px solid ${avf.msmeRegistered === opt ? "#0d9488" : "#e2eaf5"}`, borderRadius: 8, padding: "7px 22px", background: avf.msmeRegistered === opt ? "#f0fdfa" : "#fff", color: avf.msmeRegistered === opt ? "#0d9488" : "var(--hz-muted)", fontWeight: avf.msmeRegistered === opt ? 700 : 500, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
                             {avf.msmeRegistered === opt ? "✓ " : ""}{opt}
                           </button>
                         ))}
@@ -9500,7 +9559,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                     {avf.msmeRegistered === "Yes" && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f0fdfa", border: "1px dashed #5eead4", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: "var(--hz-text-sm)", color: "#0d9488", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {avf.msmeDocUploading ? "⏳ Uploading…" : "📎 Attach Certificate"}
                           <input type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: "none" }}
                             disabled={avf.msmeDocUploading}
@@ -9516,11 +9575,11 @@ function Dashboard({ user, onLogout: handleLogout }) {
                             }} />
                         </label>
                         {avf.msmeDocUrl && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: 13 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 8, padding: "5px 10px", fontSize: "var(--hz-text-sm)" }}>
                             <a href={BACKEND_BASE + avf.msmeDocUrl} target="_blank" rel="noreferrer"
                               style={{ color: "#0d9488", fontWeight: 600, textDecoration: "none" }}>📄 {avf.msmeDocUrl.split("/").pop()}</a>
                             <button type="button" onClick={() => setF("msmeDocUrl", "")}
-                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                              style={{ background: "none", border: "none", color: "var(--hz-danger)", cursor: "pointer", fontSize: "var(--hz-text-md)", padding: 0 }}>✕</button>
                           </div>
                         )}
                       </div>
@@ -9536,17 +9595,17 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 {/* Passbook upload + OCR */}
                 <div style={{ display: "flex", gap: 20, alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ flexShrink: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "#374151", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-ink-2)", marginBottom: 8 }}>DOCUMENT REFERENCE</div>
                     <label style={{ display: "block", width: 130, height: 100, border: "2px dashed #93c5fd", borderRadius: 10, cursor: "pointer", overflow: "hidden", background: "#f8fafc", position: "relative" }}>
                       {avf.bankDocUrl
                         ? <img src={BACKEND_BASE + avf.bankDocUrl} alt="passbook" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4 }}>
-                            <span style={{ fontSize: 24 }}>🏦</span>
-                            <span style={{ fontSize: 12, color: "#374151", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
+                            <span style={{ fontSize: "var(--hz-text-2xl)" }}>🏦</span>
+                            <span style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-ink-2)", fontWeight: 600, textAlign: "center" }}>Upload Passbook</span>
                           </div>
                       }
                       {(avf.bankDocUploading || avf.bankOcrLoading) && (
-                        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#1a6ab1", fontWeight: 700 }}>
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: "var(--hz-text-sm)", color: "#1a6ab1", fontWeight: 700 }}>
                           {avf.bankDocUploading ? "⏳ Uploading…" : "🔍 Reading…"}
                         </div>
                       )}
@@ -9575,7 +9634,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     </div>
                     <div style={fld}>
                       <label style={lbl}>Combined Bank Details (auto-filled)</label>
-                      <textarea style={{ ...inp, minHeight: 70, resize: "vertical", background: "#f8fafc", color: "#374151" }}
+                      <textarea style={{ ...inp, minHeight: 70, resize: "vertical", background: "#f8fafc", color: "var(--hz-ink-2)" }}
                         value={avf.bankName || avf.accountNumber || avf.ifscCode
                           ? `${avf.bankName || ""}${avf.accountNumber ? " | A/C No: " + avf.accountNumber : ""}${avf.ifscCode ? " | IFSC: " + avf.ifscCode : ""}`
                           : avf.bankDetails}
@@ -9591,16 +9650,16 @@ function Dashboard({ user, onLogout: handleLogout }) {
             {/* ── Fixed bottom action bar ── */}
             <div style={{ background: "#fff", borderTop: "1px solid #e2e8f0", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexShrink: 0 }}>
               <button onClick={() => { setAddVendorPage(false); setEditVendorId(null); setEditVendorStatus(null); }}
-                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "#374151", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F }}>
+                style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 24px", color: "var(--hz-ink-2)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", ...F }}>
                 {editVendorId ? "Cancel" : "Discard"}
               </button>
               <button onClick={() => submitDraft(false)} disabled={addVendorLoading}
-                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", border: "none", borderRadius: 10, padding: "10px 28px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
                 {addVendorLoading ? "Saving…" : editVendorId ? "💾 Save Changes" : "💾 Save as Draft"}
               </button>
               {editVendorId && editVendorStatus !== "APPROVED" && (
                 <button onClick={() => submitDraft(true)} disabled={addVendorLoading}
-                  style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 10, padding: "10px 28px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
+                  style={{ background: "linear-gradient(135deg,#16a34a,#22c55e)", border: "none", borderRadius: 10, padding: "10px 28px", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", ...F, opacity: addVendorLoading ? .7 : 1 }}>
                   {addVendorLoading ? "Saving…" : "📤 Send for Approval"}
                 </button>
               )}

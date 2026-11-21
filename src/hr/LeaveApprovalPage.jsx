@@ -5,8 +5,8 @@ import { ApproveBtn, RejectBtn } from "../ActionButtons";
 const STATUS_CFG = {
   PENDING:   { bg: "#fffbeb", color: "#d97706", label: "Pending" },
   APPROVED:  { bg: "#ecfdf5", color: "#059669", label: "Approved" },
-  REJECTED:  { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
-  CANCELLED: { bg: "#f8fafc", color: "#374151", label: "Cancelled" },
+  REJECTED:  { bg: "#fef2f2", color: "var(--hz-danger)", label: "Rejected" },
+  CANCELLED: { bg: "#f8fafc", color: "var(--hz-ink-2)", label: "Cancelled" },
 };
 
 export default function LeaveApprovalPage({ user }) {
@@ -49,7 +49,7 @@ export default function LeaveApprovalPage({ user }) {
     finally { setProcessing(null); }
   };
 
-  const badge  = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" });
+  const badge  = (s) => ({ background: s.bg, color: s.color, borderRadius: 5, padding: "3px 10px", fontSize: "var(--hz-text-sm)", fontWeight: 600, whiteSpace: "nowrap" });
   const card   = { background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0" };
 
   const employeeOptions = useMemo(() => {
@@ -91,33 +91,33 @@ export default function LeaveApprovalPage({ user }) {
 
   const FILTER_INP = {
     border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 12px",
-    fontSize: 14, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff",
+    fontSize: "var(--hz-text-md)", fontFamily: "inherit", outline: "none", color: "var(--hz-ink)", background: "#fff",
   };
-  const FILTER_LBL = { fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4, display: "block" };
+  const FILTER_LBL = { fontSize: "var(--hz-text-sm)", fontWeight: 500, color: "var(--hz-ink-2)", marginBottom: 4, display: "block" };
 
   return (
     <div className="hr-page" style={{ padding: "24px 32px", background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
 
       {/* Page title */}
-      <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 2 }}>Leave &amp; Permission Approvals</div>
-      <div style={{ fontSize: 14, color: "#64748b", marginBottom: 18 }}>Review requests and see what has been approved or not approved.</div>
+      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)", marginBottom: 2 }}>Leave &amp; Permission Approvals</div>
+      <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-muted)", marginBottom: 18 }}>Review requests and see what has been approved or not approved.</div>
 
       {/* Summary tiles — click to switch view */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 18 }}>
         {[
           { key: "pending",  label: "Pending",      n: counts.pending,  color: "#d97706", sub: `${pending.filter(l => l.leaveType === "PERMISSION").length} permission(s)` },
           { key: "approved", label: "Approved",     n: counts.approved, color: "#059669", sub: "Granted" },
-          { key: "rejected", label: "Not Approved", n: counts.rejected, color: "#dc2626", sub: "Rejected" },
-          { key: "all",      label: "All Requests", n: counts.all,      color: "#1e3a5f", sub: "Everything" },
+          { key: "rejected", label: "Not Approved", n: counts.rejected, color: "var(--hz-danger)", sub: "Rejected" },
+          { key: "all",      label: "All Requests", n: counts.all,      color: "var(--hz-primary)", sub: "Everything" },
         ].map(t => {
           const active = tab === t.key;
           return (
             <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={active}
               style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "#fff", borderRadius: 12, padding: "14px 16px",
                 border: `1.5px solid ${active ? t.color : "#e2e8f0"}`, boxShadow: active ? `0 0 0 3px ${t.color}1f` : "0 1px 2px rgba(15,23,42,.04)", borderTop: `3px solid ${t.color}` }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b" }}>{t.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: t.color, lineHeight: 1.1, marginTop: 4 }}>{t.n}</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{t.sub}</div>
+              <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 600, color: "var(--hz-muted)" }}>{t.label}</div>
+              <div style={{ fontSize: "var(--hz-text-3xl)", fontWeight: 800, color: t.color, lineHeight: 1.1, marginTop: 4 }}>{t.n}</div>
+              <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-faint)", marginTop: 4 }}>{t.sub}</div>
             </button>
           );
         })}
@@ -135,10 +135,10 @@ export default function LeaveApprovalPage({ user }) {
             const active = tab === t.key;
             return (
               <button key={t.key} role="tab" aria-selected={active} onClick={() => setTab(t.key)}
-                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 14, fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
-                  background: active ? "#1e3a5f" : "transparent", color: active ? "#fff" : "#475569", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
+                  background: active ? "#1e3a5f" : "transparent", color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
                 {t.label}
-                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 99, padding: "1px 7px", background: active ? "rgba(255,255,255,.2)" : "#e2e8f0", color: active ? "#fff" : "#475569" }}>{counts[t.key]}</span>
+                <span style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, borderRadius: 99, padding: "1px 7px", background: active ? "rgba(255,255,255,.2)" : "#e2e8f0", color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)" }}>{counts[t.key]}</span>
               </button>
             );
           })}
@@ -152,8 +152,8 @@ export default function LeaveApprovalPage({ user }) {
             const active = filterCategory === c.key;
             return (
               <button key={c.key} onClick={() => setFilterCategory(c.key)} aria-pressed={active}
-                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 14, fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
-                  background: active ? "#fff" : "transparent", color: active ? "#7c3aed" : "#475569", boxShadow: active ? "0 1px 2px rgba(15,23,42,.12)" : "none" }}>
+                style={{ border: "none", borderRadius: 7, padding: "7px 14px", fontSize: "var(--hz-text-md)", fontWeight: active ? 700 : 600, fontFamily: "inherit", cursor: "pointer",
+                  background: active ? "#fff" : "transparent", color: active ? "#7c3aed" : "var(--hz-ink-2)", boxShadow: active ? "0 1px 2px rgba(15,23,42,.12)" : "none" }}>
                 {c.label}
               </button>
             );
@@ -197,7 +197,7 @@ export default function LeaveApprovalPage({ user }) {
           </div>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "#374151", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit" }}>
               Clear Filters
             </button>
           )}
@@ -205,7 +205,7 @@ export default function LeaveApprovalPage({ user }) {
       )}
 
       {list.length === 0 ? (
-        <div style={{ ...card, padding: 60, textAlign: "center", color: "#374151", fontSize: 15 }}>
+        <div style={{ ...card, padding: 60, textAlign: "center", color: "var(--hz-ink-2)", fontSize: "var(--hz-text-md)" }}>
           {tab === "pending" ? "No pending leave approvals"
             : hasFilters ? "No leave requests match the selected filters."
             : tab === "approved" ? "No approved requests yet" : tab === "rejected" ? "No requests have been rejected" : "No leave requests found"}
@@ -227,43 +227,43 @@ export default function LeaveApprovalPage({ user }) {
                         width: 38, height: 38, borderRadius: 10,
                         background: "#1e3a5f",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "#fff", fontWeight: 700, fontSize: 16, flexShrink: 0,
+                        color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-lg)", flexShrink: 0,
                       }}>
                         {initials}
                       </div>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{l.fullName || l.username}</div>
-                        <div style={{ fontSize: 13, color: "#374151" }}>Applied: {fmtDate(l.createdAt)}</div>
+                        <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>{l.fullName || l.username}</div>
+                        <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>Applied: {fmtDate(l.createdAt)}</div>
                       </div>
                       <span style={badge(s)}>{s.label}</span>
                     </div>
 
-                    <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: 14 }}>
-                      <div><span style={{ color: "#374151" }}>Type: </span><strong style={{ color: l.leaveType === "PERMISSION" ? "#7c3aed" : "#0f172a" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
-                      <div><span style={{ color: "#374151" }}>Date: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.fromDate)}</strong></div>
+                    <div className="hr-leave-info-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,auto)", gap: "6px 24px", marginBottom: 12, fontSize: "var(--hz-text-md)" }}>
+                      <div><span style={{ color: "var(--hz-ink-2)" }}>Type: </span><strong style={{ color: l.leaveType === "PERMISSION" ? "#7c3aed" : "var(--hz-ink)" }}>{leaveTypeLabel(l.leaveType)}</strong></div>
+                      <div><span style={{ color: "var(--hz-ink-2)" }}>Date: </span><strong style={{ color: "var(--hz-ink)" }}>{fmtDate(l.fromDate)}</strong></div>
                       {l.leaveType === "PERMISSION" ? (
                         <>
-                          <div><span style={{ color: "#374151" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
+                          <div><span style={{ color: "var(--hz-ink-2)" }}>Hours: </span><strong style={{ color: "#7c3aed" }}>{l.permissionHours || "—"}h</strong></div>
                           {l.fromTime && l.toTime && (
-                            <div><span style={{ color: "#374151" }}>Away: </span><strong style={{ color: "#0f172a" }}>{l.fromTime} – {l.toTime}</strong></div>
+                            <div><span style={{ color: "var(--hz-ink-2)" }}>Away: </span><strong style={{ color: "var(--hz-ink)" }}>{l.fromTime} – {l.toTime}</strong></div>
                           )}
                         </>
                       ) : (
                         <>
-                          <div><span style={{ color: "#374151" }}>To: </span><strong style={{ color: "#0f172a" }}>{fmtDate(l.toDate)}</strong></div>
-                          <div><span style={{ color: "#374151" }}>Days: </span><strong style={{ color: "#0f172a" }}>{l.totalDays}</strong></div>
+                          <div><span style={{ color: "var(--hz-ink-2)" }}>To: </span><strong style={{ color: "var(--hz-ink)" }}>{fmtDate(l.toDate)}</strong></div>
+                          <div><span style={{ color: "var(--hz-ink-2)" }}>Days: </span><strong style={{ color: "var(--hz-ink)" }}>{l.totalDays}</strong></div>
                         </>
                       )}
                     </div>
 
-                    <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 14px", fontSize: 14, color: "#1e293b", marginBottom: l.status === "PENDING" ? 10 : 0, border: "1px solid #f1f5f9" }}>
-                      <span style={{ fontWeight: 600, color: "#0f172a" }}>Reason: </span>{l.reason}
+                    <div style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 14px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink-2)", marginBottom: l.status === "PENDING" ? 10 : 0, border: "1px solid #f1f5f9" }}>
+                      <span style={{ fontWeight: 600, color: "var(--hz-ink)" }}>Reason: </span>{l.reason}
                     </div>
 
                     {(l.approvalComment || l.approvedAt) && (
-                      <div style={{ background: s.bg, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: s.color, marginTop: 8 }}>
+                      <div style={{ background: s.bg, borderRadius: 8, padding: "8px 12px", fontSize: "var(--hz-text-sm)", color: s.color, marginTop: 8 }}>
                         {l.approvalComment && <div><strong>Comment: </strong>{l.approvalComment}</div>}
-                        <div style={{ fontSize: 13, marginTop: l.approvalComment ? 4 : 0, opacity: 0.85 }}>
+                        <div style={{ fontSize: "var(--hz-text-sm)", marginTop: l.approvalComment ? 4 : 0, opacity: 0.85 }}>
                           {l.status === "APPROVED" ? "✓ Approved" : l.status === "REJECTED" ? "✕ Rejected" : "Updated"}
                           {l.approvedBy && <span> by {l.approvedBy}</span>}
                           {l.approvedAt && <span> · {fmtDateTime(l.approvedAt)}</span>}
@@ -282,9 +282,9 @@ export default function LeaveApprovalPage({ user }) {
                         rows={2}
                         style={{
                           border: "1.5px solid #e2e8f0", borderRadius: 8,
-                          padding: "8px 10px", fontSize: 14,
+                          padding: "8px 10px", fontSize: "var(--hz-text-md)",
                           fontFamily: "inherit", outline: "none", resize: "none",
-                          color: "#374151",
+                          color: "var(--hz-ink-2)",
                         }}
                       />
                       <div style={{ display: "flex", gap: 8 }}>

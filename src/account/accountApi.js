@@ -45,9 +45,10 @@ export const expenseItemsApi = {
   setEligibility: (id, eligible) => api.patch(`/expenses/${id}/eligibility`, { eligible }),
   sendForPayment: (items) => api.post('/expenses/send-for-payment', { items }),
   getSentForPayment: () => api.get('/expenses/sent-for-payment'),
-  setOhApproval: (id, status, revisedAmount) => api.patch(`/expenses/${id}/oh-approval`, { status, revisedAmount }),
-  setAdminApproval: (id, status) => api.patch(`/expenses/${id}/admin-approval`, { status }),
-  setVpApproval: (id, status) => api.patch(`/expenses/${id}/vp-approval`, { status }),
+  setOhApproval: (id, status, revisedAmount, remark) => api.patch(`/expenses/${id}/oh-approval`, { status, revisedAmount, remark }),
+  setAdminApproval: (id, status, remark) => api.patch(`/expenses/${id}/admin-approval`, { status, remark }),
+  setVpApproval: (id, status, remark) => api.patch(`/expenses/${id}/vp-approval`, { status, remark }),
+  setCeoApproval: (id, status, remark) => api.patch(`/expenses/${id}/ceo-approval`, { status, remark }),
   reviseAtVp: (id) => api.patch(`/expenses/${id}/vp-revise`),
   setDeductions: (id, tdsPercent, deductionAmount, gstDeducted) => api.patch(`/expenses/${id}/deductions`, { tdsPercent, deductionAmount, gstDeducted }),
   setTdsFiling: (id, invoiceNo, tdsPaidDate, tdsFiled, remarks) => api.patch(`/expenses/${id}/tds-filing`, { invoiceNo, tdsPaidDate, tdsFiled, remarks }),
@@ -109,6 +110,8 @@ export const campaignApi = {
   stop:          (id)        => api.post(`/campaign/${id}/stop`, null, q()),
   retryFailed:   (id)        => api.post(`/campaign/${id}/retry-failed`, null, q()),
   remove:        (id)        => api.delete(`/campaign/${id}`, q()),
+  setImage:      (id, file)  => { const f = new FormData(); f.append('file', file); return api.post(`/campaign/${id}/image`, f, { ...q(), headers: { 'Content-Type': 'multipart/form-data' } }); },
+  removeImage:   (id)        => api.delete(`/campaign/${id}/image`, q()),
 };
 
 export const collectionsApi = {
