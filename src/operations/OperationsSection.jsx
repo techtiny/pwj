@@ -416,10 +416,10 @@ export default function OperationsSection({ user, onCreateFromBOQ }) {
   // Checking a top-level section (label "2") also checks/unchecks its own
   // sub-items ("2a", "2b", ...) so you don't have to tick each one by hand.
   // Quantity available for a BOQ item before the PR being built: its BOQ quantity PLUS any "Additional Items" linked to it
-  // (same unit), minus everything already requested in earlier PRs. null = no numeric BOQ quantity, so nothing to cap.
+  // (whatever unit was entered on the additional item), minus everything already requested in earlier PRs. null = no numeric
+  // BOQ quantity, so nothing to cap.
   const extraFor = (g) => additionalItems
-    .filter(it => it.category === "AdditionalItems" && aiStatus(it) === "APPROVED" && it.linkedBoqLabel === g.label && Number.isFinite(Number(it.qty)) && Number(it.qty) > 0
-      && (!it.unit || !g.unit || String(it.unit).trim().toLowerCase() === String(g.unit).trim().toLowerCase()))
+    .filter(it => it.category === "AdditionalItems" && aiStatus(it) === "APPROVED" && it.linkedBoqLabel === g.label && Number.isFinite(Number(it.qty)) && Number(it.qty) > 0)
     .reduce((t, it) => roundQty(t + Number(it.qty)), 0);
   const balanceOf = (g) => (g?.qty == null || !Number.isFinite(Number(g.qty)) ? null : Math.max(0, roundQty(Number(g.qty) + extraFor(g) - (requested[g.label] || 0))));
   // Additional Items linked to this BOQ item that are ticked for the PR being built take their share of the balance too.
@@ -1116,14 +1116,14 @@ function BOQWorkspace({
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "auto", maxHeight: "max(460px, calc(100vh - 300px))", marginBottom: 24 }}>
-                <table className="ops-boq-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
+                <table className="ops-boq-table ops-boq-table--main" style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--hz-text-sm)" }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 150, fontSize: "var(--hz-text-lg)" }}>PR Selection</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 70, fontSize: "var(--hz-text-lg)" }}>BOQ NO</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: "var(--hz-text-lg)" }}>Specification of work</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 80, whiteSpace: "normal", lineHeight: 1.2, fontSize: "var(--hz-text-lg)" }}>PR<br />Selection</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 44, whiteSpace: "normal", lineHeight: 1.2, fontSize: "var(--hz-text-lg)" }}>SI<br />No</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 260, fontSize: "var(--hz-text-lg)" }}>Description of work</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #e2e8f0", width: 80, fontSize: "var(--hz-text-lg)" }}>Unit</th>
-                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>WO/PO Qty</th>
+                      <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>Qty</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 110, fontSize: "var(--hz-text-lg)" }}>Approved Additional Qty</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 100, fontSize: "var(--hz-text-lg)" }}>Total revised Qty</th>
                       <th style={{ position: "sticky", top: 0, background: "#f8fafc", padding: "8px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", width: 90, fontSize: "var(--hz-text-lg)" }}>PR Raised Qty</th>
@@ -1145,7 +1145,7 @@ function BOQWorkspace({
                                 <input type="number" min={0} step="any" value={reqQty[i] ?? effQty(i)} aria-label={`PR quantity for BOQ ${g.label}`}
                                   onChange={e => setReqQty(m => ({ ...m, [i]: e.target.value }))}
                                   title={err || `Up to ${balanceOf(g)}`}
-                                  style={{ width: 90, textAlign: "right", padding: "4px 6px", fontSize: "var(--hz-text-md)", borderRadius: 6, fontFamily: "inherit",
+                                  style={{ width: 70, textAlign: "right", padding: "4px 6px", fontSize: "var(--hz-text-md)", borderRadius: 6, fontFamily: "inherit",
                                     border: `1.5px solid ${err ? "#ef4444" : "#cbd5e1"}`, background: err ? "#fef2f2" : "#fff" }} />
                                 {err && <div style={{ fontSize: "var(--hz-text-2xs)", color: "var(--hz-danger)", marginTop: 2 }}>{err}</div>}
                               </div>
@@ -1230,6 +1230,7 @@ function BOQWorkspace({
 
                 {activeAdditionalTab === "NT" && (
                   <AdditionalCategoryTable
+                    groups={groups}
                     category="NT"
                     label="NT Category"
                     knownUnits={knownUnits}
@@ -1275,6 +1276,7 @@ function BOQWorkspace({
 
                 {activeAdditionalTab === "Establishment" && (
                   <AdditionalCategoryTable
+                    groups={groups}
                     category="Establishment"
                     label="Establishment Category"
                     knownUnits={knownUnits}
@@ -1352,7 +1354,7 @@ function AddPanel({ title, fields, onAdd, canAdd }) {
 // One category's table of manually-entered items (S.No/Description/Qty/Unit)
 // — shared by NT, NMR, Transport, and Establishment below the BOQ table.
 function AdditionalCategoryTable({
-  category, label, knownUnits, items, checked, toggleChecked, toggleAll,
+  category, label, groups, knownUnits, items, checked, toggleChecked, toggleAll,
   newItem, setNewItem, addItem, removeItem, updateItem,
 }) {
   return (
@@ -1405,6 +1407,12 @@ function AdditionalCategoryTable({
 
       {/* Add a new item to this category */}
       <AddPanel title={`Add to ${label}`} onAdd={() => addItem(category)} canAdd={!!newItem.description.trim()} fields={[
+        // Optional: picking a BOQ item only fills in its unit (still changeable); the item itself isn't stored.
+        { label: "BOQ item", node: <select value={newItem.boqLabel || ""} onChange={e => {
+            const label = e.target.value;
+            const boqUnit = String((groups || []).find(g => g.label === label)?.unit || "").trim();
+            setNewItem(f => ({ ...f, boqLabel: label, unit: boqUnit || f.unit }));
+          }} style={ADD_INPUT}><option value="">Select BOQ item (optional)</option>{(groups || []).map((g, i) => <option key={i} value={g.label}>{g.label} — {(g.description || "").slice(0, 60)}</option>)}</select> },
         { label: "Description", required: true, node: <input value={newItem.description} type="text" placeholder="Description" onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))} style={ADD_INPUT} /> },
         { label: "Qty", node: <input value={newItem.qty} type="number" placeholder="0" onChange={e => setNewItem(f => ({ ...f, qty: e.target.value }))} style={ADD_INPUT} /> },
         { label: "Unit", node: <select value={newItem.unit} onChange={e => setNewItem(f => ({ ...f, unit: e.target.value }))} style={ADD_INPUT}><option value="">Select unit</option>{(knownUnits || []).map(u => <option key={u} value={u}>{u}</option>)}</select> },
@@ -1504,7 +1512,12 @@ function AdditionalItemsTable({ groups, knownUnits, items, checked, toggleChecke
           <div style={{ minWidth: 0 }}>
             <label style={{ display: "block", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-ink-2)", marginBottom: 4 }}>BOQ item <span style={{ color: "var(--hz-danger)" }}>*</span></label>
             <select value={newItem.linkedBoqLabel}
-              onChange={e => setNewItem(f => ({ ...f, linkedBoqLabel: e.target.value }))}
+              onChange={e => {
+                // Picking a BOQ item fills in that item's unit (still changeable below).
+                const label = e.target.value;
+                const boqUnit = String((groups || []).find(g => g.label === label)?.unit || "").trim();
+                setNewItem(f => ({ ...f, linkedBoqLabel: label, unit: boqUnit || f.unit }));
+              }}
               style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, height: 40, padding: "0 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", background: "#fff" }}>
               <option value="">Select BOQ item…</option>
               {(groups || []).map((g, i) => (
