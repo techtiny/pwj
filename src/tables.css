@@ -21,6 +21,15 @@
   .ops-boq-table th:nth-child(3) { width: 38% !important; }
 }
 
+/* Main BOQ table (PR Selection | SI No | Description | Unit | Qty | additional/PR/balance qty): keep the first two columns
+   narrow (headers wrap onto two lines) and let the description take the remaining width. */
+@media (min-width: 769px) {
+  .ops-boq-table--main th:nth-child(1) { width: 96px !important; }
+  .ops-boq-table--main th:nth-child(2) { width: 56px !important; }
+  .ops-boq-table--main th:nth-child(3) { width: auto !important; }
+  .ops-boq-table--main th:nth-child(4) { width: 90px !important; }
+}
+
 /* Additional Items table has no description column — its 3rd column is just the BOQ item number */
 @media (min-width: 769px) {
   .ops-boq-table--linked th:nth-child(3) { width: 110px !important; }
