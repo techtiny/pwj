@@ -12,7 +12,7 @@ const STAGES = [
   { key: "LOST",        label: "Lost",        color: "#ef4444", bg: "#fef2f2" },
 ];
 
-const SOURCES        = ["REFERRAL", "DIRECT", "TENDER", "ONLINE", "OTHER"];
+const SOURCES        = ["REPEAT_CLIENT", "DIRECT", "TENDER", "ONLINE", "OTHER"];
 const BUSINESS_TYPES = ["Commercial Interior", "Residential", "Construction", "Renovation"];
 
 const EMPTY_FORM = {
@@ -306,7 +306,7 @@ export default function SalesPipeline() {
                 {/* "Other" takes any value — a source that isn't one of the standard options is shown as Other + its text */}
                 <select style={inp} value={form.source && !SOURCES.includes(form.source) ? "OTHER" : form.source} onChange={e => f({ source: e.target.value })}>
                   <option value="">— Select —</option>
-                  {SOURCES.map(s => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}
+                  {SOURCES.map(s => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ").replace(/ \w/g, c => c.toUpperCase())}</option>)}
                 </select>
                 {(form.source === "OTHER" || (form.source && !SOURCES.includes(form.source))) && (
                   <input style={{ ...inp, marginTop: 6 }} value={form.source === "OTHER" ? "" : form.source}
