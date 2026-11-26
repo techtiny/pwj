@@ -439,7 +439,7 @@ export default function FundManagementPage() {
             <thead>
               <tr>
                 <th style={th}>Date</th>
-                <th style={th}>{partyLabel}</th>
+                <th style={th}>{isFunding ? 'Transfer Proj' : partyLabel}</th>
                 <th style={{ ...th, textAlign: 'right' }}>Amount</th>
                 {!isInflow && <th style={{ ...th, textAlign: 'right' }} title="Inflow received for this project − Outflow paid to it">Available</th>}
                 <th style={th}>{modeLabel}</th>
@@ -458,8 +458,15 @@ export default function FundManagementPage() {
                 <tr key={r.id}>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.movementDate)}</td>
                   <td style={td}>
-                    {r.party}
-                    {r.projectId && <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
+                    {isFunding ? (
+                      // Transaction Details: money moved From (sender) To (project credited).
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span><span style={{ color: "var(--hz-muted)" }}>From </span><b style={{ fontWeight: 600 }}>{r.party || '—'}</b></span>
+                        <span style={{ color: "var(--hz-muted)" }}>→</span>
+                        <span><span style={{ color: "var(--hz-muted)" }}>To </span><b style={{ fontWeight: 600 }}>{r.projectName || '—'}</b></span>
+                      </span>
+                    ) : r.party}
+                    {!isFunding && r.projectId && <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#0369a1', background: '#e0f2fe', borderRadius: 100, padding: '1px 7px' }}>Project</span>}
                     {r.sourceRef === 'LOAN' && <span title="Fund borrowed from this project — to be repaid" style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 100, padding: '1px 7px' }}>Loan</span>}
                     {r.sourceRef === 'LOAN-REPAY' && <span title="Repayment of fund borrowed earlier" style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 100, padding: '1px 7px' }}>Repayment</span>}
                     {r.sourceRef?.startsWith('SALARY-') && <span style={{ marginLeft: 6, fontSize: "var(--hz-text-2xs)", fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 100, padding: '1px 7px' }}>Salary</span>}
