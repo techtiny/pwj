@@ -361,7 +361,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
     if (approvedToday.length === 0) return;
     if (fundingBlocked) {
       const short = (funding.projects || []).filter(p => !p.funded).map(p => `${p.projectName} (short ${fmt(p.shortfall)})`).join(', ');
-      alert(`Bank transfer not eligible — some projects are underfunded:\n\n${short}\n\nSettle the transfers in Fund Management → Payment Funding first.`);
+      alert(`Bank transfer not eligible — some projects are underfunded:\n\n${short}\n\nSettle the transfers in Funds → Inter Project Fund Flow first.`);
       return;
     }
     const clean = v => String(v ?? '').replace(/[|\r\n]+/g, ' ').trim();
@@ -617,7 +617,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
           <div style={{ fontSize: "var(--hz-text-sm)", color: '#7f1d1d' }}>
             <b>Bank transfer not eligible — shortfall {fmt(funding.totalShortfall)}.</b>{' '}
             {(funding.projects || []).filter(p => !p.funded).map(p => `${p.projectName} (short ${fmt(p.shortfall)})`).join(', ')}.
-            {' '}Move fund in <b>Fund Management → Payment Funding</b>, then generate the bank file.
+            {' '}Move fund in <b>Funds → Inter Project Fund Flow</b>, then generate the bank file.
           </div>
         </div>
       )}
@@ -631,7 +631,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
               title={approvedToday.length === 0
                 ? 'No VP-approved entries sent for payment today'
                 : fundingBlocked
-                ? `Underfunded — settle transfers in Fund Management → Payment Funding (shortfall ${fmt(funding.totalShortfall)})`
+                ? `Underfunded — settle transfers in Funds → Inter Project Fund Flow (shortfall ${fmt(funding.totalShortfall)})`
                 : `Generate today's bank payment file (${approvedToday.length} ${approvedToday.length === 1 ? 'transfer' : 'transfers'})`}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #1d4ed8', borderRadius: 8,

@@ -107,7 +107,7 @@ export default function SalaryPayments({ username = '', isVP = false }) {
 
   async function revise(b) {
     if (b.status === 'APPROVED' && !window.confirm(
-      `The ${MONTHS[b.month - 1]} ${b.year} salary payment was already approved. Revising deletes it from this list and removes its Actual Outflow from Fund Management — a fresh payment appears here once the corrected salary is released and approved again.\n\nIt does NOT undo a bank transfer that has already been made.\n\nContinue?`)) return;
+      `The ${MONTHS[b.month - 1]} ${b.year} salary payment was already approved. Revising deletes it from this list and removes its Actual Outflow from Funds — a fresh payment appears here once the corrected salary is released and approved again.\n\nIt does NOT undo a bank transfer that has already been made.\n\nContinue?`)) return;
     const remark = window.prompt(`Revise the ${MONTHS[b.month - 1]} ${b.year} salary — what needs to change? It goes back to Admin, this payment leaves this list, and every approval starts again.`);
     if (remark === null) return;
     if (!remark.trim()) { alert('Enter what needs to be revised'); return; }
