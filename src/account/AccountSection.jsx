@@ -33,7 +33,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "dashboard",   label: "Dashboard",        icon: LayoutDashboard },
     { key: "projects",    label: "Project-wise",     icon: FolderKanban },
     { key: "expenses",    label: "Expenses",         icon: Receipt },
-    { key: "fund-mgmt",   label: "Fund Management",  icon: Landmark },
+    { key: "fund-mgmt",   label: "Funds",  icon: Landmark },
     { key: "payments",    label: "Send for Payment", icon: Send },
     { key: "tds",         label: "TDS",              icon: Percent },
     { key: "gst",         label: "GST",              icon: FileText },

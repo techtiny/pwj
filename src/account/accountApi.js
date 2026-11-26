@@ -139,6 +139,8 @@ export const fundManagementApi = {
   balances:       ()          => api.get('/fund-management/balances'),
   paymentFunding: ()          => api.get('/fund-management/payment-funding'),
   transfer:       (data)      => api.post('/fund-management/transfer', data),
+  loans:          ()          => api.get('/fund-management/loans'),
+  repay:          (data)      => api.post('/fund-management/repay', data),
   create:         (data)      => api.post('/fund-management', data),
   delete:         (id)        => api.delete(`/fund-management/${id}`),
 };
