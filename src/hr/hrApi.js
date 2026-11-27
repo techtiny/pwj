@@ -148,6 +148,9 @@ export const attendanceApi = {
   getSummary:    (username)  => api.get(`/attendance/summary/${username}`),
   getIncomplete: ()          => api.get('/attendance/incomplete'),
   update:        (id, data)  => api.patch(`/attendance/${id}`, data),
+  // Staff who don't check in (Office Staff) — HR marks Present / Half Day / Absent by hand
+  manualMonth:   (month)     => api.get('/attendance/manual', { params: { month } }),
+  markManual:    (data)      => api.post('/attendance/manual', data),
 };
 
 export const leaveApi = {

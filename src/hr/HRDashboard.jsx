@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { attendanceApi, leaveApi, usersApi, employeeApi, performanceApi, fmtTime, fmtHours, fmtDate, fmtServerTime } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
+import ManualAttendanceCard, { MANUAL_STATUS } from "./ManualAttendance";
 import { PerformanceFactorsTable, CategoryChip, Stars, CATEGORY_BY_KEY, PERF_CATEGORIES, scoreOf } from "./PerformanceFactors";
 
 // Everyone who checks in — all roles except VP / OH / CEO (mirrors AppUser.CHECKIN_ROLES on the backend).
+// Staff who never check in — HR marks their attendance by hand (mirrors AppUser.MANUAL_ATTENDANCE_ROLES).
+const MANUAL_ROLES = ["OFFICE_STAFF"];
 const CHECKIN_ROLES = ["ENGINEER", "PROJECT_MANAGER", "ADMIN", "PROCUREMENT", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER", "BILLING_ENGINEER"];
 const EXCLUDED_USERNAMES = ["techtinyproc", "shobana", "techtinyadmin", "happizo"];
 // Matched by employee number, not username — usernames can differ from what's shown as the
@@ -123,6 +126,20 @@ export default function HRDashboard({ user }) {
   const checkinTargets  = allUsers.filter(u => CHECKIN_ROLES.includes(u.role) && !u.username?.startsWith("test_")
     && !EXCLUDED_USERNAMES.includes(u.username?.toLowerCase()) && !EXCLUDED_EMP_NOS.includes(u.employeeNumber));
   const checkedInCount  = checkinTargets.filter(u => todayByUsername.get(u.username)?.checkInTime).length;
+  const manualTargets   = allUsers.filter(u => MANUAL_ROLES.includes(u.role) && u.active !== false && !u.username?.startsWith("test_"));
+  const teamRows        = [...checkinTargets, ...manualTargets];
+  const [markingToday, setMarkingToday] = useState(null);
+  const [manualVersion, setManualVersion] = useState(0);   // bumps so the month grid reloads after a mark from the table
+  const markToday = async (u, status) => {
+    setMarkingToday(u.username);
+    try {
+      const r = await attendanceApi.markManual({ username: u.username, workDate: new Date().toLocaleDateString("en-CA"), status: status || "CLEAR", markedBy: user?.username });
+      const saved = r.data?.data;
+      setTodayAll(list => [...list.filter(a => a.username !== u.username), ...(saved ? [saved] : [])]);
+      setManualVersion(v => v + 1);
+    } catch (e) { alert(e.response?.data?.message || "Could not mark attendance"); }
+    finally { setMarkingToday(null); }
+  };
 
   const pendingPermissions = pendingLeaves.filter(l => l.leaveType === "PERMISSION");
 
@@ -238,6 +255,7 @@ export default function HRDashboard({ user }) {
               <div style={secTitle}>Today's Team Attendance</div>
               <div style={secSub}>
                 {checkedInCount} checked in · {checkinTargets.length - checkedInCount} not yet · {checkinTargets.length} total
+                {manualTargets.length > 0 && ` · ${manualTargets.length} marked manually`}
                 {pendingPermissions.length > 0 && (
                   <span style={{ marginLeft: 10, background: "#f3e8ff", color: "#7c3aed", borderRadius: 5, padding: "2px 9px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>
                     {pendingPermissions.length} permission{pendingPermissions.length > 1 ? "s" : ""} pending
@@ -262,14 +280,15 @@ export default function HRDashboard({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {checkinTargets.length === 0 ? (
+                {teamRows.length === 0 ? (
                   <tr>
                     <td colSpan={9} style={{ ...td, textAlign: "center", color: "var(--hz-ink-2)", padding: "24px 0" }}>
                       Loading team data…
                     </td>
                   </tr>
-                ) : checkinTargets.map((u, i) => {
+                ) : teamRows.map((u, i) => {
                   const a      = todayByUsername.get(u.username);
+                  const manual = MANUAL_ROLES.includes(u.role);
                   const hasIn  = !!a?.checkInTime;
                   const hasOut = !!a?.checkOutTime;
                   // A synthetic leave-derived row (see AttendanceService.fillLeaveGaps) —
@@ -285,6 +304,23 @@ export default function HRDashboard({ user }) {
                       <td style={{ ...td, color: "var(--hz-ink-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{u.employeeNumber || "—"}</td>
                       <td style={{ ...td, fontWeight: 600, color: rowEmp ? "#1d4ed8" : "var(--hz-ink)" }}>{u.fullName}</td>
                       <td style={{ ...td, color: "var(--hz-ink-2)" }}>{u.designation || ROLE_LABELS[u.role] || u.role}</td>
+                      {manual ? (<>
+                      <td colSpan={2} style={{ ...td, color: "var(--hz-muted)", fontSize: "var(--hz-text-md)" }}>No check-in · marked by HR</td>
+                      <td style={{ ...td, cursor: "default" }} onClick={e => e.stopPropagation()}>
+                        {(() => {
+                          const cur = MANUAL_STATUS[a?.status] ? a.status : "";
+                          const c = MANUAL_STATUS[cur] || { bg: "#fffbeb", color: "#b45309" };
+                          return (
+                            <select value={cur} disabled={markingToday === u.username} onChange={e => markToday(u, e.target.value)}
+                              title={a?.notes || "Mark today's attendance"}
+                              style={{ border: `1px solid ${c.color}55`, background: c.bg, color: c.color, borderRadius: 6, padding: "4px 6px", fontSize: "var(--hz-text-md)", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+                              <option value="">Not marked</option>
+                              {Object.entries(MANUAL_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                            </select>
+                          );
+                        })()}
+                      </td>
+                      </>) : (<>
                       <td style={td}>{hasIn ? fmtTime(a.checkInTime) : <span style={{ color: "var(--hz-ink-2)" }}>—</span>}</td>
                       <td style={td}>{hasOut ? fmtTime(a.checkOutTime) : <span style={{ color: "var(--hz-ink-2)" }}>—</span>}</td>
                       <td style={td}>
@@ -297,6 +333,7 @@ export default function HRDashboard({ user }) {
                           {onLeave ? "Absent" : !hasIn ? "Not In" : hasOut ? "Checked Out" : "Working"}
                         </span>
                       </td>
+                      </>)}
                       <td style={{ ...td, color: "var(--hz-ink-2)" }}>{a?.totalMinutes ? fmtHours(a.totalMinutes) : <span style={{ color: "var(--hz-ink-2)" }}>—</span>}</td>
                       <td style={{ ...td, verticalAlign: "top", cursor: "default" }} onClick={(e) => e.stopPropagation()}>
                         {(() => {
@@ -345,6 +382,12 @@ export default function HRDashboard({ user }) {
           </div>
         </div>
       )}
+
+      {/* Manual attendance month grid — staff who don't check in (e.g. Chinna Ponnu) */}
+      {isAdmin && manualTargets.length > 0 && <ManualAttendanceCard user={user} version={manualVersion} onChanged={(rec, username) => {
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        if (rec?.workDate === todayStr || (!rec && username)) attendanceApi.getTodayAll().then(r => setTodayAll(r.data?.data || [])).catch(() => {});
+      }} />}
     </div>
   );
 }
