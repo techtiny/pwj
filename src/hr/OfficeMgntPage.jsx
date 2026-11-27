@@ -22,6 +22,19 @@ const DIVISIONS = {
 };
 const FREQ = { ONE_TIME: "One-time", WEEKLY: "Weekly", MONTHLY: "Monthly", YEARLY: "Yearly" };
 const freqOf = (r) => r.frequency || (r.kind === "SALARY" ? "MONTHLY" : "ONE_TIME");
+// End of the cycle that starts on `start` (YYYY-MM-DD): weekly +6 days, monthly / yearly the day before the same date
+// next month / year, one-time the start itself.
+const cycleEnd = (start, freq) => {
+  if (!start) return null;
+  const [y, m, d] = String(start).slice(0, 10).split("-").map(Number);
+  const t = freq === "WEEKLY" ? new Date(y, m - 1, d + 6)
+    : freq === "MONTHLY" ? new Date(y, m, d - 1)
+    : freq === "YEARLY" ? new Date(y + 1, m - 1, d - 1)
+    : new Date(y, m - 1, d);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+};
+// A line's cycle end: the saved one, else worked out from its start date and frequency.
+const endOf = (r) => r.cycleEndDate || cycleEnd(r.expenseDate || `${r.periodMonth}-01`, freqOf(r));
 const divOf = (r) => r.division || (r.kind === "SALARY" ? "MANAGEMENT" : "OFFICE");
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -29,11 +42,12 @@ const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "Ju
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
 const btn = (bg, fg = "#fff") => ({ border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: fg, background: bg, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" });
 const ghost = { ...btn("#fff", "#1e3a5f"), border: "1px solid #cbd5e1" };
+const txtBtn = (fg, border, bg) => ({ border: `1px solid ${border}`, background: bg, color: fg, borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: "var(--hz-text-xs)", fontWeight: 700, fontFamily: "inherit", whiteSpace: "nowrap" });
 const iconBtn = (color) => ({ border: "1px solid #e2e8f0", background: "#fff", color, borderRadius: 6, padding: "5px 7px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--hz-text-xs)", fontWeight: 700, fontFamily: "inherit" });
 const th = { padding: "10px 12px", textAlign: "left", fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", whiteSpace: "nowrap" };
 const td = { padding: "10px 12px", fontSize: "var(--hz-text-md)", borderBottom: "1px solid #eef2f7", color: "var(--hz-ink)", verticalAlign: "top" };
 // Black-lined grid (shared .fund-grid class, as in Funds): fixed columns that hug their content.
-const GRID_COLS = [36, 108, 150, 170, 120, 240, 140, 60, 180];
+const GRID_COLS = [36, 104, 130, 126, 140, 96, 150, 116, 50, 160, 136, 80];
 const GRID_W = GRID_COLS.reduce((a, b) => a + b, 0);
 const gth = { padding: "10px 12px", fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-ink)", whiteSpace: "nowrap" };
 const gtd = { padding: "10px 12px", fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", verticalAlign: "middle", wordBreak: "break-word" };
@@ -107,7 +121,7 @@ function OfficeExpensesHR({ username, canManage }) {
       await officeApi.update(r.id, {
         username, amount: edit.amount, description: edit.description,
         attachmentUrls: all.length ? JSON.stringify(all) : "",
-        expenseDate: edit.expenseDate, category: edit.category, payee: edit.payee, frequency: edit.frequency,
+        expenseDate: edit.expenseDate, cycleEndDate: edit.cycleEndDate || null, category: edit.category, payee: edit.payee, frequency: edit.frequency,
       });
       setEdit(null);
       load();
@@ -122,7 +136,7 @@ function OfficeExpensesHR({ username, canManage }) {
     setDrafts(x => ({ ...x, [m]: { ...x[m], busy: true } }));
     try {
       const urls = d.files.length ? await Promise.all(d.files.map(f => uploadDocument(f))) : [];
-      await officeApi.raise({ username, division, frequency: d.frequency, expenseDate: d.expenseDate, category: d.category, payee: d.payee,
+      await officeApi.raise({ username, division, frequency: d.frequency, expenseDate: d.expenseDate, cycleEndDate: d.cycleEndDate || undefined, category: d.category, payee: d.payee,
         description: d.description, amount: d.amount, attachmentUrls: urls.length ? JSON.stringify(urls) : undefined });
       setDrafts(x => { const n = { ...x }; delete n[m]; return n; });
       load();
@@ -154,7 +168,7 @@ function OfficeExpensesHR({ username, canManage }) {
     } catch (e) { alert(errMsg(e)); }
   }
 
-  // Per-row Send for Payment / Take back / Cash Flow.
+  // Per-row Initiate Payment / Take back / Cash Flow.
   async function rowAction(kind, r) {
     try {
       if (kind === "send") {
@@ -171,18 +185,20 @@ function OfficeExpensesHR({ username, canManage }) {
   }
 
   async function del(r) {
-    if (!window.confirm(`Delete this office expense (${inr(r.amount)})?`)) return;
+    if (!window.confirm(r.kind === "SALARY"
+      ? `Delete ${r.payee}'s ${monthLabel(r.periodMonth, true)} salary (${inr(r.amount)})? It won't be created again for this month.`
+      : `Delete this expense (${inr(r.amount)})?`)) return;
     try { await officeApi.remove(r.id, username); load(); } catch (e) { alert(errMsg(e)); }
   }
 
   function exportExcel(m, list) {
     const mTotal = list.reduce((t, r) => t + Number(r.amount || 0), 0);
-    const aoa = [["Month", "Type", "Frequency", "Cycle Start Date", "Category", "Payee", "Description", "Amount", "Status", "Paid On", "Payment Ref", "Raised By", "Remarks"],
-      ...list.map(r => [monthLabel(r.periodMonth, true), r.kind === "SALARY" ? "Salary" : "Expense", FREQ[freqOf(r)], r.expenseDate || "", r.category || "", r.payee || "",
+    const aoa = [["Month", "Type", "Frequency", "Cycle Start Date", "Cycle End Date", "Category", "Payee", "Description", "Amount", "Status", "Paid On", "Payment Ref", "Raised By", "Remarks"],
+      ...list.map(r => [monthLabel(r.periodMonth, true), r.kind === "SALARY" ? "Salary" : "Expense", FREQ[freqOf(r)], r.expenseDate || `${r.periodMonth}-01`, endOf(r) || "", r.category || "", r.payee || "",
         r.description || "", Number(r.amount || 0), (r.status === "PAID" ? "Paid" : r.sentForPayment ? "In Weekly Payments" : "Pending"), r.paidDate || "", r.paymentRef || "", r.raisedBy || "", r.remarks || ""])];
-    aoa.push(["", "", "", "", "", "", "TOTAL", mTotal, "", "", "", "", ""]);
+    aoa.push(["", "", "", "", "", "", "", "TOTAL", mTotal, "", "", "", "", ""]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = [14, 9, 11, 12, 20, 20, 30, 12, 9, 12, 14, 18, 24].map(wch => ({ wch }));
+    ws["!cols"] = [14, 9, 11, 14, 14, 20, 20, 30, 12, 9, 12, 14, 18, 24].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, D.label);
     XLSX.writeFile(wb, `${isMgmt ? "management" : "office"}-expense-${m === "ALL" ? "all" : m}.xlsx`);
@@ -218,7 +234,8 @@ function OfficeExpensesHR({ username, canManage }) {
         : shown.map(([m, list]) => {
             const mTotal = list.reduce((t, r) => t + Number(r.amount || 0), 0);
             const draft = drafts[m];
-            const setD = (k, v) => setDrafts(d => ({ ...d, [m]: { ...d[m], [k]: v } }));
+            const setD = (k, v) => setDrafts(d => ({ ...d, [m]: { ...d[m], [k]: v,
+              ...(k === "expenseDate" || k === "frequency" ? { cycleEndDate: cycleEnd(k === "expenseDate" ? v : d[m].expenseDate, k === "frequency" ? v : d[m].frequency) } : {}) } }));
             return (
               <div key={m} style={{ marginBottom: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, width: GRID_W, maxWidth: "100%" }}>
@@ -234,7 +251,7 @@ function OfficeExpensesHR({ username, canManage }) {
                     return (<>
                       <button style={b2(allSent ? "#b45309" : "#2563eb")} disabled={dis} onClick={() => bulk(allSent ? "recall" : "send", list)}
                         title={dis ? "Tick lines to send" : allSent ? "Take the ticked lines back from Weekly Payments" : "Send the ticked lines to Accounts → Weekly Payments"}>
-                        {allSent ? <Undo2 size={14} /> : <Send size={14} />} {allSent ? "Take back" : "Send for Payment"}{picked.length ? ` (${picked.length})` : ""}
+                        {allSent ? <Undo2 size={14} /> : <Send size={14} />} {allSent ? "Revoke Payment" : "Initiate Payment"}{picked.length ? ` (${picked.length})` : ""}
                       </button>
                       <button style={b2("#0f766e")} disabled={dis} onClick={() => bulk("cf", list)}
                         title={dis ? "Tick lines to plan" : allCf ? "Remove the ticked lines from Cash Flow → Planned Outflow" : "Put the ticked lines into Funds → Cash Flow → Planned Outflow"}>
@@ -244,7 +261,7 @@ function OfficeExpensesHR({ username, canManage }) {
                   })()}
                   {canManage && (
                     <button title="Add entry" disabled={!!draft}
-                      onClick={() => setDrafts(d => ({ ...d, [m]: { frequency: "ONE_TIME", expenseDate: today(), category: "", payee: "", description: "", amount: "", files: [] } }))}
+                      onClick={() => setDrafts(d => ({ ...d, [m]: { frequency: "ONE_TIME", expenseDate: today(), cycleEndDate: today(), category: "", payee: "", description: "", amount: "", files: [] } }))}
                       style={{ ...btn("var(--hz-primary)"), padding: 0, width: 34, height: 34, justifyContent: "center", opacity: draft ? 0.5 : 1, cursor: draft ? "default" : "pointer" }}>
                       <Plus size={18} strokeWidth={2.5} />
                     </button>
@@ -262,15 +279,17 @@ function OfficeExpensesHR({ username, canManage }) {
                             onChange={() => setSel(x => { const n = new Set(x); ids.forEach(id => all ? n.delete(id) : n.add(id)); return n; })} />;
                         })()}
                       </th>
-                      {["Frequency", "Cycle Start Date", "Category", "Paid To", "Description", "Amount (₹)", "Docs", ""].map((h, i) =>
-                        <th key={i} style={{ ...gth, textAlign: i === 5 ? "right" : "left" }}>{h}</th>)}
+                      {["Frequency", "Cycle Start Date", "Cycle End Date", "Category", "Paid To", "Description", "Amount (₹)", "Docs", "Payment", "Cash Flow", ""].map((h, i) =>
+                        <th key={i} title={h === "Docs" ? "Docs / bills" : undefined} style={{ ...gth, textAlign: i === 6 ? "right" : i >= 7 ? "center" : "left" }}>
+                          {h === "Docs" ? <Paperclip size={15} style={{ verticalAlign: "middle" }} /> : h}</th>)}
                     </tr></thead>
                     <tbody>
                       {list.map(r => {
                         const urls = urlsOf(r);
                         if (edit && edit.id === r.id) {
                           const sal = r.kind === "SALARY";
-                          const setE = (k, v) => setEdit(x => ({ ...x, [k]: v }));
+                          const setE = (k, v) => setEdit(x => ({ ...x, [k]: v,
+                            ...(k === "expenseDate" || k === "frequency" ? { cycleEndDate: cycleEnd(k === "expenseDate" ? v : x.expenseDate, k === "frequency" ? v : x.frequency) } : {}) }));
                           return (
                             <tr key={r.id} style={{ background: "#f8fafc" }}>
                               <td style={gtd} />
@@ -281,6 +300,7 @@ function OfficeExpensesHR({ username, canManage }) {
                                 </select>
                               </td>
                               <td style={gtd}><input type="date" value={edit.expenseDate} onChange={e => setE("expenseDate", e.target.value)} style={cellIn} /></td>
+                              <td style={gtd}><input type="date" value={edit.cycleEndDate || ""} min={edit.expenseDate || undefined} onChange={e => setE("cycleEndDate", e.target.value)} style={cellIn} /></td>
                               <td style={gtd}>
                                 <select value={edit.category} onChange={e => setE("category", e.target.value)} style={cellIn}>
                                   {[...(sal || edit.category === "Salary" ? ["Salary"] : []), ...D.categories].map(c => <option key={c}>{c}</option>)}
@@ -310,6 +330,8 @@ function OfficeExpensesHR({ username, canManage }) {
                                   <input type="file" multiple accept="image/*,.pdf" style={{ display: "none" }} onChange={e => setE("files", [...edit.files, ...Array.from(e.target.files || [])])} />
                                 </label>
                               </td>
+                              <td style={gtd} />
+                              <td style={gtd} />
                               <td style={{ ...gtd, whiteSpace: "nowrap", textAlign: "center" }}>
                                 <div style={{ display: "inline-flex", gap: 6 }}>
                                   <button title="Save" disabled={edit.busy} style={{ ...iconBtn("#15803d"), borderColor: "#86efac" }} onClick={() => saveEdit(r)}><Check size={14} /></button>
@@ -326,41 +348,46 @@ function OfficeExpensesHR({ username, canManage }) {
                             </td>
                             <td style={gtd}>{FREQ[freqOf(r)]}</td>
                             <td style={{ ...gtd, whiteSpace: "nowrap" }}>{fmtD(r.expenseDate || `${r.periodMonth}-01`)}</td>
+                            <td style={{ ...gtd, whiteSpace: "nowrap" }}>{fmtD(endOf(r))}</td>
                             <td style={gtd}>{r.category || "—"}</td>
                             <td style={{ ...gtd, fontWeight: 600 }}>{r.payee || "—"}</td>
                             <td style={gtd}>
                               {r.description || "—"}
                               {r.remarks && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 3 }}>Note: {r.remarks}</div>}
-                              {(r.status === "PAID" || r.sentForPayment || r.inCashFlow) && (
-                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
-                                  {r.status === "PAID" ? <Tag bg="#dcfce7" fg="#15803d">Paid {fmtD(r.paidDate)}</Tag>
-                                    : r.sentForPayment ? <Tag bg="#dbeafe" fg="#1d4ed8">In Weekly Payments</Tag> : null}
-                                  {r.inCashFlow && <Tag bg="#ccfbf1" fg="#0f766e">Cash Flow</Tag>}
-                                </div>
-                              )}
                             </td>
                             <td style={{ ...gtd, textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" }}>
                               {canManage && r.kind === "SALARY" && r.status === "PENDING"
                                 ? <AmountInput row={r} username={username} onSaved={load} />
                                 : inr(r.amount)}
                             </td>
-                            <td style={gtd}>
-                              {urls.length ? urls.map((u, i) => (
-                                <a key={i} href={attachmentFullUrl(u)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 3, marginRight: 6, color: "var(--hz-primary)", fontSize: "var(--hz-text-xs)", fontWeight: 600 }}>
-                                  <Paperclip size={12} />{urls.length > 1 ? i + 1 : "View"}
-                                </a>)) : <span style={{ color: "#94a3b8" }}>—</span>}
+                            <td style={{ ...gtd, textAlign: "center" }}>
+                              {urls.length ? (
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+                                  {urls.map((u, i) => (
+                                    <a key={i} href={attachmentFullUrl(u)} target="_blank" rel="noreferrer" title={urls.length > 1 ? `Open file ${i + 1} of ${urls.length}` : "Open attachment"}
+                                      style={{ ...iconBtn("#1d4ed8"), background: "#eff6ff", textDecoration: "none" }}><Paperclip size={13} /></a>))}
+                                </div>
+                              ) : <span style={{ color: "#94a3b8" }}>—</span>}
                             </td>
-                            <td style={{ ...gtd, whiteSpace: "nowrap", textAlign: "center" }}>
+                            <td style={{ ...gtd, textAlign: "center" }}>
+                              {r.status === "PAID" ? <Tag bg="#dcfce7" fg="#15803d">Paid {fmtD(r.paidDate)}</Tag>
+                                : !canManage ? (r.sentForPayment ? <Tag bg="#dbeafe" fg="#1d4ed8">In Weekly Payments</Tag> : "—")
+                                : r.sentForPayment
+                                  ? <button title="Revoke — take it back from Weekly Payments" style={txtBtn("#b45309", "#fcd34d", "#fffbeb")} onClick={() => rowAction("recall", r)}>Revoke Payment</button>
+                                  : <button title="Send to Accounts → Weekly Payments" style={txtBtn("#1d4ed8", "#93c5fd", "#eff6ff")} onClick={() => rowAction("send", r)}>Initiate Payment</button>}
+                            </td>
+                            <td style={{ ...gtd, textAlign: "center" }}>
+                              {canManage ? <button title={r.inCashFlow ? "Remove from Funds → Cash Flow → Planned Outflow" : "Add to Funds → Cash Flow → Planned Outflow"}
+                                  style={r.inCashFlow ? txtBtn("#fff", "#0f766e", "#0f766e") : txtBtn("#0f766e", "#5eead4", "#f0fdfa")} onClick={() => rowAction("cf", r)}>
+                                  {r.inCashFlow ? "In Cash Flow ✓" : "Cash Flow"}</button>
+                                : r.inCashFlow ? <Tag bg="#ccfbf1" fg="#0f766e">In Cash Flow</Tag> : "—"}
+                            </td>
+                            <td style={{ ...gtd, textAlign: "center", whiteSpace: "nowrap" }}>
                               <div style={{ display: "inline-flex", gap: 6 }}>
-                                {canManage && r.status === "PENDING" && (r.sentForPayment
-                                  ? <button title="Take back from Weekly Payments" style={{ ...iconBtn("#b45309"), borderColor: "#fcd34d" }} onClick={() => rowAction("recall", r)}><Undo2 size={13} /></button>
-                                  : <button title="Send for Payment (to Weekly Payments)" style={{ ...iconBtn("#2563eb"), borderColor: "#93c5fd" }} onClick={() => rowAction("send", r)}><Send size={13} /></button>)}
-                                {canManage && <button title={r.inCashFlow ? "Remove from Cash Flow" : "Add to Cash Flow (Planned Outflow)"}
-                                  style={{ ...iconBtn("#0f766e"), borderColor: "#5eead4", background: r.inCashFlow ? "#ccfbf1" : "#fff" }} onClick={() => rowAction("cf", r)}><TrendingDown size={13} /></button>}
                                 {canManage && <button title="Edit" style={iconBtn("#1e3a5f")} disabled={!!edit}
-                                  onClick={() => setEdit({ id: r.id, frequency: freqOf(r), expenseDate: r.expenseDate || (r.kind === "SALARY" ? `${r.periodMonth}-01` : today()), category: r.category || "",
+                                  onClick={() => setEdit({ id: r.id, frequency: freqOf(r), cycleEndDate: endOf(r), expenseDate: r.expenseDate || (r.kind === "SALARY" ? `${r.periodMonth}-01` : today()), category: r.category || "",
                                     payee: r.payee || "", description: r.description || "", remarks: r.remarks || "", amount: r.amount ?? "", files: [], existing: urls })}><Pencil size={13} /></button>}
-                                {canManage && r.status === "PENDING" && r.kind === "EXPENSE" && <button title="Delete" style={iconBtn("#b91c1c")} onClick={() => del(r)}><Trash2 size={13} /></button>}
+                                {canManage && r.status === "PENDING" && <button title="Delete" style={iconBtn("#b91c1c")} onClick={() => del(r)}><Trash2 size={13} /></button>}
                               </div>
                             </td>
                           </tr>
@@ -377,6 +404,7 @@ function OfficeExpensesHR({ username, canManage }) {
                             </select>
                           </td>
                           <td style={gtd}><input type="date" value={draft.expenseDate} onChange={e => setD("expenseDate", e.target.value)} style={cellIn} /></td>
+                          <td style={gtd}><input type="date" value={draft.cycleEndDate || ""} min={draft.expenseDate || undefined} onChange={e => setD("cycleEndDate", e.target.value)} style={cellIn} /></td>
                           <td style={gtd}>
                             <select value={draft.category} onChange={e => setD("category", e.target.value)} style={cellIn}>
                               <option value="">Category…</option>
@@ -398,6 +426,8 @@ function OfficeExpensesHR({ username, canManage }) {
                               <input type="file" multiple accept="image/*,.pdf" style={{ display: "none" }} onChange={e => setD("files", [...draft.files, ...Array.from(e.target.files || [])])} />
                             </label>
                           </td>
+                          <td style={gtd} />
+                          <td style={gtd} />
                           <td style={{ ...gtd, whiteSpace: "nowrap", textAlign: "center" }}>
                             <div style={{ display: "inline-flex", gap: 6 }}>
                               <button title="Save" disabled={draft.busy} style={{ ...iconBtn("#15803d"), borderColor: "#86efac" }} onClick={() => saveDraft(m)}><Check size={14} /></button>
@@ -409,9 +439,9 @@ function OfficeExpensesHR({ username, canManage }) {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={6} style={{ ...gtd, textAlign: "right", fontWeight: 800 }}>Total</td>
+                        <td colSpan={7} style={{ ...gtd, textAlign: "right", fontWeight: 800 }}>Total</td>
                         <td style={{ ...gtd, textAlign: "right", fontWeight: 800, whiteSpace: "nowrap" }}>{inr(mTotal)}</td>
-                        <td colSpan={2} style={gtd} />
+                        <td colSpan={4} style={gtd} />
                       </tr>
                     </tfoot>
                   </table>
@@ -587,7 +617,7 @@ function OfficePayments({ username, canManage }) {
 
       {months.length === 0 && !error && (
         <div className="card" style={{ padding: 28, textAlign: "center", color: "var(--hz-ink)", fontSize: "var(--hz-text-md)" }}>
-          Nothing to pay yet. Lines ticked and sent with Send for Payment in HR → Office/Mgnt appear here.
+          Nothing to pay yet. Lines sent with Initiate Payment in HR → Office/Mgnt appear here.
         </div>
       )}
 
