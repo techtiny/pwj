@@ -8,6 +8,7 @@ import AccountExpenses from "./ExpensePage";
 import CollectionPage from "./CollectionPage";
 import PaymentsPage from "./PaymentsPage";
 import SalaryPayments from "./SalaryPayments";
+import OfficeMgntPage from "../hr/OfficeMgntPage";
 import TdsPage from "./TdsPage";
 import GstPage from "./GstPage";
 import FundManagementPage from "./FundManagementPage";
@@ -26,7 +27,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
   notifs.filter(n => n.module === "account").forEach(n => { tabCount[n.tab || "payments"] = (tabCount[n.tab || "payments"] || 0) + Number(n.count || 0); });
   const teamPayCount = notifs.filter(n => n.key === "salary-pay").reduce((t, n) => t + Number(n.count || 0), 0);
   const [tab, setTab]     = useState(procurementOnly ? "payments" : "dashboard");
-  const [payKind, setPayKind] = useState("vendor"); // Send for Payment: vendor payments | salary
+  const [payKind, setPayKind] = useState("vendor"); // Weekly Payments: vendor | salary (Team Payments) | office (Office/Mgnt)
   const [expCat, setExpCat] = useState("material");
 
   const allTabs = [
@@ -34,7 +35,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
     { key: "projects",    label: "Project-wise",     icon: FolderKanban },
     { key: "expenses",    label: "Expenses",         icon: Receipt },
     { key: "fund-mgmt",   label: "Funds",  icon: Landmark },
-    { key: "payments",    label: "Send for Payment", icon: Send },
+    { key: "payments",    label: "Weekly Payments", icon: Send },
     { key: "tds",         label: "TDS",              icon: Percent },
     { key: "gst",         label: "GST",              icon: FileText },
   ];
@@ -77,7 +78,7 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
           <div className="page-content">
             {(isAdmin || isVP || isOH || isCeo) && (
               <div style={{ display: "inline-flex", gap: 4, padding: 4, background: "#e8edf4", borderRadius: 11, marginBottom: 16 }}>
-                {[["vendor", "Vendor Payments"], ["salary", "Team Payments"]].map(([k, l]) => (
+                {[["vendor", "Vendor Payments"], ["salary", "Team Payments"], ["office", "Office/Mgnt"]].map(([k, l]) => (
                   <button key={k} onClick={() => setPayKind(k)}
                     style={{ border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: "var(--hz-text-md)",
                       background: payKind === k ? "#fff" : "transparent", color: payKind === k ? "var(--hz-primary)" : "var(--hz-ink-2)",
@@ -90,6 +91,8 @@ export default function AccountSection({ isCeo = false, isOH = false, isVP = fal
             )}
             {payKind === "salary" && (isAdmin || isVP || isOH || isCeo)
               ? <SalaryPayments username={username} isVP={isVP} />
+              : payKind === "office" && (isAdmin || isVP || isOH || isCeo)
+              ? <OfficeMgntPage username={username} canManage={isAdmin || isVP} mode="payments" />
               : <PaymentsPage isOH={isOH} isVP={isVP} isAdmin={isAdmin} isCeo={isCeo} readOnly={procurementOnly && !(isAdmin || isVP || isOH || isCeo)} />}
           </div>
         )}

@@ -712,7 +712,7 @@ export default function ExpensePage({ category }) {
           {!isNew && item.eligibleForPayment && item.paymentStatus !== 'FULL_PAYMENT_SENT' && (
             <input type="checkbox" checked={selectedForPayment.has(item.id)}
               onChange={() => toggleSelectForPayment(item.id)}
-              style={{ cursor: 'pointer' }} title="Select for Send for Payment" />
+              style={{ cursor: 'pointer' }} title="Select for Weekly Payments" />
           )}
         </td>
 
@@ -819,7 +819,7 @@ export default function ExpensePage({ category }) {
           {statusBadge}
           <button className="btn btn-sm" onClick={openSendModal} disabled={selectedForPayment.size === 0}
             style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)", background: '#2563eb', color: "var(--hz-on-dark)", border: 'none', borderRadius: 6, padding: '6px 12px', cursor: selectedForPayment.size === 0 ? 'default' : 'pointer', opacity: selectedForPayment.size === 0 ? 0.5 : 1 }}>
-            <Send size={13} /> Send for Payment{selectedForPayment.size > 0 ? ` (${selectedForPayment.size})` : ''}
+            <Send size={13} /> Send to Weekly Payments{selectedForPayment.size > 0 ? ` (${selectedForPayment.size})` : ''}
           </button>
           <button className="btn btn-primary btn-sm" onClick={addNewRow} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: "var(--hz-text-xs)" }}>
             <Plus size={13} /> Add Row
@@ -945,7 +945,7 @@ export default function ExpensePage({ category }) {
           onClick={() => !sendSubmitting && setSendModalOpen(false)}>
           <div style={{ background: '#fff', borderRadius: 10, padding: 20, width: 560, maxHeight: '80vh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Send for Payment</div>
+            <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>Send to Weekly Payments</div>
             <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginBottom: 14 }}>
               Choose Full or Part payment for each entry. Part payments are capped at the remaining PO value.
             </div>

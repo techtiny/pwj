@@ -155,7 +155,7 @@ export default function SalaryPage({ user }) {
   async function reviseMonth() {
     const label = `${MONTHS[month - 1]} ${year}`;
     if (approval?.payoutStatus === "APPROVED" && !window.confirm(
-      `The ${label} salary payment was already approved. Revising removes it from Send for Payment and removes its Actual Outflow from Funds — both come back once the corrected salary is released and approved again.\n\nIt does NOT undo a bank transfer that has already been made.\n\nContinue?`)) return;
+      `The ${label} salary payment was already approved. Revising removes it from Weekly Payments and removes its Actual Outflow from Funds — both come back once the corrected salary is released and approved again.\n\nIt does NOT undo a bank transfer that has already been made.\n\nContinue?`)) return;
     const remark = window.prompt(`Revise the ${label} salary — what needs to change? It goes back to Admin and every approval starts again.${released ? " Payslips are locked until it is released again." : ""}`);
     if (remark === null) return;
     if (!remark.trim()) { alert("Enter what needs to be revised"); return; }

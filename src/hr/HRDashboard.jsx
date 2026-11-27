@@ -17,6 +17,7 @@ const ROLE_LABELS = {
   COSTING_PLANNING_ENGINEER: "Costing & Planning Engineer",
   PROCUREMENT_ENGINEER: "Procurement Engineer",
   BILLING_ENGINEER: "Billing Engineer",
+  OFFICE_STAFF: "Office Staff",
 };
 
 const ROLE_SHORT = { VP: "VP", OH: "OH", CEO: "CEO", ADMIN: "Admin" };

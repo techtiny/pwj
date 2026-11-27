@@ -219,7 +219,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
 
   async function handleDelete(item) {
     if (!window.confirm(
-      `Delete this Send for Payment entry?\n\n` +
+      `Delete this Weekly Payments entry?\n\n` +
       `${item.partyName || '—'} · ${fmt(item.sentAmount)}${item.refNo ? ` · ${item.refNo}` : ''}\n\n` +
       `This permanently removes the payment record. It does not touch the PWJ document.`
     )) return;
@@ -547,7 +547,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
       <div style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius: 12, padding: '18px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Send size={24} color="white" />
         <div>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Send for Payment Tracker</div>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Weekly Payments Tracker</div>
           <div style={{ color: '#bfdbfe', fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
             Every expense entry sent for payment, across all projects
           </div>
@@ -663,7 +663,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: "var(--hz-faint)", fontSize: "var(--hz-text-sm)" }}>
             {items.length === 0
-              ? 'Nothing sent for payment yet. Mark entries eligible in the Expenses tab, then use "Send for Payment".'
+              ? 'Nothing sent for payment yet. Mark entries eligible in the Expenses tab, then use "Send to Weekly Payments".'
               : 'No entries match the current filters.'}
           </div>
         ) : (
@@ -674,7 +674,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                   <th>#</th>
                   <th>Project</th>
                   <th>Party</th>
-                  <th title="Total sent so far against this PWJ No (same as 'already sent' in the Send for Payment dialog)">Paid<br />Amt</th>
+                  <th title="Total sent so far against this PWJ No (same as 'already sent' in the Send to Weekly Payments dialog)">Paid<br />Amt</th>
                   <th title="Date the requesting engineer needs this payment made by">Required<br />By</th>
                   <th>Payment<br />Requested</th>
                   <th>Level 1<br />OH/VP</th>
@@ -833,7 +833,7 @@ export default function PaymentsPage({ isOH = false, isVP = false, isAdmin = fal
                       {(isAdmin || isVP) && (
                         <td>
                           <button disabled={isBusy} onClick={() => handleDelete(it)}
-                            title="Delete this Send for Payment entry" aria-label="Delete"
+                            title="Delete this Weekly Payments entry" aria-label="Delete"
                             className="appr-btn appr-btn--delete">
                             <Trash2 size={14} strokeWidth={2.25} />
                           </button>

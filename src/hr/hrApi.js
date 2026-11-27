@@ -368,3 +368,18 @@ export function tenureMonths(e) {
   }
   return total < 0 ? null : total;
 }
+
+// HR → Office/Mgnt — office expenses + monthly office staff salaries (paid from Accounts → Weekly Payments → Office/Mgnt).
+export const officeApi = {
+  list:        (username, month, status) => api.get('/office/expenses', { params: { username, month, status } }),
+  raise:       (data)       => api.post('/office/expenses', data),
+  update:      (id, data)   => api.put(`/office/expenses/${id}`, data),
+  remove:      (id, username) => api.delete(`/office/expenses/${id}`, { params: { username } }),
+  markPaid:    (id, data)   => api.put(`/office/expenses/${id}/paid`, data),
+  markUnpaid:  (id, data)   => api.put(`/office/expenses/${id}/unpaid`, data),
+  send:        (data)       => api.post('/office/expenses/send', data),
+  staff:       (username)   => api.get('/office/staff', { params: { username } }),
+  addStaff:    (data)       => api.post('/office/staff', data),
+  updateStaff: (id, data)   => api.put(`/office/staff/${id}`, data),
+  deleteStaff: (id, username) => api.delete(`/office/staff/${id}`, { params: { username } }),
+};

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, UserRound, CalendarCheck, CalendarOff, Wallet, Users, FileText } from "lucide-react";
+import { LayoutDashboard, UserRound, CalendarCheck, CalendarOff, Wallet, Users, FileText, Building2 } from "lucide-react";
 import NavBar from "../NavBar";
 import HRDashboard from "./HRDashboard";
 import AttendancePage from "./AttendancePage";
@@ -13,9 +13,10 @@ import ResignationsPage from "./ResignationsPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import MyProfilePage from "./MyProfilePage";
+import OfficeMgntPage from "./OfficeMgntPage";
 
 // One icon per top-level HR menu item.
-const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users, "salary-statements": FileText };
+const NAV_ICONS = { dashboard: LayoutDashboard, "my-profile": UserRound, attendance: CalendarCheck, leave: CalendarOff, expenses: Wallet, people: Users, "salary-statements": FileText, "office-mgnt": Building2 };
 
 export default function HRSection({ user, initialTab, onConsumeInitialTab, notifs = [] }) {
   // Pending counts per sub-tab (notification.tab) — shown on the pill, and summed onto its top-menu group.
@@ -67,6 +68,12 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
       key: "salary-statements",
       label: "Payslips",
       tabs: [{ key: "salary-statements", label: "Payslips" }],
+    }] : []),
+    // Office / management expenses + monthly office staff salaries — VP / Admin raise, OH / CEO view.
+    ...(["ADMIN", "VP", "OH", "CEO"].includes(user?.role) ? [{
+      key: "office-mgnt",
+      label: "Office/Mgnt",
+      tabs: [{ key: "office-mgnt", label: "Office/Mgnt" }],
     }] : []),
     ...(canViewExits ? [{
       key: "people",
@@ -205,6 +212,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
       {tab === "resignations"   && <ResignationsPage user={user} />}
       {tab === "employees"      && <EmployeeExitPage user={user} />}
       {tab === "salary"         && <SalaryPage user={user} />}
+      {tab === "office-mgnt"    && <OfficeMgntPage username={user?.username} canManage={["ADMIN", "VP"].includes(user?.role)} />}
     </div>
   );
 }

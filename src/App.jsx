@@ -653,6 +653,7 @@ const ROLE_META = {
   PROCUREMENT_ENGINEER:      { label: "Procurement Engineer",        color: "#9333ea", bg: "#f3e8ff" },
   COSTING_PLANNING_ENGINEER: { label: "Costing & Planning Engineer", color: "#0d9488", bg: "#ccfbf1" },
   BILLING_ENGINEER:          { label: "Billing Engineer",            color: "#b45309", bg: "#fef3c7" },
+  OFFICE_STAFF:              { label: "Office Staff",                color: "#475569", bg: "#f1f5f9" },
 };
 
 // ─── ENGINEER UPLOAD SECTION (top-level to keep stable reference) ──
@@ -2468,7 +2469,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
   const decidePayReq = async (p, action) => {
     let body = { username: user?.username };
     if (action === "approve") {
-      if (!window.confirm(`Approve the payment request of ${fmtRupee(p.amount)} from ${p.requestedByName}? It then goes to Accounts → Send for Payment.`)) return;
+      if (!window.confirm(`Approve the payment request of ${fmtRupee(p.amount)} from ${p.requestedByName}? It then goes to Accounts → Weekly Payments.`)) return;
     } else if (action === "reject") {
       const remark = window.prompt(`Reason for rejecting ${p.requestedByName}'s payment request of ${fmtRupee(p.amount)}:`);
       if (remark === null) return;
@@ -6617,7 +6618,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             </div>
             <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #e2e8f0", padding: "12px 26px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", background: "#f1f5f9", borderRadius: 8, padding: "8px 12px", margin: 0, lineHeight: 1.45, flex: 1 }}>
-                This request goes to <b>{sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "the allocated procurement person"}</b> for approval. Once approved it reaches Accounts → Send for Payment.
+                This request goes to <b>{sendPaymentModal.entry.allocatedToName || sendPaymentModal.entry.allocatedTo || "the allocated procurement person"}</b> for approval. Once approved it reaches Accounts → Weekly Payments.
               </div>
               <button style={{ ...s.submitBtn("linear-gradient(135deg,#0f766e,#14b8a6)"), width: "auto", minWidth: 190, flexShrink: 0 }}
                 disabled={paymentLoading || !paymentAmount || Number(paymentAmount) <= 0
@@ -8623,6 +8624,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                     <option value="PROCUREMENT_ENGINEER">Procurement Engineer</option>
                     <option value="COSTING_PLANNING_ENGINEER">Costing & Planning Engineer</option>
                     <option value="BILLING_ENGINEER">Billing Engineer</option>
+                    <option value="OFFICE_STAFF">Office Staff</option>
                   </select>
                 </div>
                 <div style={{ paddingTop: 16 }}>
