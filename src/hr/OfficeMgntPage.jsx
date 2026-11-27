@@ -521,7 +521,7 @@ function downloadOfficeExcel(month, lines, missing = [], separate = []) {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [16, 24, 16, 26, 14, 30, 14, 22, 14].map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `Office-Mgnt ${monthLabel(month)}`.slice(0, 31));
+  XLSX.utils.book_append_sheet(wb, ws, (month === "ALL" ? "Office-Mgnt" : `Office-Mgnt ${monthLabel(month)}`).slice(0, 31));
   if (missing.length) {
     const ms = XLSX.utils.aoa_to_sheet([["Type", "Payee", "Remarks", "Amount", "Missing"],
       ...missing.map(l => [l.kind === "SALARY" ? "Salary" : "Expense", l.payee || "", remarkOf(l), Number(Number(l.amount).toFixed(2)),
@@ -536,7 +536,7 @@ function downloadOfficeExcel(month, lines, missing = [], separate = []) {
     ss["!cols"] = [20, 12, 22, 22, 32, 12].map(wch => ({ wch }));
     XLSX.utils.book_append_sheet(wb, ss, "Pay separately");
   }
-  XLSX.writeFile(wb, `office-mgnt-payment-${month}.xlsx`);
+  XLSX.writeFile(wb, `office-mgnt-payment-${month === "ALL" ? "all" : month}.xlsx`);
 }
 
 const MONTH_STATUS = {
@@ -558,10 +558,12 @@ function OfficePayments({ username, canManage }) {
   }, [username]);
   useEffect(() => { load(); }, [load]);
 
+  // One table for every month (newest first; salaries before expenses within a month).
   const months = useMemo(() => {
-    const m = new Map();
-    (rows || []).forEach(r => { if (!m.has(r.periodMonth)) m.set(r.periodMonth, []); m.get(r.periodMonth).push(r); });
-    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    const all = [...(rows || [])].sort((a, b) => b.periodMonth.localeCompare(a.periodMonth)
+      || (a.kind === b.kind ? 0 : a.kind === "SALARY" ? -1 : 1)
+      || String(b.expenseDate || "").localeCompare(String(a.expenseDate || "")) || a.id - b.id);
+    return all.length ? [["ALL", all]] : [];
   }, [rows]);
 
   async function send(month, lines) {
@@ -571,7 +573,7 @@ function OfficePayments({ username, canManage }) {
     const held = pend.filter(l => !hasBank(l) && l.kind === "SALARY");         // salaries wait for bank details
     const toSend = [...bank, ...separate];
     const total = toSend.reduce((t, l) => t + Number(l.amount || 0), 0);
-    if (!window.confirm(`Send ${toSend.length} payment${toSend.length === 1 ? "" : "s"} of ${inr(total)} for ${monthLabel(month, true)}?\n\nThe bank payment .txt file downloads now and these lines are marked sent for payment.`
+    if (!window.confirm(`Send ${toSend.length} payment${toSend.length === 1 ? "" : "s"} of ${inr(total)}${month === "ALL" ? "" : ` for ${monthLabel(month, true)}`}?\n\nThe bank payment .txt file downloads now and these lines are marked sent for payment.`
       + (separate.length ? `\n\n${separate.length} expense(s) have no bank details — listed on the "pay separately" list.` : "")
       + (held.length ? `\n\n${held.length} salar${held.length === 1 ? "y has" : "ies have"} no account number / IFSC and stay pending.` : ""))) return;
     setBusy(month);
@@ -608,7 +610,7 @@ function OfficePayments({ username, canManage }) {
         <div>
           <div style={{ color: "white", fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Office/Mgnt Payment</div>
           <div style={{ color: "#e0e7ff", fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
-            Management (incl. the monthly Office Mgnt salaries) and Office expenses from HR → Office/Mgnt. Send for Payment downloads the bank payment .txt file for the month and marks those lines sent.
+            Management (incl. the monthly Office Mgnt salaries) and Office expenses from HR → Office/Mgnt. Send for Payment downloads the bank payment .txt file and marks those lines sent.
           </div>
         </div>
       </div>
@@ -641,7 +643,7 @@ function OfficePayments({ username, canManage }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>
                 <div className="pay-section-title" style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>
-                  Office/Mgnt — {monthLabel(month, true)}
+                  Office/Mgnt — All entries
                   <span style={{ marginLeft: 10, padding: "3px 10px", borderRadius: 999, fontSize: "var(--hz-text-xs)", fontWeight: 700, background: st.bg, color: st.color, verticalAlign: "middle" }}>{st.label}</span>
                 </div>
                 <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink)", marginTop: 4 }}>
