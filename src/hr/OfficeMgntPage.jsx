@@ -184,7 +184,11 @@ function OfficeExpensesHR({ username, canManage }) {
                               {r.remarks && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 3 }}>Note: {r.remarks}</div>}
                               <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 3 }}>Raised by {r.raisedBy || "—"}</div>
                             </td>
-                            <td style={{ ...td, textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" }}>{inr(r.amount)}</td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" }}>
+                              {canManage && r.kind === "SALARY" && r.status === "PENDING"
+                                ? <AmountInput row={r} username={username} onSaved={load} />
+                                : inr(r.amount)}
+                            </td>
                             <td style={td}>
                               <Pill s={r.status} />
                               {r.status === "PAID" && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 4, whiteSpace: "nowrap" }}>
@@ -201,7 +205,7 @@ function OfficeExpensesHR({ username, canManage }) {
                               <div style={{ display: "inline-flex", gap: 6 }}>
                                 {canManage && r.status === "PENDING" && (r.kind === "EXPENSE"
                                   ? <button title="Edit" style={iconBtn("#1e3a5f")} onClick={() => setForm({ id: r.id, expenseDate: r.expenseDate || today(), category: r.category || "", description: r.description || "", payee: r.payee || "", amount: r.amount, bankName: r.bankName || "", accountNumber: r.accountNumber || "", ifsc: r.ifsc || "", files: [], existing: urls })}><Pencil size={13} /></button>
-                                  : <button title="Change amount" style={iconBtn("#1e3a5f")} onClick={() => setSalaryEdit({ id: r.id, payee: r.payee, month: r.periodMonth, amount: r.amount, remarks: r.remarks || "" })}><Pencil size={13} /></button>)}
+                                  : <button title="Amount / note" style={iconBtn("#1e3a5f")} onClick={() => setSalaryEdit({ id: r.id, payee: r.payee, month: r.periodMonth, amount: r.amount, remarks: r.remarks || "" })}><Pencil size={13} /></button>)}
                                 {canManage && r.status === "PENDING" && r.kind === "EXPENSE" && <button title="Delete" style={iconBtn("#b91c1c")} onClick={() => del(r)}><Trash2 size={13} /></button>}
                               </div>
                             </td>
@@ -290,6 +294,30 @@ function ExpenseModal({ form, setForm, username, onSaved }) {
   );
 }
 
+// Inline entry of a month's salary amount (Office Mgnt salaries are not fixed).
+function AmountInput({ row, username, onSaved }) {
+  const [v, setV] = useState(Number(row.amount) > 0 ? String(row.amount) : "");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setV(Number(row.amount) > 0 ? String(row.amount) : ""); }, [row.amount]);
+  const dirty = (Number(v) || 0) !== (Number(row.amount) || 0);
+  async function save() {
+    if (!dirty) return;
+    if (v !== "" && !(Number(v) >= 0)) { alert("Enter a valid amount"); return; }
+    setBusy(true);
+    try { await officeApi.update(row.id, { username, amount: v === "" ? 0 : v }); onSaved(); }
+    catch (e) { alert(errMsg(e)); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+      <input type="number" min="0" step="0.01" value={v} placeholder="Enter amount" disabled={busy}
+        onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") save(); }}
+        style={{ ...inputS, width: 130, textAlign: "right", fontWeight: 700, borderColor: Number(row.amount) > 0 ? "#cbd5e1" : "#f59e0b", background: Number(row.amount) > 0 ? "#fff" : "#fffbeb" }} />
+      {dirty && <button title="Save amount" style={iconBtn("#15803d")} disabled={busy} onClick={save}>Save</button>}
+    </div>
+  );
+}
+
 function SalaryModal({ edit, setEdit, username, onSaved }) {
   const [busy, setBusy] = useState(false);
   async function save() {
@@ -302,7 +330,7 @@ function SalaryModal({ edit, setEdit, username, onSaved }) {
   return (
     <Modal title={`Salary — ${edit.payee}, ${monthLabel(edit.month, true)}`} onClose={() => setEdit(null)}
       footer={<><button style={ghost} onClick={() => setEdit(null)}>Cancel</button><button style={btn("var(--hz-primary)")} disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</button></>}>
-      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>Changes only this month's line. To change every month going forward, edit the amount under Office Mgnt Salaries.</div>
+      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>Office Mgnt salaries vary — enter the amount for this month.</div>
       <label style={lbl}>Amount (₹)</label>
       <input type="number" min="0" step="0.01" value={edit.amount} onChange={e => setEdit({ ...edit, amount: e.target.value })} style={inputS} />
       <div style={{ marginTop: 12 }}><label style={lbl}>Note</label>
@@ -328,17 +356,15 @@ function StaffPanel({ username, canManage, onChanged }) {
   }
   async function save() {
     if (!edit.name.trim()) { alert("Enter the name"); return; }
-    if (!(Number(edit.monthlyAmount) >= 0)) { alert("Enter a valid monthly amount"); return; }
     setBusy(true);
     try {
-      const body = { username, name: edit.name, designation: edit.designation, monthlyAmount: edit.monthlyAmount,
+      const body = { username, name: edit.name, designation: edit.designation,
         bankName: edit.bankName, accountNumber: edit.accountNumber, ifsc: edit.ifsc };
       await (edit.id ? officeApi.updateStaff(edit.id, body) : officeApi.addStaff({ ...body, startMonth: edit.startMonth }));
       setEdit(null); load(); onChanged();
     } catch (e) { alert(errMsg(e)); }
     finally { setBusy(false); }
   }
-  const monthlyTotal = staff.filter(s => s.active).reduce((t, s) => t + Number(s.monthlyAmount || 0), 0);
   const set = (k, v) => setEdit(x => ({ ...x, [k]: v }));
 
   return (
@@ -346,19 +372,18 @@ function StaffPanel({ username, canManage, onChanged }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", gap: 8 }}>
         <div>
           <div style={{ fontWeight: 800, color: "var(--hz-ink)" }}>Office Mgnt Salaries</div>
-          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>A salary line is created every month for each active person · {inr(monthlyTotal)} / month</div>
+          <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>A salary line is created every month for each active person — enter that month's amount on the line</div>
         </div>
-        {canManage && <button style={ghost} onClick={() => setEdit({ name: "", designation: "", monthlyAmount: 4500, startMonth: thisMonth(), bankName: "", accountNumber: "", ifsc: "" })}><Plus size={14} /> Add Person</button>}
+        {canManage && <button style={ghost} onClick={() => setEdit({ name: "", designation: "", startMonth: thisMonth(), bankName: "", accountNumber: "", ifsc: "" })}><Plus size={14} /> Add Person</button>}
       </div>
       <div className="table-scroll-wrap" style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead><tr>{["Name", "Designation", "Monthly Amount", "From", "Bank", "Account Number", "IFSC", "Status", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["Name", "Designation", "From", "Bank", "Account Number", "IFSC", "Status", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {staff.map(s => (
               <tr key={s.id} style={{ opacity: s.active ? 1 : 0.55 }}>
                 <td style={{ ...td, fontWeight: 700 }}>{s.name}</td>
                 <td style={td}>{s.designation || "—"}</td>
-                <td style={{ ...td, fontWeight: 700 }}>{inr(s.monthlyAmount)}</td>
                 <td style={td}>{monthLabel(s.startMonth)}</td>
                 <td style={td}>{s.bankName || "—"}</td>
                 <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{s.accountNumber || <span style={{ color: "#b91c1c", fontWeight: 600 }}>Missing</span>}</td>
@@ -366,7 +391,7 @@ function StaffPanel({ username, canManage, onChanged }) {
                 <td style={td}>{s.active ? <span style={{ color: "#15803d", fontWeight: 700 }}>Active</span> : <span style={{ color: "var(--hz-muted)", fontWeight: 700 }}>Stopped</span>}</td>
                 <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                   {canManage && <div style={{ display: "inline-flex", gap: 6 }}>
-                    <button title="Edit" style={iconBtn("#1e3a5f")} onClick={() => setEdit({ id: s.id, name: s.name, designation: s.designation || "", monthlyAmount: s.monthlyAmount, bankName: s.bankName || "", accountNumber: s.accountNumber || "", ifsc: s.ifsc || "" })}><Pencil size={13} /></button>
+                    <button title="Edit" style={iconBtn("#1e3a5f")} onClick={() => setEdit({ id: s.id, name: s.name, designation: s.designation || "", bankName: s.bankName || "", accountNumber: s.accountNumber || "", ifsc: s.ifsc || "" })}><Pencil size={13} /></button>
                     <button style={iconBtn(s.active ? "#b91c1c" : "#15803d")} onClick={() => toggle(s)}>{s.active ? "Stop" : "Restart"}</button>
                     {!s.active && <button title="Delete" style={iconBtn("#b91c1c")} onClick={() => remove(s)}><Trash2 size={13} /></button>}
                   </div>}
@@ -382,13 +407,12 @@ function StaffPanel({ username, canManage, onChanged }) {
           <div className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><label style={lbl}>Name *</label><input value={edit.name} onChange={e => set("name", e.target.value)} style={inputS} /></div>
             <div><label style={lbl}>Designation</label><input value={edit.designation} onChange={e => set("designation", e.target.value)} style={inputS} /></div>
-            <div><label style={lbl}>Monthly amount (₹) *</label><input type="number" min="0" value={edit.monthlyAmount} onChange={e => set("monthlyAmount", e.target.value)} style={inputS} /></div>
             {!edit.id && <div><label style={lbl}>Salary from</label><input type="month" value={edit.startMonth} onChange={e => set("startMonth", e.target.value)} style={inputS} /></div>}
             <div><label style={lbl}>Bank</label><input value={edit.bankName} onChange={e => set("bankName", e.target.value)} style={inputS} /></div>
             <div><label style={lbl}>Account number</label><input value={edit.accountNumber} onChange={e => set("accountNumber", e.target.value)} style={inputS} /></div>
             <div><label style={lbl}>IFSC</label><input value={edit.ifsc} onChange={e => set("ifsc", e.target.value.toUpperCase())} style={inputS} /></div>
           </div>
-          {edit.id && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 10 }}>A new amount or bank details apply to unpaid salary lines from this month on.</div>}
+          {edit.id && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 10 }}>New bank details apply to their unpaid salary lines.</div>}
         </Modal>
       )}
     </div>
@@ -505,6 +529,7 @@ function OfficePayments({ username, canManage }) {
         const pending = lines.filter(l => l.status === "PENDING" && Number(l.amount) > 0);
         const pendingAmt = pending.reduce((t, l) => t + Number(l.amount || 0), 0);
         const ready = pending.filter(hasBank);
+        const noAmount = lines.filter(l => l.status === "PENDING" && l.kind === "SALARY" && !(Number(l.amount) > 0));
         const missing = pending.filter(l => !hasBank(l));
         const sent = lines.filter(l => l.status === "PAID");
         const sentReady = sent.filter(hasBank);
@@ -552,6 +577,16 @@ function OfficePayments({ username, canManage }) {
                 </button>
               </div>
             </div>
+
+            {noAmount.length > 0 && (
+              <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start", fontSize: "var(--hz-text-md)", color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: "8px 12px" }}>
+                <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <b>{noAmount.length} salar{noAmount.length === 1 ? "y has" : "ies have"} no amount entered</b> — enter this month's amount in HR → Office/Mgnt:{" "}
+                  {noAmount.map(l => l.payee).join(", ")}.
+                </div>
+              </div>
+            )}
 
             {missing.length > 0 && (
               <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start", fontSize: "var(--hz-text-md)", color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: "8px 12px" }}>
