@@ -23,6 +23,10 @@ const EMPTY_FORM = {
 };
 
 function stageOf(key) { return STAGES.find(s => s.key === key) || STAGES[0]; }
+// Forward moves: each stage goes to the next one; Negotiation closes as either Won or Lost; Won / Lost are final.
+const NEXT = { PROSPECT: ["QUALIFIED"], QUALIFIED: ["PROPOSAL"], PROPOSAL: ["NEGOTIATION"], NEGOTIATION: ["WON", "LOST"] };
+const fmtDate = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+const prettySource = (s) => (!s ? "—" : s.toUpperCase() === s ? s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ").replace(/ \w/g, c => c.toUpperCase()) : s);
 
 export default function SalesPipeline() {
   const [leads, setLeads]         = useState([]);
@@ -35,11 +39,13 @@ export default function SalesPipeline() {
   const [saving, setSaving]       = useState(false);
   const [view, setView]           = useState("board");
   const [filterStage, setFilter]  = useState("ALL");
+  const [detail, setDetail]       = useState(null);   // lead opened in the details view
 
   const load = useCallback(async () => {
     try {
       const [lRes, sRes] = await Promise.all([salesApi.getAll(), salesApi.getSummary()]);
       setLeads(lRes.data);
+      setDetail(d => d ? (lRes.data || []).find(l => l.id === d.id) || null : d);
       setSummary(sRes.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -133,7 +139,7 @@ export default function SalesPipeline() {
 
   return (
     <div style={{ padding: "16px 16px", background: "#f8fafc", minHeight: "calc(100vh - 148px)" }}>
-      <style>{`@media (max-width: 768px) { .sales-lead-form { grid-template-columns: 1fr !important; padding: 16px !important; } .sales-lead-form > div { grid-column: 1 / -1 !important; } }`}</style>
+      <style>{`.lead-row:hover { background: #f8fafc; } .lead-card:hover { border-color: #94a3b8 !important; box-shadow: 0 2px 8px rgba(15,23,42,.08); } @media (max-width: 768px) { .sales-lead-form { grid-template-columns: 1fr !important; padding: 16px !important; } .sales-lead-form > div { grid-column: 1 / -1 !important; } }`}</style>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -189,7 +195,7 @@ export default function SalesPipeline() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {stageLeads.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onEdit={openEdit} onDelete={handleDelete} onMove={moveStage} />
+                    <LeadCard key={lead.id} lead={lead} onOpen={setDetail} onEdit={openEdit} onDelete={handleDelete} onMove={moveStage} />
                   ))}
                 </div>
               </div>
@@ -210,7 +216,8 @@ export default function SalesPipeline() {
               {filtered.map(lead => {
                 const st = stageOf(lead.stage);
                 return (
-                  <tr key={lead.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <tr key={lead.id} onClick={() => setDetail(lead)} title="Open lead details" className="lead-row"
+                    style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
                     <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--hz-ink)" }}>{lead.title}</td>
                     <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.client || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
@@ -220,7 +227,7 @@ export default function SalesPipeline() {
                     <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.probabilityPct != null ? `${lead.probabilityPct}%` : "—"}</td>
                     <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.expectedCloseDate || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "var(--hz-ink-2)" }}>{lead.assignedTo || "—"}</td>
-                    <td style={{ padding: "10px 14px" }}>
+                    <td style={{ padding: "10px 14px" }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <button onClick={() => openEdit(lead)} style={{ background: "#eff6ff", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "var(--hz-text-md)", fontWeight: 600, color: "#3b82f6", fontFamily: "inherit" }}>Edit</button>
                         <DeleteBtn onClick={() => handleDelete(lead.id)} title="Delete" />
@@ -235,6 +242,13 @@ export default function SalesPipeline() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {detail && !showModal && (
+        <LeadDetail lead={detail} onClose={() => setDetail(null)}
+          onEdit={() => openEdit(detail)}
+          onMove={async (st) => { await moveStage(detail, st); }}
+          onDelete={() => handleDelete(detail.id)} />
       )}
 
       {/* Modal */}
@@ -361,16 +375,15 @@ export default function SalesPipeline() {
   );
 }
 
-function LeadCard({ lead, onEdit, onDelete, onMove }) {
+function LeadCard({ lead, onOpen, onEdit, onDelete, onMove }) {
   const st        = stageOf(lead.stage);
-  // Forward moves: each stage goes to the next one; Negotiation closes as either Won or Lost; Won / Lost are final.
-  const NEXT = { PROSPECT: ["QUALIFIED"], QUALIFIED: ["PROPOSAL"], PROPOSAL: ["NEGOTIATION"], NEGOTIATION: ["WON", "LOST"] };
   const nextStages = (NEXT[lead.stage] || []).map(stageOf);
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 10, padding: 12, border: "1px solid #e2e8f0" }}>
+    <div className="lead-card" onClick={() => onOpen(lead)} title="Open lead details"
+      style={{ background: "#f8fafc", borderRadius: 10, padding: 12, border: "1px solid #e2e8f0", cursor: "pointer" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
         <div style={{ fontWeight: 600, fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", flex: 1, marginRight: 6 }}>{lead.title}</div>
-        <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           <button onClick={() => onEdit(lead)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--hz-faint)", padding: 2, fontSize: "var(--hz-text-lg)" }}>✏️</button>
           <DeleteBtn onClick={() => onDelete(lead.id)} title="Delete" size="sm" />
         </div>
@@ -382,7 +395,7 @@ function LeadCard({ lead, onEdit, onDelete, onMove }) {
       </div>
       {lead.expectedCloseDate && <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-faint)", marginTop: 4 }}>Close: {lead.expectedCloseDate}</div>}
       {nextStages.length > 0 && (
-        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
           {nextStages.map(n => (
             <button key={n.key} onClick={() => onMove(lead, n.key)}
               style={{ flex: 1, background: n.bg, color: n.color, border: `1px solid ${n.color}33`, borderRadius: 6, padding: "4px 8px", fontSize: "var(--hz-text-md)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -391,6 +404,65 @@ function LeadCard({ lead, onEdit, onDelete, onMove }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Full details of one lead, opened by clicking it on the board or in the list.
+function LeadDetail({ lead, onClose, onEdit, onMove, onDelete }) {
+  const st = stageOf(lead.stage);
+  const nextStages = (NEXT[lead.stage] || []).map(stageOf);
+  const Field = ({ label, children, wide }) => (
+    <div style={{ gridColumn: wide ? "1/-1" : undefined }}>
+      <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: "var(--hz-text-lg)", color: "var(--hz-ink)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{children || "—"}</div>
+    </div>
+  );
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: "var(--hz-text-xl)", color: "var(--hz-ink)" }}>{lead.title}</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+              <span style={{ background: st.bg, color: st.color, borderRadius: 8, padding: "3px 10px", fontSize: "var(--hz-text-md)", fontWeight: 700 }}>{st.label}</span>
+              {lead.client && <span style={{ color: "var(--hz-muted)", fontSize: "var(--hz-text-md)" }}>{lead.client}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "var(--hz-text-2xl)", color: "var(--hz-muted)", flexShrink: 0 }}>×</button>
+        </div>
+        <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <Field label="Deal Value">{formatLakh(lead.dealValue)}</Field>
+          <Field label="Quote Value">{lead.quoteValue != null ? formatLakh(lead.quoteValue) : null}</Field>
+          <Field label="Win Probability">{lead.probabilityPct != null ? `${lead.probabilityPct}%` : null}</Field>
+          <Field label="Assigned To">{lead.assignedTo}</Field>
+          <Field label="Expected Close">{lead.expectedCloseDate ? fmtDate(lead.expectedCloseDate) : null}</Field>
+          <Field label="Actual Close">{lead.actualCloseDate ? fmtDate(lead.actualCloseDate) : null}</Field>
+          <Field label="Contact Person">{lead.contactPerson}</Field>
+          <Field label="Phone">{lead.contactPhone ? <a href={`tel:${lead.contactPhone}`} style={{ color: "var(--hz-primary)" }}>{lead.contactPhone}</a> : null}</Field>
+          <Field label="Email">{lead.contactEmail ? <a href={`mailto:${lead.contactEmail}`} style={{ color: "var(--hz-primary)" }}>{lead.contactEmail}</a> : null}</Field>
+          <Field label="Lead Source">{prettySource(lead.source)}</Field>
+          <Field label="Business Type">{lead.businessType}</Field>
+          <Field label="Location">{lead.location}</Field>
+          <Field label="Description" wide>{lead.description}</Field>
+          <Field label="Notes" wide>{lead.notes}</Field>
+          {(lead.createdAt || lead.updatedAt) && (
+            <div style={{ gridColumn: "1/-1", fontSize: "var(--hz-text-sm)", color: "var(--hz-faint)" }}>
+              {lead.createdAt && <>Created {fmtDate(lead.createdAt)}</>}{lead.createdAt && lead.updatedAt && " · "}{lead.updatedAt && <>Updated {fmtDate(lead.updatedAt)}</>}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "14px 24px 20px", borderTop: "1px solid #f1f5f9", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={onEdit} style={{ border: "none", borderRadius: 8, padding: "9px 18px", background: "linear-gradient(135deg,#10b981,#059669)", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>Edit Lead</button>
+          {nextStages.map(n => (
+            <button key={n.key} onClick={() => onMove(n.key)}
+              style={{ background: n.bg, color: n.color, border: `1px solid ${n.color}55`, borderRadius: 8, padding: "8px 14px", fontSize: "var(--hz-text-md)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              → {n.label}
+            </button>
+          ))}
+          <div style={{ marginLeft: "auto" }}><DeleteBtn onClick={onDelete} title="Delete lead" /></div>
+        </div>
+      </div>
     </div>
   );
 }
