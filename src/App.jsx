@@ -7,6 +7,7 @@ import HRSection from "./hr/HRSection";
 import { AttendanceIconButton, TodayAttendanceCard, EXCLUDED_USERNAMES as ATTENDANCE_EXEMPT_USERNAMES } from "./hr/AttendancePage";
 import { attendanceApi } from "./hr/hrApi";
 import LeavePage from "./hr/LeavePage";
+import OemDatabasePage from "./procurement/OemDatabasePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine, loadBoqRequested, computeBoqRequested, roundQty } from "./operations/OperationsSection";
@@ -489,6 +490,7 @@ function CountBadge({ count }) {
 // When adding a role or a module, update this table. (Procurement Entries, HR, Chat Bot and Happizo Info are open to all.)
 const MODULE_ROLES = {
   vendors:    ["ADMIN", "PROCUREMENT", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER"],
+  oem:        ["ADMIN", "PROCUREMENT", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT_ENGINEER", "COSTING_PLANNING_ENGINEER"], // OEM Database tab inside Procurement
   projects:   ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER"],
   account:    ["ADMIN", "VP", "OH", "CEO", "PROJECT_MANAGER", "PROCUREMENT", "PROCUREMENT_ENGINEER"], // Procurement roles only get Send for Payment → Vendor Payments (read-only)
   sales:      ["ADMIN", "OH", "VP", "CEO", "BILLING_ENGINEER", "COSTING_PLANNING_ENGINEER"],
@@ -1676,7 +1678,7 @@ export default function PWJTracker() {
 // ─── HOME DASHBOARD ───
 function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, isCeo, isProjectManager, isProcurementEngineer, isCostingPlanningEngineer, isBillingEngineer, onNavigate, onOpenHr, onManageUsers, notifs, procurementPending = 0 }) {
   // Pending count per module tile (key = n.module) — shown as a red number on the tile's icon.
-  const tileCounts = notifs.reduce((m, n) => { m[n.module] = (m[n.module] || 0) + Number(n.count || 0); return m; }, { entries: procurementPending });
+  const tileCounts = notifs.reduce((m, n) => { const k = n.module === "vendors" ? "entries" : n.module; m[k] = (m[k] || 0) + Number(n.count || 0); return m; }, { entries: procurementPending });
   // Plain click = navigate in place. Ctrl / ⌘ / Shift / middle click = let the browser
   // open …/#<module> in a new tab or window (session is shared via localStorage).
   const modClick = (e, key) => {
@@ -1701,7 +1703,7 @@ function HomeDashboard({ user, isAdmin, isProcurement, isEngineer, isVP, isOH, i
       icon: Building2,
       gradient: "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
       shadow: "rgba(16,185,129,0.35)",
-      visible: canOpenModule("vendors", user?.role),
+      visible: false, // Vendors now lives inside Procurement Entries (tab next to Entries)
     },
     {
       key: "projects",
@@ -2022,7 +2024,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
     }
     if (mainTab === "vendors") loadVendorsTab();
     if (mainTab === "projects") fetchManagedProjects();
-    const LABEL = { entries: "Procurement", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", hr: "HR", operations: "Operations", chatbot: "Chat Bot", bugs: "Bug Tracker", "happizo-info": "Happizo Info" };
+    const LABEL = { entries: "Procurement", vendors: "Vendors", oem: "OEM Database", projects: "Projects", account: "Account", sales: "Sales", hr: "HR", operations: "Operations", chatbot: "Chat Bot", bugs: "Bug Tracker", "happizo-info": "Happizo Info" };
     document.title = mainTab === "home" ? "Happizo CloudDesk" : `${LABEL[mainTab] || mainTab} · Happizo CloudDesk`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab]);
@@ -4461,7 +4463,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
           <div style={s.hLeft}>
             <img src="https://happizo.com/assets/myimages/logo.png" alt="Happizo" style={{ height: 36, objectFit: "contain" }} />
             <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
-              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Happizo Vendor Management Dashboard" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : mainTab === "bugs" ? "Happizo Bug Tracker" : mainTab === "happizo-info" ? "Happizo Info" : "Procurement Tracker"}</div>
+              <div style={s.hTitle}>{mainTab === "home" ? "Happizo CloudDesk" : mainTab === "vendors" ? "Procurement Tracker — Vendors" : mainTab === "oem" ? "Procurement Tracker — OEM Database" : mainTab === "projects" ? "Happizo Project Management Dashboard" : mainTab === "account" ? "Happizo Account Management Dashboard" : mainTab === "hr" ? "Happizo HR Dashboard" : mainTab === "operations" ? "Happizo Operations Dashboard" : mainTab === "chatbot" ? "Happizo Chat Bot" : mainTab === "bugs" ? "Happizo Bug Tracker" : mainTab === "happizo-info" ? "Happizo Info" : "Procurement Tracker"}</div>
             </div>
           </div>
           <div style={s.hRight} className="app-hright">
@@ -4577,6 +4579,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
             ) : null;
             const labels = { entries: "Procurement", hr: "HR", operations: "Operations", chatbot: "Chat Bot", vendors: "Vendors", projects: "Projects", account: "Account", sales: "Sales", bugs: "Bug Tracker" };
             const homeActive = mainTab === "home";
+            const procTabs = mainTab === "entries" || mainTab === "vendors" || mainTab === "oem";
             const showApprovals = mainTab === "entries" && (isAdmin || isOH || isVP || isCeo);
             const showDocs = mainTab === "entries" && isVP;
             return (
@@ -4587,10 +4590,25 @@ function Dashboard({ user, onLogout: handleLogout }) {
                   <Home size={21} strokeWidth={homeActive ? 2.3 : 1.9} />
                 </button>
 
-                {mainTab !== "home" && (
+                {mainTab !== "home" && !procTabs && (
                   <>
                     <span aria-hidden style={{ width: 1, alignSelf: "center", height: 22, background: "#e2e8f0", margin: "0 6px" }} />
                     <button data-active="1" style={{ ...tab(true), cursor: "default" }}>{labels[mainTab] || mainTab}</button>
+                  </>
+                )}
+                {procTabs && (
+                  <>
+                    <span aria-hidden style={{ width: 1, alignSelf: "center", height: 22, background: "#e2e8f0", margin: "0 6px" }} />
+                    <button onClick={() => setMainTab("entries")} data-active={mainTab === "entries" ? "1" : undefined}
+                      onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(mainTab === "entries")}>
+                      <FileText size={18} strokeWidth={2} /> Procurement Entries
+                    </button>
+                    {canOpenModule("vendors", user?.role) && (
+                      <button onClick={() => setMainTab("vendors")} data-active={mainTab === "vendors" || mainTab === "oem" ? "1" : undefined}
+                        onMouseEnter={e => hover(e, true)} onMouseLeave={e => hover(e, false)} style={tab(mainTab === "vendors" || mainTab === "oem")}>
+                        <Building2 size={18} strokeWidth={2} /> Vendors {pill(pendingVendorCount)}
+                      </button>
+                    )}
                   </>
                 )}
 
@@ -4649,6 +4667,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
         )}
 
         {mainTab === "bugs" && <BugTrackerPage user={user} />}
+
+        {(mainTab === "vendors" || mainTab === "oem") && (
+          <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "10px 32px", display: "flex", gap: 8 }}>
+            {[["vendors", "Vendor Management"], ["oem", "OEM Database"]].map(([key, label]) => {
+              const active = mainTab === key;
+              return (
+                <button key={key} onClick={() => setMainTab(key)}
+                  style={{
+                    border: active ? "none" : "1.5px solid #e2e8f0", borderRadius: 20, padding: "6px 15px",
+                    background: active ? "#1e3a5f" : "#fff", color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)",
+                    fontWeight: active ? 700 : 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                  }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {mainTab === "oem" && <OemDatabasePage user={user} />}
 
         {mainTab === "happizo-info" && (
           <div style={{ background: "#f1f5f9", minHeight: "calc(100vh - 108px)" }}>
@@ -5123,7 +5161,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const rowDocs = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) ? p.docs : null; } catch { return null; } })();
                           const rowIssuedCount = rowDocs ? rowDocs.filter(d => d.docStatus === "VP_APPROVED").length : 0;
                           const rowPartial = rowDocs && row.docStatus === "VP_APPROVED" && rowDocs.some(d => !d.docStatus || d.docStatus === "DRAFT");
-                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length} ⚠` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
+                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length} ⚠` : row.docStatus === "VP_APPROVED" ? `${row.pwjType ? row.pwjType + " " : ""}Doc Issued` : row.docStatus === "PENDING_VP_APPROVAL" ? "Pending VP" : row.docStatus === "VP_REJECTED" ? "Not Approved" : row.docStatus === "REVISION_REQUESTED" ? "Revision ⚠" : row.docStatus === "REVOKED" ? "↩ Revoked" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : row.docStatus === "VP_REJECTED" ? "linear-gradient(135deg,#991b1b,#ef4444)" : row.docStatus === "REVISION_REQUESTED" ? "linear-gradient(135deg,#c2410c,#f97316)" : row.docStatus === "REVOKED" ? "linear-gradient(135deg,#6b21a8,#9333ea)" : "linear-gradient(135deg,#5b21b6,#7c3aed)";
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -5199,7 +5237,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                           const rowDocs = (() => { try { const p = JSON.parse(row.docData||"{}"); return p.multiVendor && Array.isArray(p.docs) ? p.docs : null; } catch { return null; } })();
                           const rowIssuedCount = rowDocs ? rowDocs.filter(d => d.docStatus === "VP_APPROVED").length : 0;
                           const rowPartial = rowDocs && row.docStatus === "VP_APPROVED" && rowDocs.some(d => !d.docStatus || d.docStatus === "DRAFT");
-                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length}` : row.docStatus === "VP_APPROVED" ? "Doc Issued" : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
+                          const lbl = rowPartial ? `Partially Issued ${rowIssuedCount}/${rowDocs.length}` : row.docStatus === "VP_APPROVED" ? `${row.pwjType ? row.pwjType + " " : ""}Doc Issued` : row.docStatus === "PENDING_VP_APPROVAL" ? "Doc Pending" : "View Doc";
                           const bg  = rowPartial ? "linear-gradient(135deg,#92400e,#f59e0b)" : row.docStatus === "VP_APPROVED" ? "linear-gradient(135deg,#166534,#16a34a)" : row.docStatus === "PENDING_VP_APPROVAL" ? "linear-gradient(135deg,#92400e,#d97706)" : "linear-gradient(135deg,#0369a1,#0ea5e9)";
                           return (
                             <button style={{ background: bg, border: "none", borderRadius: 7, padding: "5px 10px", color: "var(--hz-on-dark)", fontSize: "var(--hz-text-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -7525,7 +7563,7 @@ function Dashboard({ user, onLogout: handleLogout }) {
                 multiDocs.some(d => (d.docStatus || "DRAFT") === "DRAFT");
               const statusColor = activeDocStatus === "VP_APPROVED" ? "#166534" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#92400e" : activeDocStatus === "VP_REJECTED" ? "#991b1b" : activeDocStatus === "REVOKED" ? "#6b21a8" : "#475569";
               const statusBg    = activeDocStatus === "VP_APPROVED" ? "#dcfce7" : activeDocStatus === "PENDING_VP_APPROVAL" ? "#fef3c7" : activeDocStatus === "VP_REJECTED" ? "#fee2e2" : activeDocStatus === "REVOKED" ? "#f3e8ff" : "#f1f5f9";
-              const statusLabel = activeDocStatus === "VP_APPROVED" ? "✅ Doc Issued" : activeDocStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : activeDocStatus === "VP_REJECTED" ? "❌ Not Approved" : activeDocStatus === "REVOKED" ? "↩ Revoked" : "Draft";
+              const statusLabel = activeDocStatus === "VP_APPROVED" ? `✅ ${e.pwjType ? e.pwjType + " " : ""}Doc Issued` : activeDocStatus === "PENDING_VP_APPROVAL" ? "⏳ Pending VP Approval" : activeDocStatus === "VP_REJECTED" ? "❌ Not Approved" : activeDocStatus === "REVOKED" ? "↩ Revoked" : "Draft";
               return (
                 <>
                   {/* Top bar */}
