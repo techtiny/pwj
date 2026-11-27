@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Plus, X, ArrowDownLeft, ArrowUpRight, CalendarClock, ChevronRight, ChevronDown, Landmark, CheckCircle2, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { fundManagementApi, fundTransferApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
 import { DeleteBtn } from "../ActionButtons";
+import { officeApi } from "../hr/hrApi";
 
 const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = d => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
@@ -838,6 +839,24 @@ function periodOf(d, mode) {
   return { key: dkey(start), start, end, label: fyLabel, sub: `Apr ${fy} – Mar ${fy + 1}` };
 }
 
+// Planner source: issued BOQ documents plus the Office/Mgnt lines marked for Cash Flow (and the upcoming repeats of
+// repeating ones), shaped like documents so the calendar / list treat them alike — project "Office/Mgnt".
+const FREQ_LABEL = { WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
+async function loadPlannerDocs() {
+  const docs = await pwjDocsApi.getDocs().then(r => r.data || []);
+  let office = [];
+  try {
+    const username = JSON.parse(localStorage.getItem('pwj_user') || '{}').username;
+    if (username) office = (await officeApi.cashFlow(username)).data?.data || [];
+  } catch { office = []; } // not allowed / not available — planner still shows the documents
+  return [...docs, ...office.filter(o => o.status !== 'PAID').map((o, i) => ({
+    office: true, projected: !!o.projected, docStatus: 'VP_APPROVED', totalPayable: Number(o.amount) || 0,
+    completionDate: o.dueDate, projectName: 'Office/Mgnt',
+    vendor: o.payee || '', docNumber: `${o.kind === 'SALARY' ? 'Salary' : o.category || 'Expense'}${FREQ_LABEL[o.frequency] ? ` · ${FREQ_LABEL[o.frequency]}` : ''}`,
+    baseDocNumber: `office-${o.id ?? 'p' + i}`,
+  }))];
+}
+
 function OutflowPlannerList() {
   const [docs, setDocs] = useState(null);
   const [error, setError] = useState('');
@@ -847,15 +866,15 @@ function OutflowPlannerList() {
   const [closed, setClosed] = useState(() => new Set()); // period keys the user collapsed
 
   useEffect(() => {
-    pwjDocsApi.getDocs()
-      .then(r => setDocs(r.data || []))
+    loadPlannerDocs()
+      .then(setDocs)
       .catch(() => { setDocs([]); setError('Could not load the issued documents.'); });
   }, []);
 
   const lines = useMemo(() => (docs || [])
     .filter(x => x.docStatus === 'VP_APPROVED' && Number(x.totalPayable) > 0)
     .map(x => {
-      const src = toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
+      const src = x.office ? 'office' : toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
       const due = toDay(x.completionDate) || toDay(x.requiredDate) || toDay(x.issuedAt);
       // Placed on its payment day (next Wednesday / Saturday on or after the due date).
       return { ...x, dueDate: due, date: due ? payDayOf(due) : null, src, amount: Number(x.totalPayable) };
@@ -982,7 +1001,7 @@ function OutflowPlannerList() {
                             <tr key={`${x.entryId}-${x.docNumber}-${x.vendor}-${i}`}>
                               <td style={{ ...td, paddingLeft: project ? 16 : 40, whiteSpace: 'nowrap' }}>
                                 {fmtDate(x.date)} <span style={{ color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)" }}>{WEEKDAYS[(x.date.getDay() + 6) % 7]}</span>
-                                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>due {fmtDate(x.dueDate)}{x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ''}</div>
+                                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>due {fmtDate(x.dueDate)}{x.src === 'office' ? ` · Office/Mgnt${x.projected ? ' (upcoming repeat)' : ''}` : x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ''}</div>
                               </td>
                               <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{x.docNumber || x.baseDocNumber || '—'}
                                 {x.isAdditionalPo && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>additional / split</div>}</td>
@@ -1053,15 +1072,15 @@ function OutflowPlanner() {
   const [picked, setPicked] = useState(null); // selected day, or null = whole period
 
   useEffect(() => {
-    pwjDocsApi.getDocs()
-      .then(r => setDocs(r.data || []))
+    loadPlannerDocs()
+      .then(setDocs)
       .catch(() => { setDocs([]); setError('Could not load the issued documents.'); });
   }, []);
 
   const lines = useMemo(() => (docs || [])
     .filter(x => x.docStatus === 'VP_APPROVED' && Number(x.totalPayable) > 0)
     .map(x => {
-      const src = toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
+      const src = x.office ? 'office' : toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
       const due = toDay(x.completionDate) || toDay(x.requiredDate) || toDay(x.issuedAt);
       // Placed on its payment day (next Wednesday / Saturday on or after the due date).
       return { ...x, dueDate: due, date: due ? payDayOf(due) : null, src, amount: Number(x.totalPayable) };
@@ -1354,9 +1373,9 @@ function OutflowPlanner() {
                       <Money v={x.amount} strong />
                     </div>
                     <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2 }}>{x.vendor || '—'}</div>
-                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Due {fmtDate(x.dueDate)}{x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ' (completion)'}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Due {fmtDate(x.dueDate)}{x.src === 'office' ? (x.projected ? ' (upcoming repeat)' : '') : x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ' (completion)'}</div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                      <Pill>{x.pwjType || '—'}</Pill>
+                      {x.office ? (x.projected && <Pill tone="warning">Upcoming repeat</Pill>) : <Pill>{x.pwjType || '—'}</Pill>}
                       {x.boqNo && <Pill>BOQ {x.boqNo}</Pill>}
                       <Pill>{x.projectName || '—'}</Pill>
                       {x.isAdditionalPo && <Pill tone="warning">Split</Pill>}
