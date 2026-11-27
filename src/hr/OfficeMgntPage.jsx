@@ -107,11 +107,11 @@ function OfficeExpensesHR({ username, canManage }) {
         <div>
           <div style={{ fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Office / Management Expenses</div>
           <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 4 }}>
-            {"Office expenses raised by VP / Admin, plus the monthly salary for each office staff member. Everything here goes to Accounts → Weekly Payments → Office/Mgnt."}
+            {"Office expenses raised by VP / Admin, plus the monthly Office Mgnt salaries. Everything here goes to Accounts → Weekly Payments → Office/Mgnt."}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button style={ghost} onClick={() => setShowStaff(s => !s)}><Users size={14} /> Office Staff Salaries</button>
+          <button style={ghost} onClick={() => setShowStaff(s => !s)}><Users size={14} /> Office Mgnt Salaries</button>
           {canManage && <button style={btn("var(--hz-primary)")} onClick={() => setForm({ expenseDate: today(), category: "", description: "", payee: "", amount: "", bankName: "", accountNumber: "", ifsc: "", files: [], existing: [] })}><Plus size={14} /> Raise Expense</button>}
           <button style={ghost} onClick={exportExcel} disabled={!rows.length}><Download size={14} /> Excel</button>
         </div>
@@ -302,7 +302,7 @@ function SalaryModal({ edit, setEdit, username, onSaved }) {
   return (
     <Modal title={`Salary — ${edit.payee}, ${monthLabel(edit.month, true)}`} onClose={() => setEdit(null)}
       footer={<><button style={ghost} onClick={() => setEdit(null)}>Cancel</button><button style={btn("var(--hz-primary)")} disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</button></>}>
-      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>Changes only this month's line. To change every month going forward, edit the amount under Office Staff Salaries.</div>
+      <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginBottom: 12 }}>Changes only this month's line. To change every month going forward, edit the amount under Office Mgnt Salaries.</div>
       <label style={lbl}>Amount (₹)</label>
       <input type="number" min="0" step="0.01" value={edit.amount} onChange={e => setEdit({ ...edit, amount: e.target.value })} style={inputS} />
       <div style={{ marginTop: 12 }}><label style={lbl}>Note</label>
@@ -323,7 +323,7 @@ function StaffPanel({ username, canManage, onChanged }) {
     try { await officeApi.updateStaff(s.id, { username, active: !s.active }); load(); onChanged(); } catch (e) { alert(errMsg(e)); }
   }
   async function remove(s) {
-    if (!window.confirm(`Delete ${s.name} from Office Staff Salaries? Their unpaid salary lines are deleted too.`)) return;
+    if (!window.confirm(`Delete ${s.name} from Office Mgnt Salaries? Their unpaid salary lines are deleted too.`)) return;
     try { await officeApi.deleteStaff(s.id, username); load(); onChanged(); } catch (e) { alert(errMsg(e)); }
   }
   async function save() {
@@ -345,7 +345,7 @@ function StaffPanel({ username, canManage, onChanged }) {
     <div style={{ ...card, marginBottom: 16, overflow: "hidden", borderLeft: "4px solid #6d28d9" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <div style={{ fontWeight: 800, color: "var(--hz-ink)" }}>Office Staff Salaries</div>
+          <div style={{ fontWeight: 800, color: "var(--hz-ink)" }}>Office Mgnt Salaries</div>
           <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>A salary line is created every month for each active person · {inr(monthlyTotal)} / month</div>
         </div>
         {canManage && <button style={ghost} onClick={() => setEdit({ name: "", designation: "", monthlyAmount: 4500, startMonth: thisMonth(), bankName: "", accountNumber: "", ifsc: "" })}><Plus size={14} /> Add Person</button>}
@@ -377,7 +377,7 @@ function StaffPanel({ username, canManage, onChanged }) {
         </table>
       </div>
       {edit && (
-        <Modal title={edit.id ? `Edit — ${edit.name}` : "Add Office Staff"} onClose={() => setEdit(null)}
+        <Modal title={edit.id ? `Edit — ${edit.name}` : "Add to Office Mgnt Salaries"} onClose={() => setEdit(null)}
           footer={<><button style={ghost} onClick={() => setEdit(null)}>Cancel</button><button style={btn("var(--hz-primary)")} disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</button></>}>
           <div className="hr-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><label style={lbl}>Name *</label><input value={edit.name} onChange={e => set("name", e.target.value)} style={inputS} /></div>
@@ -487,7 +487,7 @@ function OfficePayments({ username, canManage }) {
         <div>
           <div style={{ color: "white", fontWeight: 700, fontSize: "var(--hz-text-lg)" }}>Office/Mgnt Payment</div>
           <div style={{ color: "#e0e7ff", fontSize: "var(--hz-text-sm)", marginTop: 2 }}>
-            Office expenses and the monthly office staff salaries from HR → Office/Mgnt. Send for Payment downloads the bank Excel for the month and marks those lines sent.
+            Office expenses and the monthly Office Mgnt salaries from HR → Office/Mgnt. Send for Payment downloads the bank Excel for the month and marks those lines sent.
           </div>
         </div>
       </div>
