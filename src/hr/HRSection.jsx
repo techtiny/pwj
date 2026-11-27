@@ -9,6 +9,7 @@ import PettyCashPage from "./PettyCashPage";
 import AdvancePage from "./AdvancePage";
 import SalaryStatementsPage from "./SalaryStatementsPage";
 import EmployeeExitPage from "./EmployeeExitPage";
+import ResignationsPage from "./ResignationsPage";
 import EmployeesPage from "./EmployeesPage";
 import SalaryPage from "./SalaryPage";
 import MyProfilePage from "./MyProfilePage";
@@ -64,14 +65,15 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
     },
     ...(["ADMIN", "VP", "OH", "CEO"].includes(user?.role) ? [{
       key: "salary-statements",
-      label: "Salary Statements",
-      tabs: [{ key: "salary-statements", label: "Salary Statements" }],
+      label: "Payslips",
+      tabs: [{ key: "salary-statements", label: "Payslips" }],
     }] : []),
     ...(canViewExits ? [{
       key: "people",
       label: "Employee Master",
       tabs: [
         { key: "employee-master", label: "Employee Profiles" },
+        { key: "resignations",    label: "Resignations" },
         { key: "employees",       label: "Employee Exit" },
         { key: "salary",          label: "Salary" },
       ],
@@ -200,6 +202,7 @@ export default function HRSection({ user, initialTab, onConsumeInitialTab, notif
       {tab === "approvals"      && <LeaveApprovalPage user={user} />}
       {tab === "all-attendance" && <AttendancePage user={user} adminView />}
       {tab === "employee-master" && <EmployeesPage user={user} />}
+      {tab === "resignations"   && <ResignationsPage user={user} />}
       {tab === "employees"      && <EmployeeExitPage user={user} />}
       {tab === "salary"         && <SalaryPage user={user} />}
     </div>

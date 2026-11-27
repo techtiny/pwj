@@ -35,7 +35,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
   const [form, setForm]             = useState(EMPTY_FORM);
   const [errors, setErrors]         = useState({});
   const [saving, setSaving]         = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState(null); // Reimbursement only — receipt/invoice
+  const [attachmentFiles, setAttachmentFiles] = useState([]); // Reimbursement only — one or more receipts / invoices
   const [viewTab, setViewTab]       = useState(defaultTab);
   const [commentMap, setCommentMap]       = useState({});
   const [tallyCommentMap, setTallyMap]    = useState({});
@@ -106,14 +106,15 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
     try {
-      const attachmentUrl = attachmentFile ? await uploadDocument(attachmentFile) : null;
-      const r = await pettyCashApi.create({ ...form, username, requestType, amount: Number(form.amount), ...(attachmentUrl ? { attachmentUrl } : {}) });
+      const attachmentUrls = attachmentFiles.length ? await Promise.all(attachmentFiles.map(f => uploadDocument(f))) : [];
+      const r = await pettyCashApi.create({ ...form, username, requestType, amount: Number(form.amount),
+        ...(attachmentUrls.length ? { attachmentUrl: attachmentUrls[0], attachmentUrls } : {}) });
       if (r.data?.success) {
         await load();
         if (isApprover) await loadAll();
         setShowForm(false);
         setForm(EMPTY_FORM);
-        setAttachmentFile(null);
+        setAttachmentFiles([]);
         setErrors({});
       } else {
         alert(r.data?.message || "Failed to create entry");
@@ -267,6 +268,22 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
           style={{ color: "var(--hz-primary)", fontWeight: 600, fontSize: "var(--hz-text-sm)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
           📄 {label || "View"}
         </a>;
+  };
+
+  // Receipts attached when the request was raised: every file in attachmentUrls (older entries: just attachmentUrl).
+  const ReceiptCell = ({ entry }) => {
+    let urls = [];
+    if (entry.attachmentUrls) {
+      try { urls = JSON.parse(entry.attachmentUrls); } catch { urls = [entry.attachmentUrl].filter(Boolean); }
+    } else if (entry.attachmentUrl) {
+      urls = [entry.attachmentUrl];
+    }
+    if (!urls.length) return <span style={{ color: "var(--hz-ink-2)" }}>—</span>;
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {urls.map((url, i) => <AttachmentLink key={i} url={url} label={urls.length > 1 ? `Doc ${i + 1}` : "View"} />)}
+      </div>
+    );
   };
 
   const ProofCell = ({ entry }) => {
@@ -439,11 +456,25 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
             {title === "Reimbursement" && (
               <div style={{ gridColumn: "1/-1" }}>
-                <label style={LBL}>Attachment (receipt/invoice)</label>
-                <input type="file" accept="image/*,application/pdf"
-                  onChange={e => setAttachmentFile(e.target.files?.[0] || null)}
-                  style={{ ...INP(), padding: "8px 12px" }} />
-                {attachmentFile && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 4 }}>{attachmentFile.name}</div>}
+                <label style={LBL}>Attachments (receipts / invoices) — you can add more than one</label>
+                {attachmentFiles.length > 0 && (
+                  <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+                    {attachmentFiles.map((f, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", fontSize: "var(--hz-text-sm)" }}>
+                        <span>📄</span>
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                        <button type="button" onClick={() => setAttachmentFiles(fs => fs.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`}
+                          style={{ border: "none", background: "none", color: "var(--hz-danger)", cursor: "pointer", fontWeight: 700, fontSize: "var(--hz-text-md)" }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "1.5px dashed #94a3b8", borderRadius: 8, cursor: "pointer", fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-primary)" }}>
+                  📎 {attachmentFiles.length ? "Add more files" : "Attach files"}
+                  <input type="file" accept="image/*,application/pdf,.doc,.docx" multiple style={{ display: "none" }}
+                    onChange={e => { const add = Array.from(e.target.files || []); setAttachmentFiles(fs => [...fs, ...add]); e.target.value = ""; }} />
+                </label>
+                {attachmentFiles.length > 0 && <span style={{ marginLeft: 10, fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>{attachmentFiles.length} file{attachmentFiles.length === 1 ? "" : "s"} selected</span>}
               </div>
             )}
 
@@ -461,7 +492,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
                 style={{ flex: 1, border: "none", borderRadius: 9, padding: "12px", background: selectedProjectBlocked ? "#94a3b8" : "#1e3a5f", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: selectedProjectBlocked ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Submitting…" : "Submit Request"}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); setErrors({}); setAttachmentFile(null); }}
+              <button type="button" onClick={() => { setShowForm(false); setErrors({}); setAttachmentFiles([]); }}
                 style={{ border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "12px 22px", background: "#fff", color: "var(--hz-ink-2)", fontWeight: 600, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
@@ -628,9 +659,7 @@ export default function PettyCashPage({ user, title = "Petty Cash", defaultTab =
 
                       {/* Receipt (initial attachment) */}
                       <td data-label="Receipt" style={TD()}>
-                        {entry.attachmentUrl
-                          ? <AttachmentLink url={entry.attachmentUrl} label="View" />
-                          : <span style={{ color: "var(--hz-ink-2)" }}>—</span>}
+                        <ReceiptCell entry={entry} />
                       </td>
 
                       {/* Proof (multi-doc, post-transfer) — Reimbursement already attaches the

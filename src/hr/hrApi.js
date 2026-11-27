@@ -203,6 +203,16 @@ export const salaryApi = {
     api.patch(`/salary/sheet/${userId}`, data, { params: { year, month } }),
 };
 
+// Resignation: VP / Admin enables it for an employee → employee applies (2-month notice) → VP / Admin can change it.
+export const resignationApi = {
+  mine:    (username)       => api.get(`/resignation/my/${encodeURIComponent(username)}`),
+  all:     (username)       => api.get('/resignation/all', { params: { username } }),
+  enable:  (data)           => api.post('/resignation/enable', data),
+  apply:   (data)           => api.post('/resignation/apply', data),
+  update:  (id, data)       => api.put(`/resignation/${id}`, data),
+  disable: (id, data)       => api.put(`/resignation/${id}/disable`, data),
+};
+
 export const statementApi = {
   request:    (data)     => api.post('/salary-statement', data),
   mine:       (username) => api.get(`/salary-statement/my/${encodeURIComponent(username)}`),

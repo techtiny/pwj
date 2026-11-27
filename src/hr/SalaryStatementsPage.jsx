@@ -21,9 +21,9 @@ export default function SalaryStatementsPage({ user }) {
   const canApprove = user?.role === "ADMIN" || user?.role === "VP";
   return (
     <div className="hr-page" style={{ padding: "24px 32px" }}>
-      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Salary Statements</div>
+      <div style={{ fontSize: "var(--hz-text-2xl)", fontWeight: 800, color: "var(--hz-ink)" }}>Payslips</div>
       <div style={{ fontSize: "var(--hz-text-md)", color: "var(--hz-ink)", margin: "2px 0 16px" }}>
-        Salary statements are locked for everyone. An employee can download a month's statement only after Admin or VP approves their request.
+        Payslips are locked for everyone. An employee can download a month's payslip only after Admin or VP approves their request.
       </div>
       {canApprove && <PendingStatements user={user} />}
       <SalaryStatementMonitor user={user} />
@@ -70,7 +70,7 @@ function PendingStatements({ user }) {
             </tr></thead>
             <tbody>
               {loading ? <tr><td style={td} colSpan={4}>Loading…</td></tr>
-                : rows.length === 0 ? <tr><td style={td} colSpan={4}>No salary statement requests waiting for approval.</td></tr>
+                : rows.length === 0 ? <tr><td style={td} colSpan={4}>No payslip requests waiting for approval.</td></tr>
                 : rows.map((r) => {
                   const own = r.username === user?.username;
                   return (
@@ -113,7 +113,7 @@ export function SalaryStatementMonitor({ user }) {
     <div style={{ ...card, padding: 18, marginBottom: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Salary Statements Issued</div>
+          <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Payslips Issued</div>
           <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
             {rows.length} requested · {count("APPROVED")} approved · {count("PENDING")} pending · {count("REJECTED")} rejected · {rows.reduce((t, r) => t + (r.downloadCount || 0), 0)} downloads
           </div>
@@ -132,7 +132,7 @@ export function SalaryStatementMonitor({ user }) {
             <th style={th}>Decided by</th><th style={th}>Downloads</th><th style={th}>Last download</th>
           </tr></thead>
           <tbody>
-            {shown.length === 0 ? <tr><td style={td} colSpan={7}>No salary statement requests yet.</td></tr> : shown.map((r) => (
+            {shown.length === 0 ? <tr><td style={td} colSpan={7}>No payslip requests yet.</td></tr> : shown.map((r) => (
               <tr key={r.id}>
                 <td style={{ ...td, fontWeight: 600 }}>{r.fullName}</td>
                 <td style={{ ...td, whiteSpace: "nowrap" }}>{MONTHS[r.month - 1]} {r.year}</td>

@@ -6,6 +6,7 @@ import SalesPage from "./account/SalesPage";
 import HRSection from "./hr/HRSection";
 import { AttendanceIconButton, TodayAttendanceCard, EXCLUDED_USERNAMES as ATTENDANCE_EXEMPT_USERNAMES } from "./hr/AttendancePage";
 import { attendanceApi } from "./hr/hrApi";
+import LeavePage from "./hr/LeavePage";
 import BugTrackerPage from "./bugs/BugTrackerPage";
 import AiAssistant from "./assistant/AiAssistant";
 import OperationsSection, { loadBoqGroups, boqGroupToItem, boqSpecLine, loadBoqRequested, computeBoqRequested, roundQty } from "./operations/OperationsSection";
@@ -1876,6 +1877,8 @@ function Dashboard({ user, onLogout: handleLogout }) {
   // before using the dashboard (VP / CEO / OH never). Fails open if attendance can't be read.
   const [pendingPrev, setPendingPrev] = useState([]);
   const [prevBusy, setPrevBusy] = useState(false);
+  // Leave can be applied from the check-in / check-out screens, without checking in or out first.
+  const [gateLeaveOpen, setGateLeaveOpen] = useState(false);
   const checkInExempt = isVP || isOH || isCeo || ATTENDANCE_EXEMPT_USERNAMES.has((user?.username || "").toLowerCase());
   useEffect(() => {
     if (!user?.username || checkInExempt) { setPendingPrev([]); return; }
@@ -4290,6 +4293,12 @@ function Dashboard({ user, onLogout: handleLogout }) {
               style={{ border: "none", borderRadius: 10, padding: "11px 22px", background: "#dc2626", color: "var(--hz-on-dark)", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: prevBusy ? "default" : "pointer", fontFamily: "inherit", opacity: prevBusy ? 0.7 : 1 }}>
               {prevBusy ? "Checking out…" : "Check out previous day"}
             </button>
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setGateLeaveOpen(true)}
+                style={{ border: "1.5px solid #1e3a5f", borderRadius: 10, padding: "9px 20px", background: "#fff", color: "#1e3a5f", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
+                Apply for leave
+              </button>
+            </div>
             <div style={{ marginTop: 14 }}>
               <button onClick={handleLogout} style={{ border: "none", background: "none", color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
             </div>
@@ -4303,8 +4312,26 @@ function Dashboard({ user, onLogout: handleLogout }) {
             <div style={{ color: "#cbd5e1", fontSize: "var(--hz-text-md)", marginBottom: 14 }}>You need to check in for today before you can use the dashboard.</div>
             <TodayAttendanceCard user={user} style={{ margin: "0 auto", textAlign: "left" }} />
             <div style={{ marginTop: 14 }}>
+              <button onClick={() => setGateLeaveOpen(true)}
+                style={{ border: "1.5px solid #fff", borderRadius: 10, padding: "9px 20px", background: "transparent", color: "#fff", fontWeight: 700, fontSize: "var(--hz-text-md)", cursor: "pointer", fontFamily: "inherit" }}>
+                Apply for leave instead
+              </button>
+            </div>
+            <div style={{ marginTop: 14 }}>
               <button onClick={handleLogout} style={{ border: "none", background: "none", color: "#cbd5e1", fontSize: "var(--hz-text-sm)", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Log out</button>
             </div>
+          </div>
+        </div>
+      )}
+      {gateLeaveOpen && (pendingPrev.length > 0 || needsCheckIn) && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 5100, background: "rgba(15,23,42,0.6)", display: "flex", justifyContent: "center", padding: 16, overflowY: "auto" }}>
+          <div style={{ background: "var(--hz-bg)", borderRadius: 16, width: "100%", maxWidth: 1100, alignSelf: "flex-start", boxShadow: "0 20px 50px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "#fff", borderBottom: "1px solid var(--hz-border)" }}>
+              <div style={{ fontSize: "var(--hz-text-lg)", fontWeight: 800, color: "var(--hz-ink)" }}>Apply for leave</div>
+              <button onClick={() => { setGateLeaveOpen(false); window.dispatchEvent(new Event("attendance-changed")); }}
+                style={{ border: "1px solid var(--hz-border-strong)", background: "#fff", borderRadius: 8, padding: "6px 14px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Close</button>
+            </div>
+            <div style={{ padding: 16 }}><LeavePage user={user} /></div>
           </div>
         </div>
       )}

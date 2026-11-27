@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, X, ArrowUpRight, CalendarClock, ChevronRight, ChevronDown, Landmark, CheckCircle2, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { Plus, X, ArrowDownLeft, ArrowUpRight, CalendarClock, ChevronRight, ChevronDown, Landmark, CheckCircle2, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { fundManagementApi, fundTransferApi, plannedFundApi, projectsApi, pwjDocsApi } from './accountApi';
 import { DeleteBtn } from "../ActionButtons";
 
@@ -81,7 +81,7 @@ const EMPTY = { movementDate: today(), party: '', projectId: '', customParty: ''
 export default function FundManagementPage() {
   // Two modules: Inter Project Fund Flow (payment funding + Actual Inflow, view INFLOW) and
   // Cash Flow (Planned Inflow / Actual Outflow / Planned Outflow).
-  const [view, setView] = useState('INFLOW'); // INFLOW | OUTFLOW | PLANNED_INFLOW | PLANNED_OUTFLOW
+  const [view, setView] = useState('INFLOW'); // INFLOW (Inter Project Fund Flow) | CF_INFLOW (Cash Flow → Actual Inflow) | OUTFLOW | PLANNED_INFLOW | PLANNED_OUTFLOW
   const [projects, setProjects] = useState([]);
   const [rows, setRows] = useState([]);
   const [balances, setBalances] = useState({}); // projectId -> { inflow, outflow, available }
@@ -100,14 +100,15 @@ export default function FundManagementPage() {
   const [b2bProjects, setB2bProjects] = useState([]); // for Bank Balance / Total Project Balance tiles
 
   const isFunding = view === 'INFLOW'; // Inter Project Fund Flow module
+  const showPlanner = view === 'PLANNED_OUTFLOW'; // Cash Flow → Planned Outflow shows the outflow planner (calendar / list); Actual Outflow shows paid entries
   const isPlanned = view === 'PLANNED_INFLOW' || view === 'PLANNED_OUTFLOW';
-  const dir = isPlanned ? (view === 'PLANNED_INFLOW' ? 'INFLOW' : 'OUTFLOW') : view;
-  const isInflow = view === 'INFLOW' || view === 'PLANNED_INFLOW';
+  const dir = isPlanned ? (view === 'PLANNED_INFLOW' ? 'INFLOW' : 'OUTFLOW') : (view === 'CF_INFLOW' ? 'INFLOW' : view);
+  const isInflow = view === 'INFLOW' || view === 'CF_INFLOW' || view === 'PLANNED_INFLOW';
   const api = isPlanned ? plannedFundApi : fundManagementApi;
   const partyLabel = isPlanned && isInflow ? 'Source / Description' : (isInflow ? 'Source Type' : 'Paid To (Project)');
   const modeLabel = isInflow ? 'Mode of Receipt' : 'Mode of Payment';
   const modes = isInflow ? RECEIPT_MODES : PAYMENT_MODES;
-  const viewLabel = view === 'INFLOW' ? 'Actual Inflow' : view === 'OUTFLOW' ? 'Actual Outflow'
+  const viewLabel = view === 'INFLOW' || view === 'CF_INFLOW' ? 'Actual Inflow' : view === 'OUTFLOW' ? 'Actual Outflow'
     : view === 'PLANNED_INFLOW' ? 'Planned Inflow' : view === 'PLANNED_OUTFLOW' ? 'Planned Outflow' : '';
 
   useEffect(() => {
@@ -263,7 +264,7 @@ export default function FundManagementPage() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '1.5px solid #e2e8f0', marginBottom: 18, flexWrap: 'wrap' }}>
         {[
           ['INFLOW', 'Inter Project Fund Flow', isFunding],
-          ['PLANNED_INFLOW', 'Cash Flow', !isFunding],
+          ['CF_INFLOW', 'Cash Flow', !isFunding],
         ].map(([k, l, active]) => (
           <button key={l} onClick={() => { if (!active) { setView(k); setShowForm(false); } }}
             style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '10px 18px',
@@ -293,6 +294,7 @@ export default function FundManagementPage() {
         )}
         {!isFunding && <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 8, padding: 3, flexWrap: 'wrap' }}>
           {[
+            ['CF_INFLOW', 'Actual Inflow', <ArrowDownLeft size={14} key="ai" />, '#16a34a'],
             ['PLANNED_INFLOW', 'Planned Inflow', <CalendarClock size={14} key="pi" />, '#0d9488'],
             ['OUTFLOW', 'Actual Outflow', <ArrowUpRight size={14} key="o" />, '#dc2626'],
             ['PLANNED_OUTFLOW', 'Planned Outflow', <CalendarClock size={14} key="po" />, '#b45309'],
@@ -306,13 +308,13 @@ export default function FundManagementPage() {
             </button>
           ))}
         </div>}
-        {!isFunding && (
+        {false && ( /* All Cash Flow "Add" buttons removed on request (Actual / Planned Inflow, Actual / Planned Outflow) */
           <button onClick={openForm}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: "var(--hz-text-sm)", fontWeight: 700, color: "var(--hz-on-dark)", background: '#0369a1', cursor: 'pointer', fontFamily: 'inherit' }}>
             <Plus size={15} /> Add {viewLabel}
           </button>
         )}
-        {(
+        {!showPlanner && (
           <div style={{ marginLeft: 'auto', fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)" }}>
             {rows.length} entr{rows.length === 1 ? 'y' : 'ies'} · Total <Money v={totalShown} strong color={isInflow ? "var(--hz-success)" : "var(--hz-danger)"} />
           </div>
@@ -320,7 +322,7 @@ export default function FundManagementPage() {
       </div>
 
       {/* Add form */}
-      {showForm && (
+      {showForm && !showPlanner && (
         <div className="card" style={{ padding: 18, marginBottom: 16, border: '1.5px solid #bae6fd' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>New {viewLabel} entry</div>
@@ -430,7 +432,7 @@ export default function FundManagementPage() {
       )}
 
       {/* Table (in Inter Project Fund Flow, only while Transaction Details is expanded) */}
-      {(!isFunding || txnOpen) && (
+      {!showPlanner && (!isFunding || txnOpen) && (
       <div className="card" style={isFunding
         ? { overflow: 'hidden', borderRadius: '0 0 12px 12px', borderTop: 'none', marginTop: 0, marginBottom: 18, padding: 0 }
         : { overflow: 'hidden' }}>
@@ -505,6 +507,8 @@ export default function FundManagementPage() {
         </div>
       </div>
       )}
+
+      {showPlanner && <OutflowPlanner />}
 
       {xfer && (
         <TransferModal
@@ -794,6 +798,577 @@ function LoanHistoryRows({ loan: l, transfers }) {
         <td style={{ ...tot, color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)" }}>{Number(l.outstanding) > 0 ? 'Outstanding' : 'Fully repaid'}</td>
       </tr>
     </>
+  );
+}
+
+// ─── Cash Flow → Actual Outflow → Outflow Planner ───
+// Planned outflow from issued BOQ documents (VP-approved PO / WO / JO), placed on each document's completion
+// date (falls back to its required date, then its issue date) and grouped by week / month / quarter / year.
+// Multi-vendor and Additional-PO sub-documents each come through as their own line (from /expenses/pwj-docs).
+const PLAN_PERIODS = [['WEEK', 'Weekly'], ['MONTH', 'Monthly'], ['QUARTER', 'Quarterly'], ['YEAR', 'Yearly']];
+const MONTHS3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const toDay = (v) => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+// Payments go out on the Wednesday / Saturday payment cycle: an outflow due on a date is paid on the first
+// Wednesday or Saturday on or after it.
+const PAY_DAYS = [3, 6]; // Date.getDay(): Wed, Sat
+const payDayOf = (d) => { const dow = d.getDay(); const add = dow <= 3 ? 3 - dow : dow <= 6 ? 6 - dow : 3; return new Date(d.getFullYear(), d.getMonth(), d.getDate() + (dow === 0 ? 3 : add)); };
+const isPayDay = (d) => PAY_DAYS.includes(d.getDay());
+const dkey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dshort = (d) => `${d.getDate()} ${MONTHS3[d.getMonth()]}`;
+// Period a date falls in. Weeks run Monday–Sunday; quarters and years follow the Indian financial year (April–March).
+function periodOf(d, mode) {
+  const y = d.getFullYear(), mo = d.getMonth();
+  if (mode === 'WEEK') {
+    const start = new Date(y, mo, d.getDate() - ((d.getDay() + 6) % 7));
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    return { key: dkey(start), start, end, label: `Week of ${dshort(start)} ${start.getFullYear()}`, sub: `${dshort(start)} – ${dshort(end)} ${end.getFullYear()}` };
+  }
+  if (mode === 'MONTH') {
+    const start = new Date(y, mo, 1), end = new Date(y, mo + 1, 0);
+    return { key: dkey(start), start, end, label: `${MONTHS3[mo]} ${y}`, sub: `1 – ${end.getDate()} ${MONTHS3[mo]}` };
+  }
+  const fy = mo >= 3 ? y : y - 1; // financial year starting April of `fy`
+  const fyLabel = `FY ${fy}-${String((fy + 1) % 100).padStart(2, '0')}`;
+  if (mode === 'QUARTER') {
+    const q = Math.floor(((mo + 9) % 12) / 3); // Apr–Jun = 0 … Jan–Mar = 3
+    const start = new Date(fy, 3 + q * 3, 1), end = new Date(fy, 3 + q * 3 + 3, 0);
+    return { key: dkey(start), start, end, label: `Q${q + 1} ${fyLabel}`, sub: `${MONTHS3[start.getMonth()]} – ${MONTHS3[end.getMonth()]} ${end.getFullYear()}` };
+  }
+  const start = new Date(fy, 3, 1), end = new Date(fy + 1, 2, 31);
+  return { key: dkey(start), start, end, label: fyLabel, sub: `Apr ${fy} – Mar ${fy + 1}` };
+}
+
+function OutflowPlannerList() {
+  const [docs, setDocs] = useState(null);
+  const [error, setError] = useState('');
+  const [mode, setMode] = useState('WEEK');
+  const [project, setProject] = useState('');
+  const [upcoming, setUpcoming] = useState(false);
+  const [closed, setClosed] = useState(() => new Set()); // period keys the user collapsed
+
+  useEffect(() => {
+    pwjDocsApi.getDocs()
+      .then(r => setDocs(r.data || []))
+      .catch(() => { setDocs([]); setError('Could not load the issued documents.'); });
+  }, []);
+
+  const lines = useMemo(() => (docs || [])
+    .filter(x => x.docStatus === 'VP_APPROVED' && Number(x.totalPayable) > 0)
+    .map(x => {
+      const src = toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
+      const due = toDay(x.completionDate) || toDay(x.requiredDate) || toDay(x.issuedAt);
+      // Placed on its payment day (next Wednesday / Saturday on or after the due date).
+      return { ...x, dueDate: due, date: due ? payDayOf(due) : null, src, amount: Number(x.totalPayable) };
+    })
+    .filter(x => x.date), [docs]);
+
+  const projectNames = useMemo(() => [...new Set(lines.map(x => x.projectName).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [lines]);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const cur = periodOf(today, mode);
+  const next = periodOf(new Date(cur.end.getFullYear(), cur.end.getMonth(), cur.end.getDate() + 1), mode);
+
+  const shown = lines.filter(x => (!project || x.projectName === project) && (!upcoming || x.date >= cur.start));
+  // period → project → documents
+  const periods = useMemo(() => {
+    const map = new Map();
+    for (const x of shown) {
+      const pr = periodOf(x.date, mode);
+      if (!map.has(pr.key)) map.set(pr.key, { ...pr, total: 0, byProject: new Map() });
+      const g = map.get(pr.key);
+      g.total += x.amount;
+      const pn = x.projectName || '—';
+      if (!g.byProject.has(pn)) g.byProject.set(pn, { name: pn, total: 0, docs: [] });
+      const pg = g.byProject.get(pn); pg.total += x.amount; pg.docs.push(x);
+    }
+    return [...map.values()].sort((a, b) => a.start - b.start).map(g => ({
+      ...g, projects: [...g.byProject.values()].sort((a, b) => a.name.localeCompare(b.name))
+        .map(pg => ({ ...pg, docs: pg.docs.sort((a, b) => a.date - b.date || String(a.docNumber).localeCompare(String(b.docNumber))) })),
+    }));
+  }, [shown, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalOf = (pr) => periods.find(g => g.key === pr.key)?.total || 0;
+  const grand = shown.reduce((t, x) => t + x.amount, 0);
+  const unit = { WEEK: 'week', MONTH: 'month', QUARTER: 'quarter', YEAR: 'year' }[mode];
+  // Past periods start collapsed; the current and upcoming ones start open.
+  const isOpen = (g) => (closed.has(g.key) ? false : g.end >= today) || closed.has('open:' + g.key);
+  const toggle = (g) => setClosed(prev => {
+    const n = new Set(prev); const open = isOpen(g);
+    n.delete(g.key); n.delete('open:' + g.key);
+    if (open) n.add(g.key); else n.add('open:' + g.key);
+    return n;
+  });
+  const allOpen = periods.length > 0 && periods.every(isOpen);
+  const setAll = (open) => setClosed(open ? new Set(periods.map(g => 'open:' + g.key)) : new Set(periods.map(g => g.key)));
+
+  const COLS = [170, 185, 70, 100, 360, 210];
+  const W = COLS.reduce((a, b) => a + b, 0);
+  const seg = (active) => ({ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: "var(--hz-text-sm)", fontWeight: active ? 700 : 500, padding: '7px 14px', borderRadius: 6,
+    background: active ? "var(--hz-primary)" : 'transparent', color: active ? "var(--hz-on-dark)" : "var(--hz-ink-2)" });
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 18 }}>
+        <Stat label={`This ${unit}`} value={totalOf(cur)} sub={cur.sub} color="var(--hz-danger)" />
+        <Stat label={`Next ${unit}`} value={totalOf(next)} sub={next.sub} color="var(--hz-warning)" />
+        <Stat label={upcoming ? 'Total planned (from this ' + unit + ')' : 'Total planned'} value={grand}
+          sub={`${shown.length} document${shown.length === 1 ? '' : 's'}${project ? ` · ${project}` : ''}`} />
+      </div>
+
+      <Section title="Outflow Planner"
+        subtitle="Planned outflow from issued BOQ documents (PO / WO / JO), on the Wednesday / Saturday payment day after each completion date."
+        headerWidth={W} flush
+        right={periods.length > 0 && (
+          <button onClick={() => setAll(!allOpen)} style={btnGhost}>
+            {allOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}{allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+        )}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '0 18px 14px', maxWidth: W, boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 8, padding: 3 }}>
+            {PLAN_PERIODS.map(([k, l]) => <button key={k} onClick={() => { setMode(k); setClosed(new Set()); }} style={seg(mode === k)}>{l}</button>)}
+          </div>
+          <select value={project} onChange={e => setProject(e.target.value)} aria-label="Project"
+            style={{ ...inputS, width: 'auto', minWidth: 220, padding: '7px 10px' }}>
+            <option value="">All projects</option>
+            {projectNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", cursor: 'pointer' }}>
+            <input type="checkbox" checked={upcoming} onChange={e => setUpcoming(e.target.checked)} /> From this {unit} onwards
+          </label>
+        </div>
+
+        {docs == null ? <div style={{ padding: '0 18px 18px', color: "var(--hz-muted)" }}>Loading…</div>
+          : error ? <div style={{ padding: '0 18px 18px', color: "var(--hz-danger)" }}>{error}</div>
+          : periods.length === 0 ? <div style={{ padding: '0 18px 18px', color: "var(--hz-faint)" }}>No issued documents{project ? ` for ${project}` : ''}{upcoming ? ` from this ${unit} onwards` : ''}.</div>
+          : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="fund-grid" style={{ width: W, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>{COLS.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+              <thead><tr>
+                <th style={th}>Payment day</th>
+                <th style={th}>Document</th>
+                <th style={th}>Type</th>
+                <th style={th}>BOQ</th>
+                <th style={th}>Vendor / Material</th>
+                <th style={{ ...th, ...num }}>Planned outflow</th>
+              </tr></thead>
+              <tbody>
+                {periods.map(g => {
+                  const open = isOpen(g);
+                  const isCur = g.key === cur.key;
+                  return (
+                    <React.Fragment key={g.key}>
+                      <tr className={open ? 'loan-head' : undefined} onClick={() => toggle(g)} style={{ cursor: 'pointer' }}>
+                        <td colSpan={5} style={{ ...td, fontWeight: 700 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: "var(--hz-muted)", display: 'inline-flex' }}>{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
+                            {g.label}
+                            <span style={{ fontWeight: 500, color: "var(--hz-muted)" }}>· {g.sub}</span>
+                            {isCur && <Pill tone="warning">Current {unit}</Pill>}
+                            {g.end < today && <Pill>Past</Pill>}
+                          </span>
+                        </td>
+                        <td style={{ ...td, ...num }}><Money v={g.total} strong color="var(--hz-danger)" /></td>
+                      </tr>
+                      {open && g.projects.map(pg => (
+                        <React.Fragment key={pg.name}>
+                          {!project && (
+                            <tr>
+                              <td colSpan={5} style={{ ...td, paddingLeft: 40, fontWeight: 700, color: "var(--hz-primary)" }}>{pg.name}
+                                <span style={{ fontWeight: 500, color: "var(--hz-muted)" }}> · {pg.docs.length} document{pg.docs.length === 1 ? '' : 's'}</span></td>
+                              <td style={{ ...td, ...num }}><Money v={pg.total} strong /></td>
+                            </tr>
+                          )}
+                          {pg.docs.map((x, i) => (
+                            <tr key={`${x.entryId}-${x.docNumber}-${x.vendor}-${i}`}>
+                              <td style={{ ...td, paddingLeft: project ? 16 : 40, whiteSpace: 'nowrap' }}>
+                                {fmtDate(x.date)} <span style={{ color: "var(--hz-muted)", fontSize: "var(--hz-text-sm)" }}>{WEEKDAYS[(x.date.getDay() + 6) % 7]}</span>
+                                <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>due {fmtDate(x.dueDate)}{x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ''}</div>
+                              </td>
+                              <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{x.docNumber || x.baseDocNumber || '—'}
+                                {x.isAdditionalPo && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", fontWeight: 500 }}>additional / split</div>}</td>
+                              <td style={td}>{x.pwjType || '—'}</td>
+                              <td style={td}>{x.boqNo || '—'}</td>
+                              <td style={{ ...td, overflowWrap: 'anywhere' }}>
+                                <div style={{ fontWeight: 600 }}>{x.vendor || '—'}</div>
+                                {x.materialRequired && <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)" }}>{x.materialRequired}</div>}
+                              </td>
+                              <td style={{ ...td, ...num }}><Money v={x.amount} /></td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot><tr>
+                <td colSpan={5} style={{ ...td, fontWeight: 800 }}>Total planned outflow</td>
+                <td style={{ ...td, ...num }}><Money v={grand} strong color="var(--hz-danger)" /></td>
+              </tr></tfoot>
+            </table>
+          </div>
+        )}
+      </Section>
+    </>
+  );
+}
+
+// ─── Outflow Planner: calendar view (default) with a List option ───
+// Same data and dates as the list: issued BOQ documents on their completion date (else required date, else issue date).
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const sameDay = (a, b) => a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+// Compact rupees for small calendar cells: ₹12.4L, ₹1.2Cr, ₹45K.
+const fmtShort = (n) => {
+  const v = Number(n || 0);
+  if (v >= 1e7) return `₹${(v / 1e7).toFixed(v >= 1e8 ? 0 : 2).replace(/\.?0+$/, '')}Cr`;
+  if (v >= 1e5) return `₹${(v / 1e5).toFixed(v >= 1e6 ? 1 : 2).replace(/\.?0+$/, '')}L`;
+  if (v >= 1e3) return `₹${(v / 1e3).toFixed(v >= 1e4 ? 0 : 1).replace(/\.?0+$/, '')}K`;
+  return `₹${Math.round(v)}`;
+};
+// Monday-first grid of weeks covering a month.
+function monthWeeks(y, m) {
+  const first = new Date(y, m, 1);
+  const start = addDays(first, -((first.getDay() + 6) % 7));
+  const weeks = [];
+  for (let w = 0; w < 6; w++) {
+    const row = Array.from({ length: 7 }, (_, i) => addDays(start, w * 7 + i));
+    if (w > 3 && row[0].getMonth() !== m) break;
+    weeks.push(row);
+  }
+  return weeks;
+}
+
+// Distinct, calm colours so each project reads as its own "calendar" (assigned in name order).
+const PROJECT_COLORS = ['#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#b91c1c', '#7c3aed'];
+
+function OutflowPlanner() {
+  const [layout, setLayout] = useState('CALENDAR'); // CALENDAR | LIST
+  const [docs, setDocs] = useState(null);
+  const [error, setError] = useState('');
+  const [mode, setMode] = useState('MONTH');
+  const [project, setProject] = useState('');
+  const [anchor, setAnchor] = useState(() => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; });
+  const [picked, setPicked] = useState(null); // selected day, or null = whole period
+
+  useEffect(() => {
+    pwjDocsApi.getDocs()
+      .then(r => setDocs(r.data || []))
+      .catch(() => { setDocs([]); setError('Could not load the issued documents.'); });
+  }, []);
+
+  const lines = useMemo(() => (docs || [])
+    .filter(x => x.docStatus === 'VP_APPROVED' && Number(x.totalPayable) > 0)
+    .map(x => {
+      const src = toDay(x.completionDate) ? 'completion' : toDay(x.requiredDate) ? 'required' : 'issued';
+      const due = toDay(x.completionDate) || toDay(x.requiredDate) || toDay(x.issuedAt);
+      // Placed on its payment day (next Wednesday / Saturday on or after the due date).
+      return { ...x, dueDate: due, date: due ? payDayOf(due) : null, src, amount: Number(x.totalPayable) };
+    })
+    .filter(x => x.date), [docs]);
+  const projectNames = useMemo(() => [...new Set(lines.map(x => x.projectName || '—'))].sort((a, b) => a.localeCompare(b)), [lines]);
+  const colorOf = (name) => PROJECT_COLORS[Math.max(0, projectNames.indexOf(name || '—')) % PROJECT_COLORS.length];
+  const shown = useMemo(() => lines.filter(x => !project || (x.projectName || '—') === project), [lines, project]);
+  const byDay = useMemo(() => {
+    const m = new Map();
+    for (const x of shown) {
+      const k = dkey(x.date);
+      if (!m.has(k)) m.set(k, { total: 0, docs: [] });
+      const g = m.get(k); g.total += x.amount; g.docs.push(x);
+    }
+    return m;
+  }, [shown]);
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pr = periodOf(anchor, mode);
+  const inPeriod = shown.filter(x => x.date >= pr.start && x.date <= pr.end);
+  const periodTotal = inPeriod.reduce((t, x) => t + x.amount, 0);
+  const dayTotals = [...byDay.entries()].filter(([k]) => { const d = toDay(k); return d >= pr.start && d <= pr.end; }).map(([, g]) => g.total);
+  const maxDay = Math.max(1, ...dayTotals);
+  const unit = { WEEK: 'week', MONTH: 'month', QUARTER: 'quarter', YEAR: 'year' }[mode];
+  const title = mode === 'MONTH' ? `${MONTHS_FULL[pr.start.getMonth()]} ${pr.start.getFullYear()}` : pr.label;
+
+  const step = (dir) => {
+    setPicked(null);
+    setAnchor(a => mode === 'WEEK' ? addDays(a, 7 * dir)
+      : mode === 'MONTH' ? new Date(a.getFullYear(), a.getMonth() + dir, 1)
+      : mode === 'QUARTER' ? new Date(a.getFullYear(), a.getMonth() + 3 * dir, 1)
+      : new Date(a.getFullYear() + dir, a.getMonth(), 1));
+  };
+  const goToday = () => { setPicked(null); setAnchor(today); };
+  const jump = (dir) => {
+    const ds = shown.map(x => x.date).sort((a, b) => a - b);
+    const target = dir > 0 ? ds.find(d => d > pr.end) : [...ds].reverse().find(d => d < pr.start);
+    if (target) { setPicked(null); setAnchor(target); }
+  };
+  const hasBefore = shown.some(x => x.date < pr.start), hasAfter = shown.some(x => x.date > pr.end);
+  const pick = (d) => setPicked(p => p && sameDay(p, d) ? null : d);
+
+  // ── styles ──
+  const LINE = '1px solid var(--hz-border-strong)';
+  const iconBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, border: LINE, borderRadius: 8, background: '#fff', cursor: 'pointer', color: "var(--hz-ink-2)" };
+  const seg = (active) => ({ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: "var(--hz-text-sm)", fontWeight: active ? 700 : 500, padding: '6px 14px', borderRadius: 6,
+    background: active ? '#fff' : 'transparent', color: active ? "var(--hz-primary)" : "var(--hz-ink-2)", boxShadow: active ? '0 1px 2px rgba(15,23,42,.12)' : 'none' });
+  const segWrap = { display: 'flex', gap: 2, background: "var(--hz-surface-2)", borderRadius: 8, padding: 3 };
+  const DayNum = ({ d, small, dim }) => {
+    const isToday = sameDay(d, today);
+    const sz = small ? 24 : 30;
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: sz, height: sz, borderRadius: '50%',
+        background: isToday ? "var(--hz-brand)" : 'transparent', color: isToday ? '#fff' : dim ? "var(--hz-faint)" : "var(--hz-ink)",
+        fontWeight: isToday ? 700 : 600, fontSize: small ? 12.5 : "var(--hz-text-md)" }}>{d.getDate()}</span>
+    );
+  };
+  const Chip = ({ x, compact }) => (
+    <div title={`${x.docNumber || x.baseDocNumber} · ${x.projectName || '—'} · ${x.vendor || ''} · ${fmt(x.amount)}`}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6, padding: compact ? '2px 6px' : '6px 8px', marginTop: 4,
+        background: `${colorOf(x.projectName)}14`, borderLeft: `3px solid ${colorOf(x.projectName)}`, fontSize: compact ? 12.5 : "var(--hz-text-sm)", minWidth: 0 }}>
+      <span style={{ fontWeight: 600, color: "var(--hz-ink)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{x.docNumber || x.baseDocNumber}</span>
+      {!compact && <span style={{ whiteSpace: 'nowrap' }}><Money v={x.amount} /></span>}
+    </div>
+  );
+
+  // ── Week: seven columns of event cards ──
+  const WeekView = () => {
+    const days = Array.from({ length: 7 }, (_, i) => addDays(pr.start, i));
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', border: LINE, borderRadius: 10, overflow: 'hidden', minWidth: 840 }}>
+        {days.map((d, i) => {
+          const g = byDay.get(dkey(d));
+          const sel = picked && sameDay(picked, d);
+          return (
+            <div key={i} onClick={() => pick(d)} style={{ borderLeft: i ? LINE : 'none', minHeight: 320, cursor: 'pointer', background: sel ? "var(--hz-primary-tint)" : isPayDay(d) ? 'var(--hz-brand-tint)' : '#fff' }}>
+              <div style={{ padding: '10px 10px 8px', borderBottom: LINE, textAlign: 'center' }}>
+                <div style={{ fontSize: "var(--hz-text-xs)", fontWeight: 700, color: isPayDay(d) ? "var(--hz-info)" : "var(--hz-muted)", letterSpacing: '.06em' }}>{WEEKDAYS[i].toUpperCase()}{isPayDay(d) && ' · PAYMENT'}</div>
+                <div style={{ marginTop: 4 }}><DayNum d={d} /></div>
+                <div style={{ marginTop: 4, minHeight: 20, fontSize: "var(--hz-text-sm)" }}>{g ? <Money v={g.total} strong color="var(--hz-ink)" /> : <span style={{ color: "var(--hz-faint)" }}>—</span>}</div>
+              </div>
+              <div style={{ padding: 8 }}>
+                {(g?.docs || []).map((x, j) => (
+                  <div key={j} style={{ borderRadius: 8, padding: '8px 9px', marginBottom: 6, background: `${colorOf(x.projectName)}12`, borderLeft: `3px solid ${colorOf(x.projectName)}` }}>
+                    <div style={{ fontWeight: 700, fontSize: "var(--hz-text-sm)" }}>{x.docNumber || x.baseDocNumber}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.projectName || '—'} · {x.vendor || '—'}</div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", marginTop: 2 }}><Money v={x.amount} /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Month: full grid with event chips ──
+  const MonthView = ({ y, m }) => {
+    const weeks = monthWeeks(y, m);
+    return (
+      <div style={{ border: LINE, borderRadius: 10, overflow: 'hidden', minWidth: 760 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: "var(--hz-bg)", borderBottom: LINE }}>
+          {WEEKDAYS.map((w, i) => {
+            const pay = i === 2 || i === 5; // Wed, Sat
+            return <div key={w} style={{ padding: '9px 10px', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: pay ? "var(--hz-info)" : "var(--hz-muted)", letterSpacing: '.06em',
+              background: pay ? 'var(--hz-brand-tint)' : undefined }}>{w.toUpperCase()}{pay && <span style={{ fontWeight: 600 }}> · Payment</span>}</div>;
+          })}
+        </div>
+        {weeks.map((row, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: wi ? LINE : 'none' }}>
+            {row.map((d, di) => {
+              const inMonth = d.getMonth() === m;
+              const g = inMonth ? byDay.get(dkey(d)) : null;
+              const sel = picked && sameDay(picked, d);
+              return (
+                <div key={di} onClick={() => inMonth && pick(d)}
+                  style={{ borderLeft: di ? LINE : 'none', minHeight: 112, padding: '6px 7px', cursor: inMonth ? 'pointer' : 'default', minWidth: 0,
+                    background: sel ? "var(--hz-primary-tint)" : !inMonth ? "var(--hz-bg)" : isPayDay(d) ? 'var(--hz-brand-tint)' : '#fff', boxShadow: sel ? 'inset 0 0 0 2px var(--hz-primary)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                    <DayNum d={d} dim={!inMonth} />
+                    {g && <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--hz-ink-2)" }}>{fmtShort(g.total)}</span>}
+                  </div>
+                  {g && g.docs.slice(0, 3).map((x, j) => <Chip key={j} x={x} compact />)}
+                  {g && g.docs.length > 3 && <div style={{ fontSize: 12.5, color: "var(--hz-link)", fontWeight: 600, marginTop: 3 }}>+{g.docs.length - 3} more</div>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── Quarter / Year: mini months, days tinted by outflow ──
+  const MiniMonth = ({ y, m }) => {
+    const weeks = monthWeeks(y, m);
+    const mTotal = shown.filter(x => x.date.getFullYear() === y && x.date.getMonth() === m).reduce((t, x) => t + x.amount, 0);
+    return (
+      <div style={{ border: LINE, borderRadius: 10, padding: '10px 12px 12px', background: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+          <button onClick={() => { setMode('MONTH'); setAnchor(new Date(y, m, 1)); setPicked(null); }} title="Open this month"
+            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: "var(--hz-font-display)", fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)" }}>
+            {MONTHS_FULL[m]}
+          </button>
+          <span style={{ fontSize: "var(--hz-text-sm)", fontWeight: 700, color: mTotal ? "var(--hz-ink-2)" : "var(--hz-faint)" }}>{mTotal ? fmtShort(mTotal) : '—'}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', rowGap: 3, textAlign: 'center' }}>
+          {WEEKDAYS.map((w, i) => <div key={w} style={{ fontSize: 11.5, fontWeight: 700, color: i === 2 || i === 5 ? "var(--hz-info)" : "var(--hz-faint)", paddingBottom: 3 }}>{w[0]}</div>)}
+          {weeks.flat().map((d, i) => {
+            const inMonth = d.getMonth() === m;
+            const g = inMonth ? byDay.get(dkey(d)) : null;
+            const sel = picked && sameDay(picked, d);
+            const t = g ? 0.18 + 0.62 * Math.sqrt(g.total / maxDay) : 0;
+            const isToday = sameDay(d, today);
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'center' }}>
+                <button onClick={() => inMonth && pick(d)} disabled={!inMonth}
+                  title={g ? `${fmtDate(d)} · ${g.docs.length} document${g.docs.length === 1 ? '' : 's'} · ${fmt(g.total)}` : undefined}
+                  style={{ width: mode === 'QUARTER' ? 38 : 30, height: mode === 'QUARTER' ? 38 : 30, borderRadius: '50%', border: sel ? '2px solid var(--hz-primary)' : isToday ? '2px solid var(--hz-brand)' : 'none',
+                    background: g ? `rgba(30, 58, 95, ${t})` : 'transparent', color: g && t > 0.45 ? '#fff' : inMonth ? "var(--hz-ink)" : 'transparent',
+                    fontSize: 12.5, fontWeight: g || isToday ? 700 : 500, cursor: inMonth ? 'pointer' : 'default', fontFamily: 'inherit', padding: 0 }}>
+                  {d.getDate()}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const months = mode === 'QUARTER' ? [0, 1, 2].map(i => new Date(pr.start.getFullYear(), pr.start.getMonth() + i, 1))
+    : mode === 'YEAR' ? Array.from({ length: 12 }, (_, i) => new Date(pr.start.getFullYear(), pr.start.getMonth() + i, 1)) : [];
+
+  // ── side panel: summary + agenda ──
+  const focus = picked ? shown.filter(x => sameDay(x.date, picked)) : inPeriod;
+  const focusTotal = focus.reduce((t, x) => t + x.amount, 0);
+  const byProj = [...focus.reduce((m, x) => m.set(x.projectName || '—', (m.get(x.projectName || '—') || 0) + x.amount), new Map()).entries()].sort((a, b) => b[1] - a[1]);
+  const agenda = [...focus.reduce((m, x) => { const k = dkey(x.date); if (!m.has(k)) m.set(k, []); m.get(k).push(x); return m; }, new Map()).entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (layout === 'LIST') {
+    return (
+      <>
+        <div style={{ ...segWrap, width: 'fit-content', marginBottom: 14 }}>
+          {[['CALENDAR', 'Calendar'], ['LIST', 'List']].map(([k, l]) => <button key={k} onClick={() => setLayout(k)} style={seg(layout === k)}>{l}</button>)}
+        </div>
+        <OutflowPlannerList />
+      </>
+    );
+  }
+
+  return (
+    <div style={{ background: "var(--hz-surface)", border: '1px solid var(--hz-border)', borderRadius: 14, boxShadow: "var(--hz-shadow-sm)", marginBottom: 18, overflow: 'hidden' }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '16px 20px', borderBottom: '1px solid var(--hz-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={goToday} style={{ ...btnGhost, padding: '7px 14px' }}>Today</button>
+          <button onClick={() => step(-1)} title={`Previous ${unit}`} aria-label={`Previous ${unit}`} style={iconBtn}><ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} /></button>
+          <button onClick={() => step(1)} title={`Next ${unit}`} aria-label={`Next ${unit}`} style={iconBtn}><ChevronRight size={18} /></button>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--hz-font-display)", fontSize: "var(--hz-text-xl)", fontWeight: 800, color: "var(--hz-ink)", lineHeight: 1.15 }}>{title}</div>
+          <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)" }}>{pr.sub}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => jump(-1)} disabled={!hasBefore} style={{ ...btnGhost, padding: '5px 10px', fontSize: "var(--hz-text-xs)", opacity: hasBefore ? 1 : 0.45, cursor: hasBefore ? 'pointer' : 'default' }}>‹ Previous with outflow</button>
+          <button onClick={() => jump(1)} disabled={!hasAfter} style={{ ...btnGhost, padding: '5px 10px', fontSize: "var(--hz-text-xs)", opacity: hasAfter ? 1 : 0.45, cursor: hasAfter ? 'pointer' : 'default' }}>Next with outflow ›</button>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <select value={project} onChange={e => { setProject(e.target.value); setPicked(null); }} aria-label="Project" style={{ ...inputS, width: 'auto', minWidth: 200, padding: '7px 10px' }}>
+            <option value="">All projects</option>
+            {projectNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <div style={segWrap}>
+            {PLAN_PERIODS.map(([k, l]) => <button key={k} onClick={() => { setMode(k); setPicked(null); }} style={seg(mode === k)}>{l.replace('ly', '').replace('Dai', 'Day').replace('Quarter', 'Quarter')}</button>)}
+          </div>
+          <div style={segWrap}>
+            {[['CALENDAR', 'Calendar'], ['LIST', 'List']].map(([k, l]) => <button key={k} onClick={() => setLayout(k)} style={seg(layout === k)}>{l}</button>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar + side panel */}
+      <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 760px', minWidth: 0, padding: 20, overflowX: 'auto' }}>
+          {docs == null ? <div style={{ color: "var(--hz-muted)" }}>Loading…</div>
+            : error ? <div style={{ color: "var(--hz-danger)" }}>{error}</div>
+            : mode === 'WEEK' ? <WeekView />
+            : mode === 'MONTH' ? <MonthView y={pr.start.getFullYear()} m={pr.start.getMonth()} />
+            : (
+              <div style={{ display: 'grid', gridTemplateColumns: mode === 'QUARTER' ? 'repeat(3, minmax(250px, 1fr))' : 'repeat(4, minmax(230px, 1fr))', gap: 14 }}>
+                {months.map(d => <MiniMonth key={dkey(d)} y={d.getFullYear()} m={d.getMonth()} />)}
+              </div>
+            )}
+          {(mode === 'QUARTER' || mode === 'YEAR') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)" }}>
+              Less {[0.2, 0.4, 0.6, 0.8].map(t => <span key={t} style={{ width: 14, height: 14, borderRadius: '50%', background: `rgba(30,58,95,${t})` }} />)} More outflow
+              <span style={{ marginLeft: 12 }}>Click a month name to open it.</span>
+            </div>
+          )}
+        </div>
+
+        <aside style={{ flex: '0 1 380px', minWidth: 300, borderLeft: '1px solid var(--hz-border)', background: "var(--hz-bg)", display: 'flex', flexDirection: 'column', maxHeight: 820 }}>
+          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--hz-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ fontSize: "var(--hz-text-sm)", fontWeight: 600, color: "var(--hz-muted)" }}>{picked ? fmtDate(picked) : `Planned this ${unit}`}</div>
+              {picked && <button onClick={() => setPicked(null)} style={{ border: 'none', background: 'none', color: "var(--hz-link)", fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: "var(--hz-text-sm)" }}>Whole {unit}</button>}
+            </div>
+            <div style={{ marginTop: 4 }}><Money v={focusTotal} strong color="var(--hz-primary)" size="var(--hz-text-2xl)" /></div>
+            <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-muted)", marginTop: 2 }}>{focus.length} document{focus.length === 1 ? '' : 's'}{project ? ` · ${project}` : ''}</div>
+            {byProj.length > 0 && (
+              <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
+                {byProj.slice(0, 6).map(([name, v]) => (
+                  <div key={name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: "var(--hz-text-sm)" }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(name), flexShrink: 0 }} />
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                      </span>
+                      <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtShort(v)}</span>
+                    </div>
+                    <div style={{ height: 5, borderRadius: 3, background: "var(--hz-border)", marginTop: 4 }}>
+                      <div style={{ width: `${Math.max(3, (v / byProj[0][1]) * 100)}%`, height: '100%', borderRadius: 3, background: colorOf(name) }} />
+                    </div>
+                  </div>
+                ))}
+                {byProj.length > 6 && <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)" }}>+{byProj.length - 6} more projects</div>}
+              </div>
+            )}
+          </div>
+          <div style={{ overflowY: 'auto', padding: '6px 14px 16px', flex: 1 }}>
+            {agenda.length === 0 ? (
+              <div style={{ padding: '24px 6px', color: "var(--hz-faint)", textAlign: 'center' }}>
+                No planned outflow {picked ? 'on this day' : `this ${unit}`}.
+                {!picked && (hasAfter || hasBefore) && <div style={{ marginTop: 8 }}>
+                  <button onClick={() => jump(hasAfter ? 1 : -1)} style={{ ...btnGhost, fontSize: "var(--hz-text-xs)" }}>{hasAfter ? 'Go to next outflow' : 'Go to previous outflow'}</button>
+                </div>}
+              </div>
+            ) : agenda.map(([k, items]) => (
+              <div key={k} style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: "var(--hz-text-xs)", fontWeight: 700, color: "var(--hz-muted)", letterSpacing: '.04em', padding: '0 4px 6px' }}>
+                  <span>{WEEKDAYS[(toDay(k).getDay() + 6) % 7].toUpperCase()} · {fmtDate(toDay(k)).toUpperCase()} · PAYMENT</span><span>{fmtShort(items.reduce((t, x) => t + x.amount, 0))}</span>
+                </div>
+                {items.map((x, i) => (
+                  <div key={i} style={{ background: '#fff', border: '1px solid var(--hz-border)', borderLeft: `4px solid ${colorOf(x.projectName)}`, borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                      <span style={{ fontWeight: 700 }}>{x.docNumber || x.baseDocNumber}</span>
+                      <Money v={x.amount} strong />
+                    </div>
+                    <div style={{ fontSize: "var(--hz-text-sm)", color: "var(--hz-ink-2)", marginTop: 2 }}>{x.vendor || '—'}</div>
+                    <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginTop: 2 }}>Due {fmtDate(x.dueDate)}{x.src !== 'completion' ? ` (${x.src === 'required' ? 'required' : 'issue'} date)` : ' (completion)'}</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                      <Pill>{x.pwjType || '—'}</Pill>
+                      {x.boqNo && <Pill>BOQ {x.boqNo}</Pill>}
+                      <Pill>{x.projectName || '—'}</Pill>
+                      {x.isAdditionalPo && <Pill tone="warning">Split</Pill>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </div>
   );
 }
 

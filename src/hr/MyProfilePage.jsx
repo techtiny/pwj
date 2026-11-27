@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { employeeApi, salaryApi, statementApi, downloadPayslip, currentPayrollMonth } from "./hrApi";
 import EmployeeProfilePage from "./EmployeeProfilePage";
+import { MyResignation } from "./ResignationsPage";
 
 const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" };
 const inputS = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: "var(--hz-text-sm)", fontFamily: "inherit", boxSizing: "border-box" };
@@ -51,9 +52,9 @@ function MyPayslip({ user }) {
 
   return (
     <div style={{ ...card, padding: "18px 20px", marginBottom: 20 }}>
-      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>My Salary Statement</div>
+      <div style={{ fontSize: "var(--hz-text-md)", fontWeight: 700, color: "var(--hz-ink)", marginBottom: 4 }}>My Payslips</div>
       <div style={{ fontSize: "var(--hz-text-xs)", color: "var(--hz-muted)", marginBottom: 14 }}>
-        Request the month you need. Once Admin or VP approves it, you can download that month's statement.
+        Request the month you need. Once Admin or VP approves it, you can download that month's payslip.
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={inputS}>
@@ -63,7 +64,7 @@ function MyPayslip({ user }) {
           {[payroll.year - 2, payroll.year - 1, payroll.year, payroll.year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
         <button onClick={requestIt} disabled={busy === "req"} style={{ ...btn("#0f766e"), opacity: busy === "req" ? 0.6 : 1 }}>
-          {busy === "req" ? "Sending…" : "Request Salary Statement"}
+          {busy === "req" ? "Sending…" : "Request Payslip"}
         </button>
       </div>
       {error && <div style={{ fontSize: "var(--hz-text-xs)", color: "#b91c1c", marginTop: 10 }}>{error}</div>}
@@ -108,6 +109,7 @@ export default function MyProfilePage({ user }) {
     <div>
       <div style={{ padding: "24px 32px 0" }}>
         <MyPayslip user={user} />
+        <MyResignation user={user} />
       </div>
       {empId === undefined ? (
         <div className="hr-page" style={{ padding: "0 32px 24px" }}>Loading profile…</div>
